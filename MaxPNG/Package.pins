@@ -1,0 +1,12 @@
+{
+  "autoPin": true,
+  "pins": [
+    {
+      "package": "Zlib",
+      "reason": null,
+      "repositoryURL": "https://github.com/kelvin13/swift-zlib",
+      "version": "1.0.0"
+    }
+  ],
+  "version": 1
+}
