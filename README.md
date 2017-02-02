@@ -46,3 +46,25 @@ struct PNGImageHeader
 ````
 
 At the moment, indexed-color PNGs are unsupported. Tragic. Hmu on the issues page if you need them.
+
+## FAQ
+
+> Why not use a C PNG decoder like [`libpng`](http://www.libpng.org/pub/png/libpng.html)?
+
+Cause it either a) doesn’t work in Swift, or b) it actually does work but the API is [so](https://bobobobo.wordpress.com/2009/03/02/how-to-use-libpng/) [bad](http://latentcontent.net/2007/12/05/libpng-worst-api-ever/) that I don’t know how to get it to work, which, if you think about it, is just as bad. Either way, `libpng` is written in C. `maxpng` is written in Swift. Yay!
+
+> Why does it depend on `zlib` then?
+
+`zlib` is cute, nice, and friendly, and it’s also pretty much everywhere. I’ve never had a problem with `zlib`. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.) For me, using `zlib` sounded like a lot less work so I went with that.
+
+> Why does it decode my pictures line-by-line?
+
+Some PNGs are so large that loading them into your RAM will make you very sad. These PNGs are not meant to be viewed, rather processed as data for other purposes. (Think satellite scan data.) Reading them line by line avoids this problem by letting you stream the picture in and out of your program while you do your thing (such as downsampling them to something small enough that you *can* view on your screen). At any rate, if you really want the entire image, you can just dump the scanline buffers into one big buffer if you have the memory. There’s no extra overhead to that — every PNG decoder works like that internally.
+
+> Why did it “skip” `nUGZ`??? That’s my favorite chunk!!!
+
+Right now, `maxpng` only recognizes the chunks `IHDR`, `IDAT`, and `IEND`. `PLTE` is ignored but it would probably take about an afternoon or two to implement; I’m just lazy because I have seen maybe 5 indexed PNGs in my entire life. Most of the ancillary PNG chunks are actually trivial to implement and add to `maxpng` (they just involve casting bytes to integers and binding them to structs), I just haven’t gotten around to it.
+
+> Wait, `maxpng` lets you skip `IDAT`??? Why would you ever want to do that?
+
+By default, `maxpng` will decode the image pixel data, but if you pass `PNGDataIterator.init()` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
