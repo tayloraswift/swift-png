@@ -537,7 +537,7 @@ class PNGDataIterator
     }
 
     public
-    func next(_ n:Int) throws -> [UInt8]?
+    func next() throws -> [UInt8]?
     {
         guard self.current_chunk_type == .IDAT
         else
