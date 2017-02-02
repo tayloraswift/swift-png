@@ -15,9 +15,9 @@ while let scanline = try png.next()
 }
 ````
 
-While it works great with all sizes of PNG files, `maxpng` was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. `maxpng` won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, `maxpng`’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
+While it works great with PNG files of all sizes, `maxpng` was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. `maxpng` won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, `maxpng`’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
 
-One more thing: `maxpng` returns arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this the format most useful for loading the pixel data as textures in OpenGL or Cairo for example, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday `maxpng` can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
+One more thing: `maxpng` returns arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday `maxpng` can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
 
 ````swift
 public
