@@ -23,6 +23,8 @@ func unix_path(_ path:RelativePath) -> Unixpath
 func read_png(_ rpath:RelativePath) throws
 {
     let path = unix_path(rpath)
+    let png_skip = try PNGDataIterator(path: path, look_for: [])
+
     let png = try PNGDataIterator(path: path)
 
     let total_samples = png.header.height*png.header.width*png.header.channels

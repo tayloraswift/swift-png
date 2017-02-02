@@ -231,6 +231,7 @@ func read_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws -> [UI
     guard fread(&buffer, 1, length, f) == length
     else
     {
+        print(length)
         throw PNGError.IncompleteChunkError
     }
     return buffer
@@ -477,7 +478,8 @@ class PNGDataIterator
     func read_png_info(look_for:[PNGChunkType]) throws // only ever call this function ONCE!
     {
         assert(self.current_chunk_type != .IDAT)
-        let active_chunks:Set<PNGChunkType> = Set(look_for)
+        var active_chunks:Set<PNGChunkType> = Set(look_for)
+        active_chunks.insert(.IEND) // we must always be vigilant
 
         outer_loop: while true
         {
@@ -493,6 +495,8 @@ class PNGDataIterator
                     case .IDAT:
                         self.z_iterator.add_input(chunk_data)
                         break outer_loop // we have a check in the conditions preventing IEND from coming early
+                    case .IEND:
+                        break outer_loop
                     default:
                         print("Reading chunk \(chunk_type.description.1) is not yet supported. tragic")
                 }
@@ -538,7 +542,7 @@ class PNGDataIterator
         guard self.current_chunk_type == .IDAT
         else
         {
-            print("attempt to read without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels")
+            print("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels")
             return nil
         }
         if !self.the_end
