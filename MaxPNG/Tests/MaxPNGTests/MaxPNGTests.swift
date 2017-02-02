@@ -30,7 +30,7 @@ func read_png(_ rpath:RelativePath) throws
     let total_samples = png.header.height*png.header.width*png.header.channels
     var o = 0
     var l = 0
-    while let b = try png.next(png.header.width*3 + 1)
+    while let b = try png.next()
     {
         o += b.count
         l += 1
