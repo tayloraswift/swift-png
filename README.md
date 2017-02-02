@@ -57,7 +57,7 @@ Cause it either a) doesn’t work in Swift, or b) it actually does work but the 
 
 `zlib` is cute, nice, and friendly, and it’s also pretty much everywhere. I’ve never had a problem with `zlib`. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.) For me, using `zlib` sounded like a lot less work so I went with that.
 
-> Why does it decode my pictures line-by-line?
+> Why does `maxpng` decode my pictures line-by-line?
 
 Some PNGs are so large that loading them into your RAM will make you very sad. These PNGs are not meant to be viewed, rather processed as data for other purposes. (Think satellite scan data.) Reading them line by line avoids this problem by letting you stream the picture in and out of your program while you do your thing (such as downsampling them to something small enough that you *can* view on your screen). At any rate, if you really want the entire image, you can just dump the scanline buffers into one big buffer if you have the memory. There’s no extra overhead to that — every PNG decoder works like that internally.
 
@@ -68,3 +68,7 @@ Right now, `maxpng` only recognizes the chunks `IHDR`, `IDAT`, and `IEND`. `PLTE
 > Wait, `maxpng` lets you skip `IDAT`??? Why would you ever want to do that?
 
 By default, `maxpng` will decode the image pixel data, but if you pass `PNGDataIterator.init()` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
+
+> Does `maxpng` do gamma correction?
+
+No. Gamma is meant to be applied at the image *display* stage. `maxpng` only gives you the raw, integer color data in the file. Gamma is also easy to apply to raw color data but computationally expensive to remove. Some PNGs include gamma data in a chunk called `gAMA`, but most don’t, and viewers will just apply a `γ = 2.2` regardless. `maxpng` doesn’t read `gAMA` right now.
