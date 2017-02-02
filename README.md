@@ -45,7 +45,7 @@ struct PNGImageHeader
 }
 ````
 
-At the moment, indexed-color PNGs are unsupported. Tragic. Hmu on the issues page if you need them.
+At the moment, indexed-color and interlaced PNGs are unsupported. Tragic. Hmu on the issues page if you need them.
 
 ## FAQ
 
