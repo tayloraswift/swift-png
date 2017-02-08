@@ -7,7 +7,7 @@
 ````swift
 import MaxPNG
 
-let png = try PNGDataIterator(path: "/absolute/path/to/my/png/file.png")
+let png = try PNGDecoder(path: "/absolute/path/to/my/png/file.png")
 
 while let scanline = try png.next_scanline()
 {
@@ -15,9 +15,24 @@ while let scanline = try png.next_scanline()
 }
 ````
 
+You can also use it to create your own PNG files:
+````swift
+let my_png_settings = PNGImageHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false)
+let my_png_data:[[UInt8]] = [   [0  ,0  ,0  ,    255,255,255,    255,0  ,255],
+                                [255,255,255,    0  ,0  ,0  ,    0  ,255,0  ],
+                                [120,120,255,    150,120,255,    180,120,255] ]
+let out = try PNGEncoder(path: "/absolute/path/to/where/i/want/to/write/my/file/to.png", header: my_png_settings)
+try out.initialize()
+for scanline in my_png_data
+{
+    try out.add_scanline(scanline)
+}
+try out.finish()
+````
+
 While it works great with PNG files of all sizes, `maxpng` was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. `maxpng` won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, `maxpng`’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
 
-One more thing: `maxpng` returns arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday `maxpng` can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
+One more thing: `maxpng` works on arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday `maxpng` can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
 
 ````swift
 public
@@ -72,3 +87,7 @@ By default, `maxpng` will decode the image pixel data, but if you pass `PNGDataI
 > Does `maxpng` do gamma correction?
 
 No. Gamma is meant to be applied at the image *display* stage. `maxpng` only gives you the raw, integer color data in the file. Gamma is also easy to apply to raw color data but computationally expensive to remove. Some PNGs include gamma data in a chunk called `gAMA`, but most don’t, and viewers will just apply a `γ = 2.2` regardless. `maxpng` doesn’t read `gAMA` right now.
+
+> Can I add extra chunks to my PNG output?
+
+At the moment, no, `maxpng` only supports writing bare image data to disk.

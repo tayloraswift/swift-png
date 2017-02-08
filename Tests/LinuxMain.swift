@@ -1,6 +1,5 @@
-@testable import MaxPNGTests
+import MaxPNGTests
+import MaxPNG
 
-try skip_png("Tests/taylor.png")
-try read_png("Tests/taylor.png")
-let (png_header, png_scanlines) = try read_png_into_buffer("Tests/taylor.png")
-try write_png("Tests/output.png", png_scanlines, header: png_header)
+try process_png("Tests/taylor.png", output: "Tests/taylor_reconverted.png")
+try write_png("Tests/output.png", [[0, 0, 0, 255, 255, 255, 255, 0, 255], [255, 255, 255, 0, 0, 0, 0, 255, 0], [120, 120, 255, 150, 120, 255, 180, 120, 255]], header: PNGImageHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
