@@ -21,7 +21,7 @@ let my_png_settings = PNGImageHeader(width: 3, height: 3, bit_depth: 8, color_ty
 let my_png_data:[[UInt8]] = [   [0  ,0  ,0  ,    255,255,255,    255,0  ,255],
                                 [255,255,255,    0  ,0  ,0  ,    0  ,255,0  ],
                                 [120,120,255,    150,120,255,    180,120,255] ]
-let out = try PNGEncoder(path: "/absolute/path/to/where/i/want/to/write/my/file/to.png", header: my_png_settings)
+let out = try PNGEncoder(path: "/absolute/path/to/destination.png", header: my_png_settings)
 try out.initialize()
 for scanline in my_png_data
 {
