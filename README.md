@@ -1,5 +1,13 @@
 # maxpng
 
+[![Language](https://img.shields.io/badge/version-swift_3-ffa020.svg
+)](https://developer.apple.com/swift)
+[![Issues](https://img.shields.io/github/issues/kelvin13/maxpng.svg
+)](https://github.com/kelvin13/maxpng/issues?state=open)
+[![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/LICENSE.gpl3)
+[![Build](https://travis-ci.org/kelvin13/maxpng.svg?branch=master)](https://travis-ci.org/kelvin13/maxpng)
+[![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
+
 `maxpng` is written in pure swift with the exception of one dependency on the `zlib` C library. You almost certainly have it on your computer already. `maxpng` contains no calls to this “`Foundation`” of which you speak; its just plain, standard swift.
 
 `maxpng` is simple to use:
