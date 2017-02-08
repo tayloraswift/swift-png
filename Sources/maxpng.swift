@@ -18,10 +18,19 @@ enum PNGError:Error
          PrematureIENDError
 }
 
+public
+enum PNGWriteError:Error
+{
+    case FileWriteError,
+         DimemsionError
+}
+
 fileprivate
 struct PNGConditions
 {
-    var seen = [Bool](repeating: false, count: PNGChunk._cases.count)
+    private(set)
+    var seen = [Bool](repeating: false, count: PNGChunkType._cases.count)
+    private(set)
     var last_valid_chunk:PNGChunkType = PNGChunkType.__FIRST__
 
     subscript(ct:PNGChunkType) -> Bool
@@ -164,15 +173,11 @@ enum PNGChunkType:Int
                 return ("zTXT", "compressed text")
         }
     }
-}
 
-fileprivate
-struct PNGChunk
-{
     static
-    let _cases:[PNGChunkType] = PNGChunk._make_case_array()
+    let _cases:[PNGChunkType] = PNGChunkType._make_case_array()
     static private
-    let _lookup:[Int: PNGChunkType] = PNGChunk._make_case_lookup(PNGChunk._cases)
+    let _lookup:[Int: PNGChunkType] = PNGChunkType._make_case_lookup(PNGChunkType._cases)
 
     static private
     func _make_case_array() -> [PNGChunkType]
@@ -193,7 +198,7 @@ struct PNGChunk
         var lookup:[Int: PNGChunkType] = [:]
         for c in cases
         {
-            lookup[quad_byte_to_int([UInt8](c.description.0.utf8))] = c
+            lookup[quad_byte_to_int([UInt8](String(describing: c).utf8))] = c
         }
         return lookup
     }
@@ -201,7 +206,7 @@ struct PNGChunk
     static
     func from_buffer(_ buffer:[UInt8]) -> PNGChunkType?
     {
-        return PNGChunk._lookup[quad_byte_to_int(buffer)]
+        return PNGChunkType._lookup[quad_byte_to_int(buffer)]
     }
 
     static
@@ -225,20 +230,28 @@ func quad_byte_to_int(_ buffer:[UInt8]) -> Int
 }
 
 fileprivate
+func int_to_quad_byte(_ integer:Int) -> [UInt8]
+{
+    return [UInt8(integer >> 24 & 0xFF),
+            UInt8(integer >> 16 & 0xFF),
+            UInt8(integer >> 8  & 0xFF),
+            UInt8(integer       & 0xFF)]
+}
+
+fileprivate
 func read_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws -> [UInt8]
 {
     var buffer = [UInt8](repeating: 0, count: length)
     guard fread(&buffer, 1, length, f) == length
     else
     {
-        print(length)
         throw PNGError.IncompleteChunkError
     }
     return buffer
 }
 
 fileprivate
-func png_skip_chunk_data(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws
+func skip_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws
 {
     if length <= 128 // most regulated-length png chunks are shorter than 128 bytes
     {
@@ -252,6 +265,16 @@ func png_skip_chunk_data(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws
 }
 
 fileprivate
+func write_png_buffer(_ f:UnsafeMutablePointer<FILE>, buffer:[UInt8]) throws
+{
+    guard fwrite(buffer, 1, buffer.count, f) == buffer.count
+    else
+    {
+        throw PNGWriteError.FileWriteError
+    }
+}
+
+fileprivate
 func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions, one_of:Set<PNGChunkType>) throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
 {
     /* — CHUNK LENGTH READ — */
@@ -259,23 +282,23 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
 
     /* — CHUNK TYPE READ AND VALIDATION — */
     let chunk_type_buffer = try read_png_buffer(f, 4)
-    guard let chunk_type = PNGChunk.from_buffer(chunk_type_buffer)
+    guard let chunk_type = PNGChunkType.from_buffer(chunk_type_buffer)
     else
     {
         guard (chunk_type_buffer[0] & (1 << 5)) != 0
         else
         {
-            throw PNGError.UnexpectedCriticalChunkError(PNGChunk.string_rep(chunk_type_buffer))
+            throw PNGError.UnexpectedCriticalChunkError(PNGChunkType.string_rep(chunk_type_buffer))
         }
         guard (chunk_type_buffer[2] & (1 << 5)) == 0
         else
         {
-            throw PNGError.PNGSyntaxError("Third byte of chunk type \(PNGChunk.string_rep(chunk_type_buffer)) must have bit 5 set to 0.")
+            throw PNGError.PNGSyntaxError("Third byte of chunk type \(PNGChunkType.string_rep(chunk_type_buffer)) must have bit 5 set to 0.")
         }
 
-        try png_skip_chunk_data(f, length)
+        try skip_png_buffer(f, length)
         // ignore unrecognized chunk
-        print("unrecognized: \(PNGChunk.string_rep(chunk_type_buffer))")
+        print("unrecognized: \(PNGChunkType.string_rep(chunk_type_buffer))")
         return nil
     }
     // all the recognized chunks have valid names so there’s no need to check them
@@ -294,16 +317,29 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
         guard stored_chunk_crc == Int(calculated_crc)
         else
         {
-            throw PNGError.DataCorruptionError(PNGChunk.string_rep(chunk_type_buffer))
+            throw PNGError.DataCorruptionError(PNGChunkType.string_rep(chunk_type_buffer))
         }
         return (chunk_type, chunk_data)
     }
     else
     {
-        try png_skip_chunk_data(f, length)
+        try skip_png_buffer(f, length)
         print("skipped: \(chunk_type)")
         return nil
     }
+}
+
+fileprivate
+func png_write_chunk(f:UnsafeMutablePointer<FILE>, chunk_data:[UInt8], chunk_type:PNGChunkType) throws
+{
+    try write_png_buffer(f, buffer: int_to_quad_byte(chunk_data.count)) // length section
+    let chunk_type_buffer = [UInt8](String(describing: chunk_type).utf8)
+    assert(chunk_type_buffer.count == 4)
+    try write_png_buffer(f, buffer: chunk_type_buffer) // chunk type section
+    try write_png_buffer(f, buffer: chunk_data) // chunk data section
+    var calculated_crc = crc32(0, chunk_type_buffer, 4)
+        calculated_crc = crc32(calculated_crc, chunk_data, UInt32(chunk_data.count))
+    try write_png_buffer(f, buffer: int_to_quad_byte(Int(calculated_crc))) // crc section // this Int() cast only works because crc is a 32 bit value padded to 64 bits
 }
 
 public
@@ -329,25 +365,21 @@ struct PNGImageHeader
     public
     let channels:Int
 
+    static
+    let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
+
     fileprivate
-    init(_ data:[UInt8]) throws
+    let bytes_per_scanline:Int,
+        bpp:Int
+
+    public
+    init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlace:Bool) throws
     {
-        guard data.count == 13
-        else
-        {
-            throw PNGError.PNGSyntaxError("Image header chunk does not have the correct length")
-        }
-        self.width      = quad_byte_to_int(Array(data[0...3]))
-        self.height     = quad_byte_to_int(Array(data[4...7]))
-        self.bit_depth  = Int(data[8])
-        if let color_type = ColorType(rawValue: Int(data[9])) // for some reason guard let doesn’t compile
-        {
-            self.color_type = color_type
-        }
-        else
-        {
-            throw PNGError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
-        }
+        self.width = width
+        self.height = height
+        self.bit_depth = bit_depth
+        self.color_type = color_type
+        self.interlace = interlace
 
         /* validate color type */
         let allowed_bit_depths:[Int]
@@ -375,6 +407,26 @@ struct PNGImageHeader
             throw PNGError.PNGSyntaxError("Color type '\(self.color_type)' cannot have a bit depth of \(self.bit_depth)")
         }
 
+        let scanline_bits_n = self.width * self.channels * self.bit_depth
+        self.bytes_per_scanline = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
+        self.bpp = max(1, (self.channels * self.bit_depth) >> 3)
+    }
+
+    fileprivate
+    init(_ data:[UInt8]) throws
+    {
+        guard data.count == 13
+        else
+        {
+            throw PNGError.PNGSyntaxError("Image header chunk does not have the correct length")
+        }
+
+        guard let color_type = ColorType(rawValue: Int(data[9])) // for some reason guard let doesn’t compile
+        else
+        {
+            throw PNGError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
+        }
+
         /* validate other fields */
         guard Int(data[10]) == 0
         else
@@ -386,25 +438,245 @@ struct PNGImageHeader
         {
             throw PNGError.PNGSyntaxError("Filter method does not equal 0")
         }
-        let interlace   = Int(data[12])
-        if interlace == 0
+        let interlace:Bool
+        let interlace_i = Int(data[12])
+        if interlace_i == 0
         {
-            self.interlace = false
+            interlace = false
         }
-        else if interlace == 1
+        else if interlace_i == 1
         {
-            self.interlace = true
+            interlace = true
         }
         else
         {
-            throw PNGError.PNGSyntaxError("Interlace method cannot equal \(interlace)")
+            throw PNGError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
         }
 
+        try self.init(width: quad_byte_to_int(Array(data[0...3])),
+                      height: quad_byte_to_int(Array(data[4...7])),
+                      bit_depth: Int(data[8]),
+                      color_type: color_type,
+                      interlace: interlace)
+    }
+
+    fileprivate
+    func write() -> [UInt8]
+    {
+        var bytes:[UInt8] = int_to_quad_byte(self.width)        // [0:3]
+        bytes.append(contentsOf: int_to_quad_byte(self.height)) // [4:7]
+        bytes.append(UInt8(self.bit_depth))                     // [8]
+        bytes.append(UInt8(self.color_type.rawValue))           // [9]
+        bytes.append(0)                                         // [10] = 0
+        bytes.append(0)                                         // [11] = 0
+        bytes.append(self.interlace ? 1 : 0)                    // [12]
+        return bytes
+    }
+}
+
+fileprivate
+func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
+{
+    let a16 = Int16(a),
+        b16 = Int16(b),
+        c16 = Int16(c)
+    let p:Int16 = a16 + b16 - c16 // do b - c first to avoid overflow and reduce the number of UInt16 casts
+    let pa = abs(p - a16),
+        pb = abs(p - b16),
+        pc = abs(p - c16)
+
+    if pa <= pb && pa <= pc
+    {
+        return a
+    }
+    else
+    {
+        return pb <= pc ? b : c
     }
 }
 
 public final
-class PNGDataIterator
+class PNGEncoder
+{
+    private
+    var f:UnsafeMutablePointer<FILE>
+
+    private
+    let z_iterator:ZDeflator
+    private
+    var defiltered0:[UInt8],
+        chunk_data:[UInt8]
+    static private
+    let chunk_size = 1 << 16
+    private
+    var chunk_empty:Int = PNGEncoder.chunk_size
+
+    private
+    let header:PNGImageHeader
+
+    public
+    init (path:String, header:PNGImageHeader) throws
+    {
+        if let f = fopen(path, "wb")
+        {
+            self.f = f
+        }
+        else
+        {
+            throw PNGError.FileError
+        }
+
+        self.header = header
+        self.z_iterator = try ZDeflator()
+        self.defiltered0 = [UInt8](repeating: 0, count: header.bytes_per_scanline)
+        self.chunk_data = [UInt8](repeating: 0, count: PNGEncoder.chunk_size)
+    }
+
+    public
+    func initialize() throws
+    {
+        try write_png_buffer(self.f, buffer: PNGImageHeader.signature)
+        try png_write_chunk(f: self.f, chunk_data: self.header.write(), chunk_type: .IHDR)
+    }
+
+    public
+    func add_scanline(_ defiltered1:[UInt8]) throws
+    {
+        guard defiltered1.count == defiltered0.count
+        else
+        {
+            throw PNGWriteError.DimemsionError
+        }
+
+        var filter_data = [[UInt8]](repeating: [0] + defiltered1, count: 5)
+
+        PNGEncoder.filter_sub(&filter_data[1], bpp: self.header.bpp)
+        PNGEncoder.filter_up(&filter_data[2], defiltered0: self.defiltered0)
+        PNGEncoder.filter_average(&filter_data[3], defiltered0: self.defiltered0, bpp: self.header.bpp)
+        PNGEncoder.filter_paeth(&filter_data[4], defiltered0: self.defiltered0, bpp: self.header.bpp)
+
+        self.defiltered0 = defiltered1
+
+        /* pick the most effective filter */
+        let scores:[Int] = filter_data.map{ $0.reduce(0, {$0 + abs(Int($1))}) }
+        var min_filter:Int = 0
+        var min_score:Int = Int.max
+        for (i, score) in scores.enumerated()
+        {
+            if score < min_score
+            {
+                min_score = score
+                min_filter = i
+            }
+        }
+
+        filter_data[min_filter][0] = UInt8(min_filter)
+        self.z_iterator.add_input(filter_data[min_filter])
+
+        repeat
+        {
+            let the_end:Bool
+            (self.chunk_empty, the_end) = try self.z_iterator.get_output(&self.chunk_data, empty: self.chunk_empty)
+            assert(!the_end) // the_end cannot come yet
+        } while try self.attempt_emit_idat_chunk()
+    }
+
+    public
+    func finish() throws
+    {
+        self.z_iterator.finish()
+        var the_end:Bool
+        repeat
+        {
+            (self.chunk_empty, the_end) = try self.z_iterator.get_output(&self.chunk_data, empty: self.chunk_empty)
+        } while try self.attempt_emit_idat_chunk()
+        assert(the_end) // the end must come now
+        if self.chunk_empty != self.chunk_data.count // meaning, there is still data in the buffer
+        {
+            try png_write_chunk(f: self.f, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_empty)), chunk_type: .IDAT)
+        }
+        try png_write_chunk(f: self.f, chunk_data: [], chunk_type: .IEND)
+    }
+
+    private
+    func attempt_emit_idat_chunk() throws -> Bool
+    {
+        if self.chunk_empty == 0
+        {
+            /* emit chunk */
+            try png_write_chunk(f: self.f, chunk_data: self.chunk_data, chunk_type: .IDAT)
+            self.chunk_empty = PNGEncoder.chunk_size
+            return true
+        }
+        else
+        {
+            return false
+        }
+    }
+
+    public
+    func close()
+    {
+        if fclose(self.f) == 0
+        {
+            print("file closed")
+        }
+    }
+
+    /* these are literally exactly the same as the defilter functions except backwards */
+    private static
+    func filter_sub(_ filtered1:inout [UInt8], bpp:Int)
+    {
+        for i in ((1 + bpp)..<filtered1.count).reversed()
+        {
+            filtered1[i] = filtered1[i] &- filtered1[i - bpp]
+        }
+    }
+
+    private static
+    func filter_up(_ filtered1:inout [UInt8], defiltered0:[UInt8])
+    {
+        for i in 1..<filtered1.count // we do not need to reverse here
+        {
+            filtered1[i] = filtered1[i] &- defiltered0[i - 1]
+        }
+    }
+
+    private static
+    func filter_average(_ filtered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    {
+        for i in ((1 + bpp)..<filtered1.count).reversed()
+        {
+            filtered1[i] = filtered1[i] &- UInt8((UInt16(filtered1[i - bpp]) + UInt16(defiltered0[i - 1])) >> 1) // the second part will never overflow because of the right shift
+        }
+        for i in 1..<(1 + bpp) // we do not need to reverse here
+        {
+            filtered1[i] = filtered1[i] &- defiltered0[i - 1] >> 1
+        }
+    }
+
+    private static
+    func filter_paeth(_ filtered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    {
+
+        for i in ((1 + bpp)..<filtered1.count).reversed()
+        {
+            filtered1[i] = filtered1[i] &- paeth(filtered1[i - bpp], defiltered0[i - 1], defiltered0[i - 1 - bpp])
+        }
+        for i in 1..<(1 + bpp)
+        {
+            filtered1[i] = filtered1[i] &- paeth(0, defiltered0[i - 1], 0)
+        }
+    }
+
+    deinit
+    {
+        self.close()
+    }
+}
+
+public final
+class PNGDecoder
 {
     private
     var f:UnsafeMutablePointer<FILE>
@@ -415,14 +687,12 @@ class PNGDataIterator
     var current_chunk_type:PNGChunkType = .__FIRST__
 
     private
-    let z_iterator:ZIterator
+    let z_iterator:ZInflator
     private
     var the_end:Bool = false
     private
     var defiltered0:[UInt8],
         scanline1:[UInt8]
-    private
-    let bpp:Int
 
     public
     let header:PNGImageHeader
@@ -443,8 +713,7 @@ class PNGDataIterator
         }
 
         /* check if it's, you know, actually a PNG */
-        var signature:[UInt8] = [0, 0, 0, 0, 0, 0, 0, 0]
-        guard (fread(&signature, 1, 8, f) == 8) && (signature == [137, 80, 78, 71, 13, 10, 26, 10]) // compare with PNG signature
+        guard (try read_png_buffer(f, 8) == PNGImageHeader.signature) // compare with PNG signature
         else
         {
             throw PNGError.FiletypeError
@@ -462,13 +731,10 @@ class PNGDataIterator
             throw PNGError.MissingHeaderError
         }
 
-        self.z_iterator = try ZIterator()
+        self.z_iterator = try ZInflator()
         /* initialize the scanline buffers */
-        let scanline_bits_n = self.header.width * self.header.channels * self.header.bit_depth
-        let scanline_bytes_n = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1) + 1 // ceil(scanline_bits_n/8) + 1
-        self.defiltered0 = [UInt8](repeating: 0, count: scanline_bytes_n - 1)
-        self.scanline1 = [UInt8](repeating: 0, count: scanline_bytes_n)
-        self.bpp = max(1, (self.header.channels * self.header.bit_depth) >> 3)
+        self.defiltered0 = [UInt8](repeating: 0, count: self.header.bytes_per_scanline)
+        self.scanline1 = [UInt8](repeating: 0, count: self.header.bytes_per_scanline + 1) // +1 is for the filter byte
 
         try self.read_png_info(look_for: look_for)
         print(self.header)
@@ -537,7 +803,7 @@ class PNGDataIterator
     }
 
     public
-    func next() throws -> [UInt8]?
+    func next_scanline() throws -> [UInt8]?
     {
         guard self.current_chunk_type == .IDAT
         else
@@ -555,13 +821,13 @@ class PNGDataIterator
                 case 0:
                     break
                 case 1:
-                    PNGDataIterator.filter_sub(&defiltered1, bpp: self.bpp)
+                    PNGDecoder.defilter_sub(&defiltered1, bpp: self.header.bpp)
                 case 2:
-                    PNGDataIterator.filter_up(&defiltered1, defiltered0: self.defiltered0)
+                    PNGDecoder.defilter_up(&defiltered1, defiltered0: self.defiltered0)
                 case 3:
-                    PNGDataIterator.filter_average(&defiltered1, defiltered0: self.defiltered0, bpp: self.bpp)
+                    PNGDecoder.defilter_average(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
                 case 4:
-                    PNGDataIterator.filter_paeth(&defiltered1, defiltered0: self.defiltered0, bpp: self.bpp)
+                    PNGDecoder.defilter_paeth(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
                 default:
                     break // won’t happen
             }
@@ -574,8 +840,17 @@ class PNGDataIterator
         }
     }
 
+    public
+    func close()
+    {
+        if fclose(self.f) == 0
+        {
+            print("file closed")
+        }
+    }
+
     private static
-    func filter_sub(_ defiltered1:inout [UInt8], bpp:Int)
+    func defilter_sub(_ defiltered1:inout [UInt8], bpp:Int)
     {
         for i in bpp..<defiltered1.count
         {
@@ -584,7 +859,7 @@ class PNGDataIterator
     }
 
     private static
-    func filter_up(_ defiltered1:inout [UInt8], defiltered0:[UInt8])
+    func defilter_up(_ defiltered1:inout [UInt8], defiltered0:[UInt8])
     {
         for i in 0..<defiltered1.count
         {
@@ -593,67 +868,71 @@ class PNGDataIterator
     }
 
     private static
-    func filter_average(_ defiltered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    func defilter_average(_ defiltered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
     {
         for i in 0..<bpp
         {
-            defiltered1[i] = defiltered1[i] &+ defiltered0[i] >> 2
+            defiltered1[i] = defiltered1[i] &+ defiltered0[i] >> 1
         }
         for i in bpp..<defiltered1.count
         {
-            defiltered1[i] = defiltered1[i] &+ UInt8((UInt16(defiltered1[i - bpp]) + UInt16(defiltered0[i])) >> 2) // the second part will never overflow because of the right shift
+            defiltered1[i] = defiltered1[i] &+ UInt8((UInt16(defiltered1[i - bpp]) + UInt16(defiltered0[i])) >> 1) // the second part will never overflow because of the right shift
         }
     }
 
     private static
-    func filter_paeth(_ defiltered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    func defilter_paeth(_ defiltered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
     {
         for i in 0..<bpp
         {
-            defiltered1[i] = defiltered1[i] &+ PNGDataIterator.paeth(0, defiltered0[i], 0)
+            defiltered1[i] = defiltered1[i] &+ paeth(0, defiltered0[i], 0)
         }
         for i in bpp..<defiltered1.count
         {
-            defiltered1[i] = defiltered1[i] &+ PNGDataIterator.paeth(defiltered1[i - bpp], defiltered0[i], defiltered0[i - bpp])
-        }
-    }
-
-    private static
-    func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
-    {
-        let a16 = Int16(a),
-            b16 = Int16(b),
-            c16 = Int16(c)
-        let p:Int16 = a16 + b16 - c16 // do b - c first to avoid overflow and reduce the number of UInt16 casts
-        let pa = abs(p - a16),
-            pb = abs(p - b16),
-            pc = abs(p - c16)
-
-        if pa <= pb && pa <= pc
-        {
-            return a
-        }
-        else
-        {
-            return pb <= pc ? b : c
+            defiltered1[i] = defiltered1[i] &+ paeth(defiltered1[i - bpp], defiltered0[i], defiltered0[i - bpp])
         }
     }
 
     deinit
     {
-        fclose(self.f)
-        print("file closed")
+        self.close()
     }
 }
 
 fileprivate
-class ZIterator
+func create_zstream() -> z_stream_s
+{
+    var stream = z_stream()
+    stream.zalloc = nil
+    stream.zfree = nil
+    stream.opaque = nil
+    stream.avail_in = 0
+    stream.next_in = nil
+    return stream
+}
+
+fileprivate
+func add_input_to_zstream(_ stream:inout z_stream_s, input:[UInt8])
+{
+    stream.avail_in = UInt32(input.count)
+    stream.next_in = UnsafeMutablePointer<UInt8>(mutating: input)
+}
+
+fileprivate
+func allocate_output_for_zstream(_ stream:inout z_stream_s, output_buffer:inout [UInt8], empty:Int)
+{
+    stream.avail_out = UInt32(empty)
+    stream.next_out = UnsafeMutablePointer<UInt8>(mutating: output_buffer).advanced(by: output_buffer.count - empty)
+}
+
+fileprivate final
+class ZInflator
 {
     private
     var stream:z_stream_s
 
     private
-    var input:[UInt8] = []
+    var input_ref:[UInt8] = [] // strongref the input buffer to prevent it from being deallocated prematurely
 
     enum DecompressionError:Error
     {
@@ -665,14 +944,7 @@ class ZIterator
 
     init() throws
     {
-        self.stream = z_stream()
-
-        /* allocate inflate state */
-        self.stream.zalloc = nil
-        self.stream.zfree = nil
-        self.stream.opaque = nil
-        self.stream.avail_in = 0
-        self.stream.next_in = nil
+        self.stream = create_zstream()
         guard inflateInit(&self.stream) == Z_OK
         else
         {
@@ -688,16 +960,14 @@ class ZIterator
 
     func add_input(_ input:[UInt8])
     {
-        self.input = input
-        self.stream.avail_in = UInt32(self.input.count)
-        self.stream.next_in = UnsafeMutablePointer<UInt8>(mutating: self.input) // does this maintain the reference??
+        self.input_ref = input
+        add_input_to_zstream(&self.stream, input: input)
     }
 
     func get_output(_ output_buffer:inout [UInt8], empty:Int) throws -> (empty:Int, the_end:Bool)
     {
         var inflate_status:Int32 = Z_OK
-        self.stream.avail_out = UInt32(empty)
-        self.stream.next_out = UnsafeMutablePointer<UInt8>(mutating: output_buffer).advanced(by: output_buffer.count - empty)
+        allocate_output_for_zstream(&self.stream, output_buffer: &output_buffer, empty: empty)
         inflate_status = inflate(&stream, Z_NO_FLUSH)
         assert(inflate_status != Z_STREAM_ERROR) // this should never happen
         switch inflate_status
@@ -715,9 +985,70 @@ class ZIterator
     }
 }
 
-/* If you are wondering why this function exists, it’s because Swift doesn’t know how to import C function macros yet. */
-private
+fileprivate final
+class ZDeflator
+{
+    private
+    var stream:z_stream_s
+
+    private
+    var input_ref:[UInt8] = [] // strongref the input buffer to prevent it from being deallocated prematurely
+
+    private
+    var finished:Int32 = Z_NO_FLUSH
+
+    enum CompressionError:Error
+    {
+        case StreamError
+    }
+
+    init() throws
+    {
+        self.stream = create_zstream()
+        guard deflateInit(&self.stream, 9) == Z_OK
+        else
+        {
+            throw CompressionError.StreamError
+        }
+    }
+
+    deinit
+    {
+        print("zstream ended")
+        deflateEnd(&self.stream)
+    }
+
+    func add_input(_ input:[UInt8])
+    {
+        self.input_ref = input
+        add_input_to_zstream(&self.stream, input: input)
+    }
+
+    func finish()
+    {
+        self.finished = Z_FINISH
+    }
+
+    func get_output(_ output_buffer:inout [UInt8], empty:Int) throws -> (empty:Int, the_end:Bool)
+    {
+        var deflate_status:Int32 = Z_OK
+        allocate_output_for_zstream(&self.stream, output_buffer: &output_buffer, empty: empty)
+        deflate_status = deflate(&stream, self.finished)
+        assert(deflate_status != Z_STREAM_ERROR) // this should never happen
+        return (Int(self.stream.avail_out), deflate_status == Z_STREAM_END)
+    }
+}
+
+
+/* If you are wondering why these functions exist, it’s because Swift doesn’t know how to import C function macros yet. */
+fileprivate
 func inflateInit(_ strm:inout z_stream_s) -> Int32
 {
     return inflateInit_(&strm, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+}
+
+fileprivate
+func deflateInit(_ strm:inout z_stream_s, _ level:Int32) -> Int32
+{
+    return deflateInit_(&strm, level, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
 }

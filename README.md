@@ -9,7 +9,7 @@ import MaxPNG
 
 let png = try PNGDataIterator(path: "/absolute/path/to/my/png/file.png")
 
-while let scanline = try png.next()
+while let scanline = try png.next_scanline()
 {
     _do_whatever_you_want(scanline)
 }
