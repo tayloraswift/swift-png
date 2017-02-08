@@ -2,7 +2,7 @@ import Zlib
 import Glibc
 
 public
-enum PNGError:Error
+enum PNGReadError:Error
 {
     case FileError,
          FiletypeError,
@@ -23,6 +23,21 @@ enum PNGWriteError:Error
 {
     case FileWriteError,
          DimemsionError
+}
+
+public
+enum PNGDecompressionError:Error
+{
+    case StreamError
+    case MissingDictionaryError
+    case DataError
+    case MemoryError
+}
+
+public
+enum PNGCompressionError:Error
+{
+    case StreamError
 }
 
 fileprivate
@@ -50,15 +65,15 @@ struct PNGConditions
     {
         if self.last_valid_chunk == .__FIRST__ && chunk_type != .IHDR
         {
-            throw PNGError.MissingHeaderError
+            throw PNGReadError.MissingHeaderError
         }
         else if self.last_valid_chunk == .IEND
         {
-            throw PNGError.PrematureIENDError
+            throw PNGReadError.PrematureIENDError
         }
         if chunk_type == .IEND && !self[.IDAT] // separated from the switch block because it doesn’t work right for some reason
         {
-            throw PNGError.PrematureIENDError
+            throw PNGReadError.PrematureIENDError
         }
 
         switch chunk_type
@@ -68,7 +83,7 @@ struct PNGConditions
             case .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS:
                 if self[.PLTE]
                 {
-                    throw PNGError.ChunkOrderingError(chunk_type.description.1)
+                    throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
                 }
                 fallthrough
 
@@ -76,7 +91,7 @@ struct PNGConditions
             case .PLTE, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
                 if self[.IDAT]
                 {
-                    throw PNGError.ChunkOrderingError(chunk_type.description.1)
+                    throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
                 }
                 fallthrough
 
@@ -86,14 +101,14 @@ struct PNGConditions
             case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXT:
                 if self[chunk_type]
                 {
-                    throw PNGError.DuplicateChunkError(chunk_type.description.1)
+                    throw PNGReadError.DuplicateChunkError(String(describing: chunk_type))
                 }
 
             // IDAT blocks much be consecutive
             case .IDAT:
                 if self.last_valid_chunk != .IDAT && self[.IDAT]
                 {
-                    throw PNGError.ChunkOrderingError(chunk_type.description.1)
+                    throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
                 }
             default:
                 break
@@ -126,53 +141,6 @@ enum PNGChunkType:Int
          iTXt,
          tEXt,
          zTXT
-
-    fileprivate
-    var description:(String, String)
-    {
-        switch self
-        {
-            case .__FIRST__:
-                return ("__FIRST__", "__FIRST__")
-            case .IHDR:
-                return ("IHDR", "image header")
-            case .PLTE:
-                return ("PLTE", "palatte")
-            case .IDAT:
-                return ("IDAT", "image pixel data")
-            case .IEND:
-                return ("IEND", "png file end")
-
-            case .cHRM:
-                return ("cHRM", "primary chromaticities")
-            case .gAMA:
-                return ("gAMA", "gamma exponent")
-            case .iCCP:
-                return ("iCCP", "ICC profile")
-            case .sBIT:
-                return ("sBIT", "significant bits")
-            case .sRGB:
-                return ("sRGB", "sRGB color space")
-            case .bKGD:
-                return ("bKGD", "default background color")
-            case .hIST:
-                return ("hIST", "palatte histogram")
-            case .tRNS:
-                return ("tRNS", "simple transparency")
-            case .pHYs:
-                return ("pHYs", "physical dimensions")
-            case .sPLT:
-                return ("sPLT", "suggested palatte")
-            case .tIME:
-                return ("tIME", "time modified")
-            case .iTXt:
-                return ("iTXt", "utf-8 text")
-            case .tEXt:
-                return ("tEXt", "ASCII text")
-            case .zTXT:
-                return ("zTXT", "compressed text")
-        }
-    }
 
     static
     let _cases:[PNGChunkType] = PNGChunkType._make_case_array()
@@ -245,7 +213,7 @@ func read_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws -> [UI
     guard fread(&buffer, 1, length, f) == length
     else
     {
-        throw PNGError.IncompleteChunkError
+        throw PNGReadError.IncompleteChunkError
     }
     return buffer
 }
@@ -288,12 +256,12 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
         guard (chunk_type_buffer[0] & (1 << 5)) != 0
         else
         {
-            throw PNGError.UnexpectedCriticalChunkError(PNGChunkType.string_rep(chunk_type_buffer))
+            throw PNGReadError.UnexpectedCriticalChunkError(PNGChunkType.string_rep(chunk_type_buffer))
         }
         guard (chunk_type_buffer[2] & (1 << 5)) == 0
         else
         {
-            throw PNGError.PNGSyntaxError("Third byte of chunk type \(PNGChunkType.string_rep(chunk_type_buffer)) must have bit 5 set to 0.")
+            throw PNGReadError.PNGSyntaxError("Third byte of chunk type \(PNGChunkType.string_rep(chunk_type_buffer)) must have bit 5 set to 0.")
         }
 
         try skip_png_buffer(f, length)
@@ -317,14 +285,14 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
         guard stored_chunk_crc == Int(calculated_crc)
         else
         {
-            throw PNGError.DataCorruptionError(PNGChunkType.string_rep(chunk_type_buffer))
+            throw PNGReadError.DataCorruptionError(PNGChunkType.string_rep(chunk_type_buffer))
         }
         return (chunk_type, chunk_data)
     }
     else
     {
         try skip_png_buffer(f, length)
-        print("skipped: \(chunk_type)")
+        //print("skipped: \(chunk_type)")
         return nil
     }
 }
@@ -404,7 +372,7 @@ struct PNGImageHeader
         guard allowed_bit_depths.contains(self.bit_depth)
         else
         {
-            throw PNGError.PNGSyntaxError("Color type '\(self.color_type)' cannot have a bit depth of \(self.bit_depth)")
+            throw PNGReadError.PNGSyntaxError("Color type '\(self.color_type)' cannot have a bit depth of \(self.bit_depth)")
         }
 
         let scanline_bits_n = self.width * self.channels * self.bit_depth
@@ -418,25 +386,25 @@ struct PNGImageHeader
         guard data.count == 13
         else
         {
-            throw PNGError.PNGSyntaxError("Image header chunk does not have the correct length")
+            throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
         }
 
         guard let color_type = ColorType(rawValue: Int(data[9])) // for some reason guard let doesn’t compile
         else
         {
-            throw PNGError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
+            throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
         }
 
         /* validate other fields */
         guard Int(data[10]) == 0
         else
         {
-            throw PNGError.PNGSyntaxError("Compression method does not equal 0")
+            throw PNGReadError.PNGSyntaxError("Compression method does not equal 0")
         }
         guard Int(data[11]) == 0
         else
         {
-            throw PNGError.PNGSyntaxError("Filter method does not equal 0")
+            throw PNGReadError.PNGSyntaxError("Filter method does not equal 0")
         }
         let interlace:Bool
         let interlace_i = Int(data[12])
@@ -450,7 +418,7 @@ struct PNGImageHeader
         }
         else
         {
-            throw PNGError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
+            throw PNGReadError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
         }
 
         try self.init(width: quad_byte_to_int(Array(data[0...3])),
@@ -523,13 +491,18 @@ class PNGEncoder
         }
         else
         {
-            throw PNGError.FileError
+            throw PNGReadError.FileError
         }
 
         self.header = header
         self.z_iterator = try ZDeflator()
         self.defiltered0 = [UInt8](repeating: 0, count: header.bytes_per_scanline)
         self.chunk_data = [UInt8](repeating: 0, count: PNGEncoder.chunk_size)
+    }
+
+    deinit
+    {
+        fclose(self.f)
     }
 
     public
@@ -558,7 +531,7 @@ class PNGEncoder
         self.defiltered0 = defiltered1
 
         /* pick the most effective filter */
-        let scores:[Int] = filter_data.map{ $0.reduce(0, {$0 + abs(Int($1))}) }
+        let scores:[Int] = filter_data.map{ $0.reduce(0, {$0 + abs(Int(Int8(bitPattern: $1)))}) }
         var min_filter:Int = 0
         var min_score:Int = Int.max
         for (i, score) in scores.enumerated()
@@ -614,15 +587,6 @@ class PNGEncoder
         }
     }
 
-    public
-    func close()
-    {
-        if fclose(self.f) == 0
-        {
-            print("file closed")
-        }
-    }
-
     /* these are literally exactly the same as the defilter functions except backwards */
     private static
     func filter_sub(_ filtered1:inout [UInt8], bpp:Int)
@@ -668,11 +632,6 @@ class PNGEncoder
             filtered1[i] = filtered1[i] &- paeth(0, defiltered0[i - 1], 0)
         }
     }
-
-    deinit
-    {
-        self.close()
-    }
 }
 
 public final
@@ -697,8 +656,10 @@ class PNGDecoder
     public
     let header:PNGImageHeader
 
+    /*
     public private(set)
     var palatte:[(r: Int, g: Int, b: Int)]? = nil // not implemented yet — the number of channels is not fixed
+    */
 
     public
     init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
@@ -709,14 +670,14 @@ class PNGDecoder
         }
         else
         {
-            throw PNGError.FileError
+            throw PNGReadError.FileError
         }
 
         /* check if it's, you know, actually a PNG */
         guard (try read_png_buffer(f, 8) == PNGImageHeader.signature) // compare with PNG signature
         else
         {
-            throw PNGError.FiletypeError
+            throw PNGReadError.FiletypeError
         }
 
         /* read the image header */
@@ -728,7 +689,7 @@ class PNGDecoder
         }
         else
         {
-            throw PNGError.MissingHeaderError
+            throw PNGReadError.MissingHeaderError
         }
 
         self.z_iterator = try ZInflator()
@@ -737,7 +698,11 @@ class PNGDecoder
         self.scanline1 = [UInt8](repeating: 0, count: self.header.bytes_per_scanline + 1) // +1 is for the filter byte
 
         try self.read_png_info(look_for: look_for)
-        print(self.header)
+    }
+
+    deinit
+    {
+        fclose(self.f)
     }
 
     private
@@ -751,7 +716,6 @@ class PNGDecoder
         {
             if let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: active_chunks)
             {
-                print(chunk_type)
                 self.current_chunk_type = chunk_type
 
                 switch chunk_type
@@ -764,7 +728,7 @@ class PNGDecoder
                     case .IEND:
                         break outer_loop
                     default:
-                        print("Reading chunk \(chunk_type.description.1) is not yet supported. tragic")
+                        print("Reading chunk \(chunk_type) is not yet supported. tragic")
                 }
 
             }
@@ -784,7 +748,7 @@ class PNGDecoder
                 guard !self.the_end
                 else
                 {
-                    throw PNGError.PrematureEOSError
+                    throw PNGReadError.PrematureEOSError
                 }
                 /* read another IDAT chunk */
                 let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))!
@@ -840,15 +804,6 @@ class PNGDecoder
         }
     }
 
-    public
-    func close()
-    {
-        if fclose(self.f) == 0
-        {
-            print("file closed")
-        }
-    }
-
     private static
     func defilter_sub(_ defiltered1:inout [UInt8], bpp:Int)
     {
@@ -892,11 +847,6 @@ class PNGDecoder
             defiltered1[i] = defiltered1[i] &+ paeth(defiltered1[i - bpp], defiltered0[i], defiltered0[i - bpp])
         }
     }
-
-    deinit
-    {
-        self.close()
-    }
 }
 
 fileprivate
@@ -934,27 +884,18 @@ class ZInflator
     private
     var input_ref:[UInt8] = [] // strongref the input buffer to prevent it from being deallocated prematurely
 
-    enum DecompressionError:Error
-    {
-        case StreamError
-        case MissingDictionaryError
-        case DataError
-        case MemoryError
-    }
-
     init() throws
     {
         self.stream = create_zstream()
         guard inflateInit(&self.stream) == Z_OK
         else
         {
-            throw DecompressionError.StreamError
+            throw PNGDecompressionError.StreamError
         }
     }
 
     deinit
     {
-        print("zstream ended")
         inflateEnd(&self.stream)
     }
 
@@ -973,11 +914,11 @@ class ZInflator
         switch inflate_status
         {
             case Z_NEED_DICT:
-                throw DecompressionError.MissingDictionaryError
+                throw PNGDecompressionError.MissingDictionaryError
             case Z_DATA_ERROR:
-                throw DecompressionError.DataError
+                throw PNGDecompressionError.DataError
             case Z_MEM_ERROR:
-                throw DecompressionError.MemoryError
+                throw PNGDecompressionError.MemoryError
             default:
                 break
         }
@@ -997,24 +938,18 @@ class ZDeflator
     private
     var finished:Int32 = Z_NO_FLUSH
 
-    enum CompressionError:Error
-    {
-        case StreamError
-    }
-
     init() throws
     {
         self.stream = create_zstream()
         guard deflateInit(&self.stream, 9) == Z_OK
         else
         {
-            throw CompressionError.StreamError
+            throw PNGCompressionError.StreamError
         }
     }
 
     deinit
     {
-        print("zstream ended")
         deflateEnd(&self.stream)
     }
 
@@ -1038,7 +973,6 @@ class ZDeflator
         return (Int(self.stream.avail_out), deflate_status == Z_STREAM_END)
     }
 }
-
 
 /* If you are wondering why these functions exist, it’s because Swift doesn’t know how to import C function macros yet. */
 fileprivate

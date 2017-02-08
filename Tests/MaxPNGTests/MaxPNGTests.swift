@@ -1,6 +1,7 @@
 import Glibc
-@testable import MaxPNG
+import MaxPNG
 
+public
 typealias RelativePath = String
 typealias Unixpath = String
 
@@ -20,55 +21,14 @@ func unix_path(_ path:RelativePath) -> Unixpath
     return expanded_path
 }
 
+public
 func skip_png(_ rpath:RelativePath) throws
 {
     let path = unix_path(rpath)
     let _ = try PNGDecoder(path: path, look_for: [])
 }
 
-func read_png(_ rpath:RelativePath) throws
-{
-    let path = unix_path(rpath)
-    let png = try PNGDecoder(path: path)
-
-    let total_samples = png.header.height*png.header.width*png.header.channels
-    var o = 0
-    var l = 0
-    while let b = try png.next_scanline()
-    {
-        o += b.count
-        l += 1
-        if (l % 64) == 0
-        {
-            print("\(Double(o)/Double(total_samples) * 100) %")
-        }
-    }
-    print("100 %")
-}
-
-func read_png_into_buffer(_ rpath:RelativePath) throws -> (PNGImageHeader, [[UInt8]])
-{
-    let path = unix_path(rpath)
-    let png = try PNGDecoder(path: path)
-
-    let total_samples = png.header.height*png.header.width*png.header.channels
-    var o = 0
-    var l = 0
-    var scanlines:[[UInt8]] = []
-    while let b = try png.next_scanline()
-    {
-        o += b.count
-        l += 1
-        if (l % 64) == 0
-        {
-            print("\(Double(o)/Double(total_samples) * 100) %")
-        }
-        scanlines.append(b)
-    }
-    print("100 %")
-    return (png.header, scanlines)
-}
-
+public
 func write_png(_ rpath:RelativePath, _ scanlines:[[UInt8]], header:PNGImageHeader) throws
 {
     let path = unix_path(rpath)
@@ -79,4 +39,28 @@ func write_png(_ rpath:RelativePath, _ scanlines:[[UInt8]], header:PNGImageHeade
         try png.add_scanline(scanline)
     }
     try png.finish()
+}
+
+public
+func process_png(_ rpath:RelativePath, output:RelativePath) throws
+{
+    let path = unix_path(rpath)
+    let out = unix_path(output)
+    let png_decode = try PNGDecoder(path: path)
+    let png_encode = try PNGEncoder(path: out, header: png_decode.header)
+    try png_encode.initialize()
+    let total_scanlines = png_decode.header.height
+    var l = 0
+    print("0 %")
+    while let scanline = try png_decode.next_scanline()
+    {
+        l += 1
+        try png_encode.add_scanline(scanline)
+        if (l % 64) == 0
+        {
+            print("\(Double(l)/Double(total_scanlines) * 100) %")
+        }
+    }
+    try png_encode.finish()
+    print("100 %")
 }
