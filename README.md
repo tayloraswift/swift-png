@@ -8,7 +8,7 @@
 [![Build](https://travis-ci.org/kelvin13/maxpng.svg?branch=master)](https://travis-ci.org/kelvin13/maxpng)
 [![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
 
-`maxpng` is written in pure swift with the exception of one dependency on the `zlib` C library. You almost certainly have it on your computer already. `maxpng` contains no calls to this “`Foundation`” of which you speak; its just plain, standard swift.
+`maxpng` is written in pure swift with the exception of one dependency on the `zlib` C library. You almost certainly have `zlib` on your computer already. `maxpng` contains no calls to this “`Foundation`” of which you speak; its just plain, standard swift.
 
 `maxpng` is simple to use:
 
@@ -39,6 +39,8 @@ try out.finish()
 ````
 
 While it works great with PNG files of all sizes, `maxpng` was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. `maxpng` won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, `maxpng`’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
+
+Resource management is as Swifty as it made sense to be; most resources will be released when `maxpng`’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
 
 One more thing: `maxpng` works on arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday `maxpng` can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
 
@@ -99,3 +101,27 @@ No. Gamma is meant to be applied at the image *display* stage. `maxpng` only giv
 > Can I add extra chunks to my PNG output?
 
 At the moment, no, `maxpng` only supports writing bare image data to disk.
+
+> I hate maxpng isnt there any other png encoder/decoder out there i stg
+
+It’s okay, I only wrote `maxpng` because I couldn’t find any good existing free Swift PNG library. Here’s a rundown of some of the alternatives I stumbled across from a simple search of `'swift png'` in the magical github search bar:
+
+> #### [Swift-PNG-Parser](https://github.com/dixielandtech/Swift-PNG-Parser)
+
+Not a library, just a wrapper around the Cocoa framework.
+
+> #### [SimplePNG](https://github.com/rfdickerson/SimplePNG)
+
+Not a library, just a wrapper around `libpng`. Also has no support for decoding PNG files.
+
+> #### [swift-png](https://github.com/llaimiaomiao/swift-png)
+
+This repository was empty. I did however enjoy the github youtube channel
+
+> #### [pinge](https://github.com/Vel0x/Pinge)
+
+Actually one of the most complete Swift PNG libraries I’ve seen. Has no support for encoding PNG files though, and I don’t believe it lets you read by scanline. Also depends on Apple Foundation.
+
+> #### [CompressPicture](https://github.com/chenmo230/CompressPicture)
+
+I have no idea what this repository does.
