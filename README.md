@@ -125,3 +125,6 @@ Actually one of the most complete Swift PNG libraries I’ve seen. Has no suppor
 > #### [CompressPicture](https://github.com/chenmo230/CompressPicture)
 
 I have no idea what this repository does.
+
+# Building
+Build `maxpng` with the swift package manager, `swift build`. Make sure you have the `zlib` headers on your computer (`sudo apt-get install libz-dev`).
