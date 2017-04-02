@@ -1,6 +1,8 @@
 import Zlib
 import Glibc
 
+typealias FilePointer = UnsafeMutablePointer<FILE>
+
 public
 enum PNGReadError:Error
 {
@@ -40,7 +42,6 @@ enum PNGCompressionError:Error
     case StreamError
 }
 
-fileprivate
 struct PNGConditions
 {
     private(set)
@@ -61,7 +62,8 @@ struct PNGConditions
         }
     }
 
-    mutating func update(_ chunk_type:PNGChunkType) throws
+    mutating
+    func update(_ chunk_type:PNGChunkType) throws
     {
         if self.last_valid_chunk == .__FIRST__ && chunk_type != .IHDR
         {
@@ -71,47 +73,46 @@ struct PNGConditions
         {
             throw PNGReadError.PrematureIENDError
         }
-        if chunk_type == .IEND && !self[.IDAT] // separated from the switch block because it doesn’t work right for some reason
+        if chunk_type == .IEND && !self[.IDAT]
+        // separated from the switch block because it doesn’t work right for some reason
         {
             throw PNGReadError.PrematureIENDError
         }
 
         switch chunk_type
         {
+        // these chunks must occur before PLTE
+        case .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS:
+            if self[.PLTE]
+            {
+                throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
+            }
+            fallthrough
 
-            // these chunks must occur before PLTE
-            case .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS:
-                if self[.PLTE]
-                {
-                    throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
-                }
-                fallthrough
-
-            // these chunks must occur before IDAT
-            case .PLTE, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
-                if self[.IDAT]
-                {
-                    throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
-                }
-                fallthrough
-
+        // these chunks must occur before IDAT
+        case .PLTE, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
+            if self[.IDAT]
+            {
+                throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
+            }
+            fallthrough
 
 
-            // these chunks cannot duplicate
-            case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXT:
-                if self[chunk_type]
-                {
-                    throw PNGReadError.DuplicateChunkError(String(describing: chunk_type))
-                }
+        // these chunks cannot duplicate
+        case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXT:
+            if self[chunk_type]
+            {
+                throw PNGReadError.DuplicateChunkError(String(describing: chunk_type))
+            }
 
-            // IDAT blocks much be consecutive
-            case .IDAT:
-                if self.last_valid_chunk != .IDAT && self[.IDAT]
-                {
-                    throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
-                }
-            default:
-                break
+        // IDAT blocks much be consecutive
+        case .IDAT:
+            if self.last_valid_chunk != .IDAT && self[.IDAT]
+            {
+                throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
+            }
+        default:
+            break
         }
         self.last_valid_chunk = chunk_type
         self[chunk_type] = true
@@ -189,16 +190,15 @@ enum PNGChunkType:Int
     }
 }
 
-fileprivate
 func quad_byte_to_int(_ buffer:[UInt8]) -> Int
 {
-    return Int(UInt32(bigEndian: buffer.withUnsafeBufferPointer {
-     ($0.baseAddress!.withMemoryRebound(to: UInt32.self, capacity: 1) { $0 })
+    return Int(UInt32(bigEndian: buffer.withUnsafeBufferPointer
+    {
+        ($0.baseAddress!.withMemoryRebound(to: UInt32.self, capacity: 1) { $0 })
     }.pointee))
 }
 
-fileprivate
-func int_to_quad_byte(_ integer:Int) -> [UInt8]
+func int_to_quad_byte(_ integer:UInt32) -> [UInt8]
 {
     return [UInt8(integer >> 24 & 0xFF),
             UInt8(integer >> 16 & 0xFF),
@@ -206,8 +206,7 @@ func int_to_quad_byte(_ integer:Int) -> [UInt8]
             UInt8(integer       & 0xFF)]
 }
 
-fileprivate
-func read_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws -> [UInt8]
+func read_png_buffer(_ f:FilePointer, _ length:Int) throws -> [UInt8]
 {
     var buffer = [UInt8](repeating: 0, count: length)
     guard fread(&buffer, 1, length, f) == length
@@ -218,12 +217,11 @@ func read_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws -> [UI
     return buffer
 }
 
-fileprivate
-func skip_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws
+func skip_png_buffer(_ f:FilePointer, _ length:Int) throws
 {
     if length <= 128 // most regulated-length png chunks are shorter than 128 bytes
     {
-        let _ = try read_png_buffer(f, length + 4)
+        let _ = try read_png_buffer(f, length + 4) // 4 bytes for CRC32
     }
     else
     {
@@ -232,8 +230,7 @@ func skip_png_buffer(_ f:UnsafeMutablePointer<FILE>, _ length:Int) throws
     }
 }
 
-fileprivate
-func write_png_buffer(_ f:UnsafeMutablePointer<FILE>, buffer:[UInt8]) throws
+func write_png_buffer(_ f:FilePointer, buffer:[UInt8]) throws
 {
     guard fwrite(buffer, 1, buffer.count, f) == buffer.count
     else
@@ -242,8 +239,8 @@ func write_png_buffer(_ f:UnsafeMutablePointer<FILE>, buffer:[UInt8]) throws
     }
 }
 
-fileprivate
-func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions, one_of:Set<PNGChunkType>) throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
+func png_read_chunk(f:FilePointer, conditions:inout PNGConditions, one_of:Set<PNGChunkType>)
+throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
 {
     /* — CHUNK LENGTH READ — */
     let length:Int = quad_byte_to_int(try read_png_buffer(f, 4))
@@ -266,7 +263,7 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
 
         try skip_png_buffer(f, length)
         // ignore unrecognized chunk
-        print("unrecognized: \(PNGChunkType.string_rep(chunk_type_buffer))")
+        fputs("unrecognized: \(PNGChunkType.string_rep(chunk_type_buffer))", stderr)
         return nil
     }
     // all the recognized chunks have valid names so there’s no need to check them
@@ -279,10 +276,10 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
         let chunk_data = try read_png_buffer(f, length)
 
         /* — CHUNK CRC32 READ — */
-        let stored_chunk_crc = quad_byte_to_int(try read_png_buffer(f, 4))
-        var calculated_crc = crc32(0, chunk_type_buffer, 4)
-            calculated_crc = crc32(calculated_crc, chunk_data, UInt32(length))
-        guard stored_chunk_crc == Int(calculated_crc)
+        let stored_chunk_crc:UInt = UInt(quad_byte_to_int(try read_png_buffer(f, 4)))
+        var calculated_crc:UInt   = crc32(0, chunk_type_buffer, 4)
+            calculated_crc        = crc32(calculated_crc, chunk_data, UInt32(length))
+        guard stored_chunk_crc == calculated_crc
         else
         {
             throw PNGReadError.DataCorruptionError(PNGChunkType.string_rep(chunk_type_buffer))
@@ -297,17 +294,16 @@ func png_read_chunk(f:UnsafeMutablePointer<FILE>, conditions:inout PNGConditions
     }
 }
 
-fileprivate
-func png_write_chunk(f:UnsafeMutablePointer<FILE>, chunk_data:[UInt8], chunk_type:PNGChunkType) throws
+func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk_type:PNGChunkType) throws
 {
-    try write_png_buffer(f, buffer: int_to_quad_byte(chunk_data.count)) // length section
-    let chunk_type_buffer = [UInt8](String(describing: chunk_type).utf8)
+    try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(chunk_data.count))) // length section
+    let chunk_type_buffer:[UInt8] = [UInt8](String(describing: chunk_type).utf8)
     assert(chunk_type_buffer.count == 4)
     try write_png_buffer(f, buffer: chunk_type_buffer) // chunk type section
     try write_png_buffer(f, buffer: chunk_data) // chunk data section
-    var calculated_crc = crc32(0, chunk_type_buffer, 4)
-        calculated_crc = crc32(calculated_crc, chunk_data, UInt32(chunk_data.count))
-    try write_png_buffer(f, buffer: int_to_quad_byte(Int(calculated_crc))) // crc section // this Int() cast only works because crc is a 32 bit value padded to 64 bits
+    var calculated_crc:UInt = crc32(0, chunk_type_buffer, 4)
+        calculated_crc      = crc32(calculated_crc, chunk_data, UInt32(chunk_data.count))
+    try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(calculated_crc))) // crc section // this Int() cast only works because crc is a 32 bit value padded to 64 bits
 }
 
 public
@@ -336,7 +332,6 @@ struct PNGImageHeader
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
-    fileprivate
     let bytes_per_scanline:Int,
         bpp:Int
 
@@ -380,7 +375,6 @@ struct PNGImageHeader
         self.bpp = max(1, (self.channels * self.bit_depth) >> 3)
     }
 
-    fileprivate
     init(_ data:[UInt8]) throws
     {
         guard data.count == 13
@@ -389,7 +383,7 @@ struct PNGImageHeader
             throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
         }
 
-        guard let color_type = ColorType(rawValue: Int(data[9])) // for some reason guard let doesn’t compile
+        guard let color_type = ColorType(rawValue: Int(data[9]))
         else
         {
             throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
@@ -421,34 +415,33 @@ struct PNGImageHeader
             throw PNGReadError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
         }
 
-        try self.init(width: quad_byte_to_int(Array(data[0...3])),
-                      height: quad_byte_to_int(Array(data[4...7])),
-                      bit_depth: Int(data[8]),
+        try self.init(width     : quad_byte_to_int(Array(data[0...3])),
+                      height    : quad_byte_to_int(Array(data[4...7])),
+                      bit_depth : Int(data[8]),
                       color_type: color_type,
-                      interlace: interlace)
+                      interlace : interlace)
     }
 
-    fileprivate
     func write() -> [UInt8]
     {
-        var bytes:[UInt8] = int_to_quad_byte(self.width)        // [0:3]
-        bytes.append(contentsOf: int_to_quad_byte(self.height)) // [4:7]
-        bytes.append(UInt8(self.bit_depth))                     // [8]
-        bytes.append(UInt8(self.color_type.rawValue))           // [9]
-        bytes.append(0)                                         // [10] = 0
-        bytes.append(0)                                         // [11] = 0
-        bytes.append(self.interlace ? 1 : 0)                    // [12]
+        var bytes:[UInt8] = int_to_quad_byte(UInt32(self.width))        // [0:3]
+        bytes.reserveCapacity(12)
+        bytes.append(contentsOf: int_to_quad_byte(UInt32(self.height))) // [4:7]
+        bytes.append(UInt8(self.bit_depth))                             // [8]
+        bytes.append(UInt8(self.color_type.rawValue))                   // [9]
+        bytes.append(0)                                                 // [10] = 0
+        bytes.append(0)                                                 // [11] = 0
+        bytes.append(self.interlace ? 1 : 0)                            // [12]
         return bytes
     }
 }
 
-fileprivate
 func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
 {
     let a16 = Int16(a),
         b16 = Int16(b),
         c16 = Int16(c)
-    let p:Int16 = a16 + b16 - c16 // do b - c first to avoid overflow and reduce the number of UInt16 casts
+    let p:Int16 = a16 + b16 - c16
     let pa = abs(p - a16),
         pb = abs(p - b16),
         pc = abs(p - c16)
@@ -467,23 +460,24 @@ public final
 class PNGEncoder
 {
     private
-    var f:UnsafeMutablePointer<FILE>
+    var f:FilePointer
 
     private
     let z_iterator:ZDeflator
     private
     var defiltered0:[UInt8],
         chunk_data:[UInt8]
-    static private
-    let chunk_size = 1 << 16
+
     private
-    var chunk_empty:Int = PNGEncoder.chunk_size
+    let chunk_size:Int
+    private
+    var chunk_empty:Int
 
     private
     let header:PNGImageHeader
 
     public
-    init (path:String, header:PNGImageHeader) throws
+    init (path:String, header:PNGImageHeader, chunk_size:Int = 1 << 16) throws
     {
         if let f = fopen(path, "wb")
         {
@@ -494,10 +488,13 @@ class PNGEncoder
             throw PNGReadError.FileError
         }
 
+        self.chunk_size = chunk_size
+        self.chunk_empty = self.chunk_size
+
         self.header = header
         self.z_iterator = try ZDeflator()
         self.defiltered0 = [UInt8](repeating: 0, count: header.bytes_per_scanline)
-        self.chunk_data = [UInt8](repeating: 0, count: PNGEncoder.chunk_size)
+        self.chunk_data = [UInt8](repeating: 0, count: self.chunk_size)
     }
 
     deinit
@@ -523,10 +520,10 @@ class PNGEncoder
 
         var filter_data = [[UInt8]](repeating: [0] + defiltered1, count: 5)
 
-        PNGEncoder.filter_sub(&filter_data[1], bpp: self.header.bpp)
-        PNGEncoder.filter_up(&filter_data[2], defiltered0: self.defiltered0)
+        PNGEncoder.filter_sub    (&filter_data[1], bpp: self.header.bpp)
+        PNGEncoder.filter_up     (&filter_data[2], defiltered0: self.defiltered0)
         PNGEncoder.filter_average(&filter_data[3], defiltered0: self.defiltered0, bpp: self.header.bpp)
-        PNGEncoder.filter_paeth(&filter_data[4], defiltered0: self.defiltered0, bpp: self.header.bpp)
+        PNGEncoder.filter_paeth  (&filter_data[4], defiltered0: self.defiltered0, bpp: self.header.bpp)
 
         self.defiltered0 = defiltered1
 
@@ -578,7 +575,7 @@ class PNGEncoder
         {
             /* emit chunk */
             try png_write_chunk(f: self.f, chunk_data: self.chunk_data, chunk_type: .IDAT)
-            self.chunk_empty = PNGEncoder.chunk_size
+            self.chunk_empty = self.chunk_size
             return true
         }
         else
@@ -721,14 +718,14 @@ class PNGDecoder
                 switch chunk_type
                 {
                     case .PLTE:
-                        print("indexed-colored pngs are not yet supported")
+                        fputs("indexed-colored pngs are not yet supported", stderr)
                     case .IDAT:
                         self.z_iterator.add_input(chunk_data)
                         break outer_loop // we have a check in the conditions preventing IEND from coming early
                     case .IEND:
                         break outer_loop
                     default:
-                        print("Reading chunk \(chunk_type) is not yet supported. tragic")
+                        fputs("Reading chunk \(chunk_type) is not yet supported. tragic", stderr)
                 }
 
             }
@@ -772,7 +769,7 @@ class PNGDecoder
         guard self.current_chunk_type == .IDAT
         else
         {
-            print("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels")
+            fputs("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels", stderr)
             return nil
         }
         if !self.the_end
@@ -849,7 +846,6 @@ class PNGDecoder
     }
 }
 
-fileprivate
 func create_zstream() -> z_stream_s
 {
     var stream = z_stream()
@@ -861,21 +857,19 @@ func create_zstream() -> z_stream_s
     return stream
 }
 
-fileprivate
 func add_input_to_zstream(_ stream:inout z_stream_s, input:[UInt8])
 {
     stream.avail_in = UInt32(input.count)
     stream.next_in = UnsafeMutablePointer<UInt8>(mutating: input)
 }
 
-fileprivate
 func allocate_output_for_zstream(_ stream:inout z_stream_s, output_buffer:inout [UInt8], empty:Int)
 {
     stream.avail_out = UInt32(empty)
     stream.next_out = UnsafeMutablePointer<UInt8>(mutating: output_buffer).advanced(by: output_buffer.count - empty)
 }
 
-fileprivate final
+final
 class ZInflator
 {
     private
@@ -926,7 +920,7 @@ class ZInflator
     }
 }
 
-fileprivate final
+final
 class ZDeflator
 {
     private
@@ -975,13 +969,11 @@ class ZDeflator
 }
 
 /* If you are wondering why these functions exist, it’s because Swift doesn’t know how to import C function macros yet. */
-fileprivate
 func inflateInit(_ strm:inout z_stream_s) -> Int32
 {
     return inflateInit_(&strm, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
 }
 
-fileprivate
 func deflateInit(_ strm:inout z_stream_s, _ level:Int32) -> Int32
 {
     return deflateInit_(&strm, level, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
