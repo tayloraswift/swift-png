@@ -329,13 +329,14 @@ struct PNGImageHeader
     public
     let channels:Int
 
+    public
+    let sub_dimensions:[(width:Int, height:Int)]
+
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
     let bpp:Int
 
-    public
-    let sub_dimensions:[(width:Int, height:Int)]
 
     public
     init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlace:Bool) throws
@@ -772,13 +773,25 @@ class PNGDecoder
     private
     func read_scanline() throws
     {
+        /* the subimage incrementor occurs *before* the rest of the function so that
+           the last scanline of the subimage doesn’t get overwritten before it is emitted */
+        if self.scanline_rows_remaining <= 0
+        {
+            self.interlace_level += 1
+            let width:Int = self.header.sub_dimensions[self.interlace_level].width
+            self.scanline_bytes          = self.header.scanline_size(npixels: width)
+            self.scanline_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
+
+            self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
+            self.scanline1 = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
+        }
+
         var empty:Int = self.scanline1.count
         while true
         {
             (empty, self.the_end) = try self.z_iterator.get_output(&self.scanline1, empty: empty)
             /* if the output is full, break loop, else add more input */
-            guard empty != 0
-            else
+            if empty == 0
             {
                 break
             }
@@ -796,22 +809,6 @@ class PNGDecoder
         }
 
         self.scanline_rows_remaining -= 1
-        if self.scanline_rows_remaining <= 0
-        {
-            self.interlace_level += 1
-            guard !self.the_end
-            else
-            {
-                return
-            }
-
-            let width:Int = self.header.sub_dimensions[self.interlace_level].width
-            self.scanline_bytes          = self.header.scanline_size(npixels: width)
-            self.scanline_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
-
-            self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
-            self.scanline1 = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
-        }
     }
 
     public

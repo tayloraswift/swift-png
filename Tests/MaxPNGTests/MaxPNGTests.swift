@@ -57,7 +57,6 @@ func reencode_png_stream(_ rpath:RelativePath, output:RelativePath) throws
     print("0 %")
     while let scanline = try png_decode.next_scanline()
     {
-        print("read line \(l)\n")
         l += 1
         try png_encode.add_scanline(scanline)
     }
@@ -66,10 +65,9 @@ func reencode_png_stream(_ rpath:RelativePath, output:RelativePath) throws
 }
 
 public
-func reencode_png(_ rpath:RelativePath, output:RelativePath) throws
+func decompose_png(_ rpath:RelativePath, output:RelativePath) throws
 {
-    let path = unix_path(rpath)
-    let png_decode = try PNGDecoder(path: path)
+    let png_decode = try PNGDecoder(path: unix_path(rpath))
 
     let total_scanlines = png_decode.header.height
     print(png_decode.header)
@@ -85,6 +83,21 @@ func reencode_png(_ rpath:RelativePath, output:RelativePath) throws
     print("100 %")
 
     let out = unix_path(output)
-    //let png_encode = try PNGEncoder(path: out, header: png_decode.header)
-    //try png_encode.initialize()
+    l = 0
+    for (offset: i, element: (width: h, height: k)) in png_decode.header.sub_dimensions.enumerated()
+    {
+        let frag_header = try PNGImageHeader(width: h, height: k,
+                                            bit_depth: png_decode.header.bit_depth,
+                                            color_type: png_decode.header.color_type,
+                                            interlace: false)
+        let png_encode = try PNGEncoder(path: "\(out)_subimage_\(i).png", header: frag_header)
+        try png_encode.initialize()
+        for (i, scanline) in scanlines[l..<(l + k)].enumerated()
+        {
+            try png_encode.add_scanline(scanline)
+        }
+        try png_encode.finish()
+        l += k
+    }
+
 }
