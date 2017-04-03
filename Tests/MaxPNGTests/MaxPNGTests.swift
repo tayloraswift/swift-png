@@ -100,4 +100,15 @@ func decompose_png(_ rpath:RelativePath, output:RelativePath) throws
         l += k
     }
 
+    let deinterlaced_header = try PNGImageHeader(width: png_decode.header.width, height: png_decode.header.height,
+                                        bit_depth: png_decode.header.bit_depth,
+                                        color_type: png_decode.header.color_type,
+                                        interlace: false)
+    let deinterlaced_encode = try PNGEncoder(path: "\(out)_deinterlaced.png", header: deinterlaced_header)
+    try deinterlaced_encode.initialize()
+    for scanline in try deinterlace(scanlines: scanlines, header: png_decode.header)
+    {
+        try deinterlaced_encode.add_scanline(scanline)
+    }
+    try deinterlaced_encode.finish()
 }
