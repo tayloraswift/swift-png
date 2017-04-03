@@ -308,7 +308,7 @@ func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk_type:PNGChunkType)
 }
 
 public
-struct PNGImageHeader
+struct PNGImageHeader:CustomStringConvertible
 {
     public
     enum ColorType:Int
@@ -340,6 +340,11 @@ struct PNGImageHeader
 
     let bpp:Int
 
+    public
+    var description:String
+    {
+        return "<PNG header>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color_type), interlaced: \(self.interlace)}"
+    }
 
     public
     init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlace:Bool) throws
