@@ -8,9 +8,9 @@
 [![Build](https://travis-ci.org/kelvin13/maxpng.svg?branch=master)](https://travis-ci.org/kelvin13/maxpng)
 [![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
 
-`maxpng` is written in pure swift with the exception of one dependency on the `zlib` C library. You almost certainly have `zlib` on your computer already. `maxpng` contains no calls to this “`Foundation`” of which you speak; its just plain, standard swift.
+**MaxPNG** is written in *pure Swift* with the exception of one dependency on the `zlib` C library, the standard Linux compression library. MaxPNG does not reference or use Apple’s Foundation library.
 
-`maxpng` is simple to use:
+MaxPNG is simple to use:
 
 ````swift
 import MaxPNG
@@ -38,11 +38,11 @@ for scanline in my_png_data
 try out.finish()
 ````
 
-While it works great with PNG files of all sizes, `maxpng` was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. `maxpng` won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, `maxpng`’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
+While it works great with PNG files of all sizes, MaxPNG was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. MaxPNG won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, MaxPNG’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
 
-Resource management is as Swifty as it made sense to be; most resources will be released when `maxpng`’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
+Resource management is as Swifty as it made sense to be; most resources will be released when MaxPNG’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
 
-One more thing: `maxpng` works on arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday `maxpng` can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
+One more thing: MaxPNG works on arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday MaxPNG can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
 
 ````swift
 public
@@ -67,44 +67,47 @@ struct PNGImageHeader
 
     public
     let channels:Int
+
+    public
+    let sub_dimensions:[(width:Int, height:Int)]
 }
 ````
 
-At the moment, indexed-color and interlaced PNGs are unsupported. Tragic. Hmu on the issues page if you need them.
+At the moment, indexed-color PNGs are unsupported. Tragic. Hmu on the issues page if you need them.
 
 ## FAQ
 
 > Why not use a C PNG decoder like [`libpng`](http://www.libpng.org/pub/png/libpng.html)?
 
-Cause it either a) doesn’t work in Swift, or b) it actually does work but the API is [so](https://bobobobo.wordpress.com/2009/03/02/how-to-use-libpng/) [bad](http://latentcontent.net/2007/12/05/libpng-worst-api-ever/) that I don’t know how to get it to work, which, if you think about it, is just as bad. Either way, `libpng` is written in C. `maxpng` is written in Swift. Yay!
+Cause it either a) doesn’t work in Swift, or b) it actually does work but the API is [so](https://bobobobo.wordpress.com/2009/03/02/how-to-use-libpng/) [bad](http://latentcontent.net/2007/12/05/libpng-worst-api-ever/) that I don’t know how to get it to work, which, if you think about it, is just as bad. Either way, `libpng` is written in C. MaxPNG is written in Swift. Yay!
 
 > Why does it depend on `zlib` then?
 
-`zlib` is cute, nice, and friendly, and it’s also pretty much everywhere. I’ve never had a problem with `zlib`. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.) For me, using `zlib` sounded like a lot less work so I went with that.
+ZLib is a standard compression/decompression library that is installed by default on most Linux systems. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure Swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.) For me, using ZLib sounded like a lot less work so I went with that.
 
-> Why does `maxpng` decode my pictures line-by-line?
+> Why does MaxPNG decode my pictures line-by-line?
 
-Some PNGs are so large that loading them into your RAM will make you very sad. These PNGs are not meant to be viewed, rather processed as data for other purposes. (Think satellite scan data.) Reading them line by line avoids this problem by letting you stream the picture in and out of your program while you do your thing (such as downsampling them to something small enough that you *can* view on your screen). At any rate, if you really want the entire image, you can just dump the scanline buffers into one big buffer if you have the memory. There’s no extra overhead to that — every PNG decoder works like that internally.
+Some PNGs are so large that loading them into your RAM will make you very sad. These PNGs are not meant to be viewed, rather processed as data for other purposes. (Think satellite scan data.) Reading them line by line avoids this problem by letting you stream the picture in and out of your program while you do your thing (such as downsampling them to something small enough that you *can* view on your screen). At any rate, if you really want the entire image, you can just dump the scanline buffers into one big buffer if you have the memory.
 
 > Why did it “skip” `nUGZ`??? That’s my favorite chunk!!!
 
-Right now, `maxpng` only recognizes the chunks `IHDR`, `IDAT`, and `IEND`. `PLTE` is ignored but it would probably take about an afternoon or two to implement; I’m just lazy because I have seen maybe 5 indexed PNGs in my entire life. Most of the ancillary PNG chunks are actually trivial to implement and add to `maxpng` (they just involve casting bytes to integers and binding them to structs), I just haven’t gotten around to it.
+Right now, MaxPNG only recognizes the chunks `IHDR`, `IDAT`, and `IEND`. `PLTE` is ignored but it would probably take about an afternoon or two to implement; I’m just lazy because I have seen maybe 5 indexed PNGs in my entire life. Most of the ancillary PNG chunks are actually trivial to implement and add to MaxPNG (they just involve casting bytes to integers and binding them to structs), I just haven’t gotten around to it.
 
-> Wait, `maxpng` lets you skip `IDAT`??? Why would you ever want to do that?
+> Wait, MaxPNG lets you skip `IDAT`??? Why would you ever want to do that?
 
-By default, `maxpng` will decode the image pixel data, but if you pass `PNGDataIterator.init()` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
+By default, MaxPNG will decode the image pixel data, but if you pass `PNGDataIterator.init()` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
 
-> Does `maxpng` do gamma correction?
+> Does MaxPNG do gamma correction?
 
-No. Gamma is meant to be applied at the image *display* stage. `maxpng` only gives you the raw, integer color data in the file. Gamma is also easy to apply to raw color data but computationally expensive to remove. Some PNGs include gamma data in a chunk called `gAMA`, but most don’t, and viewers will just apply a `γ = 2.2` regardless. `maxpng` doesn’t read `gAMA` right now.
+No. Gamma is meant to be applied at the image *display* stage. MaxPNG only gives you the raw, integer color data in the file. Gamma is also easy to apply to raw color data but computationally expensive to remove. Some PNGs include gamma data in a chunk called `gAMA`, but most don’t, and viewers will just apply a `γ = 2.2` regardless. MaxPNG doesn’t read `gAMA` right now.
 
 > Can I add extra chunks to my PNG output?
 
-At the moment, no, `maxpng` only supports writing bare image data to disk.
+At the moment, no, MaxPNG only supports writing bare image data to disk.
 
 > I hate maxpng isnt there any other png encoder/decoder out there i stg
 
-It’s okay, I only wrote `maxpng` because I couldn’t find any good existing free Swift PNG library. Here’s a rundown of some of the alternatives I stumbled across from a simple search of `'swift png'` in the magical github search bar:
+It’s okay, I only wrote MaxPNG because I couldn’t find any good existing free Swift PNG library. Here’s a rundown of some of the alternatives I stumbled across from a simple search of `'swift png'` in the magical github search bar:
 
 > #### [Swift-PNG-Parser](https://github.com/dixielandtech/Swift-PNG-Parser)
 
@@ -127,4 +130,4 @@ Actually one of the most complete Swift PNG libraries I’ve seen. Has no suppor
 I have no idea what this repository does.
 
 ## Building
-Build `maxpng` with the swift package manager, `swift build`. Make sure you have the `zlib` headers on your computer (`sudo apt-get install libz-dev`).
+Build MaxPNG with the swift package manager, `swift build`. Make sure you have the `zlib` headers on your computer (`sudo apt-get install libz-dev`).
