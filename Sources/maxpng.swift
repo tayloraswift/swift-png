@@ -24,7 +24,8 @@ public
 enum PNGWriteError:Error
 {
     case FileWriteError,
-         DimemsionError
+         DimemsionError,
+         InterlaceDimensionError
 }
 
 public
@@ -332,6 +333,8 @@ struct PNGImageHeader
     public
     let sub_dimensions:[(width:Int, height:Int)]
 
+    let sub_striders:[(u:StrideTo<Int>, v:StrideTo<Int>)]
+
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
@@ -375,28 +378,28 @@ struct PNGImageHeader
 
         self.bpp = max(1, (self.channels * self.bit_depth) >> 3)
 
-        /* calculate size of interlaced subimages, if applicable */
-        if self.interlace
-        {
-            // 0: (w + 7) >> 3 , (h + 7) >> 3
-            // 1: (w + 3) >> 3 , (h + 7) >> 3
-            // 2: (w + 3) >> 2 , (h + 3) >> 3
-            // 3: (w + 1) >> 2 , (h + 3) >> 2
-            // 4: (w + 1) >> 1 , (h + 1) >> 2
-            // 5: (w) >> 1     , (h + 1) >> 1
-            // 6: (w)          , (h) >> 1
-            self.sub_dimensions = [ (width: (self.width  + 7) >> 3, height: (self.height + 7) >> 3),
-                                    (width: (self.width  + 3) >> 3, height: (self.height + 7) >> 3),
-                                    (width: (self.width  + 3) >> 2, height: (self.height + 3) >> 3),
-                                    (width: (self.width  + 1) >> 2, height: (self.height + 3) >> 2),
-                                    (width: (self.width  + 1) >> 1, height: (self.height + 1) >> 2),
-                                    (width: (self.width  + 0) >> 1, height: (self.height + 1) >> 1),
-                                    (width: (self.width  + 0) >> 0, height: (self.height + 0) >> 1)]
-        }
-        else
-        {
-            self.sub_dimensions = [(width: self.width, height: self.height)]
-        }
+        /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
+        // 0: (w + 7) >> 3 , (h + 7) >> 3
+        // 1: (w + 3) >> 3 , (h + 7) >> 3
+        // 2: (w + 3) >> 2 , (h + 3) >> 3
+        // 3: (w + 1) >> 2 , (h + 3) >> 2
+        // 4: (w + 1) >> 1 , (h + 1) >> 2
+        // 5: (w) >> 1     , (h + 1) >> 1
+        // 6: (w)          , (h) >> 1
+        self.sub_dimensions = [ (width: (self.width  + 7) >> 3, height: (self.height + 7) >> 3),
+                                (width: (self.width  + 3) >> 3, height: (self.height + 7) >> 3),
+                                (width: (self.width  + 3) >> 2, height: (self.height + 3) >> 3),
+                                (width: (self.width  + 1) >> 2, height: (self.height + 3) >> 2),
+                                (width: (self.width  + 1) >> 1, height: (self.height + 1) >> 2),
+                                (width: (self.width  + 0) >> 1, height: (self.height + 1) >> 1),
+                                (width: (self.width  + 0) >> 0, height: (self.height + 0) >> 1)]
+        self.sub_striders   = [ (u: stride(from: 0, to: self.width, by: 8), v: stride(from: 0, to: self.height, by: 8)),
+                                (u: stride(from: 4, to: self.width, by: 8), v: stride(from: 0, to: self.height, by: 8)),
+                                (u: stride(from: 0, to: self.width, by: 4), v: stride(from: 4, to: self.height, by: 8)),
+                                (u: stride(from: 2, to: self.width, by: 4), v: stride(from: 0, to: self.height, by: 4)),
+                                (u: stride(from: 0, to: self.width, by: 2), v: stride(from: 2, to: self.height, by: 4)),
+                                (u: stride(from: 1, to: self.width, by: 2), v: stride(from: 0, to: self.height, by: 2)),
+                                (u: stride(from: 0, to: self.width, by: 1), v: stride(from: 1, to: self.height, by: 2))]
     }
 
     init(_ data:[UInt8]) throws
@@ -523,7 +526,7 @@ class PNGEncoder
 
         self.header = header
         self.z_iterator = try ZDeflator()
-        self.defiltered0 = [UInt8](repeating: 0, count: header.scanline_size(npixels: header.sub_dimensions[0].width))
+        self.defiltered0 = [UInt8](repeating: 0, count: header.scanline_size(npixels: header.width))
         self.chunk_data = [UInt8](repeating: 0, count: self.chunk_size)
     }
 
@@ -725,9 +728,16 @@ class PNGDecoder
         }
 
         /* do the interlacing math */
-        self.scanline_rows_remaining = self.header.sub_dimensions[0].height
-        self.scanline_bytes          = self.header.scanline_size(npixels: self.header.sub_dimensions[0].width)
-
+        if self.header.interlace
+        {
+            self.scanline_rows_remaining = self.header.sub_dimensions[0].height
+            self.scanline_bytes          = self.header.scanline_size(npixels: self.header.sub_dimensions[0].width)
+        }
+        else
+        {
+            self.scanline_rows_remaining = self.header.height
+            self.scanline_bytes          = self.header.scanline_size(npixels: self.header.width)
+        }
         self.z_iterator = try ZInflator()
         /* initialize the scanline buffers */
         self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
@@ -890,6 +900,70 @@ class PNGDecoder
             defiltered1[i] = defiltered1[i] &+ paeth(defiltered1[i - bpp], defiltered0[i], defiltered0[i - bpp])
         }
     }
+}
+
+func bitstamp(src_pos:Int, dest_pos:Int, bits:Int, source:[UInt8], dest:inout [UInt8])
+{
+    let src_byte_offset:Int  = src_pos >> 3
+    let dest_byte_offset:Int = dest_pos >> 3
+    let src_bit_offset:UInt8 = UInt8(src_pos & 7)
+    var src_byte:UInt8       = source[src_byte_offset]
+    /* mask out left */
+    src_byte <<= src_bit_offset
+    /* mask out right */
+    src_byte >>= (8 - UInt8(bits))
+    /* position it back where it should be */
+    src_byte <<= (8 - src_bit_offset - UInt8(bits))
+    /* write bits to destination */
+    dest[dest_byte_offset] |= src_byte
+}
+
+func bytestamp(src_pos:Int, dest_pos:Int, bytes:Int, source:[UInt8], dest:inout [UInt8])
+{
+    dest[dest_pos ..< dest_pos + bytes] = source[src_pos ..< src_pos + bytes]
+}
+
+public
+func deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
+{
+    let di_scanline_size = header.scanline_size(npixels: header.width)
+    var pixels:[[UInt8]] = [[UInt8]](repeating: [UInt8](repeating: 0, count: di_scanline_size), count: header.height)
+
+    var l:Int = 0
+    for ((width: h, height: k), (u: u, v: v)) in zip(header.sub_dimensions, header.sub_striders)
+    {
+        let expected_scanline_size = header.scanline_size(npixels: h)
+        for (scanline, dest_pixel_row) in zip(scanlines[l..<(l + k)], v)
+        {
+            guard scanline.count == expected_scanline_size
+            else
+            {
+                throw PNGWriteError.InterlaceDimensionError
+            }
+            for (src_pixel_index, dest_pixel_index) in u.enumerated()
+            {
+                if header.bit_depth < 8
+                {
+                    /* channels is guaranteed to equal 1 */
+                    bitstamp(src_pos: src_pixel_index * header.bit_depth,
+                             dest_pos: dest_pixel_index * header.bit_depth,
+                             bits: header.bit_depth,
+                             source: scanline,
+                             dest: &pixels[dest_pixel_row])
+                }
+                else
+                {
+                    bytestamp(src_pos: src_pixel_index * header.bpp,
+                              dest_pos: dest_pixel_index * header.bpp,
+                              bytes: header.bpp,
+                              source: scanline,
+                              dest: &pixels[dest_pixel_row])
+                }
+            }
+        }
+        l += k
+    }
+    return pixels
 }
 
 func create_zstream() -> z_stream_s
