@@ -791,9 +791,16 @@ class PNGDecoder
             let width:Int = self.header.sub_dimensions[self.interlace_level].width
             self.scanline_bytes          = self.header.scanline_size(npixels: width)
             self.scanline_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
-
-            self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
-            self.scanline1 = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
+            if self.scanline_bytes > 0
+            {
+                self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
+                self.scanline1   = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
+            }
+            else
+            {
+                self.defiltered0 = []
+                self.scanline1   = [] // no filter byte if the subimage is of dimension 0
+            }
         }
 
         var empty:Int = self.scanline1.count
