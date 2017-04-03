@@ -332,8 +332,10 @@ struct PNGImageHeader
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
-    let bytes_per_scanline:Int,
-        bpp:Int
+    let bpp:Int
+
+    public
+    let sub_dimensions:[(width:Int, height:Int)]
 
     public
     init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlace:Bool) throws
@@ -370,9 +372,30 @@ struct PNGImageHeader
             throw PNGReadError.PNGSyntaxError("Color type '\(self.color_type)' cannot have a bit depth of \(self.bit_depth)")
         }
 
-        let scanline_bits_n = self.width * self.channels * self.bit_depth
-        self.bytes_per_scanline = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
         self.bpp = max(1, (self.channels * self.bit_depth) >> 3)
+
+        /* calculate size of interlaced subimages, if applicable */
+        if self.interlace
+        {
+            // 0: (w + 7) >> 3 , (h + 7) >> 3
+            // 1: (w + 3) >> 3 , (h + 7) >> 3
+            // 2: (w + 3) >> 2 , (h + 3) >> 3
+            // 3: (w + 1) >> 2 , (h + 3) >> 2
+            // 4: (w + 1) >> 1 , (h + 1) >> 2
+            // 5: (w) >> 1     , (h + 1) >> 1
+            // 6: (w)          , (h) >> 1
+            self.sub_dimensions = [ (width: (self.width  + 7) >> 3, height: (self.height + 7) >> 3),
+                                    (width: (self.width  + 3) >> 3, height: (self.height + 7) >> 3),
+                                    (width: (self.width  + 3) >> 2, height: (self.height + 3) >> 3),
+                                    (width: (self.width  + 1) >> 2, height: (self.height + 3) >> 2),
+                                    (width: (self.width  + 1) >> 1, height: (self.height + 1) >> 2),
+                                    (width: (self.width  + 0) >> 1, height: (self.height + 1) >> 1),
+                                    (width: (self.width  + 0) >> 0, height: (self.height + 0) >> 1)]
+        }
+        else
+        {
+            self.sub_dimensions = [(width: self.width, height: self.height)]
+        }
     }
 
     init(_ data:[UInt8]) throws
@@ -434,6 +457,12 @@ struct PNGImageHeader
         bytes.append(self.interlace ? 1 : 0)                            // [12]
         return bytes
     }
+
+    func scanline_size(npixels:Int) -> Int
+    {
+        let scanline_bits_n = npixels * self.channels * self.bit_depth
+        return (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
+    }
 }
 
 func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
@@ -493,7 +522,7 @@ class PNGEncoder
 
         self.header = header
         self.z_iterator = try ZDeflator()
-        self.defiltered0 = [UInt8](repeating: 0, count: header.bytes_per_scanline)
+        self.defiltered0 = [UInt8](repeating: 0, count: header.scanline_size(npixels: header.sub_dimensions[0].width))
         self.chunk_data = [UInt8](repeating: 0, count: self.chunk_size)
     }
 
@@ -650,6 +679,11 @@ class PNGDecoder
     var defiltered0:[UInt8],
         scanline1:[UInt8]
 
+    private
+    var interlace_level:Int = 0,
+        scanline_bytes:Int,
+        scanline_rows_remaining:Int
+
     public
     let header:PNGImageHeader
 
@@ -689,10 +723,14 @@ class PNGDecoder
             throw PNGReadError.MissingHeaderError
         }
 
+        /* do the interlacing math */
+        self.scanline_rows_remaining = self.header.sub_dimensions[0].height
+        self.scanline_bytes          = self.header.scanline_size(npixels: self.header.sub_dimensions[0].width)
+
         self.z_iterator = try ZInflator()
         /* initialize the scanline buffers */
-        self.defiltered0 = [UInt8](repeating: 0, count: self.header.bytes_per_scanline)
-        self.scanline1 = [UInt8](repeating: 0, count: self.header.bytes_per_scanline + 1) // +1 is for the filter byte
+        self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
+        self.scanline1 = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
 
         try self.read_png_info(look_for: look_for)
     }
@@ -727,7 +765,6 @@ class PNGDecoder
                     default:
                         fputs("Reading chunk \(chunk_type) is not yet supported. tragic", stderr)
                 }
-
             }
         }
     }
@@ -739,27 +776,41 @@ class PNGDecoder
         while true
         {
             (empty, self.the_end) = try self.z_iterator.get_output(&self.scanline1, empty: empty)
-            /* if the output is not full, add more input */
-            if empty != 0
-            {
-                guard !self.the_end
-                else
-                {
-                    throw PNGReadError.PrematureEOSError
-                }
-                /* read another IDAT chunk */
-                let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))!
-                // PNGConditions is guaranteeing this
-
-                assert(chunk_type == .IDAT) // this should already be verified from the PNG conditions struct
-                self.current_chunk_type = .IDAT
-                self.z_iterator.add_input(chunk_data)
-
-            }
+            /* if the output is full, break loop, else add more input */
+            guard empty != 0
             else
             {
                 break
             }
+            guard !self.the_end
+            else
+            {
+                throw PNGReadError.PrematureEOSError
+            }
+            /* read another IDAT chunk */
+            let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))!
+
+            assert(chunk_type == .IDAT) // this should already be verified from the PNG conditions struct
+            self.current_chunk_type = .IDAT
+            self.z_iterator.add_input(chunk_data)
+        }
+
+        self.scanline_rows_remaining -= 1
+        if self.scanline_rows_remaining <= 0
+        {
+            self.interlace_level += 1
+            guard !self.the_end
+            else
+            {
+                return
+            }
+
+            let width:Int = self.header.sub_dimensions[self.interlace_level].width
+            self.scanline_bytes          = self.header.scanline_size(npixels: width)
+            self.scanline_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
+
+            self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
+            self.scanline1 = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
         }
     }
 
@@ -772,33 +823,31 @@ class PNGDecoder
             fputs("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels", stderr)
             return nil
         }
-        if !self.the_end
-        {
-            try self.read_scanline()
-            let filter = self.scanline1[0]
-            var defiltered1 = Array(self.scanline1.dropFirst(1))
-            switch filter
-            {
-                case 0:
-                    break
-                case 1:
-                    PNGDecoder.defilter_sub(&defiltered1, bpp: self.header.bpp)
-                case 2:
-                    PNGDecoder.defilter_up(&defiltered1, defiltered0: self.defiltered0)
-                case 3:
-                    PNGDecoder.defilter_average(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
-                case 4:
-                    PNGDecoder.defilter_paeth(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
-                default:
-                    break // won’t happen
-            }
-            self.defiltered0 = defiltered1
-            return defiltered1
-        }
+        guard !self.the_end
         else
         {
             return nil
         }
+        try self.read_scanline()
+        let filter = self.scanline1[0]
+        var defiltered1 = Array(self.scanline1.dropFirst(1))
+        switch filter
+        {
+        case 0:
+            break
+        case 1:
+            PNGDecoder.defilter_sub(&defiltered1, bpp: self.header.bpp)
+        case 2:
+            PNGDecoder.defilter_up(&defiltered1, defiltered0: self.defiltered0)
+        case 3:
+            PNGDecoder.defilter_average(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
+        case 4:
+            PNGDecoder.defilter_paeth(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
+        default:
+            break // won’t happen
+        }
+        self.defiltered0 = defiltered1
+        return defiltered1
     }
 
     private static
