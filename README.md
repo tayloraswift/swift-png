@@ -77,6 +77,31 @@ At the moment, indexed-color PNGs are unsupported. Tragic. Hmu on the issues pag
 
 ## FAQ
 
+### Usage 
+
+> What’s the difference between bit depth and color type?
+
+Color type refers to the channels present in a PNG. A grayscale PNG has only one color channel, while an RGB PNG has three (red, green, and blue). An RGBA PNG has four — three color channels, plus one alpha channel. Similarly, a grayscale–alpha PNG has two — one grayscale “color” channel and one alpha channel. An indexed-color PNG (unsupported) has one encoded channel in the image data, but the colors the indices represent are always RGB triples. The vast majority of PNGs in the world are either of color type RGB or RGBA.
+
+Bit depth goes one level lower; it represents the size of each *channel*. A PNG with a bit depth of `8` has `8` bits per channel. Hence, one pixel of an RGBA PNG is `4 * 8 = 32` bits long, or `4` bytes.
+
+> What does interlacing mean?
+
+[Interlacing](https://en.wikipedia.org/wiki/Interlacing_(bitmaps)) is a way of progressivly ordering the image data in a PNG so it can be displayed at lower resolution even when partially downloaded. Interlacing is common in images downloaded from social media such as Instagram or Twitter, but rare elsewhere. Interlacing hurts compression, and so it usually significantly increases the size of a PNG file, sometimes as much as thirty percent.
+
+MaxPNG will read interlaced images as a series of subimage scanlines. To recover a rectangular pixel array, you should pass the interlaced scanlines into the provided `deinterlace()` function.
+
+> How do I deinterlace an interlaced PNG?
+
+Use the `deinterlace()` function.
+
+````
+deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
+````
+The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGImageHeader` struct.
+
+### General
+
 > Why not use a C PNG decoder like [`libpng`](http://www.libpng.org/pub/png/libpng.html)?
 
 Cause it either a) doesn’t work in Swift, or b) it actually does work but the API is [so](https://bobobobo.wordpress.com/2009/03/02/how-to-use-libpng/) [bad](http://latentcontent.net/2007/12/05/libpng-worst-api-ever/) that I don’t know how to get it to work, which, if you think about it, is just as bad. Either way, `libpng` is written in C. MaxPNG is written in Swift. Yay!
