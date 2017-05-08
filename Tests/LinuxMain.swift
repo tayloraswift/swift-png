@@ -7,7 +7,7 @@ let interlace_test_in:String = "interlace.png",
     image_test_in:String = "taylor.png",
     image_test_out:String = "taylor_reconverted.png"
 
-var passed:Bool = false
+var passed:Bool = true
 
 try decompose_png("Tests/" + interlace_test_in, output: "Tests/" + interlace_test_out)
 try reencode_png_stream("Tests/" + image_test_in, output: "Tests/" + image_test_out)
