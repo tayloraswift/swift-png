@@ -97,7 +97,7 @@ func decompose_png(_ rpath:RelativePath, output:RelativePath) throws
                                         bit_depth: png_decode.header.bit_depth,
                                         color_type: png_decode.header.color_type,
                                         interlace: false)
-    let deinterlaced_encode = try PNGEncoder(path: "\(out)_deinterlaced.png", header: deinterlaced_header)
+    let deinterlaced_encode = try PNGEncoder(path: out, header: deinterlaced_header)
     try deinterlaced_encode.initialize()
     for scanline in try deinterlace(scanlines: scanlines, header: png_decode.header)
     {
