@@ -13,8 +13,8 @@ enum PNGReadError:Error
          PNGSyntaxError(String),
          DataCorruptionError(String),
 
-         DuplicateChunkError(String),
-         ChunkOrderingError(String),
+         DuplicateChunkError(PNGChunkType),
+         ChunkOrderingError(PNGChunkType),
          MissingHeaderError,
          PrematureEOSError,
          PrematureIENDError
@@ -46,22 +46,9 @@ enum PNGCompressionError:Error
 struct PNGConditions
 {
     private(set)
-    var seen = [Bool](repeating: false, count: PNGChunkType._cases.count)
+    var seen = Set<PNGChunkType>()
     private(set)
     var last_valid_chunk:PNGChunkType = PNGChunkType.__FIRST__
-
-    subscript(ct:PNGChunkType) -> Bool
-    {
-        get
-        {
-            return self.seen[ct.rawValue]
-        }
-
-        set(v)
-        {
-            self.seen[ct.rawValue] = v
-        }
-    }
 
     mutating
     func update(_ chunk_type:PNGChunkType) throws
@@ -74,7 +61,7 @@ struct PNGConditions
         {
             throw PNGReadError.PrematureIENDError
         }
-        if chunk_type == .IEND && !self[.IDAT]
+        if chunk_type == .IEND && !self.seen.contains(.IDAT)
         // separated from the switch block because it doesn’t work right for some reason
         {
             throw PNGReadError.PrematureIENDError
@@ -84,46 +71,46 @@ struct PNGConditions
         {
         // these chunks must occur before PLTE
         case .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS:
-            if self[.PLTE]
+            if self.seen.contains(.PLTE)
             {
-                throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
+                throw PNGReadError.ChunkOrderingError(chunk_type)
             }
             fallthrough
 
         // these chunks must occur before IDAT
         case .PLTE, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
-            if self[.IDAT]
+            if self.seen.contains(.IDAT)
             {
-                throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
+                throw PNGReadError.ChunkOrderingError(chunk_type)
             }
             fallthrough
 
 
         // these chunks cannot duplicate
         case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXT:
-            if self[chunk_type]
+            if self.seen.contains(chunk_type)
             {
-                throw PNGReadError.DuplicateChunkError(String(describing: chunk_type))
+                throw PNGReadError.DuplicateChunkError(chunk_type)
             }
 
         // IDAT blocks much be consecutive
         case .IDAT:
-            if self.last_valid_chunk != .IDAT && self[.IDAT]
+            if self.last_valid_chunk != .IDAT && self.seen.contains(.IDAT)
             {
-                throw PNGReadError.ChunkOrderingError(String(describing: chunk_type))
+                throw PNGReadError.ChunkOrderingError(chunk_type)
             }
         default:
             break
         }
         self.last_valid_chunk = chunk_type
-        self[chunk_type] = true
+        self.seen.insert(chunk_type)
     }
 }
 
 public
-enum PNGChunkType:Int
+enum PNGChunkType:String
 {
-    case __FIRST__ = 0,
+    case __FIRST__,
          IHDR,
          PLTE,
          IDAT,
@@ -144,51 +131,15 @@ enum PNGChunkType:Int
          tEXt,
          zTXT
 
-    static
-    let _cases:[PNGChunkType] = PNGChunkType._make_case_array()
-    static private
-    let _lookup:[Int: PNGChunkType] = PNGChunkType._make_case_lookup(PNGChunkType._cases)
-
-    static private
-    func _make_case_array() -> [PNGChunkType]
+    init?(buffer:[UInt8])
     {
-        var cases:[PNGChunkType] = []
-        var rv:Int = 0
-        while let chunk_type = PNGChunkType(rawValue: rv)
-        {
-            cases.append(chunk_type)
-            rv += 1
-        }
-        return cases
+        self.init(rawValue: String(buffer.flatMap(UnicodeScalar.init).map(Character.init)))
     }
+}
 
-    static private
-    func _make_case_lookup(_ cases:[PNGChunkType]) -> [Int: PNGChunkType]
-    {
-        var lookup:[Int: PNGChunkType] = [:]
-        for c in cases
-        {
-            lookup[quad_byte_to_int([UInt8](String(describing: c).utf8))] = c
-        }
-        return lookup
-    }
-
-    static
-    func from_buffer(_ buffer:[UInt8]) -> PNGChunkType?
-    {
-        return PNGChunkType._lookup[quad_byte_to_int(buffer)]
-    }
-
-    static
-    func string_rep(_ buffer:[UInt8]) -> String
-    {
-        var str = ""
-        for c in buffer.flatMap(UnicodeScalar.init).map(Character.init)
-        {
-            str.append(c)
-        }
-        return str
-    }
+func buffer_to_string(_ buffer:[UInt8]) -> String // this function only used for error messages
+{
+    return String(buffer.flatMap(UnicodeScalar.init).map(Character.init))
 }
 
 func quad_byte_to_int(_ buffer:[UInt8]) -> Int
@@ -248,23 +199,23 @@ throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
 
     /* — CHUNK TYPE READ AND VALIDATION — */
     let chunk_type_buffer = try read_png_buffer(f, 4)
-    guard let chunk_type = PNGChunkType.from_buffer(chunk_type_buffer)
+    guard let chunk_type = PNGChunkType(buffer: chunk_type_buffer)
     else
     {
         guard (chunk_type_buffer[0] & (1 << 5)) != 0
         else
         {
-            throw PNGReadError.UnexpectedCriticalChunkError(PNGChunkType.string_rep(chunk_type_buffer))
+            throw PNGReadError.UnexpectedCriticalChunkError(buffer_to_string(chunk_type_buffer))
         }
         guard (chunk_type_buffer[2] & (1 << 5)) == 0
         else
         {
-            throw PNGReadError.PNGSyntaxError("Third byte of chunk type \(PNGChunkType.string_rep(chunk_type_buffer)) must have bit 5 set to 0.")
+            throw PNGReadError.PNGSyntaxError("Third byte of chunk type \(buffer_to_string(chunk_type_buffer)) must have bit 5 set to 0.")
         }
 
         try skip_png_buffer(f, length)
         // ignore unrecognized chunk
-        fputs("unrecognized: \(PNGChunkType.string_rep(chunk_type_buffer))", stderr)
+        fputs("unrecognized: \(buffer_to_string(chunk_type_buffer))", stderr)
         return nil
     }
     // all the recognized chunks have valid names so there’s no need to check them
@@ -283,7 +234,7 @@ throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
         guard stored_chunk_crc == calculated_crc
         else
         {
-            throw PNGReadError.DataCorruptionError(PNGChunkType.string_rep(chunk_type_buffer))
+            throw PNGReadError.DataCorruptionError(chunk_type.rawValue)
         }
         return (chunk_type, chunk_data)
     }
@@ -298,7 +249,7 @@ throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
 func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk_type:PNGChunkType) throws
 {
     try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(chunk_data.count))) // length section
-    let chunk_type_buffer:[UInt8] = [UInt8](String(describing: chunk_type).utf8)
+    let chunk_type_buffer:[UInt8] = [UInt8](chunk_type.rawValue.utf8)
     assert(chunk_type_buffer.count == 4)
     try write_png_buffer(f, buffer: chunk_type_buffer) // chunk type section
     try write_png_buffer(f, buffer: chunk_data) // chunk data section
