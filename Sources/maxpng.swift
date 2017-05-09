@@ -929,6 +929,40 @@ func deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
     return pixels
 }
 
+func absolute_unix_path(_ relative_path:String) -> String
+{
+    guard relative_path.characters.count > 1
+    else
+    {
+        return relative_path
+    }
+    var expanded_path:String = relative_path
+    if relative_path[relative_path.startIndex ..< relative_path.index(relative_path.startIndex, offsetBy: 2)] == "~/"
+    {
+        expanded_path = String(cString: getenv("HOME")) +
+                        relative_path[relative_path.index(relative_path.startIndex, offsetBy: 1) ..< relative_path.endIndex]
+    }
+    return expanded_path
+}
+
+public
+func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGImageHeader)
+{
+    let png_decode = try PNGDecoder(path: absolute_path)
+    var png_data:[[UInt8]] = []
+    while let scanline = try png_decode.next_scanline()
+    {
+        png_data.append(scanline)
+    }
+
+    if png_decode.header.interlace
+    {
+        png_data = try deinterlace(scanlines: png_data, header: png_decode.header)
+    }
+
+    return (png_data, png_decode.header)
+}
+
 func create_zstream() -> z_stream_s
 {
     var stream = z_stream()
