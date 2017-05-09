@@ -1,39 +1,17 @@
 import Glibc
-import MaxPNG
+@testable import MaxPNG
 
 public
-typealias RelativePath = String
-typealias Unixpath = String
-
-func unix_path(_ path:RelativePath) -> Unixpath
+func skip_png(_ rpath:String) throws
 {
-    guard path.characters.count > 1
-    else
-    {
-        return path
-    }
-    let path_i0 = path.startIndex
-    let path_i2 = path.index(path_i0, offsetBy: 2)
-    var expanded_path:Unixpath = path
-    if path[path.startIndex..<path_i2] == "~/"
-    {
-        expanded_path = String(cString: getenv("HOME")) +
-                        path[path.index(path_i0, offsetBy: 1)..<path.endIndex]
-    }
-    return expanded_path
-}
-
-public
-func skip_png(_ rpath:RelativePath) throws
-{
-    let path = unix_path(rpath)
+    let path = absolute_unix_path(rpath)
     let _ = try PNGDecoder(path: path, look_for: [])
 }
 
 public
-func write_png(_ rpath:RelativePath, _ scanlines:[[UInt8]], header:PNGImageHeader) throws
+func write_png(_ rpath:String, _ scanlines:[[UInt8]], header:PNGImageHeader) throws
 {
-    let path = unix_path(rpath)
+    let path = absolute_unix_path(rpath)
     let png = try PNGEncoder(path: path, header: header)
     try png.initialize()
     for scanline in scanlines
@@ -44,10 +22,10 @@ func write_png(_ rpath:RelativePath, _ scanlines:[[UInt8]], header:PNGImageHeade
 }
 
 public
-func reencode_png_stream(_ rpath:RelativePath, output:RelativePath) throws
+func reencode_png_stream(_ rpath:String, output:String) throws
 {
-    let path = unix_path(rpath)
-    let out = unix_path(output)
+    let path = absolute_unix_path(rpath)
+    let out = absolute_unix_path(output)
     let png_decode = try PNGDecoder(path: path)
     let png_encode = try PNGEncoder(path: out, header: png_decode.header)
     try png_encode.initialize()
@@ -62,9 +40,9 @@ func reencode_png_stream(_ rpath:RelativePath, output:RelativePath) throws
 }
 
 public
-func decompose_png(_ rpath:RelativePath, output:RelativePath) throws
+func decompose_png(_ rpath:String, output:String) throws
 {
-    let png_decode = try PNGDecoder(path: unix_path(rpath))
+    let png_decode = try PNGDecoder(path: absolute_unix_path(rpath))
     print(png_decode.header)
     print("0 %")
     var scanlines:[[UInt8]] = []
@@ -75,7 +53,7 @@ func decompose_png(_ rpath:RelativePath, output:RelativePath) throws
     }
     print("100 %")
 
-    let out = unix_path(output)
+    let out = absolute_unix_path(output)
     var l:Int = 0
     for (offset: i, element: (width: h, height: k)) in png_decode.header.sub_dimensions.enumerated()
     {
