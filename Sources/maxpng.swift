@@ -963,6 +963,12 @@ func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGImageHeader)
     return (png_data, png_decode.header)
 }
 
+public
+func decode_png(relative_path:String) throws -> ([[UInt8]], PNGImageHeader)
+{
+    return try decode_png(absolute_path: absolute_unix_path(relative_path))
+}
+
 func create_zstream() -> z_stream_s
 {
     var stream = z_stream()
