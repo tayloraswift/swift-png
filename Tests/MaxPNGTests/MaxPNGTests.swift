@@ -1,6 +1,40 @@
 import Glibc
 @testable import MaxPNG
 
+let bold = "\u{001B}[1m"
+let green = "\u{001B}[0;32m"
+let green_bold = "\u{001B}[1;32m"
+
+let light_green = "\u{001B}[92m"
+let light_green_bold = "\u{001B}[1;92m"
+
+let color_off = "\u{001B}[0m"
+
+let TERM_WIDTH:Int = 64
+
+func print_progress(percent:Double, width:Int, eraser:String = "\r")
+{
+    let bar_width:Int = width - 6
+    let percent_label:String = "\(Int(percent * 100))%"
+    print(eraser, terminator: "")
+    for _ in 0...(4 - percent_label.characters.count)
+    {
+        fputc(0x20, stdout)
+    }
+    print("\(percent_label) \(green)[\(light_green_bold)", terminator: "")
+    let bar_segments:Int = Int(percent * Double(bar_width))
+    for _ in 0..<bar_segments
+    {
+        fputc(Int32(UnicodeScalar("=")!.value), stdout)
+    }
+    for _ in bar_segments..<bar_width
+    {
+        fputc(Int32(UnicodeScalar("-")!.value), stdout)
+    }
+    print("\(color_off)\(green)]\(color_off)", terminator: "")
+    fflush(stdout)
+}
+
 public
 func skip_png(_ rpath:String) throws
 {
@@ -30,13 +64,17 @@ func reencode_png_stream(_ rpath:String, output:String) throws
     let png_encode = try PNGEncoder(path: out, header: png_decode.header)
     try png_encode.initialize()
     print(png_decode.header)
-    print("0 %")
+
+    var i:Int = 0
+    print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
     while let scanline = try png_decode.next_scanline()
     {
+        i += 1
         try png_encode.add_scanline(scanline)
+        print_progress(percent: Double(i) / Double(png_decode.header.height), width: TERM_WIDTH)
     }
     try png_encode.finish()
-    print("100 %")
+    print("")
 }
 
 public
@@ -44,14 +82,18 @@ func decompose_png(_ rpath:String, output:String) throws
 {
     let png_decode = try PNGDecoder(path: absolute_unix_path(rpath))
     print(png_decode.header)
-    print("0 %")
     var scanlines:[[UInt8]] = []
     scanlines.reserveCapacity(png_decode.header.height)
+    var i:Int = 0
+    let interlace_scanlines:Double = Double(png_decode.header.sub_dimensions.dropLast().map{ $0.height }.reduce(0, +))
+    print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
     while let scanline = try png_decode.next_scanline()
     {
+        i += 1
         scanlines.append(scanline)
+        print_progress(percent: Double(i) / interlace_scanlines, width: TERM_WIDTH)
     }
-    print("100 %")
+    print("")
 
     let out = absolute_unix_path(output)
     var l:Int = 0
