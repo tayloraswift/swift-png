@@ -695,9 +695,6 @@ class _PNGDecoder
     let z_iterator:ZInflator
     private
     var stream_exhausted:Bool = false
-    //private
-    //var defiltered0:[UInt8],
-    //    scanline1:[UInt8]
 
     public
     let header:PNGImageHeader
@@ -739,9 +736,6 @@ class _PNGDecoder
         }
 
         self.z_iterator = try ZInflator()
-        /* initialize the scanline buffers */
-        //self.defiltered0 = [UInt8](repeating: 0, count: self.bytes_per_scanline)
-        //self.scanline1 = [UInt8](repeating: 0, count: self.bytes_per_scanline + 1) // +1 is for the filter byte
 
         try self.read_png_info(look_for: look_for)
     }
@@ -779,56 +773,6 @@ class _PNGDecoder
             }
         }
     }
-
-    /*
-    private
-    func read_scanline() throws
-    {
-        /* the subimage incrementor occurs *before* the rest of the function so that
-           the last scanline of the subimage doesn’t get overwritten before it is emitted */
-        if self.subimage_rows_remaining <= 0
-        {
-            self.interlace_level += 1
-            let width:Int = self.header.sub_dimensions[self.interlace_level].width
-            self.bytes_per_scanline          = self.header.scanline_size(npixels: width)
-            self.subimage_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
-            if self.bytes_per_scanline > 0
-            {
-                self.defiltered0 = [UInt8](repeating: 0, count: self.bytes_per_scanline)
-                self.scanline1   = [UInt8](repeating: 0, count: self.bytes_per_scanline + 1) // +1 is for the filter byte
-            }
-            else
-            {
-                self.defiltered0 = []
-                self.scanline1   = [] // no filter byte if the subimage is of dimension 0
-            }
-        }
-
-        var empty:Int = self.scanline1.count
-        while true
-        {
-            (empty, self.stream_exhausted) = try self.z_iterator.get_output(&self.scanline1, empty: empty)
-            /* if the output is full, break loop, else add more input */
-            if empty == 0
-            {
-                break
-            }
-            guard !self.stream_exhausted
-            else
-            {
-                throw PNGReadError.PrematureEOSError
-            }
-            /* read another IDAT chunk */
-            let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))!
-
-            assert(chunk_type == .IDAT) // this should already be verified from the PNG conditions struct
-            self.current_chunk_type = .IDAT
-            self.z_iterator.add_input(chunk_data)
-        }
-
-        self.subimage_rows_remaining -= 1
-    }
-    */
 
     func decompress_scanline(dest:UnsafeMutableBufferPointer<UInt8>) throws -> UInt8
     {
@@ -900,43 +844,6 @@ class _PNGDecoder
             break // won’t happen
         }
     }
-    /*
-    func next_scanline(buffer:inout [UInt8]) throws -> Bool
-    {
-        guard self.current_chunk_type == .IDAT
-        else
-        {
-            fputs("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels", stderr)
-            return false
-        }
-        guard !self.stream_exhausted
-        else
-        {
-            return false
-        }
-        try self.read_scanline()
-        let filter = self.scanline1[0]
-        /*
-        switch filter
-        {
-        case 0:
-            break
-        case 1:
-            PNGDecoder.defilter_sub(&buffer, src: self.scanline1.dropFirst(1), bpp: self.header.bpp)
-        case 2:
-            PNGDecoder.defilter_up(&buffer, src: self.scanline1.dropFirst(1), defiltered0: self.defiltered0)
-        case 3:
-            PNGDecoder.defilter_average(&buffer, src: self.scanline1.dropFirst(1), defiltered0: self.defiltered0, bpp: self.header.bpp)
-        case 4:
-            PNGDecoder.defilter_paeth(&buffer, src: self.scanline1.dropFirst(1), defiltered0: self.defiltered0, bpp: self.header.bpp)
-        default:
-            break // won’t happen
-        }
-        */
-        self.defiltered0 = buffer
-        return true
-    }
-    */
 
     private static
     func defilter_sub(_ buffer:UnsafeMutableBufferPointer<UInt8>, bpp:Int)
