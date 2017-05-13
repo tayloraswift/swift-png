@@ -429,11 +429,6 @@ struct PNGImageHeader:CustomStringConvertible
         bytes.append(self.interlace ? 1 : 0)                            // [12]
         return bytes
     }
-
-    func make_zero_line() -> [UInt8]
-    {
-        return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlace ? 6 : 7].j) // the most zeros we will ever need
-    }
 }
 
 func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
@@ -683,6 +678,11 @@ struct ScanlineIterator
         self.first_scanline = false
         self.scanlines_remaining -= 1
         return true
+    }
+
+    func make_zero_line() -> [UInt8]
+    {
+        return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlace ? 6 : 7].j) // the most zeros we will ever need
     }
 }
 
