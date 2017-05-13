@@ -13,7 +13,7 @@ try decompose_png("Tests/" + interlace_test_in, output: "Tests/" + interlace_tes
 try reencode_png_stream("Tests/" + image_test_in, output: "Tests/" + image_test_out)
 
 try write_png("Tests/output.png", [[0, 0, 0, 255, 255, 255, 255, 0, 255], [255, 255, 255, 0, 0, 0, 0, 255, 0], [120, 120, 255, 150, 120, 255, 180, 120, 255]],
-                header: PNGImageHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
+                header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
 
 print("Testing images \(image_test_in) == \(image_test_out)")
 if try test_images_identical("Tests/" + image_test_in, "Tests/" + image_test_out)

@@ -261,7 +261,7 @@ func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk_type:PNGChunkType)
 }
 
 public
-struct PNGImageHeader:CustomStringConvertible
+struct PNGHeader:CustomStringConvertible
 {
     public
     enum ColorType:Int
@@ -287,12 +287,11 @@ struct PNGImageHeader:CustomStringConvertible
     let sub_dimensions:[(width:Int, height:Int)]
 
     let sub_striders:[(u:StrideTo<Int>, v:StrideTo<Int>)],
-        sub_array_bounds:[(i:Int, j:Int)]
+        sub_array_bounds:[(i:Int, j:Int)],
+        bpp:Int
 
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
-
-    let bpp:Int
 
     public
     var description:String
@@ -469,10 +468,10 @@ class PNGEncoder
     var chunk_empty:Int
 
     private
-    let header:PNGImageHeader
+    let header:PNGHeader
 
     public
-    init (path:String, header:PNGImageHeader, chunk_size:Int = 1 << 16) throws
+    init (path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
     {
         if let stream = fopen(path, "wb")
         {
@@ -500,7 +499,7 @@ class PNGEncoder
     public
     func initialize() throws
     {
-        try write_png_buffer(self.stream, buffer: PNGImageHeader.signature)
+        try write_png_buffer(self.stream, buffer: PNGHeader.signature)
         try png_write_chunk(f: self.stream, chunk_data: self.header.write(), chunk_type: .IHDR)
     }
 
@@ -639,7 +638,7 @@ struct ScanlineIterator
     var bytes_per_scanline:Int,
         first_scanline:Bool = true
 
-    init(header:PNGImageHeader)
+    init(header:PNGHeader)
     {
         if header.interlace
         {
@@ -696,7 +695,7 @@ struct Decoder
     var z_iterator:ZInflator,
         stream_exhausted:Bool = false
 
-    let header:PNGImageHeader
+    let header:PNGHeader
 
     /*
     public private(set)
@@ -707,7 +706,7 @@ struct Decoder
     init(stream:FilePointer, look_for:[PNGChunkType] = [.IDAT]) throws
     {
         /* check if it's, you know, actually a PNG */
-        guard (try read_png_buffer(stream, 8) == PNGImageHeader.signature) // compare with PNG signature
+        guard (try read_png_buffer(stream, 8) == PNGHeader.signature) // compare with PNG signature
         else
         {
             throw PNGReadError.FiletypeError
@@ -718,7 +717,7 @@ struct Decoder
         {
             assert(chunk_type == .IHDR) // this should already be verified from the PNG conditions struct
             self.current_chunk_type = .IHDR
-            self.header = try PNGImageHeader(chunk_data)
+            self.header = try PNGHeader(chunk_data)
         }
         else
         {
@@ -895,7 +894,7 @@ class PNGDecoder
     let zero_line:[UInt8]
 
     public
-    var header:PNGImageHeader { return self.decoder.header }
+    var header:PNGHeader { return self.decoder.header }
 
     public
     init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
@@ -977,7 +976,7 @@ func bytestamp(src_pos:Int, dest_pos:Int, bytes:Int, source:[UInt8], dest:inout 
 }
 
 public
-func deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
+func deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
 {
     let (k, h):(Int, Int) = header.sub_array_bounds[7]
     var pixels:[[UInt8]] = [[UInt8]](repeating: [UInt8](repeating: 0, count: h), count: k)
@@ -1035,7 +1034,7 @@ func absolute_unix_path(_ relative_path:String) -> String
 }
 
 public
-func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGImageHeader)
+func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGHeader)
 {
     let png_decode = try PNGDecoder(path: absolute_path)
     var png_data:[[UInt8]] = []
@@ -1053,7 +1052,7 @@ func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGImageHeader)
 }
 
 public
-func decode_png(relative_path:String) throws -> ([[UInt8]], PNGImageHeader)
+func decode_png(relative_path:String) throws -> ([[UInt8]], PNGHeader)
 {
     return try decode_png(absolute_path: absolute_unix_path(relative_path))
 }
