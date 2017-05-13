@@ -522,7 +522,7 @@ class PNGEncoder
         self.defiltered0 = defiltered1
 
         /* pick the most effective filter */
-        let scores:[Int] = filter_data.map{ $0.reduce(0, {$0 + abs(Int(Int8(bitPattern: $1)))}) }
+        let scores:[Int] = filter_data.map(PNGEncoder.score)
         var min_filter:Int = 0
         var min_score:Int = Int.max
         for (i, score) in scores.enumerated()
@@ -622,6 +622,25 @@ class PNGEncoder
         {
             filtered1[i] = filtered1[i] &- paeth(0, defiltered0[i - 1], 0)
         }
+    }
+
+    private static
+    func score(_ filtered:[UInt8]) -> Int
+    {
+        //return filtered.reduce(0, {$0 + abs(Int(Int8(bitPattern: $1)))})
+        guard filtered.count > 0
+        else
+        {
+            return 0
+        }
+        var changes:Int = 0
+        var last:UInt8 = filtered[0]
+        for byte in filtered.dropFirst()
+        {
+            changes += byte == last ? 0 : 1
+            last = byte
+        }
+        return changes
     }
 }
 
