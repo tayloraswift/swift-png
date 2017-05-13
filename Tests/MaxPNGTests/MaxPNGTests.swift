@@ -55,7 +55,7 @@ func decompose_png(_ rpath:String, output:String) throws
 
     let out = absolute_unix_path(output)
     var l:Int = 0
-    for (offset: i, element: (width: h, height: k)) in png_decode.header.sub_dimensions.enumerated()
+    for (offset: i, element: (width: h, height: k)) in png_decode.header.sub_dimensions.dropLast().enumerated()
     {
         let frag_header = try PNGImageHeader(width: h, height: k,
                                             bit_depth: png_decode.header.bit_depth,

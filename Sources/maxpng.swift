@@ -286,7 +286,8 @@ struct PNGImageHeader:CustomStringConvertible
     public
     let sub_dimensions:[(width:Int, height:Int)]
 
-    let sub_striders:[(u:StrideTo<Int>, v:StrideTo<Int>)]
+    let sub_striders:[(u:StrideTo<Int>, v:StrideTo<Int>)],
+        sub_array_bounds:[(i:Int, j:Int)]
 
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
@@ -309,32 +310,34 @@ struct PNGImageHeader:CustomStringConvertible
         self.interlace = interlace
 
         /* validate color type */
-        let allowed_bit_depths:[Int]
+        let allowed_bit_depths:[Int],
+            channels:Int
         switch self.color_type
         {
             case .grayscale:
                 allowed_bit_depths = [1, 2, 4, 8, 16]
-                self.channels = 1
+                channels = 1
             case .rgb:
                 allowed_bit_depths = [8, 16]
-                self.channels = 3
+                channels = 3
             case .indexed:
                 allowed_bit_depths = [1, 2, 4, 8]
-                self.channels = 1
+                channels = 1
             case .grayscale_a:
                 allowed_bit_depths = [8, 16]
-                self.channels = 2
+                channels = 2
             case .rgba:
                 allowed_bit_depths = [8, 16]
-                self.channels = 4
+                channels = 4
         }
-        guard allowed_bit_depths.contains(self.bit_depth)
+        guard allowed_bit_depths.contains(bit_depth)
         else
         {
             throw PNGReadError.PNGSyntaxError("Color type '\(self.color_type)' cannot have a bit depth of \(self.bit_depth)")
         }
 
-        self.bpp = max(1, (self.channels * self.bit_depth) >> 3)
+        self.bpp      = max(1, (channels * bit_depth) >> 3)
+        self.channels = channels
 
         /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
         // 0: (w + 7) >> 3 , (h + 7) >> 3
@@ -349,8 +352,9 @@ struct PNGImageHeader:CustomStringConvertible
                                 (width: (self.width  + 3) >> 2, height: (self.height + 3) >> 3),
                                 (width: (self.width  + 1) >> 2, height: (self.height + 3) >> 2),
                                 (width: (self.width  + 1) >> 1, height: (self.height + 1) >> 2),
-                                (width: (self.width  + 0) >> 1, height: (self.height + 1) >> 1),
-                                (width: (self.width  + 0) >> 0, height: (self.height + 0) >> 1)]
+                                (width:  self.width       >> 1, height: (self.height + 1) >> 1),
+                                (width:  self.width       >> 0, height:  self.height      >> 1),
+                                (width:  self.width           , height:  self.height          )]
         self.sub_striders   = [ (u: stride(from: 0, to: self.width, by: 8), v: stride(from: 0, to: self.height, by: 8)),
                                 (u: stride(from: 4, to: self.width, by: 8), v: stride(from: 0, to: self.height, by: 8)),
                                 (u: stride(from: 0, to: self.width, by: 4), v: stride(from: 4, to: self.height, by: 8)),
@@ -358,6 +362,12 @@ struct PNGImageHeader:CustomStringConvertible
                                 (u: stride(from: 0, to: self.width, by: 2), v: stride(from: 2, to: self.height, by: 4)),
                                 (u: stride(from: 1, to: self.width, by: 2), v: stride(from: 0, to: self.height, by: 2)),
                                 (u: stride(from: 0, to: self.width, by: 1), v: stride(from: 1, to: self.height, by: 2))]
+        self.sub_array_bounds = self.sub_dimensions.map
+        {
+            let scanline_bits_n:Int  = $0.width * channels * bit_depth
+            let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
+            return (i: $0.height, j: scanline_bytes_n)
+        }
     }
 
     init(_ data:[UInt8]) throws
@@ -420,15 +430,9 @@ struct PNGImageHeader:CustomStringConvertible
         return bytes
     }
 
-    func scanline_size(npixels:Int) -> Int
-    {
-        let scanline_bits_n = npixels * self.channels * self.bit_depth
-        return (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
-    }
-
     func make_zero_line() -> [UInt8]
     {
-        return [UInt8](repeating: 0, count: self.scanline_size(npixels: self.interlace ? self.sub_dimensions[6].width : self.width)) // the most zeros we will ever need
+        return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlace ? 6 : 7].j) // the most zeros we will ever need
     }
 }
 
@@ -489,7 +493,7 @@ class PNGEncoder
 
         self.header = header
         self.z_iterator = try ZDeflator()
-        self.defiltered0 = [UInt8](repeating: 0, count: header.scanline_size(npixels: header.width))
+        self.defiltered0 = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
         self.chunk_data = [UInt8](repeating: 0, count: self.chunk_size)
     }
 
@@ -630,28 +634,31 @@ class PNGEncoder
 struct ScanlineIterator
 {
     private
-    let header:PNGImageHeader // factor out later
+    let sub_array_bounds:[(i:Int, j:Int)],
+        interlace:Bool
 
-    private(set)
+    private
     var interlace_level:Int = 0,
-        bytes_per_scanline:Int,
-        scanlines_remaining:Int,
+        scanlines_remaining:Int
+    private(set)
+    var bytes_per_scanline:Int,
         first_scanline:Bool = true
 
     init(header:PNGImageHeader)
     {
         if header.interlace
         {
-            self.scanlines_remaining = header.sub_dimensions[0].height
-            let width:Int            = header.sub_dimensions[0].width
-            self.bytes_per_scanline  = header.scanline_size(npixels: width)
+            self.scanlines_remaining = header.sub_array_bounds[0].i
+            self.bytes_per_scanline  = header.sub_array_bounds[0].j
+            self.interlace = true
         }
         else
         {
-            self.scanlines_remaining = header.height
-            self.bytes_per_scanline  = header.scanline_size(npixels: header.width)
+            self.scanlines_remaining = header.sub_array_bounds[7].i
+            self.bytes_per_scanline  = header.sub_array_bounds[7].j
+            self.interlace = false
         }
-        self.header = header
+        self.sub_array_bounds = header.sub_array_bounds
     }
 
     mutating
@@ -661,15 +668,14 @@ struct ScanlineIterator
         else
         {
             self.interlace_level    += 1
-            guard self.header.interlace && self.interlace_level < 7
+            guard self.interlace && self.interlace_level < 7
             else
             {
                 return false
             }
 
-            self.scanlines_remaining = self.header.sub_dimensions[self.interlace_level].height - 1
-            let width:Int            = self.header.sub_dimensions[self.interlace_level].width
-            self.bytes_per_scanline  = self.header.scanline_size(npixels: width)
+            self.scanlines_remaining = self.sub_array_bounds[self.interlace_level].i - 1
+            self.bytes_per_scanline  = self.sub_array_bounds[self.interlace_level].j
             self.first_scanline      = true
             return true
         }
@@ -833,13 +839,13 @@ class _PNGDecoder
         case 0:
             break
         case 1:
-            _PNGDecoder.defilter_sub     (dest, bpp: self.header.bpp)
+            _PNGDecoder.defilter_sub    (dest, bpp: self.header.bpp)
         case 2:
-            _PNGDecoder.defilter_up      (dest, previous_line: reference)
+            _PNGDecoder.defilter_up     (dest, previous_line: reference)
         case 3:
-            _PNGDecoder.defilter_average (dest, previous_line: reference, bpp: self.header.bpp)
+            _PNGDecoder.defilter_average(dest, previous_line: reference, bpp: self.header.bpp)
         case 4:
-            _PNGDecoder.defilter_paeth   (dest, previous_line: reference, bpp: self.header.bpp)
+            _PNGDecoder.defilter_paeth  (dest, previous_line: reference, bpp: self.header.bpp)
         default:
             break // won’t happen
         }
@@ -977,16 +983,15 @@ func bytestamp(src_pos:Int, dest_pos:Int, bytes:Int, source:[UInt8], dest:inout 
 public
 func deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
 {
-    let di_scanline_size = header.scanline_size(npixels: header.width)
-    var pixels:[[UInt8]] = [[UInt8]](repeating: [UInt8](repeating: 0, count: di_scanline_size), count: header.height)
+    let (k, h):(Int, Int) = header.sub_array_bounds[7]
+    var pixels:[[UInt8]] = [[UInt8]](repeating: [UInt8](repeating: 0, count: h), count: k)
 
     var l:Int = 0
-    for ((width: h, height: k), (u: u, v: v)) in zip(header.sub_dimensions, header.sub_striders)
+    for (sub_array_bound, (u: u, v: v)) in zip(header.sub_array_bounds, header.sub_striders)
     {
-        let expected_scanline_size = header.scanline_size(npixels: h)
-        for (scanline, dest_pixel_row) in zip(scanlines[l..<(l + k)], v)
+        for (scanline, dest_pixel_row) in zip(scanlines[l..<(l + sub_array_bound.i)], v)
         {
-            guard scanline.count == expected_scanline_size
+            guard scanline.count == sub_array_bound.j
             else
             {
                 throw PNGWriteError.InterlaceDimensionError
@@ -1012,7 +1017,7 @@ func deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
                 }
             }
         }
-        l += k
+        l += sub_array_bound.i
     }
     return pixels
 }
@@ -1074,6 +1079,7 @@ func add_input_to_zstream(_ stream:inout z_stream_s, input:[UInt8])
     stream.next_in = UnsafeMutablePointer<UInt8>(mutating: input)
 }
 
+// this function will be unnecessary when the encoder is refactored into buffer pointers
 func allocate_output_for_zstream(_ stream:inout z_stream_s, output_buffer:inout [UInt8], empty:Int)
 {
     stream.avail_out = UInt32(empty)
@@ -1169,26 +1175,6 @@ class ZInflator
 
         sentinel = inflate_status == Z_STREAM_END
         return self.stream.avail_out
-    }
-
-    func get_output(_ output_buffer:inout [UInt8], empty:Int) throws -> (empty:Int, the_end:Bool)
-    {
-        var inflate_status:Int32 = Z_OK
-        allocate_output_for_zstream(&self.stream, output_buffer: &output_buffer, empty: empty)
-        inflate_status = inflate(&self.stream, Z_NO_FLUSH)
-        assert(inflate_status != Z_STREAM_ERROR) // this should never happen
-        switch inflate_status
-        {
-            case Z_NEED_DICT:
-                throw PNGDecompressionError.MissingDictionaryError
-            case Z_DATA_ERROR:
-                throw PNGDecompressionError.DataError
-            case Z_MEM_ERROR:
-                throw PNGDecompressionError.MemoryError
-            default:
-                break
-        }
-        return (Int(self.stream.avail_out), inflate_status == Z_STREAM_END)
     }
 }
 
