@@ -455,7 +455,7 @@ public final
 class PNGEncoder
 {
     private
-    var f:FilePointer
+    var stream:FilePointer
 
     private
     let z_iterator:ZDeflator
@@ -474,9 +474,9 @@ class PNGEncoder
     public
     init (path:String, header:PNGImageHeader, chunk_size:Int = 1 << 16) throws
     {
-        if let f = fopen(path, "wb")
+        if let stream = fopen(path, "wb")
         {
-            self.f = f
+            self.stream = stream
         }
         else
         {
@@ -494,14 +494,14 @@ class PNGEncoder
 
     deinit
     {
-        fclose(self.f)
+        fclose(self.stream)
     }
 
     public
     func initialize() throws
     {
-        try write_png_buffer(self.f, buffer: PNGImageHeader.signature)
-        try png_write_chunk(f: self.f, chunk_data: self.header.write(), chunk_type: .IHDR)
+        try write_png_buffer(self.stream, buffer: PNGImageHeader.signature)
+        try png_write_chunk(f: self.stream, chunk_data: self.header.write(), chunk_type: .IHDR)
     }
 
     public
@@ -558,9 +558,9 @@ class PNGEncoder
         assert(the_end) // the end must come now
         if self.chunk_empty != self.chunk_data.count // meaning, there is still data in the buffer
         {
-            try png_write_chunk(f: self.f, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_empty)), chunk_type: .IDAT)
+            try png_write_chunk(f: self.stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_empty)), chunk_type: .IDAT)
         }
-        try png_write_chunk(f: self.f, chunk_data: [], chunk_type: .IEND)
+        try png_write_chunk(f: self.stream, chunk_data: [], chunk_type: .IEND)
     }
 
     private
@@ -569,7 +569,7 @@ class PNGEncoder
         if self.chunk_empty == 0
         {
             /* emit chunk */
-            try png_write_chunk(f: self.f, chunk_data: self.chunk_data, chunk_type: .IDAT)
+            try png_write_chunk(f: self.stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
             self.chunk_empty = self.chunk_size
             return true
         }
@@ -686,23 +686,16 @@ struct ScanlineIterator
     }
 }
 
-final
-class _PNGDecoder
+struct Decoder
 {
     private
-    var f:UnsafeMutablePointer<FILE>
+    var conditions = PNGConditions(),
+        current_chunk_type:PNGChunkType = .__FIRST__
 
     private
-    var conditions = PNGConditions()
-    private
-    var current_chunk_type:PNGChunkType = .__FIRST__
+    var z_iterator:ZInflator,
+        stream_exhausted:Bool = false
 
-    private
-    let z_iterator:ZInflator
-    private
-    var stream_exhausted:Bool = false
-
-    public
     let header:PNGImageHeader
 
     /*
@@ -711,26 +704,17 @@ class _PNGDecoder
     */
 
     public
-    init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
+    init(stream:FilePointer, look_for:[PNGChunkType] = [.IDAT]) throws
     {
-        if let f = fopen(path, "rb")
-        {
-            self.f = f
-        }
-        else
-        {
-            throw PNGReadError.FileError
-        }
-
         /* check if it's, you know, actually a PNG */
-        guard (try read_png_buffer(f, 8) == PNGImageHeader.signature) // compare with PNG signature
+        guard (try read_png_buffer(stream, 8) == PNGImageHeader.signature) // compare with PNG signature
         else
         {
             throw PNGReadError.FiletypeError
         }
 
         /* read the image header */
-        if let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IHDR]))
+        if let (chunk_type, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IHDR]))
         {
             assert(chunk_type == .IHDR) // this should already be verified from the PNG conditions struct
             self.current_chunk_type = .IHDR
@@ -743,16 +727,11 @@ class _PNGDecoder
 
         self.z_iterator = try ZInflator()
 
-        try self.read_png_info(look_for: look_for)
+        try self.read_png_info(stream: stream, look_for: look_for)
     }
 
-    deinit
-    {
-        fclose(self.f)
-    }
-
-    private
-    func read_png_info(look_for:[PNGChunkType]) throws // only ever call this function ONCE!
+    private mutating
+    func read_png_info(stream:FilePointer, look_for:[PNGChunkType]) throws // only ever call this function ONCE!
     {
         assert(self.current_chunk_type != .IDAT)
         var active_chunks:Set<PNGChunkType> = Set(look_for)
@@ -760,7 +739,7 @@ class _PNGDecoder
 
         outer_loop: while true
         {
-            if let (chunk_type, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: active_chunks)
+            if let (chunk_type, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: active_chunks)
             {
                 self.current_chunk_type = chunk_type
 
@@ -780,7 +759,8 @@ class _PNGDecoder
         }
     }
 
-    func decompress_scanline(dest:UnsafeMutableBufferPointer<UInt8>) throws -> UInt8
+    mutating
+    func decompress_scanline(stream:FilePointer, dest:UnsafeMutableBufferPointer<UInt8>) throws -> UInt8
     {
         var filter_byte:UInt8 = 0
         while true
@@ -798,7 +778,7 @@ class _PNGDecoder
             }
 
             // if the inflator is out of input
-            guard let (_, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
+            guard let (_, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
             else
             {
                 // if something besides an IDAT chunk shows up, that’s an invalid PNGChunkType
@@ -817,7 +797,7 @@ class _PNGDecoder
             }
 
             // if the inflator is out of input
-            guard let (_, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
+            guard let (_, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
             else
             {
                 // if something besides an IDAT chunk shows up, that’s an invalid PNGChunkType
@@ -839,13 +819,13 @@ class _PNGDecoder
         case 0:
             break
         case 1:
-            _PNGDecoder.defilter_sub    (dest, bpp: self.header.bpp)
+            Decoder.defilter_sub    (dest, bpp: self.header.bpp)
         case 2:
-            _PNGDecoder.defilter_up     (dest, previous_line: reference)
+            Decoder.defilter_up     (dest, previous_line: reference)
         case 3:
-            _PNGDecoder.defilter_average(dest, previous_line: reference, bpp: self.header.bpp)
+            Decoder.defilter_average(dest, previous_line: reference, bpp: self.header.bpp)
         case 4:
-            _PNGDecoder.defilter_paeth  (dest, previous_line: reference, bpp: self.header.bpp)
+            Decoder.defilter_paeth  (dest, previous_line: reference, bpp: self.header.bpp)
         default:
             break // won’t happen
         }
@@ -903,9 +883,11 @@ public final
 class PNGDecoder
 {
     private
-    let decoder:_PNGDecoder
+    var stream:FilePointer
+
     private
-    var scanline_iter:ScanlineIterator
+    var decoder:Decoder,
+        scanline_iter:ScanlineIterator
 
     private
     var reference_line:[UInt8] = []
@@ -918,9 +900,23 @@ class PNGDecoder
     public
     init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
     {
-        self.decoder        = try _PNGDecoder(path: path, look_for: look_for)
+        if let stream = fopen(path, "rb")
+        {
+            self.stream = stream
+        }
+        else
+        {
+            throw PNGReadError.FileError
+        }
+
+        self.decoder        = try Decoder(stream: stream, look_for: look_for)
         self.scanline_iter  = ScanlineIterator(header: self.decoder.header)
-        self.zero_line      = self.decoder.header.make_zero_line()
+        self.zero_line      = self.scanline_iter.make_zero_line()
+    }
+
+    deinit
+    {
+        fclose(self.stream)
     }
 
     public
@@ -937,7 +933,7 @@ class PNGDecoder
         {
             (bp) in
 
-            let filter:UInt8 = try self.decoder.decompress_scanline(dest: bp)
+            let filter:UInt8 = try self.decoder.decompress_scanline(stream: self.stream, dest: bp)
             if self.scanline_iter.first_scanline
             {
                 self.zero_line.withUnsafeBufferPointer
@@ -1088,6 +1084,7 @@ func allocate_output_for_zstream(_ stream:inout z_stream_s, output_buffer:inout 
 
 final
 class ZInflator
+// we cannot lower this to a struct because otherwise Swift clobbers Zlib’s internal state with its value semantics
 {
     private
     var stream:z_stream_s
