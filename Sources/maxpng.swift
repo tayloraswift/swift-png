@@ -129,7 +129,9 @@ enum PNGChunkType:String
          tIME,
          iTXt,
          tEXt,
-         zTXT
+         zTXT,
+
+         __INTERRUPTOR__
 
     init?(buffer:[UInt8])
     {
@@ -384,7 +386,7 @@ struct PNGImageHeader:CustomStringConvertible
             throw PNGReadError.PNGSyntaxError("Filter method does not equal 0")
         }
         let interlace:Bool
-        let interlace_i = Int(data[12])
+        let interlace_i = Int(data[12]) // TODO: turn this into a switch case
         if interlace_i == 0
         {
             interlace = false
@@ -422,6 +424,11 @@ struct PNGImageHeader:CustomStringConvertible
     {
         let scanline_bits_n = npixels * self.channels * self.bit_depth
         return (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
+    }
+
+    func make_zero_line() -> [UInt8]
+    {
+        return [UInt8](repeating: 0, count: self.scanline_size(npixels: self.interlace ? self.sub_dimensions[6].width : self.width)) // the most zeros we will ever need
     }
 }
 
@@ -620,8 +627,61 @@ class PNGEncoder
     }
 }
 
-public final
-class PNGDecoder
+struct ScanlineIterator
+{
+    private
+    let header:PNGImageHeader // factor out later
+
+    private(set)
+    var interlace_level:Int = 0,
+        bytes_per_scanline:Int,
+        scanlines_remaining:Int,
+        first_scanline:Bool = true
+
+    init(header:PNGImageHeader)
+    {
+        if header.interlace
+        {
+            self.scanlines_remaining = header.sub_dimensions[0].height
+            let width:Int            = header.sub_dimensions[0].width
+            self.bytes_per_scanline  = header.scanline_size(npixels: width)
+        }
+        else
+        {
+            self.scanlines_remaining = header.height
+            self.bytes_per_scanline  = header.scanline_size(npixels: header.width)
+        }
+        self.header = header
+    }
+
+    mutating
+    func update_scanline_size() -> Bool // return false if iteration has reached the end
+    {
+        guard self.scanlines_remaining > 0
+        else
+        {
+            self.interlace_level    += 1
+            guard self.header.interlace && self.interlace_level < 7
+            else
+            {
+                return false
+            }
+
+            self.scanlines_remaining = self.header.sub_dimensions[self.interlace_level].height - 1
+            let width:Int            = self.header.sub_dimensions[self.interlace_level].width
+            self.bytes_per_scanline  = self.header.scanline_size(npixels: width)
+            self.first_scanline      = true
+            return true
+        }
+
+        self.first_scanline = false
+        self.scanlines_remaining -= 1
+        return true
+    }
+}
+
+final
+class _PNGDecoder
 {
     private
     var f:UnsafeMutablePointer<FILE>
@@ -634,15 +694,10 @@ class PNGDecoder
     private
     let z_iterator:ZInflator
     private
-    var the_end:Bool = false
-    private
-    var defiltered0:[UInt8],
-        scanline1:[UInt8]
-
-    private
-    var interlace_level:Int = 0,
-        scanline_bytes:Int,
-        scanline_rows_remaining:Int
+    var stream_exhausted:Bool = false
+    //private
+    //var defiltered0:[UInt8],
+    //    scanline1:[UInt8]
 
     public
     let header:PNGImageHeader
@@ -683,21 +738,10 @@ class PNGDecoder
             throw PNGReadError.MissingHeaderError
         }
 
-        /* do the interlacing math */
-        if self.header.interlace
-        {
-            self.scanline_rows_remaining = self.header.sub_dimensions[0].height
-            self.scanline_bytes          = self.header.scanline_size(npixels: self.header.sub_dimensions[0].width)
-        }
-        else
-        {
-            self.scanline_rows_remaining = self.header.height
-            self.scanline_bytes          = self.header.scanline_size(npixels: self.header.width)
-        }
         self.z_iterator = try ZInflator()
         /* initialize the scanline buffers */
-        self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
-        self.scanline1 = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
+        //self.defiltered0 = [UInt8](repeating: 0, count: self.bytes_per_scanline)
+        //self.scanline1 = [UInt8](repeating: 0, count: self.bytes_per_scanline + 1) // +1 is for the filter byte
 
         try self.read_png_info(look_for: look_for)
     }
@@ -736,21 +780,22 @@ class PNGDecoder
         }
     }
 
+    /*
     private
     func read_scanline() throws
     {
         /* the subimage incrementor occurs *before* the rest of the function so that
            the last scanline of the subimage doesn’t get overwritten before it is emitted */
-        if self.scanline_rows_remaining <= 0
+        if self.subimage_rows_remaining <= 0
         {
             self.interlace_level += 1
             let width:Int = self.header.sub_dimensions[self.interlace_level].width
-            self.scanline_bytes          = self.header.scanline_size(npixels: width)
-            self.scanline_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
-            if self.scanline_bytes > 0
+            self.bytes_per_scanline          = self.header.scanline_size(npixels: width)
+            self.subimage_rows_remaining = self.header.sub_dimensions[self.interlace_level].height
+            if self.bytes_per_scanline > 0
             {
-                self.defiltered0 = [UInt8](repeating: 0, count: self.scanline_bytes)
-                self.scanline1   = [UInt8](repeating: 0, count: self.scanline_bytes + 1) // +1 is for the filter byte
+                self.defiltered0 = [UInt8](repeating: 0, count: self.bytes_per_scanline)
+                self.scanline1   = [UInt8](repeating: 0, count: self.bytes_per_scanline + 1) // +1 is for the filter byte
             }
             else
             {
@@ -762,13 +807,13 @@ class PNGDecoder
         var empty:Int = self.scanline1.count
         while true
         {
-            (empty, self.the_end) = try self.z_iterator.get_output(&self.scanline1, empty: empty)
+            (empty, self.stream_exhausted) = try self.z_iterator.get_output(&self.scanline1, empty: empty)
             /* if the output is full, break loop, else add more input */
             if empty == 0
             {
                 break
             }
-            guard !self.the_end
+            guard !self.stream_exhausted
             else
             {
                 throw PNGReadError.PrematureEOSError
@@ -781,87 +826,223 @@ class PNGDecoder
             self.z_iterator.add_input(chunk_data)
         }
 
-        self.scanline_rows_remaining -= 1
+        self.subimage_rows_remaining -= 1
+    }
+    */
+
+    func decompress_scanline(dest:UnsafeMutableBufferPointer<UInt8>) throws -> UInt8
+    {
+        var filter_byte:UInt8 = 0
+        while true
+        {
+            if let output_byte:UInt8 = try self.z_iterator.get_output_byte(sentinel: &self.stream_exhausted)
+            {
+                filter_byte = output_byte
+                break;
+            }
+
+            guard !self.stream_exhausted
+            else
+            {
+                throw PNGReadError.PrematureEOSError
+            }
+
+            // if the inflator is out of input
+            guard let (_, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
+            else
+            {
+                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunkType
+                throw PNGReadError.ChunkOrderingError(.__INTERRUPTOR__)
+            }
+            self.z_iterator.add_input(chunk_data)
+        }
+
+        self.z_iterator.set_output(dest: dest)
+        while try self.z_iterator.get_output_bytes(sentinel: &self.stream_exhausted) > 0
+        {
+            guard !self.stream_exhausted
+            else
+            {
+                throw PNGReadError.PrematureEOSError
+            }
+
+            // if the inflator is out of input
+            guard let (_, chunk_data) = try png_read_chunk(f: self.f, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
+            else
+            {
+                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunkType
+                throw PNGReadError.ChunkOrderingError(.__INTERRUPTOR__)
+            }
+            self.z_iterator.add_input(chunk_data)
+        }
+
+        return filter_byte
     }
 
-    public
-    func next_scanline() throws -> [UInt8]?
+    // make NO assumptions about the `.count` property of the reference line;
+    // it is often greater than the size of the actual data
+    func defilter_scanline<ReferenceLine:Collection>(dest:UnsafeMutableBufferPointer<UInt8>, reference:ReferenceLine, filter:UInt8)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
-        guard self.current_chunk_type == .IDAT
-        else
-        {
-            fputs("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels", stderr)
-            return nil
-        }
-        guard !self.the_end
-        else
-        {
-            return nil
-        }
-        try self.read_scanline()
-        let filter = self.scanline1[0]
-        var defiltered1 = Array(self.scanline1.dropFirst(1))
         switch filter
         {
         case 0:
             break
         case 1:
-            PNGDecoder.defilter_sub(&defiltered1, bpp: self.header.bpp)
+            _PNGDecoder.defilter_sub     (dest, bpp: self.header.bpp)
         case 2:
-            PNGDecoder.defilter_up(&defiltered1, defiltered0: self.defiltered0)
+            _PNGDecoder.defilter_up      (dest, previous_line: reference)
         case 3:
-            PNGDecoder.defilter_average(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
+            _PNGDecoder.defilter_average (dest, previous_line: reference, bpp: self.header.bpp)
         case 4:
-            PNGDecoder.defilter_paeth(&defiltered1, defiltered0: self.defiltered0, bpp: self.header.bpp)
+            _PNGDecoder.defilter_paeth   (dest, previous_line: reference, bpp: self.header.bpp)
         default:
             break // won’t happen
         }
-        self.defiltered0 = defiltered1
-        return defiltered1
     }
+    /*
+    func next_scanline(buffer:inout [UInt8]) throws -> Bool
+    {
+        guard self.current_chunk_type == .IDAT
+        else
+        {
+            fputs("attempt to read scanlines without .IDAT flag set, please call `PNGDataIterator.init()` with `.IDAT` in the `look_for` field to read image pixels", stderr)
+            return false
+        }
+        guard !self.stream_exhausted
+        else
+        {
+            return false
+        }
+        try self.read_scanline()
+        let filter = self.scanline1[0]
+        /*
+        switch filter
+        {
+        case 0:
+            break
+        case 1:
+            PNGDecoder.defilter_sub(&buffer, src: self.scanline1.dropFirst(1), bpp: self.header.bpp)
+        case 2:
+            PNGDecoder.defilter_up(&buffer, src: self.scanline1.dropFirst(1), defiltered0: self.defiltered0)
+        case 3:
+            PNGDecoder.defilter_average(&buffer, src: self.scanline1.dropFirst(1), defiltered0: self.defiltered0, bpp: self.header.bpp)
+        case 4:
+            PNGDecoder.defilter_paeth(&buffer, src: self.scanline1.dropFirst(1), defiltered0: self.defiltered0, bpp: self.header.bpp)
+        default:
+            break // won’t happen
+        }
+        */
+        self.defiltered0 = buffer
+        return true
+    }
+    */
 
     private static
-    func defilter_sub(_ defiltered1:inout [UInt8], bpp:Int)
+    func defilter_sub(_ buffer:UnsafeMutableBufferPointer<UInt8>, bpp:Int)
     {
-        for i in bpp..<defiltered1.count
+        for i in bpp..<buffer.count
         {
-            defiltered1[i] = defiltered1[i] &+ defiltered1[i - bpp]
+            buffer[i] = buffer[i] &+ buffer[i - bpp]
         }
     }
 
     private static
-    func defilter_up(_ defiltered1:inout [UInt8], defiltered0:[UInt8])
+    func defilter_up<ReferenceLine:Collection>(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:ReferenceLine)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
-        for i in 0..<defiltered1.count
+        for i in 0..<buffer.count
         {
-            defiltered1[i] = defiltered1[i] &+ defiltered0[i]
+            buffer[i] = buffer[i] &+ previous_line[i]
         }
     }
 
     private static
-    func defilter_average(_ defiltered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    func defilter_average<ReferenceLine:Collection>(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:ReferenceLine, bpp:Int)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
         for i in 0..<bpp
         {
-            defiltered1[i] = defiltered1[i] &+ defiltered0[i] >> 1
+            buffer[i] = buffer[i] &+ previous_line[i] >> 1
         }
-        for i in bpp..<defiltered1.count
+        for i in bpp..<buffer.count
         {
-            defiltered1[i] = defiltered1[i] &+ UInt8((UInt16(defiltered1[i - bpp]) + UInt16(defiltered0[i])) >> 1) // the second part will never overflow because of the right shift
+            buffer[i] = buffer[i] &+ UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i])) >> 1) // the second part will never overflow because of the right shift
         }
     }
 
     private static
-    func defilter_paeth(_ defiltered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    func defilter_paeth<ReferenceLine:Collection>(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:ReferenceLine, bpp:Int)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
         for i in 0..<bpp
         {
-            defiltered1[i] = defiltered1[i] &+ paeth(0, defiltered0[i], 0)
+            buffer[i] = buffer[i] &+ paeth(0, previous_line[i], 0)
         }
-        for i in bpp..<defiltered1.count
+        for i in bpp..<buffer.count
         {
-            defiltered1[i] = defiltered1[i] &+ paeth(defiltered1[i - bpp], defiltered0[i], defiltered0[i - bpp])
+            buffer[i] = buffer[i] &+ paeth(buffer[i - bpp], previous_line[i], previous_line[i - bpp])
         }
+    }
+}
+
+public final
+class PNGDecoder
+{
+    private
+    let decoder:_PNGDecoder
+    private
+    var scanline_iter:ScanlineIterator
+
+    private
+    var reference_line:[UInt8] = []
+    private
+    let zero_line:[UInt8]
+
+    public
+    var header:PNGImageHeader { return self.decoder.header }
+
+    public
+    init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
+    {
+        self.decoder        = try _PNGDecoder(path: path, look_for: look_for)
+        self.scanline_iter  = ScanlineIterator(header: self.decoder.header)
+        self.zero_line      = self.decoder.header.make_zero_line()
+    }
+
+    public
+    func next_scanline() throws -> [UInt8]?
+    {
+        guard self.scanline_iter.update_scanline_size()
+        else
+        {
+            return nil
+        }
+
+        var buffer:[UInt8] = [UInt8](repeating: 0, count: self.scanline_iter.bytes_per_scanline)
+        try buffer.withUnsafeMutableBufferPointer
+        {
+            (bp) in
+
+            let filter:UInt8 = try self.decoder.decompress_scanline(dest: bp)
+            if self.scanline_iter.first_scanline
+            {
+                self.zero_line.withUnsafeBufferPointer
+                {
+                    self.decoder.defilter_scanline(dest: bp, reference: $0, filter: filter)
+                }
+            }
+            else
+            {
+                self.reference_line.withUnsafeBufferPointer
+                {
+                    self.decoder.defilter_scanline(dest: bp, reference: $0, filter: filter)
+                }
+            }
+        }
+
+        self.reference_line = buffer
+        return buffer
     }
 }
 
@@ -1022,11 +1203,72 @@ class ZInflator
         add_input_to_zstream(&self.stream, input: input)
     }
 
+    func set_output(dest:UnsafeMutableBufferPointer<UInt8>)
+    {
+        self.stream.avail_out = UInt32(dest.count)
+        self.stream.next_out  = dest.baseAddress
+    }
+
+    func get_output_byte(sentinel:inout Bool) throws -> UInt8?
+    {
+        let _byte = UnsafeMutablePointer<UInt8>.allocate(capacity: 1)
+        defer { _byte.deallocate(capacity: 1) }
+
+        var inflate_status:Int32 = Z_OK
+        self.stream.avail_out = 1
+        self.stream.next_out = _byte
+
+        inflate_status = inflate(&self.stream, Z_NO_FLUSH)
+        assert(inflate_status != Z_STREAM_ERROR) // this should never happen
+        switch inflate_status
+        {
+            case Z_NEED_DICT:
+                throw PNGDecompressionError.MissingDictionaryError
+            case Z_DATA_ERROR:
+                throw PNGDecompressionError.DataError
+            case Z_MEM_ERROR:
+                throw PNGDecompressionError.MemoryError
+            default:
+                break
+        }
+
+        sentinel = inflate_status == Z_STREAM_END
+
+        guard self.stream.avail_out == 0
+        else
+        {
+            return nil
+        }
+
+        return _byte.pointee
+    }
+
+    func get_output_bytes(sentinel:inout Bool) throws -> UInt32
+    {
+        var inflate_status:Int32 = Z_OK
+        inflate_status = inflate(&self.stream, Z_NO_FLUSH)
+        assert(inflate_status != Z_STREAM_ERROR) // this should never happen
+        switch inflate_status
+        {
+            case Z_NEED_DICT:
+                throw PNGDecompressionError.MissingDictionaryError
+            case Z_DATA_ERROR:
+                throw PNGDecompressionError.DataError
+            case Z_MEM_ERROR:
+                throw PNGDecompressionError.MemoryError
+            default:
+                break
+        }
+
+        sentinel = inflate_status == Z_STREAM_END
+        return self.stream.avail_out
+    }
+
     func get_output(_ output_buffer:inout [UInt8], empty:Int) throws -> (empty:Int, the_end:Bool)
     {
         var inflate_status:Int32 = Z_OK
         allocate_output_for_zstream(&self.stream, output_buffer: &output_buffer, empty: empty)
-        inflate_status = inflate(&stream, Z_NO_FLUSH)
+        inflate_status = inflate(&self.stream, Z_NO_FLUSH)
         assert(inflate_status != Z_STREAM_ERROR) // this should never happen
         switch inflate_status
         {
