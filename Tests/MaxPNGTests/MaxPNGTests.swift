@@ -9,7 +9,7 @@ func skip_png(_ rpath:String) throws
 }
 
 public
-func write_png(_ rpath:String, _ scanlines:[[UInt8]], header:PNGImageHeader) throws
+func write_png(_ rpath:String, _ scanlines:[[UInt8]], header:PNGHeader) throws
 {
     let path = absolute_unix_path(rpath)
     let png = try PNGEncoder(path: path, header: header)
@@ -57,10 +57,10 @@ func decompose_png(_ rpath:String, output:String) throws
     var l:Int = 0
     for (offset: i, element: (width: h, height: k)) in png_decode.header.sub_dimensions.dropLast().enumerated()
     {
-        let frag_header = try PNGImageHeader(width: h, height: k,
-                                            bit_depth: png_decode.header.bit_depth,
-                                            color_type: png_decode.header.color_type,
-                                            interlace: false)
+        let frag_header = try PNGHeader(width: h, height: k,
+                                        bit_depth: png_decode.header.bit_depth,
+                                        color_type: png_decode.header.color_type,
+                                        interlace: false)
         let png_encode = try PNGEncoder(path: "\(out)_subimage_\(i).png", header: frag_header)
         try png_encode.initialize()
         for scanline in scanlines[l..<(l + k)]
@@ -71,10 +71,10 @@ func decompose_png(_ rpath:String, output:String) throws
         l += k
     }
 
-    let deinterlaced_header = try PNGImageHeader(width: png_decode.header.width, height: png_decode.header.height,
-                                        bit_depth: png_decode.header.bit_depth,
-                                        color_type: png_decode.header.color_type,
-                                        interlace: false)
+    let deinterlaced_header = try PNGHeader(width: png_decode.header.width, height: png_decode.header.height,
+                                            bit_depth: png_decode.header.bit_depth,
+                                            color_type: png_decode.header.color_type,
+                                            interlace: false)
     let deinterlaced_encode = try PNGEncoder(path: out, header: deinterlaced_header)
     try deinterlaced_encode.initialize()
     for scanline in try deinterlace(scanlines: scanlines, header: png_decode.header)

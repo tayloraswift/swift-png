@@ -25,10 +25,10 @@ while let scanline = try png.next_scanline()
 
 You can also use it to create your own PNG files:
 ````swift
-let my_png_settings = PNGImageHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false)
-let my_png_data:[[UInt8]] = [   [0  ,0  ,0  ,    255,255,255,    255,0  ,255],
-                                [255,255,255,    0  ,0  ,0  ,    0  ,255,0  ],
-                                [120,120,255,    150,120,255,    180,120,255] ]
+let my_png_settings = PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false)
+let my_png_data:[[UInt8]] = [[0  ,0  ,0  ,    255,255,255,    255,0  ,255],
+                             [255,255,255,    0  ,0  ,0  ,    0  ,255,0  ],
+                             [120,120,255,    150,120,255,    180,120,255]]
 let out = try PNGEncoder(path: "/absolute/path/to/destination.png", header: my_png_settings)
 try out.initialize()
 for scanline in my_png_data
@@ -46,7 +46,7 @@ One more thing: MaxPNG works on arrays of `UInt8` bytes; it does not split the o
 
 ````swift
 public
-struct PNGImageHeader
+struct PNGHeader
 {
     public
     enum ColorType:Int
@@ -77,7 +77,7 @@ At the moment, indexed-color PNGs are unsupported. Tragic. Hmu on the issues pag
 
 ## FAQ
 
-### Usage 
+### Usage
 
 > What’s the difference between bit depth and color type?
 
@@ -96,9 +96,9 @@ MaxPNG will read interlaced images as a series of subimage scanlines. To recover
 Use the `deinterlace()` function.
 
 ````
-deinterlace(scanlines:[[UInt8]], header:PNGImageHeader) throws -> [[UInt8]]
+deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
 ````
-The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGImageHeader` struct.
+The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGHeader` struct.
 
 ### General
 
