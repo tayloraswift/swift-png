@@ -6,7 +6,7 @@ typealias FilePointer = UnsafeMutablePointer<FILE>
 public
 enum PNGReadError:Error
 {
-    case FileError,
+    case FileError(String),
          FiletypeError,
          IncompleteChunkError,
          UnexpectedCriticalChunkError(String),
@@ -479,7 +479,7 @@ class PNGEncoder
         }
         else
         {
-            throw PNGReadError.FileError
+            throw PNGReadError.FileError(path)
         }
 
         self.chunk_size = chunk_size
@@ -627,7 +627,6 @@ class PNGEncoder
     private static
     func score(_ filtered:[UInt8]) -> Int
     {
-        //return filtered.reduce(0, {$0 + abs(Int(Int8(bitPattern: $1)))})
         guard filtered.count > 0
         else
         {
@@ -924,7 +923,7 @@ class PNGDecoder
         }
         else
         {
-            throw PNGReadError.FileError
+            throw PNGReadError.FileError(path)
         }
 
         self.decoder        = try Decoder(stream: stream, look_for: look_for)
@@ -971,6 +970,18 @@ class PNGDecoder
         self.reference_line = buffer
         return buffer
     }
+}
+
+func bitval_extract(src_pos:Int, bits:Int, source:[UInt8]) -> UInt8
+{
+    let src_byte_offset:Int  = src_pos >> 3
+    let src_bit_offset:UInt8 = UInt8(src_pos & 7)
+    var src_byte:UInt8       = source[src_byte_offset]
+    /* mask out left */
+    src_byte <<= src_bit_offset
+    /* mask out right */
+    src_byte >>= (8 - UInt8(bits))
+    return src_byte
 }
 
 func bitstamp(src_pos:Int, dest_pos:Int, bits:Int, source:[UInt8], dest:inout [UInt8])
