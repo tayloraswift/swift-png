@@ -1,5 +1,5 @@
-import MaxPNGTests
-import MaxPNG
+@testable import MaxPNGTests
+@testable import MaxPNG
 import Glibc
 
 let interlace_test_in:String = "interlace.png",
@@ -8,6 +8,9 @@ let interlace_test_in:String = "interlace.png",
     image_test_out:String = "taylor_reconverted.png"
 
 var passed:Bool = true
+
+//let data:[RGBA<UInt16>] = load_rgb_data(absolute_path: absolute_unix_path("Tests/MaxPNGTests/unit/basi0g04.rgba"), npixels: 32*32)
+//print(data)
 
 try decompose_png("Tests/" + interlace_test_in, output: "Tests/" + interlace_test_out)
 try reencode_png_stream("Tests/" + image_test_in, output: "Tests/" + image_test_out)
