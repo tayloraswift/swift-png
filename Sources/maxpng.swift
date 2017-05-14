@@ -43,6 +43,31 @@ enum PNGCompressionError:Error
     case StreamError
 }
 
+public
+struct RGBA<Pixel:UnsignedInteger>:CustomStringConvertible
+{
+    public
+    let r:Pixel,
+        g:Pixel,
+        b:Pixel,
+        a:Pixel
+
+    public
+    var description:String
+    {
+        return "(\(self.r), \(self.g), \(self.b), \(self.a))"
+    }
+
+    public
+    init(_ r:Pixel, _ g:Pixel, _ b:Pixel, _ a:Pixel)
+    {
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+    }
+}
+
 struct PNGConditions
 {
     private(set)
@@ -313,21 +338,21 @@ struct PNGHeader:CustomStringConvertible
             channels:Int
         switch self.color_type
         {
-            case .grayscale:
-                allowed_bit_depths = [1, 2, 4, 8, 16]
-                channels = 1
-            case .rgb:
-                allowed_bit_depths = [8, 16]
-                channels = 3
-            case .indexed:
-                allowed_bit_depths = [1, 2, 4, 8]
-                channels = 1
-            case .grayscale_a:
-                allowed_bit_depths = [8, 16]
-                channels = 2
-            case .rgba:
-                allowed_bit_depths = [8, 16]
-                channels = 4
+        case .grayscale:
+            allowed_bit_depths = [1, 2, 4, 8, 16]
+            channels = 1
+        case .rgb:
+            allowed_bit_depths = [8, 16]
+            channels = 3
+        case .indexed:
+            allowed_bit_depths = [1, 2, 4, 8]
+            channels = 1
+        case .grayscale_a:
+            allowed_bit_depths = [8, 16]
+            channels = 2
+        case .rgba:
+            allowed_bit_depths = [8, 16]
+            channels = 4
         }
         guard allowed_bit_depths.contains(bit_depth)
         else
@@ -972,15 +997,70 @@ class PNGDecoder
     }
 }
 
-func bitval_extract(src_pos:Int, bits:Int, source:[UInt8]) -> UInt8
+public
+func rgba32(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt8>]?
 {
-    let src_byte_offset:Int  = src_pos >> 3
-    let src_bit_offset:UInt8 = UInt8(src_pos & 7)
-    var src_byte:UInt8       = source[src_byte_offset]
+    guard header.bit_depth <= 8
+    else
+    {
+        return nil
+    }
+
+    guard header.color_type != .indexed
+    else
+    {
+        fputs("Normalizing indexed PNGs is unsupported\n", stderr)
+        return nil
+    }
+
+    let output:[RGBA<UInt8>]
+    if header.bit_depth < 8 // channels is guaranteed to be 1
+    {
+        output = stride(from: 0, to: raw_data.count << 3, by: header.bit_depth).map
+        {
+            let value:UInt8 = bitval_extract(bit_index: $0, bit_depth: header.bit_depth, source: raw_data)
+            return RGBA(value, value, value, UInt8.max)
+        }
+    }
+    else
+    {
+        switch header.color_type
+        {
+        case .grayscale:
+            output = raw_data.map{ value in RGBA(value, value, value, UInt8.max) }
+        case .rgb:
+            output = stride(from: 0, to: raw_data.count, by: 3).map
+            {
+                RGBA(raw_data[$0], raw_data[$0 + 1], raw_data[$0 + 2], UInt8.max)
+            }
+        case .grayscale_a:
+            output = stride(from: 0, to: raw_data.count, by: 2).map
+            {
+                let value:UInt8 = raw_data[$0]
+                return RGBA(value, value, value, raw_data[$0 + 1])
+            }
+        case .rgba:
+            output = stride(from: 0, to: raw_data.count, by: 4).map
+            {
+                return RGBA(raw_data[$0], raw_data[$0 + 1], raw_data[$0 + 2], raw_data[$0 + 3])
+            }
+        case .indexed:
+            return nil // should never reach here
+        }
+    }
+
+    return output
+}
+
+func bitval_extract(bit_index:Int, bit_depth:Int, source:[UInt8]) -> UInt8
+{
+    let byte_offset:Int  = bit_index >> 3
+    let bit_offset:UInt8 = UInt8(bit_index & 7)
+    var src_byte:UInt8   = source[byte_offset]
     /* mask out left */
-    src_byte <<= src_bit_offset
+    src_byte <<= bit_offset
     /* mask out right */
-    src_byte >>= (8 - UInt8(bits))
+    src_byte >>= (8 - UInt8(bit_depth))
     return src_byte
 }
 
@@ -1068,6 +1148,7 @@ func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGHeader)
 {
     let png_decode = try PNGDecoder(path: absolute_path)
     var png_data:[[UInt8]] = []
+    png_data.reserveCapacity(png_decode.header.height)
     while let scanline = try png_decode.next_scanline()
     {
         png_data.append(scanline)
@@ -1082,9 +1163,22 @@ func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGHeader)
 }
 
 public
+func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
+{
+    let (png_data, png_header):([[UInt8]], PNGHeader) = try decode_png(absolute_path: absolute_path)
+    return (png_data.flatMap{ $0 }, png_header)
+}
+
+public
 func decode_png(relative_path:String) throws -> ([[UInt8]], PNGHeader)
 {
     return try decode_png(absolute_path: absolute_unix_path(relative_path))
+}
+
+public
+func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
+{
+    return try decode_png_contiguous(absolute_path: absolute_unix_path(relative_path))
 }
 
 func create_zstream() -> z_stream_s
