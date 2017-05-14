@@ -44,7 +44,7 @@ enum PNGCompressionError:Error
 }
 
 public
-struct RGBA<Pixel:UnsignedInteger>:CustomStringConvertible
+struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
 {
     public
     let r:Pixel,
@@ -65,6 +65,12 @@ struct RGBA<Pixel:UnsignedInteger>:CustomStringConvertible
         self.g = g
         self.b = b
         self.a = a
+    }
+
+    public static
+    func == (_ lhs:RGBA<Pixel>, _ rhs:RGBA<Pixel>) -> Bool
+    {
+        return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b && lhs.a == rhs.a
     }
 }
 
