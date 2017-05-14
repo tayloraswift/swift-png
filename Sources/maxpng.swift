@@ -682,10 +682,16 @@ struct ScanlineIterator
 
     private
     var interlace_level:Int = 0,
-        scanlines_remaining:Int
+        scanlines_remaining:Int,
+        use_zero_line:UInt8 = 0b10
+
     private(set)
-    var bytes_per_scanline:Int,
-        first_scanline:Bool = true
+    var bytes_per_scanline:Int
+
+    var first_scanline:Bool
+    {
+        return self.use_zero_line != 0
+    }
 
     init(header:PNGHeader)
     {
@@ -719,11 +725,11 @@ struct ScanlineIterator
 
             self.scanlines_remaining = self.sub_array_bounds[self.interlace_level].i - 1
             self.bytes_per_scanline  = self.sub_array_bounds[self.interlace_level].j
-            self.first_scanline      = true
+            self.use_zero_line       = 0b01
             return true
         }
 
-        self.first_scanline = false
+        self.use_zero_line >>= 1 // the first_scanline flag must be set *after* the first call to this function
         self.scanlines_remaining -= 1
         return true
     }
