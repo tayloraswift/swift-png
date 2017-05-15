@@ -100,8 +100,15 @@ struct PNGConditions
 
         switch chunk_type
         {
+        // PLTE must come before bKGD, hIST, and tRNS
+        case .PLTE:
+            if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
+            {
+                throw PNGReadError.ChunkOrderingError(chunk_type)
+            }
+            fallthrough
         // these chunks must occur before PLTE
-        case .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS:
+        case        .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
             if self.seen.contains(.PLTE)
             {
                 throw PNGReadError.ChunkOrderingError(chunk_type)
@@ -118,7 +125,7 @@ struct PNGConditions
 
 
         // these chunks cannot duplicate
-        case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXT:
+        case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME:
             if self.seen.contains(chunk_type)
             {
                 throw PNGReadError.DuplicateChunkError(chunk_type)
@@ -160,7 +167,7 @@ enum PNGChunkType:String
          tIME,
          iTXt,
          tEXt,
-         zTXT,
+         zTXt,
 
          __INTERRUPTOR__
 
