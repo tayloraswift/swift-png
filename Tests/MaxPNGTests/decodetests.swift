@@ -20,9 +20,19 @@ func load_rgba_data<Pixel:UnsignedInteger>(absolute_path:String, n_pixels:Int) -
     return pixel_data
 }
 
-func test_decoded_identical(relative_path_png:String, relative_path_rgba:String) throws -> Bool
+func test_decoded_identical(relative_path_png:String, relative_path_rgba:String) -> Bool
 {
-    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png_contiguous(relative_path: relative_path_png)
+    let (png_data, png_header):([UInt8], PNGHeader)
+    do
+    {
+        (png_data, png_header) = try decode_png_contiguous(relative_path: relative_path_png)
+    }
+    catch
+    {
+        print("Error: \(error)")
+        return false
+    }
+
     guard let rgba_data_png:[RGBA<UInt16>] = rgba64(raw_data: png_data, header: png_header)
     else
     {
@@ -44,9 +54,10 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
 
     if rgba_data_rgba != rgba_data_png
     {
-        print("RGBA : \(rgba_data_rgba[0...10])")
-        print("PNG  : \(rgba_data_png[0...10])")
+        print("RGBA(\(rgba_data_rgba.count)) : \(rgba_data_rgba[0...7])")
+        print("PNG (\(rgba_data_png.count )) : \(rgba_data_png[0...7])")
     }
+
     return rgba_data_rgba == rgba_data_png
 }
 
@@ -56,18 +67,7 @@ func run_tests(test_cases:[String])
     {
         let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_case).png"
         let path_rgba:String = "Tests/MaxPNGTests/unit/rgba/\(test_case).png.rgba"
-        let pass:Bool
-        do
-        {
-            pass = try test_decoded_identical(relative_path_png: path_png, relative_path_rgba: path_rgba)
-        }
-        catch
-        {
-            print("Error: \(error)")
-            continue
-        }
-
-        if pass
+        if test_decoded_identical(relative_path_png: path_png, relative_path_rgba: path_rgba)
         {
             print("\(green_bold)(\(i)) test '\(test_case)' passed\(color_off)\n")
         }

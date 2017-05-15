@@ -23,7 +23,7 @@ try write_png("Tests/output.png", [[0, 0, 0, 255, 255, 255, 255, 0, 255], [255, 
                 header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
 
 print("Testing images \(image_test_ref) == \(image_test_out)")
-if try test_decoded_identical(relative_path_png: "Tests/" + image_test_out, relative_path_rgba: "Tests/" + image_test_ref)
+if test_decoded_identical(relative_path_png: "Tests/" + image_test_out, relative_path_rgba: "Tests/" + image_test_ref)
 {
     print("images identical")
     passed = passed && true
@@ -35,7 +35,7 @@ else
 }
 
 print("Testing images \(interlace_test_ref) == \(interlace_test_out)")
-if try test_decoded_identical(relative_path_png: "Tests/" + interlace_test_out, relative_path_rgba: "Tests/" + interlace_test_ref)
+if test_decoded_identical(relative_path_png: "Tests/" + interlace_test_out, relative_path_rgba: "Tests/" + interlace_test_ref)
 {
     print("images identical")
     passed = passed && true

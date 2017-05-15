@@ -315,11 +315,14 @@ struct PNGHeader:CustomStringConvertible
     let channels:Int
 
     public
-    let sub_dimensions:[(width:Int, height:Int)]
+    let sub_dimensions:[(width:Int, height:Int)],
+        sub_data_ranges:[Range<Int>]
 
     let sub_striders:[(u:StrideTo<Int>, v:StrideTo<Int>)],
         sub_array_bounds:[(i:Int, j:Int)],
-        bpp:Int
+        bpp:Int,
+        interlaced_data_size:Int,
+        noninterlaced_data_size:Int
 
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
@@ -398,6 +401,18 @@ struct PNGHeader:CustomStringConvertible
             let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
             return (i: $0.height, j: scanline_bytes_n)
         }
+
+        var accumulator:Int = 0
+        self.sub_data_ranges = self.sub_array_bounds.dropLast().map
+        {
+            let upper:Int = accumulator + $0.i * $0.j
+            let range:Range<Int> = accumulator ..< upper
+            accumulator = upper
+            return range
+        }
+
+        self.interlaced_data_size = accumulator
+        self.noninterlaced_data_size = self.sub_array_bounds[7].i * self.sub_array_bounds[7].j
     }
 
     init(_ data:[UInt8]) throws
@@ -954,7 +969,7 @@ class PNGDecoder
     public
     init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
     {
-        if let stream = fopen(path, "rb")
+        if let stream:FilePointer = fopen(path, "rb")
         {
             self.stream = stream
         }
@@ -1050,12 +1065,19 @@ func rgba32(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt8>]?
         case .rgb:
             output = stride(from: 0, to: raw_data.count, by: 3).map
             {
-                return RGBA(raw_data[$0], raw_data[$0 + 1], raw_data[$0 + 2], UInt8.max)
+                let r:UInt8 = raw_data[$0    ],
+                    g:UInt8 = raw_data[$0 + 1],
+                    b:UInt8 = raw_data[$0 + 2]
+                return RGBA(r, g, b, UInt8.max)
             }
         case .rgba:
             output = stride(from: 0, to: raw_data.count, by: 4).map
             {
-                return RGBA(raw_data[$0], raw_data[$0 + 1], raw_data[$0 + 2], raw_data[$0 + 3])
+                let r:UInt8 = raw_data[$0    ],
+                    g:UInt8 = raw_data[$0 + 1],
+                    b:UInt8 = raw_data[$0 + 2],
+                    a:UInt8 = raw_data[$0 + 3]
+                return RGBA(r, g, b, a)
             }
         case .indexed:
             return nil // should never reach here
@@ -1204,26 +1226,24 @@ func bytestamp(src_pos:Int, dest_pos:Int, bytes:Int, source:[UInt8], dest:inout 
 public
 func deinterlace(raw_data:[UInt8], header:PNGHeader) throws -> [UInt8]
 {
-    guard raw_data.count == header.sub_array_bounds[7].i * header.sub_array_bounds[7].j
+    guard raw_data.count == header.interlaced_data_size
     else
     {
         throw PNGWriteError.InterlaceDimensionError
     }
 
-    var deinterlaced = [UInt8](repeating: 0, count: raw_data.count)
-
+    var deinterlaced = [UInt8](repeating: 0, count: header.noninterlaced_data_size)
     var src_pixel_index = 0
     for (stride_h, stride_v) in header.sub_striders
     {
-        for dest_pixel_base_index in stride_v.map({ $0 * header.width })
+        for dest_pixel_base in stride_v.map({ $0 * header.width })
         {
             for dest_pixel_offset in stride_h
             {
-                let dest_pixel_index:Int = dest_pixel_base_index + dest_pixel_offset
                 if header.bit_depth < 8
                 {
                     /* channels is guaranteed to equal 1 */
-                    var src_byte:UInt8       = raw_data[src_pixel_index],
+                    var src_byte:UInt8       = raw_data[(src_pixel_index * header.bit_depth) >> 3],
                         src_bit_offset:UInt8 = UInt8((src_pixel_index * header.bit_depth) & 7)
                     /* mask out left */
                     src_byte <<= src_bit_offset
@@ -1232,18 +1252,22 @@ func deinterlace(raw_data:[UInt8], header:PNGHeader) throws -> [UInt8]
                     /* position it back where it should be */
                     src_byte <<= (8 - src_bit_offset - UInt8(header.bit_depth))
                     /* write bits to destination */
-                    deinterlaced[dest_pixel_index] |= src_byte
+                    let dest_byte_index:Int = ((dest_pixel_base + dest_pixel_offset) * header.bit_depth) >> 3
+                    deinterlaced[dest_byte_index] |= src_byte
                 }
                 else
                 {
-                    deinterlaced[dest_pixel_index ..< dest_pixel_index + header.bpp] =
-                        raw_data[src_pixel_index  ..< src_pixel_index  + header.bpp]
+                    let dest_byte_index:Int = (dest_pixel_base + dest_pixel_offset) * header.bpp,
+                         src_byte_index:Int = src_pixel_index * header.bpp
+                    deinterlaced[dest_byte_index ..< dest_byte_index + header.bpp] =
+                        raw_data[src_byte_index  ..< src_byte_index  + header.bpp]
                 }
 
                 src_pixel_index += 1
             }
         }
     }
+
     return deinterlaced
 }
 
@@ -1286,6 +1310,7 @@ func deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
         }
         l += sub_array_bound.i
     }
+
     return pixels
 }
 
@@ -1327,8 +1352,59 @@ func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGHeader)
 public
 func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 {
-    let (png_data, png_header):([[UInt8]], PNGHeader) = try decode_png(absolute_path: absolute_path)
-    return (png_data.flatMap{ $0 }, png_header)
+    //let (png_data, header):([[UInt8]], PNGHeader) = try decode_png(absolute_path: absolute_path)
+    //return (png_data.flatMap{ $0 }, header)
+
+    guard let stream:FilePointer = fopen(absolute_path, "rb")
+    else
+    {
+        throw PNGReadError.FileError(absolute_path)
+    }
+    defer { fclose(stream) }
+
+    var decoder:Decoder                = try Decoder(stream: stream, look_for: [.IDAT]),
+        scanline_iter:ScanlineIterator = ScanlineIterator(header: decoder.header)
+
+    let zero_line:[UInt8]              = scanline_iter.make_zero_line()
+
+    var reference_line:UnsafeBufferPointer<UInt8>?
+
+    let buffer_size:Int = decoder.header.interlace ? decoder.header.interlaced_data_size : decoder.header.noninterlaced_data_size
+    var buffer:[UInt8]  = [UInt8](repeating: 0, count: buffer_size)
+    try buffer.withUnsafeMutableBufferPointer
+    {
+        (bp) in
+
+        var offset:Int = 0
+        while scanline_iter.update_scanline_size()
+        {
+            let dest = UnsafeMutableBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
+            //print("allocated: \(bp.baseAddress!  ) – \(bp.baseAddress! + bp.count) , offset = \(offset)/\(buffer_size)")
+            //print("write to : \(dest.baseAddress!) – \(dest.baseAddress! + dest.count) (\(_count))")
+            let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
+            if scanline_iter.first_scanline
+            {
+                zero_line.withUnsafeBufferPointer
+                {
+                    decoder.defilter_scanline(dest: dest, reference: $0, filter: filter)
+                }
+            }
+            else
+            {
+                decoder.defilter_scanline(dest: dest, reference: reference_line!, filter: filter)
+            }
+
+            reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
+            offset += scanline_iter.bytes_per_scanline
+        }
+    }
+
+    if decoder.header.interlace
+    {
+        buffer = try deinterlace(raw_data: buffer, header: decoder.header)
+    }
+
+    return (buffer, decoder.header)
 }
 
 public
@@ -1354,7 +1430,7 @@ func create_zstream() -> z_stream_s
     return stream
 }
 
-func add_input_to_zstream(_ stream:inout z_stream_s, input:[UInt8])
+func add_input_to_zstream(_ stream:inout z_stream_s, input:inout [UInt8])
 {
     stream.avail_in = UInt32(input.count)
     stream.next_in = UnsafeMutablePointer<UInt8>(mutating: input)
@@ -1395,7 +1471,7 @@ class ZInflator
     func add_input(_ input:[UInt8])
     {
         self.input_ref = input
-        add_input_to_zstream(&self.stream, input: input)
+        add_input_to_zstream(&self.stream, input: &self.input_ref)
     }
 
     func set_output(dest:UnsafeMutableBufferPointer<UInt8>)
@@ -1490,7 +1566,7 @@ class ZDeflator
     func add_input(_ input:[UInt8])
     {
         self.input_ref = input
-        add_input_to_zstream(&self.stream, input: input)
+        add_input_to_zstream(&self.stream, input: &self.input_ref)
     }
 
     func finish()
