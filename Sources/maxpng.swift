@@ -1202,6 +1202,52 @@ func bytestamp(src_pos:Int, dest_pos:Int, bytes:Int, source:[UInt8], dest:inout 
 }
 
 public
+func deinterlace(raw_data:[UInt8], header:PNGHeader) throws -> [UInt8]
+{
+    guard raw_data.count == header.sub_array_bounds[7].i * header.sub_array_bounds[7].j
+    else
+    {
+        throw PNGWriteError.InterlaceDimensionError
+    }
+
+    var deinterlaced = [UInt8](repeating: 0, count: raw_data.count)
+
+    var src_pixel_index = 0
+    for (stride_h, stride_v) in header.sub_striders
+    {
+        for dest_pixel_base_index in stride_v.map({ $0 * header.width })
+        {
+            for dest_pixel_offset in stride_h
+            {
+                let dest_pixel_index:Int = dest_pixel_base_index + dest_pixel_offset
+                if header.bit_depth < 8
+                {
+                    /* channels is guaranteed to equal 1 */
+                    var src_byte:UInt8       = raw_data[src_pixel_index],
+                        src_bit_offset:UInt8 = UInt8((src_pixel_index * header.bit_depth) & 7)
+                    /* mask out left */
+                    src_byte <<= src_bit_offset
+                    /* mask out right */
+                    src_byte >>= (8 - UInt8(header.bit_depth))
+                    /* position it back where it should be */
+                    src_byte <<= (8 - src_bit_offset - UInt8(header.bit_depth))
+                    /* write bits to destination */
+                    deinterlaced[dest_pixel_index] |= src_byte
+                }
+                else
+                {
+                    deinterlaced[dest_pixel_index ..< dest_pixel_index + header.bpp] =
+                        raw_data[src_pixel_index  ..< src_pixel_index  + header.bpp]
+                }
+
+                src_pixel_index += 1
+            }
+        }
+    }
+    return deinterlaced
+}
+
+public
 func deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
 {
     let (k, h):(Int, Int) = header.sub_array_bounds[7]
