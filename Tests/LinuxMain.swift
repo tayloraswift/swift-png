@@ -14,6 +14,8 @@ var passed:Bool = true
 //let data:[RGBA<UInt16>] = load_rgb_data(absolute_path: absolute_unix_path("Tests/MaxPNGTests/unit/basi0g04.rgba"), npixels: 32*32)
 //print(data)
 
+run_tests(test_cases: test_cases)
+
 try decompose_png("Tests/" + interlace_test_in, output: "Tests/" + interlace_test_out)
 try reencode_png_stream("Tests/" + image_test_in, output: "Tests/" + image_test_out)
 
