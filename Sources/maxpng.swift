@@ -1041,16 +1041,16 @@ func rgba32(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt8>]?
         {
         case .grayscale:
             output = raw_data.map{ value in RGBA(value, value, value, UInt8.max) }
-        case .rgb:
-            output = stride(from: 0, to: raw_data.count, by: 3).map
-            {
-                RGBA(raw_data[$0], raw_data[$0 + 1], raw_data[$0 + 2], UInt8.max)
-            }
         case .grayscale_a:
             output = stride(from: 0, to: raw_data.count, by: 2).map
             {
                 let value:UInt8 = raw_data[$0]
                 return RGBA(value, value, value, raw_data[$0 + 1])
+            }
+        case .rgb:
+            output = stride(from: 0, to: raw_data.count, by: 3).map
+            {
+                return RGBA(raw_data[$0], raw_data[$0 + 1], raw_data[$0 + 2], UInt8.max)
             }
         case .rgba:
             output = stride(from: 0, to: raw_data.count, by: 4).map
@@ -1059,6 +1059,109 @@ func rgba32(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt8>]?
             }
         case .indexed:
             return nil // should never reach here
+        }
+    }
+
+    return output
+}
+
+public
+func rgba64(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt16>]?
+{
+    guard header.color_type != .indexed
+    else
+    {
+        fputs("Normalizing indexed PNGs is unsupported\n", stderr)
+        return nil
+    }
+
+    let output:[RGBA<UInt16>]
+    if header.bit_depth < 8 // channels is guaranteed to be 1
+    {
+        let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(header.bit_depth)))
+        output = stride(from: 0, to: raw_data.count << 3, by: header.bit_depth).map
+        {
+            let value:UInt16 = quantum * UInt16(bitval_extract(bit_index: $0, bit_depth: header.bit_depth, source: raw_data))
+            return RGBA(value, value, value, UInt16.max)
+        }
+    }
+    else
+    {
+        if header.bit_depth == 8
+        {
+            switch header.color_type
+            {
+            case .grayscale:
+                output = raw_data.map
+                {
+                    let value:UInt16 = UInt16($0) << 8 | UInt16($0)
+                    return RGBA(value, value, value, UInt16.max)
+                }
+            case .grayscale_a:
+                output = stride(from: 0, to: raw_data.count, by: 2).map
+                {
+                    let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
+                        alpha:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1])
+                    return RGBA(value, value, value, alpha)
+                }
+            case .rgb:
+                output = stride(from: 0, to: raw_data.count, by: 3).map
+                {
+                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
+                        g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
+                        b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2])
+                    return RGBA(r, g, b, UInt16.max)
+                }
+            case .rgba:
+                output = stride(from: 0, to: raw_data.count, by: 4).map
+                {
+                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
+                        g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
+                        b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2]),
+                        a:UInt16 = UInt16(raw_data[$0 + 3]) << 8 | UInt16(raw_data[$0 + 3])
+                    return RGBA(r, g, b, a)
+                }
+            case .indexed:
+                return nil // should never reach here
+            }
+        }
+        else
+        {
+            switch header.color_type
+            {
+            case .grayscale:
+                output = stride(from: 0, to: raw_data.count, by: 2).map
+                {
+                    let value:UInt16 = UInt16(raw_data[$0]) << 8 | UInt16(raw_data[$0 + 1])
+                    return RGBA(value, value, value, UInt16.max)
+                }
+            case .grayscale_a:
+                output = stride(from: 0, to: raw_data.count, by: 4).map
+                {
+                    let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
+                        alpha:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3])
+                    return RGBA(value, value, value, alpha)
+                }
+            case .rgb:
+                output = stride(from: 0, to: raw_data.count, by: 6).map
+                {
+                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
+                        g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
+                        b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5])
+                    return RGBA(r, g, b, UInt16.max)
+                }
+            case .rgba:
+                output = stride(from: 0, to: raw_data.count, by: 8).map
+                {
+                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
+                        g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
+                        b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5]),
+                        a:UInt16 = UInt16(raw_data[$0 + 6]) << 8 | UInt16(raw_data[$0 + 7])
+                    return RGBA(r, g, b, a)
+                }
+            case .indexed:
+                return nil // should never reach here
+            }
         }
     }
 
