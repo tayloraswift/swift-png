@@ -1028,9 +1028,10 @@ func rgba32(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt8>]?
     let output:[RGBA<UInt8>]
     if header.bit_depth < 8 // channels is guaranteed to be 1
     {
+        let quantum:UInt8 = UInt8.max / (UInt8.max >> (8 - UInt8(header.bit_depth)))
         output = stride(from: 0, to: raw_data.count << 3, by: header.bit_depth).map
         {
-            let value:UInt8 = bitval_extract(bit_index: $0, bit_depth: header.bit_depth, source: raw_data)
+            let value:UInt8 = quantum * bitval_extract(bit_index: $0, bit_depth: header.bit_depth, source: raw_data)
             return RGBA(value, value, value, UInt8.max)
         }
     }

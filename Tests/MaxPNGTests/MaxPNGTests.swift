@@ -8,6 +8,9 @@ let green_bold = "\u{001B}[1;32m"
 let light_green = "\u{001B}[92m"
 let light_green_bold = "\u{001B}[1;92m"
 
+let red = "\u{001B}[0;31m"
+let red_bold = "\u{001B}[1;31m"
+
 let color_off = "\u{001B}[0m"
 
 let TERM_WIDTH:Int = 64
