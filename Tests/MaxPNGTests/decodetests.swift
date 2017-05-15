@@ -23,11 +23,12 @@ func load_rgba_data<Pixel:UnsignedInteger>(absolute_path:String, n_pixels:Int) -
 func test_decoded_identical(relative_path_png:String, relative_path_rgba:String) throws -> Bool
 {
     let (png_data, png_header):([UInt8], PNGHeader) = try decode_png_contiguous(relative_path: relative_path_png)
-    guard let rgba_data_png_32:[RGBA<UInt8>] = rgba32(raw_data: png_data, header: png_header)
+    guard let rgba_data_png:[RGBA<UInt16>] = rgba64(raw_data: png_data, header: png_header)
     else
     {
         return false
     }
+    /*
     let rgba_data_png:[RGBA<UInt16>] = rgba_data_png_32.map
     {
         let r:UInt16 = UInt16($0.r),
@@ -37,6 +38,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
         //return RGBA(r, g, b, a)
         return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, a << 8 | a)
     }
+    */
     let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(absolute_path: absolute_unix_path(relative_path_rgba),
                                                        n_pixels: png_header.width * png_header.height)
 
