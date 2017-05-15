@@ -571,15 +571,15 @@ struct ScanlineIterator
 
 struct Decoder
 {
+    let header:PNGHeader
+
     private
     var conditions = PNGConditions(),
-        current_chunk_type:PNGChunkType = .__FIRST__
-
-    private
-    var z_iterator:ZInflator,
+        current_chunk_type:PNGChunkType = .__FIRST__,
         stream_exhausted:Bool = false
 
-    let header:PNGHeader
+    private
+    let z_iterator:ZInflator
 
     /*
     public private(set)
@@ -766,14 +766,12 @@ public final
 class PNGDecoder
 {
     private
-    var stream:FilePointer
-
-    private
     var decoder:Decoder,
-        scanline_iter:ScanlineIterator
+        scanline_iter:ScanlineIterator,
+        stream:FilePointer,
 
-    private
-    var reference_line:[UInt8] = []
+        reference_line:[UInt8] = []
+
     private
     let zero_line:[UInt8]
 
@@ -838,75 +836,41 @@ class PNGDecoder
     }
 }
 
-public final
-class PNGEncoder
+struct Encoder
 {
     private
-    var stream:FilePointer
+    var chunk_data:[UInt8],
+        chunk_capacity_remaining:Int
 
     private
-    var reference_line:[UInt8],
-        chunk_data:[UInt8]
-
-    private
-    var chunk_capacity_remaining:Int
-
-    private
-    let header:PNGHeader,
+    let bpp:Int,
         z_iterator:ZDeflator
 
-    public
-    init (path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
+    init(stream:FilePointer, header:PNGHeader, chunk_size:Int) throws
     {
-        if let stream = fopen(path, "wb")
-        {
-            self.stream = stream
-        }
-        else
-        {
-            throw PNGReadError.FileError(path)
-        }
-
+        self.bpp            = header.bpp
+        self.z_iterator     = try ZDeflator()
+        self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
         self.chunk_capacity_remaining = chunk_size
 
-        self.header         = header
-        self.z_iterator     = try ZDeflator()
-        self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
-        self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
+        try write_png_buffer(stream, buffer: PNGHeader.signature)
+        try png_write_chunk(f: stream, chunk_data: header.write(), chunk_type: .IHDR)
     }
 
-    deinit
+    // make NO assumptions about the `.count` property of the reference line;
+    // it is often greater than the size of the actual data
+    func filter_scanline<ReferenceLine:Collection>(src:UnsafeBufferPointer<UInt8>, reference:ReferenceLine)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
-        fclose(self.stream)
-    }
-
-    public
-    func initialize() throws
-    {
-        try write_png_buffer(self.stream, buffer: PNGHeader.signature)
-        try png_write_chunk(f: self.stream, chunk_data: self.header.write(), chunk_type: .IHDR)
-    }
-
-    public
-    func add_scanline(_ src:[UInt8]) throws
-    {
-        guard src.count == reference_line.count
-        else
-        {
-            throw PNGWriteError.DimemsionError
-        }
-
         var filter_data = [[UInt8]](repeating: [0] + src, count: 5)
 
-        PNGEncoder.filter_sub    (&filter_data[1], bpp: self.header.bpp)
-        PNGEncoder.filter_up     (&filter_data[2], previous_line: self.reference_line)
-        PNGEncoder.filter_average(&filter_data[3], previous_line: self.reference_line, bpp: self.header.bpp)
-        PNGEncoder.filter_paeth  (&filter_data[4], previous_line: self.reference_line, bpp: self.header.bpp)
-
-        self.reference_line = src
+        Encoder.filter_sub    (&filter_data[1], bpp: self.bpp)
+        Encoder.filter_up     (&filter_data[2], previous_line: reference)
+        Encoder.filter_average(&filter_data[3], previous_line: reference, bpp: self.bpp)
+        Encoder.filter_paeth  (&filter_data[4], previous_line: reference, bpp: self.bpp)
 
         /* pick the most effective filter */
-        let scores:[Int] = filter_data.map(PNGEncoder.score)
+        let scores:[Int] = filter_data.map(Encoder.score)
         var min_filter:Int = 0
         var min_score:Int = Int.max
         for (i, score) in scores.enumerated()
@@ -920,12 +884,10 @@ class PNGEncoder
 
         filter_data[min_filter][0] = UInt8(min_filter)
         self.z_iterator.add_input(filter_data[min_filter])
-
-        try self.compress_scanline(finish: false)
     }
 
-    private
-    func compress_scanline(finish:Bool) throws
+    mutating
+    func compress_scanline(stream:FilePointer, finish:Bool) throws
     {
         var stream_exhausted:Bool = false
         repeat
@@ -941,29 +903,29 @@ class PNGEncoder
                 self.chunk_capacity_remaining = Int(try self.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
                 assert(!stream_exhausted || finish) // the_end cannot come yet
             }
-        } while try self.attempt_emit_idat_chunk()
+        } while try self.attempt_emit_idat_chunk(stream: stream)
         assert(stream_exhausted || !finish)
     }
 
-    public
-    func finish() throws
+    mutating
+    func finish(stream:FilePointer) throws
     {
-        try self.compress_scanline(finish: true)
+        try self.compress_scanline(stream: stream, finish: true)
 
         if self.chunk_capacity_remaining != self.chunk_data.count // meaning, there is still data in the buffer
         {
-            try png_write_chunk(f: self.stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk_type: .IDAT)
+            try png_write_chunk(f: stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk_type: .IDAT)
         }
-        try png_write_chunk(f: self.stream, chunk_data: [], chunk_type: .IEND)
+        try png_write_chunk(f: stream, chunk_data: [], chunk_type: .IEND)
     }
 
-    private
-    func attempt_emit_idat_chunk() throws -> Bool
+    private mutating
+    func attempt_emit_idat_chunk(stream:FilePointer) throws -> Bool
     {
         if self.chunk_capacity_remaining == 0
         {
             /* emit chunk */
-            try png_write_chunk(f: self.stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
+            try png_write_chunk(f: stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
             self.chunk_capacity_remaining = self.chunk_data.count
             return true
         }
@@ -984,7 +946,8 @@ class PNGEncoder
     }
 
     private static
-    func filter_up(_ buffer:inout [UInt8], previous_line:[UInt8])
+    func filter_up<ReferenceLine:Collection>(_ buffer:inout [UInt8], previous_line:ReferenceLine)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
         for i in 1..<buffer.count // we do not need to reverse here
         {
@@ -993,7 +956,8 @@ class PNGEncoder
     }
 
     private static
-    func filter_average(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
+    func filter_average<ReferenceLine:Collection>(_ buffer:inout [UInt8], previous_line:ReferenceLine, bpp:Int)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
         for i in ((1 + bpp)..<buffer.count).reversed()
         {
@@ -1006,7 +970,8 @@ class PNGEncoder
     }
 
     private static
-    func filter_paeth(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
+    func filter_paeth<ReferenceLine:Collection>(_ buffer:inout [UInt8], previous_line:ReferenceLine, bpp:Int)
+    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
     {
 
         for i in ((1 + bpp)..<buffer.count).reversed()
@@ -1035,6 +1000,62 @@ class PNGEncoder
             last = byte
         }
         return changes
+    }
+}
+
+public final
+class PNGEncoder
+{
+    private
+    var encoder:Encoder,
+        stream:FilePointer,
+
+        reference_line:[UInt8]
+
+    public
+    init(path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
+    {
+        if let stream = fopen(path, "wb")
+        {
+            self.stream = stream
+        }
+        else
+        {
+            throw PNGReadError.FileError(path)
+        }
+
+        self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
+        self.encoder = try Encoder(stream: self.stream, header: header, chunk_size: chunk_size)
+    }
+
+    deinit
+    {
+        fclose(self.stream)
+    }
+
+    public
+    func add_scanline(_ src:[UInt8]) throws
+    {
+        guard src.count == reference_line.count
+        else
+        {
+            throw PNGWriteError.DimemsionError
+        }
+
+        src.withUnsafeBufferPointer
+        {
+            self.encoder.filter_scanline(src: $0, reference: self.reference_line)
+        }
+
+        self.reference_line = src
+
+        try self.encoder.compress_scanline(stream: self.stream, finish: false)
+    }
+
+    public
+    func finish() throws
+    {
+        try self.encoder.finish(stream: self.stream)
     }
 }
 
@@ -1328,6 +1349,7 @@ func deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
     return pixels
 }
 
+public
 func absolute_unix_path(_ relative_path:String) -> String
 {
     guard relative_path.characters.count > 1
@@ -1420,6 +1442,23 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 
     return (buffer, decoder.header)
 }
+/*
+public
+func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = 1 << 16) throws
+{
+    guard raw_data.count == header.noninterlaced_data_size
+    else
+    {
+        throw PNGWriteError.DimemsionError
+    }
+
+    let encoder = try PNGEncoder(path: absolute_path, header: header, chunk_size: chunk_size)
+
+
+
+    return
+}
+*/
 
 public
 func decode_png(relative_path:String) throws -> ([[UInt8]], PNGHeader)

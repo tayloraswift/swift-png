@@ -50,7 +50,6 @@ func write_png(_ rpath:String, _ scanlines:[[UInt8]], header:PNGHeader) throws
 {
     let path = absolute_unix_path(rpath)
     let png = try PNGEncoder(path: path, header: header)
-    try png.initialize()
     for scanline in scanlines
     {
         try png.add_scanline(scanline)
@@ -65,7 +64,6 @@ func reencode_png_stream(_ rpath:String, output:String) throws
     let out = absolute_unix_path(output)
     let png_decode = try PNGDecoder(path: path)
     let png_encode = try PNGEncoder(path: out, header: png_decode.header)
-    try png_encode.initialize()
     print(png_decode.header)
 
     var i:Int = 0
@@ -107,7 +105,6 @@ func decompose_png(_ rpath:String, output:String) throws
                                         color_type: png_decode.header.color_type,
                                         interlace: false)
         let png_encode = try PNGEncoder(path: "\(out)_subimage_\(i).png", header: frag_header)
-        try png_encode.initialize()
         for scanline in scanlines[l..<(l + k)]
         {
             try png_encode.add_scanline(scanline)
@@ -121,7 +118,6 @@ func decompose_png(_ rpath:String, output:String) throws
                                             color_type: png_decode.header.color_type,
                                             interlace: false)
     let deinterlaced_encode = try PNGEncoder(path: out, header: deinterlaced_header)
-    try deinterlaced_encode.initialize()
     for scanline in try deinterlace(scanlines: scanlines, header: png_decode.header)
     {
         try deinterlaced_encode.add_scanline(scanline)
