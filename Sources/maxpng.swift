@@ -298,6 +298,26 @@ func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk_type:PNGChunkType)
     try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(calculated_crc))) // crc section // this Int() cast only works because crc is a 32 bit value padded to 64 bits
 }
 
+func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
+{
+    let a16 = Int16(a),
+        b16 = Int16(b),
+        c16 = Int16(c)
+    let p:Int16 = a16 + b16 - c16
+    let pa = abs(p - a16),
+        pb = abs(p - b16),
+        pc = abs(p - c16)
+
+    if pa <= pb && pa <= pc
+    {
+        return a
+    }
+    else
+    {
+        return pb <= pc ? b : c
+    }
+}
+
 public
 struct PNGHeader:CustomStringConvertible
 {
@@ -480,226 +500,6 @@ struct PNGHeader:CustomStringConvertible
         bytes.append(0)                                                 // [11] = 0
         bytes.append(self.interlace ? 1 : 0)                            // [12]
         return bytes
-    }
-}
-
-func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
-{
-    let a16 = Int16(a),
-        b16 = Int16(b),
-        c16 = Int16(c)
-    let p:Int16 = a16 + b16 - c16
-    let pa = abs(p - a16),
-        pb = abs(p - b16),
-        pc = abs(p - c16)
-
-    if pa <= pb && pa <= pc
-    {
-        return a
-    }
-    else
-    {
-        return pb <= pc ? b : c
-    }
-}
-
-public final
-class PNGEncoder
-{
-    private
-    var stream:FilePointer
-
-    private
-    var reference_line:[UInt8],
-        chunk_data:[UInt8]
-
-    private
-    var chunk_capacity_remaining:Int
-
-    private
-    let header:PNGHeader,
-        z_iterator:ZDeflator
-
-    public
-    init (path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
-    {
-        if let stream = fopen(path, "wb")
-        {
-            self.stream = stream
-        }
-        else
-        {
-            throw PNGReadError.FileError(path)
-        }
-
-        self.chunk_capacity_remaining = chunk_size
-
-        self.header         = header
-        self.z_iterator     = try ZDeflator()
-        self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
-        self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
-    }
-
-    deinit
-    {
-        fclose(self.stream)
-    }
-
-    public
-    func initialize() throws
-    {
-        try write_png_buffer(self.stream, buffer: PNGHeader.signature)
-        try png_write_chunk(f: self.stream, chunk_data: self.header.write(), chunk_type: .IHDR)
-    }
-
-    public
-    func add_scanline(_ src:[UInt8]) throws
-    {
-        guard src.count == reference_line.count
-        else
-        {
-            throw PNGWriteError.DimemsionError
-        }
-
-        var filter_data = [[UInt8]](repeating: [0] + src, count: 5)
-
-        PNGEncoder.filter_sub    (&filter_data[1], bpp: self.header.bpp)
-        PNGEncoder.filter_up     (&filter_data[2], previous_line: self.reference_line)
-        PNGEncoder.filter_average(&filter_data[3], previous_line: self.reference_line, bpp: self.header.bpp)
-        PNGEncoder.filter_paeth  (&filter_data[4], previous_line: self.reference_line, bpp: self.header.bpp)
-
-        self.reference_line = src
-
-        /* pick the most effective filter */
-        let scores:[Int] = filter_data.map(PNGEncoder.score)
-        var min_filter:Int = 0
-        var min_score:Int = Int.max
-        for (i, score) in scores.enumerated()
-        {
-            if score < min_score
-            {
-                min_score = score
-                min_filter = i
-            }
-        }
-
-        filter_data[min_filter][0] = UInt8(min_filter)
-        self.z_iterator.add_input(filter_data[min_filter])
-
-        try self.compress_scanline(finish: false)
-    }
-
-    private
-    func compress_scanline(finish:Bool) throws
-    {
-        var stream_exhausted:Bool = false
-        repeat
-        {
-            try self.chunk_data.withUnsafeMutableBufferPointer
-            {
-                let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
-                let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
-                self.z_iterator.set_output(dest: dest)
-                // like with the Inflator, the above is tracked internally by the zstream, but we can’t guarantee
-                // the stability of the underlying `chunk_data` buffer so we recalculate the destination each cycle.
-
-                self.chunk_capacity_remaining = Int(try self.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
-                assert(!stream_exhausted || finish) // the_end cannot come yet
-            }
-        } while try self.attempt_emit_idat_chunk()
-        assert(stream_exhausted || !finish)
-    }
-
-    public
-    func finish() throws
-    {
-        try self.compress_scanline(finish: true)
-
-        if self.chunk_capacity_remaining != self.chunk_data.count // meaning, there is still data in the buffer
-        {
-            try png_write_chunk(f: self.stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk_type: .IDAT)
-        }
-        try png_write_chunk(f: self.stream, chunk_data: [], chunk_type: .IEND)
-    }
-
-    private
-    func attempt_emit_idat_chunk() throws -> Bool
-    {
-        if self.chunk_capacity_remaining == 0
-        {
-            /* emit chunk */
-            try png_write_chunk(f: self.stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
-            self.chunk_capacity_remaining = self.chunk_data.count
-            return true
-        }
-        else
-        {
-            return false
-        }
-    }
-
-    /* these are literally exactly the same as the defilter functions except backwards */
-    private static
-    func filter_sub(_ buffer:inout [UInt8], bpp:Int)
-    {
-        for i in ((1 + bpp)..<buffer.count).reversed()
-        {
-            buffer[i] = buffer[i] &- buffer[i - bpp]
-        }
-    }
-
-    private static
-    func filter_up(_ buffer:inout [UInt8], previous_line:[UInt8])
-    {
-        for i in 1..<buffer.count // we do not need to reverse here
-        {
-            buffer[i] = buffer[i] &- previous_line[i - 1]
-        }
-    }
-
-    private static
-    func filter_average(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
-    {
-        for i in ((1 + bpp)..<buffer.count).reversed()
-        {
-            buffer[i] = buffer[i] &- UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i - 1])) >> 1) // the second part will never overflow because of the right shift
-        }
-        for i in 1..<(1 + bpp) // we do not need to reverse here
-        {
-            buffer[i] = buffer[i] &- previous_line[i - 1] >> 1
-        }
-    }
-
-    private static
-    func filter_paeth(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
-    {
-
-        for i in ((1 + bpp)..<buffer.count).reversed()
-        {
-            buffer[i] = buffer[i] &- paeth(buffer[i - bpp], previous_line[i - 1], previous_line[i - 1 - bpp])
-        }
-        for i in 1..<(1 + bpp)
-        {
-            buffer[i] = buffer[i] &- paeth(0, previous_line[i - 1], 0)
-        }
-    }
-
-    private static
-    func score(_ filtered:[UInt8]) -> Int
-    {
-        guard filtered.count > 0
-        else
-        {
-            return 0
-        }
-        var changes:Int = 0
-        var last:UInt8 = filtered[0]
-        for byte in filtered.dropFirst()
-        {
-            changes += byte == last ? 0 : 1
-            last = byte
-        }
-        return changes
     }
 }
 
@@ -1035,6 +835,206 @@ class PNGDecoder
 
         self.reference_line = buffer
         return buffer
+    }
+}
+
+public final
+class PNGEncoder
+{
+    private
+    var stream:FilePointer
+
+    private
+    var reference_line:[UInt8],
+        chunk_data:[UInt8]
+
+    private
+    var chunk_capacity_remaining:Int
+
+    private
+    let header:PNGHeader,
+        z_iterator:ZDeflator
+
+    public
+    init (path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
+    {
+        if let stream = fopen(path, "wb")
+        {
+            self.stream = stream
+        }
+        else
+        {
+            throw PNGReadError.FileError(path)
+        }
+
+        self.chunk_capacity_remaining = chunk_size
+
+        self.header         = header
+        self.z_iterator     = try ZDeflator()
+        self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
+        self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
+    }
+
+    deinit
+    {
+        fclose(self.stream)
+    }
+
+    public
+    func initialize() throws
+    {
+        try write_png_buffer(self.stream, buffer: PNGHeader.signature)
+        try png_write_chunk(f: self.stream, chunk_data: self.header.write(), chunk_type: .IHDR)
+    }
+
+    public
+    func add_scanline(_ src:[UInt8]) throws
+    {
+        guard src.count == reference_line.count
+        else
+        {
+            throw PNGWriteError.DimemsionError
+        }
+
+        var filter_data = [[UInt8]](repeating: [0] + src, count: 5)
+
+        PNGEncoder.filter_sub    (&filter_data[1], bpp: self.header.bpp)
+        PNGEncoder.filter_up     (&filter_data[2], previous_line: self.reference_line)
+        PNGEncoder.filter_average(&filter_data[3], previous_line: self.reference_line, bpp: self.header.bpp)
+        PNGEncoder.filter_paeth  (&filter_data[4], previous_line: self.reference_line, bpp: self.header.bpp)
+
+        self.reference_line = src
+
+        /* pick the most effective filter */
+        let scores:[Int] = filter_data.map(PNGEncoder.score)
+        var min_filter:Int = 0
+        var min_score:Int = Int.max
+        for (i, score) in scores.enumerated()
+        {
+            if score < min_score
+            {
+                min_score = score
+                min_filter = i
+            }
+        }
+
+        filter_data[min_filter][0] = UInt8(min_filter)
+        self.z_iterator.add_input(filter_data[min_filter])
+
+        try self.compress_scanline(finish: false)
+    }
+
+    private
+    func compress_scanline(finish:Bool) throws
+    {
+        var stream_exhausted:Bool = false
+        repeat
+        {
+            try self.chunk_data.withUnsafeMutableBufferPointer
+            {
+                let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
+                let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
+                self.z_iterator.set_output(dest: dest)
+                // like with the Inflator, the above is tracked internally by the zstream, but we can’t guarantee
+                // the stability of the underlying `chunk_data` buffer so we recalculate the destination each cycle.
+
+                self.chunk_capacity_remaining = Int(try self.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
+                assert(!stream_exhausted || finish) // the_end cannot come yet
+            }
+        } while try self.attempt_emit_idat_chunk()
+        assert(stream_exhausted || !finish)
+    }
+
+    public
+    func finish() throws
+    {
+        try self.compress_scanline(finish: true)
+
+        if self.chunk_capacity_remaining != self.chunk_data.count // meaning, there is still data in the buffer
+        {
+            try png_write_chunk(f: self.stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk_type: .IDAT)
+        }
+        try png_write_chunk(f: self.stream, chunk_data: [], chunk_type: .IEND)
+    }
+
+    private
+    func attempt_emit_idat_chunk() throws -> Bool
+    {
+        if self.chunk_capacity_remaining == 0
+        {
+            /* emit chunk */
+            try png_write_chunk(f: self.stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
+            self.chunk_capacity_remaining = self.chunk_data.count
+            return true
+        }
+        else
+        {
+            return false
+        }
+    }
+
+    /* these are literally exactly the same as the defilter functions except backwards */
+    private static
+    func filter_sub(_ buffer:inout [UInt8], bpp:Int)
+    {
+        for i in ((1 + bpp)..<buffer.count).reversed()
+        {
+            buffer[i] = buffer[i] &- buffer[i - bpp]
+        }
+    }
+
+    private static
+    func filter_up(_ buffer:inout [UInt8], previous_line:[UInt8])
+    {
+        for i in 1..<buffer.count // we do not need to reverse here
+        {
+            buffer[i] = buffer[i] &- previous_line[i - 1]
+        }
+    }
+
+    private static
+    func filter_average(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
+    {
+        for i in ((1 + bpp)..<buffer.count).reversed()
+        {
+            buffer[i] = buffer[i] &- UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i - 1])) >> 1) // the second part will never overflow because of the right shift
+        }
+        for i in 1..<(1 + bpp) // we do not need to reverse here
+        {
+            buffer[i] = buffer[i] &- previous_line[i - 1] >> 1
+        }
+    }
+
+    private static
+    func filter_paeth(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
+    {
+
+        for i in ((1 + bpp)..<buffer.count).reversed()
+        {
+            buffer[i] = buffer[i] &- paeth(buffer[i - bpp], previous_line[i - 1], previous_line[i - 1 - bpp])
+        }
+        for i in 1..<(1 + bpp)
+        {
+            buffer[i] = buffer[i] &- paeth(0, previous_line[i - 1], 0)
+        }
+    }
+
+    private static
+    func score(_ filtered:[UInt8]) -> Int
+    {
+        guard filtered.count > 0
+        else
+        {
+            return 0
+        }
+        var changes:Int = 0
+        var last:UInt8 = filtered[0]
+        for byte in filtered.dropFirst()
+        {
+            changes += byte == last ? 0 : 1
+            last = byte
+        }
+        return changes
     }
 }
 
@@ -1433,17 +1433,6 @@ func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
     return try decode_png_contiguous(absolute_path: absolute_unix_path(relative_path))
 }
 
-func create_zstream() -> z_stream_s
-{
-    var stream = z_stream()
-    stream.zalloc = nil
-    stream.zfree = nil
-    stream.opaque = nil
-    stream.avail_in = 0
-    stream.next_in = nil
-    return stream
-}
-
 class ZIterator
 {
     var stream:z_stream_s
@@ -1451,7 +1440,12 @@ class ZIterator
 
     init() throws
     {
-        self.stream = create_zstream()
+        self.stream          = z_stream()
+        self.stream.zalloc   = nil
+        self.stream.zfree    = nil
+        self.stream.opaque   = nil
+        self.stream.avail_in = 0
+        self.stream.next_in  = nil
     }
 
     final
