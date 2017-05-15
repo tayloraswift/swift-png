@@ -503,18 +503,15 @@ class PNGEncoder
     var stream:FilePointer
 
     private
-    let z_iterator:ZDeflator
-    private
-    var defiltered0:[UInt8],
+    var reference_line:[UInt8],
         chunk_data:[UInt8]
 
     private
-    let chunk_size:Int
-    private
-    var chunk_empty:Int
+    var chunk_capacity_remaining:Int
 
     private
-    let header:PNGHeader
+    let header:PNGHeader,
+        z_iterator:ZDeflator
 
     public
     init (path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
@@ -528,13 +525,12 @@ class PNGEncoder
             throw PNGReadError.FileError(path)
         }
 
-        self.chunk_size = chunk_size
-        self.chunk_empty = self.chunk_size
+        self.chunk_capacity_remaining = chunk_size
 
-        self.header = header
-        self.z_iterator = try ZDeflator()
-        self.defiltered0 = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
-        self.chunk_data = [UInt8](repeating: 0, count: self.chunk_size)
+        self.header         = header
+        self.z_iterator     = try ZDeflator()
+        self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
+        self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
     }
 
     deinit
@@ -550,22 +546,22 @@ class PNGEncoder
     }
 
     public
-    func add_scanline(_ defiltered1:[UInt8]) throws
+    func add_scanline(_ src:[UInt8]) throws
     {
-        guard defiltered1.count == defiltered0.count
+        guard src.count == reference_line.count
         else
         {
             throw PNGWriteError.DimemsionError
         }
 
-        var filter_data = [[UInt8]](repeating: [0] + defiltered1, count: 5)
+        var filter_data = [[UInt8]](repeating: [0] + src, count: 5)
 
         PNGEncoder.filter_sub    (&filter_data[1], bpp: self.header.bpp)
-        PNGEncoder.filter_up     (&filter_data[2], defiltered0: self.defiltered0)
-        PNGEncoder.filter_average(&filter_data[3], defiltered0: self.defiltered0, bpp: self.header.bpp)
-        PNGEncoder.filter_paeth  (&filter_data[4], defiltered0: self.defiltered0, bpp: self.header.bpp)
+        PNGEncoder.filter_up     (&filter_data[2], previous_line: self.reference_line)
+        PNGEncoder.filter_average(&filter_data[3], previous_line: self.reference_line, bpp: self.header.bpp)
+        PNGEncoder.filter_paeth  (&filter_data[4], previous_line: self.reference_line, bpp: self.header.bpp)
 
-        self.defiltered0 = defiltered1
+        self.reference_line = src
 
         /* pick the most effective filter */
         let scores:[Int] = filter_data.map(PNGEncoder.score)
@@ -583,27 +579,38 @@ class PNGEncoder
         filter_data[min_filter][0] = UInt8(min_filter)
         self.z_iterator.add_input(filter_data[min_filter])
 
+        try self.compress_scanline(finish: false)
+    }
+
+    private
+    func compress_scanline(finish:Bool) throws
+    {
+        var stream_exhausted:Bool = false
         repeat
         {
-            let the_end:Bool
-            (self.chunk_empty, the_end) = try self.z_iterator.get_output(&self.chunk_data, empty: self.chunk_empty)
-            assert(!the_end) // the_end cannot come yet
+            try self.chunk_data.withUnsafeMutableBufferPointer
+            {
+                let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
+                let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
+                self.z_iterator.set_output(dest: dest)
+                // like with the Inflator, the above is tracked internally by the zstream, but we can’t guarantee
+                // the stability of the underlying `chunk_data` buffer so we recalculate the destination each cycle.
+
+                self.chunk_capacity_remaining = Int(try self.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
+                assert(!stream_exhausted || finish) // the_end cannot come yet
+            }
         } while try self.attempt_emit_idat_chunk()
+        assert(stream_exhausted || !finish)
     }
 
     public
     func finish() throws
     {
-        self.z_iterator.finish()
-        var the_end:Bool
-        repeat
+        try self.compress_scanline(finish: true)
+
+        if self.chunk_capacity_remaining != self.chunk_data.count // meaning, there is still data in the buffer
         {
-            (self.chunk_empty, the_end) = try self.z_iterator.get_output(&self.chunk_data, empty: self.chunk_empty)
-        } while try self.attempt_emit_idat_chunk()
-        assert(the_end) // the end must come now
-        if self.chunk_empty != self.chunk_data.count // meaning, there is still data in the buffer
-        {
-            try png_write_chunk(f: self.stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_empty)), chunk_type: .IDAT)
+            try png_write_chunk(f: self.stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk_type: .IDAT)
         }
         try png_write_chunk(f: self.stream, chunk_data: [], chunk_type: .IEND)
     }
@@ -611,11 +618,11 @@ class PNGEncoder
     private
     func attempt_emit_idat_chunk() throws -> Bool
     {
-        if self.chunk_empty == 0
+        if self.chunk_capacity_remaining == 0
         {
             /* emit chunk */
             try png_write_chunk(f: self.stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
-            self.chunk_empty = self.chunk_size
+            self.chunk_capacity_remaining = self.chunk_data.count
             return true
         }
         else
@@ -626,47 +633,47 @@ class PNGEncoder
 
     /* these are literally exactly the same as the defilter functions except backwards */
     private static
-    func filter_sub(_ filtered1:inout [UInt8], bpp:Int)
+    func filter_sub(_ buffer:inout [UInt8], bpp:Int)
     {
-        for i in ((1 + bpp)..<filtered1.count).reversed()
+        for i in ((1 + bpp)..<buffer.count).reversed()
         {
-            filtered1[i] = filtered1[i] &- filtered1[i - bpp]
+            buffer[i] = buffer[i] &- buffer[i - bpp]
         }
     }
 
     private static
-    func filter_up(_ filtered1:inout [UInt8], defiltered0:[UInt8])
+    func filter_up(_ buffer:inout [UInt8], previous_line:[UInt8])
     {
-        for i in 1..<filtered1.count // we do not need to reverse here
+        for i in 1..<buffer.count // we do not need to reverse here
         {
-            filtered1[i] = filtered1[i] &- defiltered0[i - 1]
+            buffer[i] = buffer[i] &- previous_line[i - 1]
         }
     }
 
     private static
-    func filter_average(_ filtered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    func filter_average(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
     {
-        for i in ((1 + bpp)..<filtered1.count).reversed()
+        for i in ((1 + bpp)..<buffer.count).reversed()
         {
-            filtered1[i] = filtered1[i] &- UInt8((UInt16(filtered1[i - bpp]) + UInt16(defiltered0[i - 1])) >> 1) // the second part will never overflow because of the right shift
+            buffer[i] = buffer[i] &- UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i - 1])) >> 1) // the second part will never overflow because of the right shift
         }
         for i in 1..<(1 + bpp) // we do not need to reverse here
         {
-            filtered1[i] = filtered1[i] &- defiltered0[i - 1] >> 1
+            buffer[i] = buffer[i] &- previous_line[i - 1] >> 1
         }
     }
 
     private static
-    func filter_paeth(_ filtered1:inout [UInt8], defiltered0:[UInt8], bpp:Int)
+    func filter_paeth(_ buffer:inout [UInt8], previous_line:[UInt8], bpp:Int)
     {
 
-        for i in ((1 + bpp)..<filtered1.count).reversed()
+        for i in ((1 + bpp)..<buffer.count).reversed()
         {
-            filtered1[i] = filtered1[i] &- paeth(filtered1[i - bpp], defiltered0[i - 1], defiltered0[i - 1 - bpp])
+            buffer[i] = buffer[i] &- paeth(buffer[i - bpp], previous_line[i - 1], previous_line[i - 1 - bpp])
         }
         for i in 1..<(1 + bpp)
         {
-            filtered1[i] = filtered1[i] &- paeth(0, defiltered0[i - 1], 0)
+            buffer[i] = buffer[i] &- paeth(0, previous_line[i - 1], 0)
         }
     }
 
@@ -1430,32 +1437,40 @@ func create_zstream() -> z_stream_s
     return stream
 }
 
-func add_input_to_zstream(_ stream:inout z_stream_s, input:inout [UInt8])
+class ZIterator
 {
-    stream.avail_in = UInt32(input.count)
-    stream.next_in = UnsafeMutablePointer<UInt8>(mutating: input)
-}
-
-// this function will be unnecessary when the encoder is refactored into buffer pointers
-func allocate_output_for_zstream(_ stream:inout z_stream_s, output_buffer:inout [UInt8], empty:Int)
-{
-    stream.avail_out = UInt32(empty)
-    stream.next_out = UnsafeMutablePointer<UInt8>(mutating: output_buffer).advanced(by: output_buffer.count - empty)
-}
-
-final
-class ZInflator
-// we cannot lower this to a struct because otherwise Swift clobbers Zlib’s internal state with its value semantics
-{
-    private
     var stream:z_stream_s
-
-    private
     var input_ref:[UInt8] = [] // strongref the input buffer to prevent it from being deallocated prematurely
 
     init() throws
     {
         self.stream = create_zstream()
+    }
+
+    final
+    func add_input(_ input:[UInt8])
+    {
+        self.input_ref       = input
+        self.stream.avail_in = UInt32(input.count)
+        self.stream.next_in  = UnsafeMutablePointer<UInt8>(mutating: self.input_ref)
+    }
+
+    final
+    func set_output(dest:UnsafeMutableBufferPointer<UInt8>)
+    {
+        self.stream.avail_out = UInt32(dest.count)
+        self.stream.next_out  = dest.baseAddress
+    }
+}
+
+final
+class ZInflator : ZIterator
+// we cannot lower this to a struct because otherwise Swift clobbers Zlib’s internal state with its value semantics
+{
+    override
+    init() throws
+    {
+        try super.init()
         guard inflateInit(&self.stream) == Z_OK
         else
         {
@@ -1468,28 +1483,15 @@ class ZInflator
         inflateEnd(&self.stream)
     }
 
-    func add_input(_ input:[UInt8])
-    {
-        self.input_ref = input
-        add_input_to_zstream(&self.stream, input: &self.input_ref)
-    }
-
-    func set_output(dest:UnsafeMutableBufferPointer<UInt8>)
-    {
-        self.stream.avail_out = UInt32(dest.count)
-        self.stream.next_out  = dest.baseAddress
-    }
-
     func get_output_byte(sentinel:inout Bool) throws -> UInt8?
     {
         let _byte = UnsafeMutablePointer<UInt8>.allocate(capacity: 1)
         defer { _byte.deallocate(capacity: 1) }
 
-        var inflate_status:Int32 = Z_OK
         self.stream.avail_out = 1
         self.stream.next_out = _byte
 
-        inflate_status = inflate(&self.stream, Z_NO_FLUSH)
+        let inflate_status:Int32 = inflate(&self.stream, Z_NO_FLUSH)
         assert(inflate_status != Z_STREAM_ERROR) // this should never happen
         switch inflate_status
         {
@@ -1516,8 +1518,7 @@ class ZInflator
 
     func get_output_bytes(sentinel:inout Bool) throws -> UInt32
     {
-        var inflate_status:Int32 = Z_OK
-        inflate_status = inflate(&self.stream, Z_NO_FLUSH)
+        let inflate_status:Int32 = inflate(&self.stream, Z_NO_FLUSH)
         assert(inflate_status != Z_STREAM_ERROR) // this should never happen
         switch inflate_status
         {
@@ -1537,20 +1538,12 @@ class ZInflator
 }
 
 final
-class ZDeflator
+class ZDeflator : ZIterator
 {
-    private
-    var stream:z_stream_s
-
-    private
-    var input_ref:[UInt8] = [] // strongref the input buffer to prevent it from being deallocated prematurely
-
-    private
-    var finished:Int32 = Z_NO_FLUSH
-
+    override
     init() throws
     {
-        self.stream = create_zstream()
+        try super.init()
         guard deflateInit(&self.stream, 9) == Z_OK
         else
         {
@@ -1563,24 +1556,13 @@ class ZDeflator
         deflateEnd(&self.stream)
     }
 
-    func add_input(_ input:[UInt8])
+    func get_output(sentinel:inout Bool, finish:Bool) throws -> UInt32
     {
-        self.input_ref = input
-        add_input_to_zstream(&self.stream, input: &self.input_ref)
-    }
-
-    func finish()
-    {
-        self.finished = Z_FINISH
-    }
-
-    func get_output(_ output_buffer:inout [UInt8], empty:Int) throws -> (empty:Int, the_end:Bool)
-    {
-        var deflate_status:Int32 = Z_OK
-        allocate_output_for_zstream(&self.stream, output_buffer: &output_buffer, empty: empty)
-        deflate_status = deflate(&stream, self.finished)
+        let deflate_status:Int32 = deflate(&stream, finish ? Z_FINISH : Z_NO_FLUSH)
         assert(deflate_status != Z_STREAM_ERROR) // this should never happen
-        return (Int(self.stream.avail_out), deflate_status == Z_STREAM_END)
+
+        sentinel = deflate_status == Z_STREAM_END
+        return self.stream.avail_out
     }
 }
 
