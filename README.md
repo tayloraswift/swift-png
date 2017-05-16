@@ -1,11 +1,9 @@
 # maxpng
 
-[![Language](https://img.shields.io/badge/version-swift_3-ffa020.svg
-)](https://developer.apple.com/swift)
-[![Issues](https://img.shields.io/github/issues/kelvin13/maxpng.svg
-)](https://github.com/kelvin13/maxpng/issues?state=open)
-[![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/LICENSE.gpl3)
 [![Build](https://travis-ci.org/kelvin13/maxpng.svg?branch=master)](https://travis-ci.org/kelvin13/maxpng)
+[![Issues](https://img.shields.io/github/issues/kelvin13/maxpng.svg)](https://github.com/kelvin13/maxpng/issues?state=open)
+[![Language](https://img.shields.io/badge/version-swift_3-ffa020.svg)](https://developer.apple.com/swift)
+[![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/LICENSE.gpl3)
 [![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
 
 **MaxPNG** is written in *pure Swift* with the exception of one dependency on the `zlib` C library, the standard Linux compression library. MaxPNG does not reference or use Apple’s Foundation library.
@@ -15,40 +13,42 @@ MaxPNG is simple to use:
 ````swift
 import MaxPNG
 
-let png = try PNGDecoder(path: "/absolute/path/to/my/png/file.png")
-
-while let scanline = try png.next_scanline()
-{
-    _do_whatever_you_want(scanline)
-}
+let (png_raw_data, png_header):([UInt8], PNGHeader) = try decode_png(path: "my_png_file.png")
 ````
 
 You can also use it to create your own PNG files:
 ````swift
+import MaxPNG
+
 let my_png_settings = PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false)
-let my_png_data:[[UInt8]] = [[0  ,0  ,0  ,    255,255,255,    255,0  ,255],
-                             [255,255,255,    0  ,0  ,0  ,    0  ,255,0  ],
-                             [120,120,255,    150,120,255,    180,120,255]]
-let out = try PNGEncoder(path: "/absolute/path/to/destination.png", header: my_png_settings)
-try out.initialize()
-for scanline in my_png_data
+let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
+                           255,255,255,    0  ,0  ,0  ,    0  ,255,0  ,
+                           120,120,255,    150,120,255,    180,120,255]
+try encode_png(path: "my_output_png.png", raw_data: my_png_data, header: my_png_settings)
+````
+
+MaxPNG also provides a progressive API that reads and writes PNGs scanline by scanline.
+
+````swift
+import MaxPNG
+
+let png = try PNGDecoder(path: "my_png_file.png")
+let out = try PNGEncoder(path: "my_resaved_png.png", header: png.header)
+
+while let scanline = try png.next_scanline()
 {
     try out.add_scanline(scanline)
 }
 try out.finish()
 ````
 
-While it works great with PNG files of all sizes, MaxPNG was designed for *big* PNG files. Thats why the default API reads the PNGs scanline by scanline. Feel free to throw giant [NASA space textures](http://visibleearth.nasa.gov/view.php?id=74218) at it. MaxPNG won’t break a sweat; in fact in my tests with NASA’s >400 MB Blue Marble PNGs, MaxPNG’s memory usage never rose above 1.2 MB (yes, that’s MB, as in one megabyte).
-
 Resource management is as Swifty as it made sense to be; most resources will be released when MaxPNG’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
 
-One more thing: MaxPNG works on arrays of `UInt8` bytes; it does not split the output into RGB(A) tuples. That’s partly because this is the format most useful for loading the pixel data as textures in OpenGL, Cairo, etc, and partly because you don’t know the layout of the PNG until after you decode its first chunk. Maybe someday MaxPNG can package the pixel colors for us. For now, all the info you need is in the `.header` member of the `PNGDataIterator` object:
+MaxPNG provides the PNG’s formatting information in the `PNGHeader` struct which is returned by the contiguous decoder function `decode_png(path:)`, and provided as a member `.header` on the progressive decoder class `PNGDecoder`. These header structures are similarly taken as parameters by the contiguous encoder function `encode_png(path:raw_data:header:)` and the progressive encoder class initializer `PNGEncoder.init(path:header:)`.
 
 ````swift
-public
 struct PNGHeader
 {
-    public
     enum ColorType:Int
     {
         case grayscale      = 0,
@@ -58,18 +58,46 @@ struct PNGHeader
              rgba           = 6
     }
 
-    public
     let width:Int,
         height:Int,
         bit_depth:Int,
         color_type:ColorType,
         interlace:Bool
 
-    public
     let channels:Int
 
-    public
     let sub_dimensions:[(width:Int, height:Int)]
+
+    var deinterlaced_header:PNGHeader{ get }
+}
+````
+
+The PNGHeader structure also includes several useful utility functions for processing PNG image data.
+
+````swift
+    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGHeader)]?
+
+    func deinterlace(raw_data:[UInt8]) -> [UInt8]?
+
+    /* NOT IMPLEMENTED
+    func grayscale8(raw_data:[UInt8]) -> [UInt8]
+    func argb32(raw_data:[UInt8]) -> [UInt32]
+    */
+
+    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]?
+
+    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
+````
+
+The latter two functions widen raw PNG scanlines into normalized 32 bit and 64 bit RGBA structures. These structures should not be used for interfacing with graphics API’s such as OpenGL; by design, MaxPNG’s raw `[UInt8]` output is compatible with OpenGL. The function `argb32(raw_data:)` (not yet implemented) will be designed to work with the [Cairo API](https://www.cairographics.org/manual/cairo-Image-Surfaces.html).
+
+````swift
+struct RGBA<Pixel:UnsignedInteger>:Equatable
+{
+    let r:Pixel,
+        g:Pixel,
+        b:Pixel,
+        a:Pixel
 }
 ````
 
@@ -89,14 +117,14 @@ Bit depth goes one level lower; it represents the size of each *channel*. A PNG 
 
 [Interlacing](https://en.wikipedia.org/wiki/Interlacing_(bitmaps)) is a way of progressivly ordering the image data in a PNG so it can be displayed at lower resolution even when partially downloaded. Interlacing is common in images downloaded from social media such as Instagram or Twitter, but rare elsewhere. Interlacing hurts compression, and so it usually significantly increases the size of a PNG file, sometimes as much as thirty percent.
 
-MaxPNG will read interlaced images as a series of subimage scanlines. To recover a rectangular pixel array, you should pass the interlaced scanlines into the provided `deinterlace()` function.
+MaxPNG will read interlaced images as a series of subimage scanlines. To recover a rectangular pixel array, you should pass the interlaced scanlines into the provided `PNGHeader` member function `.deinterlace(raw_data:)` function.
 
 > How do I deinterlace an interlaced PNG?
 
-Use the `deinterlace()` function.
+Use `PNGHeader`’s member function `.deinterlace(raw_data:)`.
 
-````
-deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
+````swift
+PNGHeader › func deinterlace(raw_data:[UInt8]) -> [UInt8]?
 ````
 The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGHeader` struct.
 
@@ -120,7 +148,7 @@ Right now, MaxPNG only recognizes the chunks `IHDR`, `IDAT`, and `IEND`. `PLTE` 
 
 > Wait, MaxPNG lets you skip `IDAT`??? Why would you ever want to do that?
 
-By default, MaxPNG will decode the image pixel data, but if you pass `PNGDataIterator.init()` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
+By default, MaxPNG will decode the image pixel data, but if you pass `PNGDecoder.init(path:look_for:)` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
 
 > Does MaxPNG do gamma correction?
 

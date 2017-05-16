@@ -181,6 +181,24 @@ enum PNGChunkType:String
     }
 }
 
+func posix_path(_ path:String) -> String
+{
+    guard let first_char:Character = path.characters.first
+    else
+    {
+        return path
+    }
+    var expanded_path:String = path
+    if first_char == "~"
+    {
+        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        {
+            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
+        }
+    }
+    return expanded_path
+}
+
 func buffer_to_string(_ buffer:[UInt8]) -> String // this function only used for error messages
 {
     return String(buffer.flatMap(UnicodeScalar.init).map(Character.init))
@@ -1050,13 +1068,13 @@ class PNGDecoder
     public
     init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
     {
-        if let stream:FilePointer = fopen(path, "rb")
+        if let stream:FilePointer = fopen(posix_path(path), "rb")
         {
             self.stream = stream
         }
         else
         {
-            throw PNGReadError.FileError(path)
+            throw PNGReadError.FileError(posix_path(path))
         }
 
         self.decoder        = try Decoder(stream: stream, look_for: look_for)
@@ -1284,13 +1302,13 @@ class PNGEncoder
     public
     init(path:String, header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
     {
-        if let stream = fopen(path, "wb")
+        if let stream = fopen(posix_path(path), "wb")
         {
             self.stream = stream
         }
         else
         {
-            throw PNGReadError.FileError(path)
+            throw PNGReadError.FileError(posix_path(path))
         }
 
         self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
@@ -1329,12 +1347,12 @@ class PNGEncoder
 }
 
 public
-func decode_png(posix_path:String) throws -> ([UInt8], PNGHeader)
+func decode_png(path:String) throws -> ([UInt8], PNGHeader)
 {
-    guard let stream:FilePointer = fopen(posix_path, "rb")
+    guard let stream:FilePointer = fopen(posix_path(path), "rb")
     else
     {
-        throw PNGReadError.FileError(posix_path)
+        throw PNGReadError.FileError(posix_path(path))
     }
     defer { fclose(stream) }
 
@@ -1375,7 +1393,7 @@ func decode_png(posix_path:String) throws -> ([UInt8], PNGHeader)
 }
 
 public
-func encode_png(posix_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func encode_png(path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
     guard raw_data.count == header.noninterlaced_data_size
     else
@@ -1383,10 +1401,10 @@ func encode_png(posix_path:String, raw_data:[UInt8], header:PNGHeader, chunk_siz
         throw PNGWriteError.DimemsionError
     }
 
-    guard let stream:FilePointer = fopen(posix_path, "wb")
+    guard let stream:FilePointer = fopen(posix_path(path), "wb")
     else
     {
-        throw PNGReadError.FileError(posix_path)
+        throw PNGReadError.FileError(posix_path(path))
     }
     defer { fclose(stream) }
 
@@ -1416,37 +1434,6 @@ func encode_png(posix_path:String, raw_data:[UInt8], header:PNGHeader, chunk_siz
     }
 
     try encoder.finish(stream: stream)
-}
-
-public
-func posix_path(_ relative_path:String) -> String
-{
-    guard let first_char:Character = relative_path.characters.first
-    else
-    {
-        return relative_path
-    }
-    var expanded_path:String = relative_path
-    if first_char == "~"
-    {
-        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
-        {
-            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
-        }
-    }
-    return expanded_path
-}
-
-public
-func decode_png(relative_path:String) throws -> ([UInt8], PNGHeader)
-{
-    return try decode_png(posix_path: posix_path(relative_path))
-}
-
-public
-func encode_png(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
-{
-    try encode_png(posix_path: posix_path(relative_path), raw_data: raw_data, header: header, chunk_size: chunk_size)
 }
 
 class ZIterator

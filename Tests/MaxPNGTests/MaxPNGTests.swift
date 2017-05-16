@@ -15,12 +15,12 @@ let color_off = "\u{001B}[0m"
 
 let TERM_WIDTH:Int = 64
 
-func load_rgba_data<Pixel:UnsignedInteger>(posix_path:String, n_pixels:Int) -> [RGBA<Pixel>]
+func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
 {
-    guard let stream:FilePointer = fopen(posix_path, "rb")
+    guard let stream:FilePointer = fopen(posix_path(path), "rb")
     else
     {
-        fatalError("Failed to read rgba file '\(posix_path)'")
+        fatalError("Failed to read rgba file '\(posix_path(path))'")
     }
     defer { fclose(stream) }
 
@@ -34,7 +34,7 @@ func load_rgba_data<Pixel:UnsignedInteger>(posix_path:String, n_pixels:Int) -> [
     return pixel_data
 }
 
-func test_against_rgba64(png_data:[UInt8], header:PNGHeader, relative_path_rgba:String) -> Bool
+func test_against_rgba64(png_data:[UInt8], header:PNGHeader, path_rgba:String) -> Bool
 {
     guard let rgba_data_png:[RGBA<UInt16>] = header.rgba64(raw_data: png_data)
     else
@@ -42,7 +42,7 @@ func test_against_rgba64(png_data:[UInt8], header:PNGHeader, relative_path_rgba:
         return false
     }
 
-    let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(posix_path: posix_path(relative_path_rgba),
+    let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(path: path_rgba,
                                                        n_pixels: header.width * header.height)
 
     if rgba_data_rgba != rgba_data_png
@@ -78,13 +78,13 @@ func print_progress(percent:Double, width:Int, eraser:String = "\r")
 }
 
 public
-func reencode_png(_ rpath:String, output:String) throws
+func reencode_png(_ path:String, output:String) throws
 {
-    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png(relative_path: rpath)
+    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png(path: path)
     print(png_header)
 
     print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
-    try encode_png(relative_path: output, raw_data: png_data, header: png_header)
+    try encode_png(path: output, raw_data: png_data, header: png_header)
     print_progress(percent: 1, width: TERM_WIDTH)
     print()
 }

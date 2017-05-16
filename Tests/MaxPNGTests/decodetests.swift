@@ -1,11 +1,11 @@
 @testable import MaxPNG
 
-func test_decoded_identical(relative_path_png:String, relative_path_rgba:String) -> Bool
+func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
 {
     let (png_raw_data, png_header):([UInt8], PNGHeader)
     do
     {
-        (png_raw_data, png_header) = try decode_png(relative_path: relative_path_png)
+        (png_raw_data, png_header) = try decode_png(path: path_png)
     }
     catch
     {
@@ -29,7 +29,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
         png_data = png_raw_data
     }
 
-    return test_against_rgba64(png_data: png_data, header: png_header, relative_path_rgba: relative_path_rgba)
+    return test_against_rgba64(png_data: png_data, header: png_header, path_rgba: path_rgba)
 }
 
 func run_tests(test_cases:[String])
@@ -38,7 +38,7 @@ func run_tests(test_cases:[String])
     {
         let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_case).png"
         let path_rgba:String = "Tests/MaxPNGTests/unit/rgba/\(test_case).png.rgba"
-        if test_decoded_identical(relative_path_png: path_png, relative_path_rgba: path_rgba)
+        if test_decoded_identical(path_png: path_png, path_rgba: path_rgba)
         {
             print("\(green_bold)(decode:\(i)) test '\(test_case)' passed\(color_off)\n")
         }
