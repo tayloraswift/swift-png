@@ -173,14 +173,14 @@ struct Header
     let width:Int,
         height:Int,
         bit_depth:Int,
-        color_type:PNGProperties.ColorType,
+        color:PNGProperties.ColorType,
         interlaced:Bool
 
-    init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlaced:Bool) throws
+    init(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool) throws
     {
         // validate color type
         let allowed_bit_depths:[Int]
-        switch color_type
+        switch color
         {
         case .grayscale_a, .rgb, .rgba:
             allowed_bit_depths = [8, 16]
@@ -192,13 +192,13 @@ struct Header
         guard allowed_bit_depths.contains(bit_depth)
         else
         {
-            throw PNGReadError.PNGSyntaxError("Color type '\(color_type)' cannot have a bit depth of \(bit_depth)")
+            throw PNGReadError.PNGSyntaxError("Color type '\(color)' cannot have a bit depth of \(bit_depth)")
         }
 
         self.width      = width
         self.height     = height
         self.bit_depth  = bit_depth
-        self.color_type = color_type
+        self.color      = color
         self.interlaced = interlaced
     }
 
@@ -210,7 +210,7 @@ struct Header
             throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
         }
 
-        guard let color_type = ColorType(rawValue: Int(data[9]))
+        guard let color = ColorType(rawValue: Int(data[9]))
         else
         {
             throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
@@ -246,7 +246,7 @@ struct Header
         try self.init(width     : Int(quad_byte_to_uint32(Array(data[0...3]))),
                       height    : Int(quad_byte_to_uint32(Array(data[4...7]))),
                       bit_depth : Int(data[8]),
-                      color_type: color_type,
+                      color     : color,
                       interlaced: interlaced)
     }
 }
@@ -268,7 +268,7 @@ struct PNGProperties:CustomStringConvertible
     let width:Int,
         height:Int,
         bit_depth:Int,
-        color_type:ColorType,
+        color:ColorType,
         interlaced:Bool
 
     public
@@ -306,26 +306,26 @@ struct PNGProperties:CustomStringConvertible
     {
         return PNGProperties(width: self.width, height: self.height,
                              bit_depth_unchecked: self.bit_depth,
-                             color_type         : self.color_type,
+                             color              : self.color,
                              interlaced         : false)
     }
 
     public
     var description:String
     {
-        return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color_type), interlaced: \(self.interlaced)}"
+        return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color), interlaced: \(self.interlaced)}"
     }
 
-    init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color_type:ColorType, interlaced:Bool)
+    init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color:ColorType, interlaced:Bool)
     {
         self.width      = width
         self.height     = height
         self.bit_depth  = bit_depth
-        self.color_type = color_type
+        self.color      = color
         self.interlaced = interlaced
 
         let channels:Int
-        switch color_type
+        switch color
         {
         case .grayscale, .indexed:
             channels = 1
@@ -379,19 +379,16 @@ struct PNGProperties:CustomStringConvertible
         self.init(width             : header.width,
                  height             : header.height,
                  bit_depth_unchecked: header.bit_depth,
-                 color_type         : header.color_type,
+                 color              : header.color,
                  interlaced         : header.interlaced)
     }
 
     public
-    init?(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlaced:Bool)
+    init?(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool)
     {
         do
         {
-            self.init(header: try Header(width: width, height: height,
-                                         bit_depth : bit_depth,
-                                         color_type: color_type,
-                                         interlaced: interlaced))
+            self.init(header: try Header(width: width, height: height, bit_depth: bit_depth, color: color, interlaced: interlaced))
         }
         catch
         {
@@ -406,7 +403,7 @@ struct PNGProperties:CustomStringConvertible
         bytes.reserveCapacity(12)
         bytes.append(contentsOf: uint32_to_quad_byte(UInt32(self.height))) // [4:7]
         bytes.append(UInt8(self.bit_depth))                             // [8]
-        bytes.append(UInt8(self.color_type.rawValue))                   // [9]
+        bytes.append(UInt8(self.color.rawValue))                   // [9]
         bytes.append(0)                                                 // [10] = 0
         bytes.append(0)                                                 // [11] = 0
         bytes.append(self.interlaced ? 1 : 0)                            // [12]
@@ -423,7 +420,7 @@ struct PNGProperties:CustomStringConvertible
             let properties:PNGProperties = PNGProperties(width: dimensions.width,
                                                          height: dimensions.height,
                                                          bit_depth: self.bit_depth,
-                                                         color_type: self.color_type,
+                                                         color: self.color,
                                                          interlaced: false)!
             // the Properties should never fail to construct, because we know self.bit_depth is valid
             return (Array(raw_data[range]), properties)
@@ -492,7 +489,7 @@ struct PNGProperties:CustomStringConvertible
             return nil
         }
 
-        guard self.color_type != .indexed
+        guard self.color != .indexed
         else
         {
             fputs("Normalizing indexed PNGs is unsupported\n", stderr)
@@ -511,7 +508,7 @@ struct PNGProperties:CustomStringConvertible
         }
         else
         {
-            switch self.color_type
+            switch self.color
             {
             case .grayscale:
                 output = raw_data.map{ value in RGBA(value, value, value, UInt8.max) }
@@ -549,7 +546,7 @@ struct PNGProperties:CustomStringConvertible
     public
     func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
     {
-        guard self.color_type != .indexed
+        guard self.color != .indexed
         else
         {
             fputs("Normalizing indexed PNGs is unsupported\n", stderr)
@@ -570,7 +567,7 @@ struct PNGProperties:CustomStringConvertible
         {
             if self.bit_depth == 8
             {
-                switch self.color_type
+                switch self.color
                 {
                 case .grayscale:
                     output = raw_data.map
@@ -608,7 +605,7 @@ struct PNGProperties:CustomStringConvertible
             }
             else
             {
-                switch self.color_type
+                switch self.color
                 {
                 case .grayscale:
                     output = stride(from: 0, to: raw_data.count, by: 2).map
@@ -669,7 +666,7 @@ struct PNGConditions
     var last_valid_chunk:PNGChunk = PNGChunk.__FIRST__,
         seen:Set<PNGChunk>        = []
 
-    var color_type:PNGProperties.ColorType?
+    var color:PNGProperties.ColorType?
 
     mutating
     func update(_ chunk:PNGChunk) throws
@@ -693,7 +690,7 @@ struct PNGConditions
             throw PNGReadError.PrematureIENDError
         }
 
-        guard let color_type = self.color_type
+        guard let color = self.color
         else
         {
             throw PNGReadError.MissingHeaderError
@@ -702,14 +699,14 @@ struct PNGConditions
         switch chunk
         {
         case                                                                              .tRNS:
-            if color_type == .grayscale_a || color_type == .rgba
+            if color == .grayscale_a || color == .rgba
             {
                 throw PNGReadError.IllegalChunkError(chunk)
             }
             fallthrough
         // PLTE must come before bKGD, hIST, and tRNS
         case               .PLTE:
-            if color_type == .grayscale || color_type == .grayscale_a
+            if color == .grayscale || color == .grayscale_a
             {
                 throw PNGReadError.IllegalChunkError(chunk)
             }
@@ -750,7 +747,7 @@ struct PNGConditions
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
 
-            if color_type == .indexed && !self.seen.contains(.PLTE)
+            if color == .indexed && !self.seen.contains(.PLTE)
             {
                 throw PNGReadError.MissingPalatteError
             }
@@ -867,12 +864,12 @@ struct Decoder
         self.current_chunk = .IHDR
         let header:Header = try Header(chunk_data)
 
-        self.conditions.color_type = header.color_type
+        self.conditions.color = header.color
         self.z_iterator = try ZInflator()
 
         // read non-IDAT chunks
         //                                     v— recognized generally contains an .IDAT enum to ensure we don’t miss the first .IDAT
-        let pre_idat_chunks:Set<PNGChunk> = recognized.union(header.color_type == .indexed ? [.PLTE, .IEND] : [.IEND])
+        let pre_idat_chunks:Set<PNGChunk> = recognized.union(header.color == .indexed ? [.PLTE, .IEND] : [.IEND])
 
         outer_loop: while true
         {
