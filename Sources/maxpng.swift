@@ -1,6 +1,8 @@
 import Zlib
 import Glibc
 
+let DEFAULT_CHUNK_SIZE:Int = 1 << 16
+
 typealias FilePointer = UnsafeMutablePointer<FILE>
 
 public
@@ -1013,7 +1015,7 @@ class PNGEncoder
         reference_line:[UInt8]
 
     public
-    init(path:String, header:PNGHeader, chunk_size:Int = 1 << 16) throws
+    init(path:String, header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
     {
         if let stream = fopen(path, "wb")
         {
@@ -1369,25 +1371,6 @@ func absolute_unix_path(_ relative_path:String) -> String
 }
 
 public
-func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGHeader)
-{
-    let png_decode = try PNGDecoder(path: absolute_path)
-    var png_data:[[UInt8]] = []
-    png_data.reserveCapacity(png_decode.header.height)
-    while let scanline = try png_decode.next_scanline()
-    {
-        png_data.append(scanline)
-    }
-
-    if png_decode.header.interlace
-    {
-        png_data = try deinterlace(scanlines: png_data, header: png_decode.header)
-    }
-
-    return (png_data, png_decode.header)
-}
-
-public
 func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 {
     guard let stream:FilePointer = fopen(absolute_path, "rb")
@@ -1439,7 +1422,7 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 }
 
 public
-func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = 1 << 16) throws
+func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
     guard raw_data.count == header.noninterlaced_data_size
     else
@@ -1482,13 +1465,6 @@ func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHea
     try encoder.finish(stream: stream)
 }
 
-
-public
-func decode_png(relative_path:String) throws -> ([[UInt8]], PNGHeader)
-{
-    return try decode_png(absolute_path: absolute_unix_path(relative_path))
-}
-
 public
 func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
 {
@@ -1496,12 +1472,9 @@ func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
 }
 
 public
-func encode_png_contiguous(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = 1 << 16) throws
+func encode_png_contiguous(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
-    try encode_png_contiguous(absolute_path : absolute_unix_path(relative_path),
-                              raw_data      : raw_data,
-                              header        : header,
-                              chunk_size    : chunk_size)
+    try encode_png_contiguous(absolute_path: absolute_unix_path(relative_path), raw_data: raw_data, header: header, chunk_size: chunk_size)
 }
 
 class ZIterator

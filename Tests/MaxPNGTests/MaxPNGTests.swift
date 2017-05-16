@@ -48,22 +48,13 @@ func skip_png(_ rpath:String) throws
 public
 func reencode_png_stream(_ rpath:String, output:String) throws
 {
-    let path = absolute_unix_path(rpath)
-    let out = absolute_unix_path(output)
-    let png_decode = try PNGDecoder(path: path)
-    let png_encode = try PNGEncoder(path: out, header: png_decode.header)
-    print(png_decode.header)
+    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png_contiguous(relative_path: rpath)
+    print(png_header)
 
-    var i:Int = 0
     print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
-    while let scanline = try png_decode.next_scanline()
-    {
-        i += 1
-        try png_encode.add_scanline(scanline)
-        print_progress(percent: Double(i) / Double(png_decode.header.height), width: TERM_WIDTH)
-    }
-    try png_encode.finish()
-    print("")
+    try encode_png_contiguous(relative_path: output, raw_data: png_data, header: png_header)
+    print_progress(percent: 1, width: TERM_WIDTH)
+    print()
 }
 
 public
