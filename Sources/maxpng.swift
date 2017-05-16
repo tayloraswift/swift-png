@@ -898,7 +898,8 @@ struct Decoder
         self.z_iterator = try ZInflator()
 
         // read non-IDAT chunks
-        let pre_idat_chunks:Set<PNGChunk> = recognized.union([.IEND])
+        //                                     v— recognized generally contains an .IDAT enum to ensure we don’t miss the first .IDAT
+        let pre_idat_chunks:Set<PNGChunk> = recognized.union(self.header.color_type == .indexed ? [.PLTE, .IEND] : [.IEND])
 
         outer_loop: while true
         {
@@ -909,14 +910,14 @@ struct Decoder
                 switch chunk
                 {
                     case .PLTE:
-                        fputs("indexed-colored pngs are not yet supported", stderr)
+                        fputs("Indexed-colored pngs are unsupported\n", stderr)
                     case .IDAT:
                         self.z_iterator.add_input(chunk_data)
                         break outer_loop // we have a check in the conditions preventing IEND from coming early
                     case .IEND:
                         break outer_loop
                     default:
-                        fputs("Reading chunk \(chunk) is not yet supported. tragic", stderr)
+                        fputs("Reading chunk \(chunk) is not yet supported. tragic\n", stderr)
                 }
             }
         }
