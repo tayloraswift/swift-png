@@ -41,7 +41,7 @@ func print_progress(percent:Double, width:Int, eraser:String = "\r")
 public
 func skip_png(_ rpath:String) throws
 {
-    let path = absolute_unix_path(rpath)
+    let path = posix_path(rpath)
     let _ = try PNGDecoder(path: path, look_for: [])
 }
 
@@ -57,6 +57,7 @@ func reencode_png_stream(_ rpath:String, output:String) throws
     print()
 }
 
+/*
 public
 func decompose_png(_ rpath:String, output:String) throws
 {
@@ -103,3 +104,4 @@ func decompose_png(_ rpath:String, output:String) throws
     }
     try deinterlaced_encode.finish()
 }
+*/

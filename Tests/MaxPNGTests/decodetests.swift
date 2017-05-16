@@ -1,12 +1,12 @@
 import Glibc
 @testable import MaxPNG
 
-func load_rgba_data<Pixel:UnsignedInteger>(absolute_path:String, n_pixels:Int) -> [RGBA<Pixel>]
+func load_rgba_data<Pixel:UnsignedInteger>(posix_path:String, n_pixels:Int) -> [RGBA<Pixel>]
 {
-    guard let stream:FilePointer = fopen(absolute_path, "rb")
+    guard let stream:FilePointer = fopen(posix_path, "rb")
     else
     {
-        fatalError("Failed to read rgba file '\(absolute_path)'")
+        fatalError("Failed to read rgba file '\(posix_path)'")
     }
     defer { fclose(stream) }
 
@@ -14,7 +14,7 @@ func load_rgba_data<Pixel:UnsignedInteger>(absolute_path:String, n_pixels:Int) -
     guard fread(&pixel_data, MemoryLayout<RGBA<Pixel>>.stride, n_pixels, stream) == n_pixels
     else
     {
-        fatalError("Failed to read rgba file '\(absolute_path)'")
+        fatalError("Failed to read rgba file '\(posix_path)'")
     }
 
     return pixel_data
@@ -33,7 +33,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
         return false
     }
 
-    guard let rgba_data_png:[RGBA<UInt16>] = rgba64(raw_data: png_data, header: png_header)
+    guard let rgba_data_png:[RGBA<UInt16>] = png_header.rgba64(raw_data: png_data)
     else
     {
         return false
@@ -49,7 +49,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
         return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, a << 8 | a)
     }
     */
-    let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(absolute_path: absolute_unix_path(relative_path_rgba),
+    let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(posix_path: posix_path(relative_path_rgba),
                                                        n_pixels: png_header.width * png_header.height)
 
     if rgba_data_rgba != rgba_data_png

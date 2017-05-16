@@ -2,6 +2,7 @@ import Zlib
 import Glibc
 
 let DEFAULT_CHUNK_SIZE:Int = 1 << 16
+let PNG_SIGNATURE:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
 typealias FilePointer = UnsafeMutablePointer<FILE>
 
@@ -19,15 +20,16 @@ enum PNGReadError:Error
          ChunkOrderingError(PNGChunkType),
          MissingHeaderError,
          PrematureEOSError,
-         PrematureIENDError
+         PrematureIENDError,
+
+         InterlaceDimensionError
 }
 
 public
 enum PNGWriteError:Error
 {
     case FileWriteError,
-         DimemsionError,
-         InterlaceDimensionError
+         DimemsionError
 }
 
 public
@@ -320,6 +322,18 @@ func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     }
 }
 
+func bitval_extract(bit_index:Int, bit_depth:Int, source:[UInt8]) -> UInt8
+{
+    let byte_offset:Int  = bit_index >> 3
+    let bit_offset:UInt8 = UInt8(bit_index & 7)
+    var src_byte:UInt8   = source[byte_offset]
+    /* mask out left */
+    src_byte <<= bit_offset
+    /* mask out right */
+    src_byte >>= (8 - UInt8(bit_depth))
+    return src_byte
+}
+
 public
 struct PNGHeader:CustomStringConvertible
 {
@@ -343,18 +357,33 @@ struct PNGHeader:CustomStringConvertible
     public
     let channels:Int
 
-    public
-    let sub_dimensions:[(width:Int, height:Int)],
-        sub_data_ranges:[Range<Int>]
 
-    let sub_striders:[(u:StrideTo<Int>, v:StrideTo<Int>)],
-        sub_array_bounds:[(i:Int, j:Int)],
+
+    public
+    let sub_dimensions:[(width:Int, height:Int)]
+
+    let sub_array_bounds:[(i:Int, j:Int)],
         bpp:Int,
         interlaced_data_size:Int,
         noninterlaced_data_size:Int
 
-    static
-    let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
+    private
+    typealias SubStrider = (u:StrideTo<Int>, v:StrideTo<Int>)
+    private
+    let sub_striders:[SubStrider]
+
+    private
+    var sub_array_ranges:[Range<Int>]
+    {
+        var accumulator:Int = 0
+        return self.sub_array_bounds.dropLast().map
+        {
+            let upper:Int = accumulator + $0.i * $0.j
+            let range:Range<Int> = accumulator ..< upper
+            accumulator = upper
+            return range
+        }
+    }
 
     public
     var description:String
@@ -431,16 +460,7 @@ struct PNGHeader:CustomStringConvertible
             return (i: $0.height, j: scanline_bytes_n)
         }
 
-        var accumulator:Int = 0
-        self.sub_data_ranges = self.sub_array_bounds.dropLast().map
-        {
-            let upper:Int = accumulator + $0.i * $0.j
-            let range:Range<Int> = accumulator ..< upper
-            accumulator = upper
-            return range
-        }
-
-        self.interlaced_data_size = accumulator
+        self.interlaced_data_size = self.sub_array_bounds.dropLast().map{ $0.i * $0.j }.reduce(0, +)
         self.noninterlaced_data_size = self.sub_array_bounds[7].i * self.sub_array_bounds[7].j
     }
 
@@ -502,6 +522,225 @@ struct PNGHeader:CustomStringConvertible
         bytes.append(0)                                                 // [11] = 0
         bytes.append(self.interlace ? 1 : 0)                            // [12]
         return bytes
+    }
+
+    public
+    func deinterlace(raw_data:[UInt8]) -> [UInt8]?
+    {
+        guard raw_data.count == self.interlaced_data_size
+        else
+        {
+            return nil
+        }
+
+        var deinterlaced = [UInt8](repeating: 0, count: self.noninterlaced_data_size)
+
+        var src_byte_base:Int = 0
+        for (range, (stride_h, stride_v)):(Range<Int>, SubStrider) in zip(self.sub_array_ranges, self.sub_striders)
+        {
+            var src_pixel_offset:Int = 0
+            for dest_pixel_base in stride_v.map({ $0 * self.width })
+            {
+                for dest_pixel_offset in stride_h
+                {
+                    if self.bit_depth < 8
+                    {
+                        // channels is guaranteed to equal 1
+                        let src_byte_index:Int   = src_byte_base + (src_pixel_offset * self.bit_depth) >> 3,
+                            src_bit_offset:UInt8 =           UInt8((src_pixel_offset * self.bit_depth) & 7)
+                        var src_byte:UInt8       = raw_data[src_byte_index]
+
+                        // mask out left
+                        src_byte <<= src_bit_offset
+                        // mask out right
+                        src_byte >>= (8 - UInt8(self.bit_depth))
+
+                        let dest_byte_index:Int   =       ((dest_pixel_base + dest_pixel_offset) * self.bit_depth) >> 3,
+                            dest_bit_offset:UInt8 = UInt8(((dest_pixel_base + dest_pixel_offset) * self.bit_depth) & 7)
+                        // shift it to destination
+                        deinterlaced[dest_byte_index] |= src_byte << (8 - dest_bit_offset - UInt8(self.bit_depth))
+                    }
+                    else
+                    {
+                        let dest_byte_index:Int = (dest_pixel_base + dest_pixel_offset) * self.bpp,
+                             src_byte_index:Int =    src_byte_base + src_pixel_offset   * self.bpp
+                        deinterlaced[dest_byte_index ..< dest_byte_index + self.bpp] =
+                            raw_data[src_byte_index  ..< src_byte_index  + self.bpp]
+                    }
+
+                    src_pixel_offset += 1
+                }
+            }
+            src_byte_base += range.count
+        }
+
+        return deinterlaced
+    }
+
+    public
+    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]?
+    {
+        guard self.bit_depth <= 8
+        else
+        {
+            return nil
+        }
+
+        guard self.color_type != .indexed
+        else
+        {
+            fputs("Normalizing indexed PNGs is unsupported\n", stderr)
+            return nil
+        }
+
+        let output:[RGBA<UInt8>]
+        if self.bit_depth < 8 // channels is guaranteed to be 1
+        {
+            let quantum:UInt8 = UInt8.max / (UInt8.max >> (8 - UInt8(self.bit_depth)))
+            output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+            {
+                let value:UInt8 = quantum * bitval_extract(bit_index: $0, bit_depth: self.bit_depth, source: raw_data)
+                return RGBA(value, value, value, UInt8.max)
+            }
+        }
+        else
+        {
+            switch self.color_type
+            {
+            case .grayscale:
+                output = raw_data.map{ value in RGBA(value, value, value, UInt8.max) }
+            case .grayscale_a:
+                output = stride(from: 0, to: raw_data.count, by: 2).map
+                {
+                    let value:UInt8 = raw_data[$0]
+                    return RGBA(value, value, value, raw_data[$0 + 1])
+                }
+            case .rgb:
+                output = stride(from: 0, to: raw_data.count, by: 3).map
+                {
+                    let r:UInt8 = raw_data[$0    ],
+                        g:UInt8 = raw_data[$0 + 1],
+                        b:UInt8 = raw_data[$0 + 2]
+                    return RGBA(r, g, b, UInt8.max)
+                }
+            case .rgba:
+                output = stride(from: 0, to: raw_data.count, by: 4).map
+                {
+                    let r:UInt8 = raw_data[$0    ],
+                        g:UInt8 = raw_data[$0 + 1],
+                        b:UInt8 = raw_data[$0 + 2],
+                        a:UInt8 = raw_data[$0 + 3]
+                    return RGBA(r, g, b, a)
+                }
+            case .indexed:
+                return nil // should never reach here
+            }
+        }
+
+        return output
+    }
+
+    public
+    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
+    {
+        guard self.color_type != .indexed
+        else
+        {
+            fputs("Normalizing indexed PNGs is unsupported\n", stderr)
+            return nil
+        }
+
+        let output:[RGBA<UInt16>]
+        if self.bit_depth < 8 // channels is guaranteed to be 1
+        {
+            let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
+            output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+            {
+                let value:UInt16 = quantum * UInt16(bitval_extract(bit_index: $0, bit_depth: self.bit_depth, source: raw_data))
+                return RGBA(value, value, value, UInt16.max)
+            }
+        }
+        else
+        {
+            if self.bit_depth == 8
+            {
+                switch self.color_type
+                {
+                case .grayscale:
+                    output = raw_data.map
+                    {
+                        let value:UInt16 = UInt16($0) << 8 | UInt16($0)
+                        return RGBA(value, value, value, UInt16.max)
+                    }
+                case .grayscale_a:
+                    output = stride(from: 0, to: raw_data.count, by: 2).map
+                    {
+                        let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
+                            alpha:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1])
+                        return RGBA(value, value, value, alpha)
+                    }
+                case .rgb:
+                    output = stride(from: 0, to: raw_data.count, by: 3).map
+                    {
+                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
+                            g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
+                            b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2])
+                        return RGBA(r, g, b, UInt16.max)
+                    }
+                case .rgba:
+                    output = stride(from: 0, to: raw_data.count, by: 4).map
+                    {
+                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
+                            g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
+                            b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2]),
+                            a:UInt16 = UInt16(raw_data[$0 + 3]) << 8 | UInt16(raw_data[$0 + 3])
+                        return RGBA(r, g, b, a)
+                    }
+                case .indexed:
+                    return nil // should never reach here
+                }
+            }
+            else
+            {
+                switch self.color_type
+                {
+                case .grayscale:
+                    output = stride(from: 0, to: raw_data.count, by: 2).map
+                    {
+                        let value:UInt16 = UInt16(raw_data[$0]) << 8 | UInt16(raw_data[$0 + 1])
+                        return RGBA(value, value, value, UInt16.max)
+                    }
+                case .grayscale_a:
+                    output = stride(from: 0, to: raw_data.count, by: 4).map
+                    {
+                        let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
+                            alpha:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3])
+                        return RGBA(value, value, value, alpha)
+                    }
+                case .rgb:
+                    output = stride(from: 0, to: raw_data.count, by: 6).map
+                    {
+                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
+                            g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
+                            b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5])
+                        return RGBA(r, g, b, UInt16.max)
+                    }
+                case .rgba:
+                    output = stride(from: 0, to: raw_data.count, by: 8).map
+                    {
+                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
+                            g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
+                            b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5]),
+                            a:UInt16 = UInt16(raw_data[$0 + 6]) << 8 | UInt16(raw_data[$0 + 7])
+                        return RGBA(r, g, b, a)
+                    }
+                case .indexed:
+                    return nil // should never reach here
+                }
+            }
+        }
+
+        return output
     }
 }
 
@@ -592,7 +831,7 @@ struct Decoder
     init(stream:FilePointer, look_for:[PNGChunkType] = [.IDAT]) throws
     {
         /* check if it's, you know, actually a PNG */
-        guard (try read_png_buffer(stream, 8) == PNGHeader.signature) // compare with PNG signature
+        guard (try read_png_buffer(stream, 8) == PNG_SIGNATURE) // compare with PNG signature
         else
         {
             throw PNGReadError.FiletypeError
@@ -855,7 +1094,7 @@ struct Encoder
         self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
         self.chunk_capacity_remaining = chunk_size
 
-        try write_png_buffer(stream, buffer: PNGHeader.signature)
+        try write_png_buffer(stream, buffer: PNG_SIGNATURE)
         try png_write_chunk(f: stream, chunk_data: header.write(), chunk_type: .IHDR)
     }
 
@@ -1062,321 +1301,12 @@ class PNGEncoder
 }
 
 public
-func rgba32(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt8>]?
+func decode_png_contiguous(posix_path:String) throws -> ([UInt8], PNGHeader)
 {
-    guard header.bit_depth <= 8
+    guard let stream:FilePointer = fopen(posix_path, "rb")
     else
     {
-        return nil
-    }
-
-    guard header.color_type != .indexed
-    else
-    {
-        fputs("Normalizing indexed PNGs is unsupported\n", stderr)
-        return nil
-    }
-
-    let output:[RGBA<UInt8>]
-    if header.bit_depth < 8 // channels is guaranteed to be 1
-    {
-        let quantum:UInt8 = UInt8.max / (UInt8.max >> (8 - UInt8(header.bit_depth)))
-        output = stride(from: 0, to: raw_data.count << 3, by: header.bit_depth).map
-        {
-            let value:UInt8 = quantum * bitval_extract(bit_index: $0, bit_depth: header.bit_depth, source: raw_data)
-            return RGBA(value, value, value, UInt8.max)
-        }
-    }
-    else
-    {
-        switch header.color_type
-        {
-        case .grayscale:
-            output = raw_data.map{ value in RGBA(value, value, value, UInt8.max) }
-        case .grayscale_a:
-            output = stride(from: 0, to: raw_data.count, by: 2).map
-            {
-                let value:UInt8 = raw_data[$0]
-                return RGBA(value, value, value, raw_data[$0 + 1])
-            }
-        case .rgb:
-            output = stride(from: 0, to: raw_data.count, by: 3).map
-            {
-                let r:UInt8 = raw_data[$0    ],
-                    g:UInt8 = raw_data[$0 + 1],
-                    b:UInt8 = raw_data[$0 + 2]
-                return RGBA(r, g, b, UInt8.max)
-            }
-        case .rgba:
-            output = stride(from: 0, to: raw_data.count, by: 4).map
-            {
-                let r:UInt8 = raw_data[$0    ],
-                    g:UInt8 = raw_data[$0 + 1],
-                    b:UInt8 = raw_data[$0 + 2],
-                    a:UInt8 = raw_data[$0 + 3]
-                return RGBA(r, g, b, a)
-            }
-        case .indexed:
-            return nil // should never reach here
-        }
-    }
-
-    return output
-}
-
-public
-func rgba64(raw_data:[UInt8], header:PNGHeader) -> [RGBA<UInt16>]?
-{
-    guard header.color_type != .indexed
-    else
-    {
-        fputs("Normalizing indexed PNGs is unsupported\n", stderr)
-        return nil
-    }
-
-    let output:[RGBA<UInt16>]
-    if header.bit_depth < 8 // channels is guaranteed to be 1
-    {
-        let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(header.bit_depth)))
-        output = stride(from: 0, to: raw_data.count << 3, by: header.bit_depth).map
-        {
-            let value:UInt16 = quantum * UInt16(bitval_extract(bit_index: $0, bit_depth: header.bit_depth, source: raw_data))
-            return RGBA(value, value, value, UInt16.max)
-        }
-    }
-    else
-    {
-        if header.bit_depth == 8
-        {
-            switch header.color_type
-            {
-            case .grayscale:
-                output = raw_data.map
-                {
-                    let value:UInt16 = UInt16($0) << 8 | UInt16($0)
-                    return RGBA(value, value, value, UInt16.max)
-                }
-            case .grayscale_a:
-                output = stride(from: 0, to: raw_data.count, by: 2).map
-                {
-                    let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
-                        alpha:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1])
-                    return RGBA(value, value, value, alpha)
-                }
-            case .rgb:
-                output = stride(from: 0, to: raw_data.count, by: 3).map
-                {
-                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
-                        g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
-                        b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2])
-                    return RGBA(r, g, b, UInt16.max)
-                }
-            case .rgba:
-                output = stride(from: 0, to: raw_data.count, by: 4).map
-                {
-                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
-                        g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
-                        b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2]),
-                        a:UInt16 = UInt16(raw_data[$0 + 3]) << 8 | UInt16(raw_data[$0 + 3])
-                    return RGBA(r, g, b, a)
-                }
-            case .indexed:
-                return nil // should never reach here
-            }
-        }
-        else
-        {
-            switch header.color_type
-            {
-            case .grayscale:
-                output = stride(from: 0, to: raw_data.count, by: 2).map
-                {
-                    let value:UInt16 = UInt16(raw_data[$0]) << 8 | UInt16(raw_data[$0 + 1])
-                    return RGBA(value, value, value, UInt16.max)
-                }
-            case .grayscale_a:
-                output = stride(from: 0, to: raw_data.count, by: 4).map
-                {
-                    let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
-                        alpha:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3])
-                    return RGBA(value, value, value, alpha)
-                }
-            case .rgb:
-                output = stride(from: 0, to: raw_data.count, by: 6).map
-                {
-                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
-                        g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
-                        b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5])
-                    return RGBA(r, g, b, UInt16.max)
-                }
-            case .rgba:
-                output = stride(from: 0, to: raw_data.count, by: 8).map
-                {
-                    let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
-                        g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
-                        b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5]),
-                        a:UInt16 = UInt16(raw_data[$0 + 6]) << 8 | UInt16(raw_data[$0 + 7])
-                    return RGBA(r, g, b, a)
-                }
-            case .indexed:
-                return nil // should never reach here
-            }
-        }
-    }
-
-    return output
-}
-
-func bitval_extract(bit_index:Int, bit_depth:Int, source:[UInt8]) -> UInt8
-{
-    let byte_offset:Int  = bit_index >> 3
-    let bit_offset:UInt8 = UInt8(bit_index & 7)
-    var src_byte:UInt8   = source[byte_offset]
-    /* mask out left */
-    src_byte <<= bit_offset
-    /* mask out right */
-    src_byte >>= (8 - UInt8(bit_depth))
-    return src_byte
-}
-
-func bitstamp(src_pos:Int, dest_pos:Int, bits:Int, source:[UInt8], dest:inout [UInt8])
-{
-    let src_byte_offset:Int  = src_pos >> 3
-    let dest_byte_offset:Int = dest_pos >> 3
-    let src_bit_offset:UInt8 = UInt8(src_pos & 7)
-    var src_byte:UInt8       = source[src_byte_offset]
-    /* mask out left */
-    src_byte <<= src_bit_offset
-    /* mask out right */
-    src_byte >>= (8 - UInt8(bits))
-    /* position it back where it should be */
-    src_byte <<= (8 - src_bit_offset - UInt8(bits))
-    /* write bits to destination */
-    dest[dest_byte_offset] |= src_byte
-}
-
-func bytestamp(src_pos:Int, dest_pos:Int, bytes:Int, source:[UInt8], dest:inout [UInt8])
-{
-    dest[dest_pos ..< dest_pos + bytes] = source[src_pos ..< src_pos + bytes]
-}
-
-public
-func deinterlace(raw_data:[UInt8], header:PNGHeader) throws -> [UInt8]
-{
-    guard raw_data.count == header.interlaced_data_size
-    else
-    {
-        throw PNGWriteError.InterlaceDimensionError
-    }
-
-    var deinterlaced = [UInt8](repeating: 0, count: header.noninterlaced_data_size)
-    var src_pixel_index = 0
-    for (stride_h, stride_v) in header.sub_striders
-    {
-        for dest_pixel_base in stride_v.map({ $0 * header.width })
-        {
-            for dest_pixel_offset in stride_h
-            {
-                if header.bit_depth < 8
-                {
-                    /* channels is guaranteed to equal 1 */
-                    var src_byte:UInt8       = raw_data[(src_pixel_index * header.bit_depth) >> 3],
-                        src_bit_offset:UInt8 = UInt8((src_pixel_index * header.bit_depth) & 7)
-                    /* mask out left */
-                    src_byte <<= src_bit_offset
-                    /* mask out right */
-                    src_byte >>= (8 - UInt8(header.bit_depth))
-                    /* position it back where it should be */
-                    src_byte <<= (8 - src_bit_offset - UInt8(header.bit_depth))
-                    /* write bits to destination */
-                    let dest_byte_index:Int = ((dest_pixel_base + dest_pixel_offset) * header.bit_depth) >> 3
-                    deinterlaced[dest_byte_index] |= src_byte
-                }
-                else
-                {
-                    let dest_byte_index:Int = (dest_pixel_base + dest_pixel_offset) * header.bpp,
-                         src_byte_index:Int = src_pixel_index * header.bpp
-                    deinterlaced[dest_byte_index ..< dest_byte_index + header.bpp] =
-                        raw_data[src_byte_index  ..< src_byte_index  + header.bpp]
-                }
-
-                src_pixel_index += 1
-            }
-        }
-    }
-
-    return deinterlaced
-}
-
-public
-func deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
-{
-    let (k, h):(Int, Int) = header.sub_array_bounds[7]
-    var pixels:[[UInt8]] = [[UInt8]](repeating: [UInt8](repeating: 0, count: h), count: k)
-
-    var l:Int = 0
-    for (sub_array_bound, (u: u, v: v)) in zip(header.sub_array_bounds, header.sub_striders)
-    {
-        for (scanline, dest_pixel_row) in zip(scanlines[l..<(l + sub_array_bound.i)], v)
-        {
-            guard scanline.count == sub_array_bound.j
-            else
-            {
-                throw PNGWriteError.InterlaceDimensionError
-            }
-            for (src_pixel_index, dest_pixel_index) in u.enumerated()
-            {
-                if header.bit_depth < 8
-                {
-                    /* channels is guaranteed to equal 1 */
-                    bitstamp(src_pos: src_pixel_index * header.bit_depth,
-                             dest_pos: dest_pixel_index * header.bit_depth,
-                             bits: header.bit_depth,
-                             source: scanline,
-                             dest: &pixels[dest_pixel_row])
-                }
-                else
-                {
-                    bytestamp(src_pos: src_pixel_index * header.bpp,
-                              dest_pos: dest_pixel_index * header.bpp,
-                              bytes: header.bpp,
-                              source: scanline,
-                              dest: &pixels[dest_pixel_row])
-                }
-            }
-        }
-        l += sub_array_bound.i
-    }
-
-    return pixels
-}
-
-public
-func absolute_unix_path(_ relative_path:String) -> String
-{
-    guard let first_char:Character = relative_path.characters.first
-    else
-    {
-        return relative_path
-    }
-    var expanded_path:String = relative_path
-    if first_char == "~"
-    {
-        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
-        {
-            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
-        }
-    }
-    return expanded_path
-}
-
-public
-func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
-{
-    guard let stream:FilePointer = fopen(absolute_path, "rb")
-    else
-    {
-        throw PNGReadError.FileError(absolute_path)
+        throw PNGReadError.FileError(posix_path)
     }
     defer { fclose(stream) }
 
@@ -1415,14 +1345,22 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 
     if decoder.header.interlace
     {
-        buffer = try deinterlace(raw_data: buffer, header: decoder.header)
-    }
+        guard let deinterlaced:[UInt8] = decoder.header.deinterlace(raw_data: buffer)
+        else
+        {
+            throw PNGReadError.InterlaceDimensionError
+        }
 
-    return (buffer, decoder.header)
+        return (deinterlaced, decoder.header)
+    }
+    else
+    {
+        return (buffer, decoder.header)
+    }
 }
 
 public
-func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func encode_png_contiguous(posix_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
     guard raw_data.count == header.noninterlaced_data_size
     else
@@ -1430,10 +1368,10 @@ func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHea
         throw PNGWriteError.DimemsionError
     }
 
-    guard let stream:FilePointer = fopen(absolute_path, "wb")
+    guard let stream:FilePointer = fopen(posix_path, "wb")
     else
     {
-        throw PNGReadError.FileError(absolute_path)
+        throw PNGReadError.FileError(posix_path)
     }
     defer { fclose(stream) }
 
@@ -1466,15 +1404,34 @@ func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHea
 }
 
 public
+func posix_path(_ relative_path:String) -> String
+{
+    guard let first_char:Character = relative_path.characters.first
+    else
+    {
+        return relative_path
+    }
+    var expanded_path:String = relative_path
+    if first_char == "~"
+    {
+        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        {
+            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
+        }
+    }
+    return expanded_path
+}
+
+public
 func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
 {
-    return try decode_png_contiguous(absolute_path: absolute_unix_path(relative_path))
+    return try decode_png_contiguous(posix_path: posix_path(relative_path))
 }
 
 public
 func encode_png_contiguous(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
-    try encode_png_contiguous(absolute_path: absolute_unix_path(relative_path), raw_data: raw_data, header: header, chunk_size: chunk_size)
+    try encode_png_contiguous(posix_path: posix_path(relative_path), raw_data: raw_data, header: header, chunk_size: chunk_size)
 }
 
 class ZIterator
