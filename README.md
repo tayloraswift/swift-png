@@ -13,18 +13,18 @@ MaxPNG is simple to use:
 ````swift
 import MaxPNG
 
-let (png_raw_data, png_header):([UInt8], PNGHeader) = try decode_png(path: "my_png_file.png")
+let (png_raw_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: "my_png_file.png")
 ````
 
 You can also use it to create your own PNG files:
 ````swift
 import MaxPNG
 
-let my_png_settings = PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlaced: false)
+let my_png_settings = PNGProperties(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlaced: false)
 let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
                            255,255,255,    0  ,0  ,0  ,    0  ,255,0  ,
                            120,120,255,    150,120,255,    180,120,255]
-try encode_png(path: "my_output_png.png", raw_data: my_png_data, header: my_png_settings)
+try encode_png(path: "my_output_png.png", raw_data: my_png_data, properties: my_png_settings)
 ````
 
 MaxPNG also provides a progressive API that reads and writes PNGs scanline by scanline.
@@ -33,7 +33,7 @@ MaxPNG also provides a progressive API that reads and writes PNGs scanline by sc
 import MaxPNG
 
 let png = try PNGDecoder(path: "my_png_file.png")
-let out = try PNGEncoder(path: "my_resaved_png.png", header: png.header)
+let out = try PNGEncoder(path: "my_resaved_png.png", properties: png.properties)
 
 while let scanline = try png.next_scanline()
 {
@@ -44,10 +44,10 @@ try out.finish()
 
 Resource management is as Swifty as it made sense to be; most resources will be released when MaxPNG’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
 
-MaxPNG provides the PNG’s formatting information in the `PNGHeader` struct which is returned by the contiguous decoder function `decode_png(path:)`, and provided as a member `.header` on the progressive decoder class `PNGDecoder`. These header structures are similarly taken as parameters by the contiguous encoder function `encode_png(path:raw_data:header:)` and the progressive encoder class initializer `PNGEncoder.init(path:header:)`.
+MaxPNG provides the PNG’s formatting information in the `PNGProperties` struct which is returned by the contiguous decoder function `decode_png(path:)`, and provided as a member `.properties` on the progressive decoder class `PNGDecoder`. These property structures are similarly taken as parameters by the contiguous encoder function `encode_png(path:raw_data:properties:)` and the progressive encoder class initializer `PNGEncoder.init(path:properties:)`.
 
 ````swift
-struct PNGHeader
+struct PNGProperties
 {
     enum ColorType:Int
     {
@@ -68,14 +68,14 @@ struct PNGHeader
 
     let sub_dimensions:[(width:Int, height:Int)]
 
-    var deinterlaced_header:PNGHeader{ get }
+    var deinterlaced_properties:PNGProperties { get }
 }
 ````
 
-The PNGHeader structure also includes several useful utility functions for processing PNG image data.
+The `PNGProperties` structure also includes several useful utility functions for processing PNG image data.
 
 ````swift
-    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGHeader)]?
+    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
 
     func deinterlace(raw_data:[UInt8]) -> [UInt8]?
 
@@ -117,16 +117,16 @@ Bit depth goes one level lower; it represents the size of each *channel*. A PNG 
 
 [Interlacing](https://en.wikipedia.org/wiki/Interlacing_(bitmaps)) is a way of progressivly ordering the image data in a PNG so it can be displayed at lower resolution even when partially downloaded. Interlacing is common in images downloaded from social media such as Instagram or Twitter, but rare elsewhere. Interlacing hurts compression, and so it usually significantly increases the size of a PNG file, sometimes as much as thirty percent.
 
-MaxPNG will read interlaced images as a series of subimage scanlines. To recover a rectangular pixel array, you should pass the interlaced scanlines into the provided `PNGHeader` member function `.deinterlace(raw_data:)` function.
+MaxPNG will read interlaced images as a series of subimage scanlines. To recover a rectangular pixel array, you should pass the interlaced scanlines into the provided `PNGProperties` member function `.deinterlace(raw_data:)` function.
 
 > How do I deinterlace an interlaced PNG?
 
-Use `PNGHeader`’s member function `.deinterlace(raw_data:)`.
+Use `PNGProperties`’s member function `.deinterlace(raw_data:)`.
 
 ````swift
-PNGHeader › func deinterlace(raw_data:[UInt8]) -> [UInt8]?
+PNGProperties › func deinterlace(raw_data:[UInt8]) -> [UInt8]?
 ````
-The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGHeader` struct.
+The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGProperties` struct.
 
 ### General
 
