@@ -34,16 +34,16 @@ func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<P
     return pixel_data
 }
 
-func test_against_rgba64(png_data:[UInt8], header:PNGHeader, path_rgba:String) -> Bool
+func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:String) -> Bool
 {
-    guard let rgba_data_png:[RGBA<UInt16>] = header.rgba64(raw_data: png_data)
+    guard let rgba_data_png:[RGBA<UInt16>] = properties.rgba64(raw_data: png_data)
     else
     {
         return false
     }
 
     let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(path: path_rgba,
-                                                       n_pixels: header.width * header.height)
+                                                       n_pixels: properties.width * properties.height)
 
     if rgba_data_rgba != rgba_data_png
     {
@@ -80,11 +80,11 @@ func print_progress(percent:Double, width:Int, eraser:String = "\r")
 public
 func reencode_png(_ path:String, output:String) throws
 {
-    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png(path: path)
-    print(png_header)
+    let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: path)
+    print(png_properties)
 
     print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
-    try encode_png(path: output, raw_data: png_data, header: png_header)
+    try encode_png(path: output, raw_data: png_data, properties: png_properties)
     print_progress(percent: 1, width: TERM_WIDTH)
     print()
 }

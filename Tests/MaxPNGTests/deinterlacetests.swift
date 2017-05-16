@@ -2,10 +2,10 @@ import MaxPNG
 
 func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
 {
-    let (png_raw_data, png_header):([UInt8], PNGHeader)
+    let (png_raw_data, png_properties):([UInt8], PNGProperties)
     do
     {
-        (png_raw_data, png_header) = try decode_png(path: path + ".png")
+        (png_raw_data, png_properties) = try decode_png(path: path + ".png")
     }
     catch
     {
@@ -13,7 +13,7 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
         return false
     }
 
-    guard let deinterlaced:[UInt8] = png_header.deinterlace(raw_data: png_raw_data)
+    guard let deinterlaced:[UInt8] = png_properties.deinterlace(raw_data: png_raw_data)
     else
     {
         print(PNGReadError.InterlaceDimensionError)
@@ -22,7 +22,7 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
 
     var passing:Bool = true
 
-    if test_against_rgba64(png_data: deinterlaced, header: png_header.deinterlaced_header, path_rgba: path + ".rgba")
+    if test_against_rgba64(png_data: deinterlaced, properties: png_properties.deinterlaced_properties, path_rgba: path + ".rgba")
     {
         print("\(green_bold)(deinterlace:\(index)) test '\(path).png' passed\(color_off)")
     }
@@ -36,7 +36,7 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
     {
         try encode_png(path: path + "_deinterlace.png",
                        raw_data: deinterlaced,
-                       header: png_header.deinterlaced_header)
+                       properties: png_properties.deinterlaced_properties)
     }
     catch
     {
@@ -45,14 +45,14 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
     }
 
 
-    for (i, (sub_data, sub_header)) in png_header.decompose(raw_data: png_raw_data)!.enumerated()
+    for (i, (sub_data, sub_properties)) in png_properties.decompose(raw_data: png_raw_data)!.enumerated()
     {
         let extended_name:String = path + "_deinterlace_\(i)"
         do
         {
             try encode_png(path: extended_name + ".png",
                            raw_data: sub_data,
-                           header: sub_header)
+                           properties: sub_properties)
         }
         catch
         {
@@ -60,7 +60,7 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
             passing = false
         }
 
-        if test_against_rgba64(png_data: sub_data, header: sub_header, path_rgba: extended_name + ".rgba")
+        if test_against_rgba64(png_data: sub_data, properties: sub_properties, path_rgba: extended_name + ".rgba")
         {
             print("\(green_bold)(decompose:\(index):\(i)) test '\(extended_name).png' passed\(color_off)")
         }
