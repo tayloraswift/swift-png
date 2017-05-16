@@ -16,9 +16,11 @@ enum PNGReadError:Error
          PNGSyntaxError(String),
          DataCorruptionError(String),
 
+         IllegalChunkError(PNGChunk),
          DuplicateChunkError(PNGChunk),
          ChunkOrderingError(PNGChunk),
          MissingHeaderError,
+         MissingPalatteError,
          PrematureEOSError,
          PrematureIENDError,
 
@@ -164,139 +166,40 @@ func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     }
 }
 
-public
-struct PNGHeader:CustomStringConvertible
+struct Header
 {
-    public
-    enum ColorType:Int
-    {
-        case grayscale      = 0,
-             rgb            = 2,
-             indexed        = 3,
-             grayscale_a    = 4,
-             rgba           = 6
-    }
+    typealias ColorType = PNGProperties.ColorType
 
-    public
     let width:Int,
         height:Int,
         bit_depth:Int,
-        color_type:ColorType,
+        color_type:PNGProperties.ColorType,
         interlaced:Bool
 
-    public
-    let channels:Int
-
-    public // expose this just in case someone wants the sub_dimensions without the image data
-    let sub_dimensions:[(width:Int, height:Int)]
-
-    let sub_array_bounds:[(i:Int, j:Int)],
-        bpp:Int,
-        interlaced_data_size:Int,
-        noninterlaced_data_size:Int
-
-    private
-    typealias SubStrider = (u:StrideTo<Int>, v:StrideTo<Int>)
-    private
-    let sub_striders:[SubStrider]
-
-    private
-    var sub_array_ranges:[Range<Int>]
-    {
-        var accumulator:Int = 0
-        return self.sub_array_bounds.dropLast().map
-        {
-            let upper:Int = accumulator + $0.i * $0.j
-            let range:Range<Int> = accumulator ..< upper
-            accumulator = upper
-            return range
-        }
-    }
-
-    public
-    var deinterlaced_header:PNGHeader
-    {
-        return try! PNGHeader(width: self.width, height: self.height, bit_depth: self.bit_depth,
-                              color_type: self.color_type, interlaced: false)
-    }
-
-    public
-    var description:String
-    {
-        return "<PNG header>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color_type), interlaced: \(self.interlaced)}"
-    }
-
-    public
     init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlaced:Bool) throws
     {
-        self.width = width
-        self.height = height
-        self.bit_depth = bit_depth
-        self.color_type = color_type
-        self.interlaced = interlaced
-
-        /* validate color type */
-        let allowed_bit_depths:[Int],
-            channels:Int
-        switch self.color_type
+        // validate color type
+        let allowed_bit_depths:[Int]
+        switch color_type
         {
-        case .grayscale:
-            allowed_bit_depths = [1, 2, 4, 8, 16]
-            channels = 1
-        case .rgb:
+        case .grayscale_a, .rgb, .rgba:
             allowed_bit_depths = [8, 16]
-            channels = 3
         case .indexed:
             allowed_bit_depths = [1, 2, 4, 8]
-            channels = 1
-        case .grayscale_a:
-            allowed_bit_depths = [8, 16]
-            channels = 2
-        case .rgba:
-            allowed_bit_depths = [8, 16]
-            channels = 4
+        case .grayscale:
+            allowed_bit_depths = [1, 2, 4, 8, 16]
         }
         guard allowed_bit_depths.contains(bit_depth)
         else
         {
-            throw PNGReadError.PNGSyntaxError("Color type '\(self.color_type)' cannot have a bit depth of \(self.bit_depth)")
+            throw PNGReadError.PNGSyntaxError("Color type '\(color_type)' cannot have a bit depth of \(bit_depth)")
         }
 
-        self.bpp      = max(1, (channels * bit_depth) >> 3)
-        self.channels = channels
-
-        /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
-        // 0: (w + 7) >> 3 , (h + 7) >> 3
-        // 1: (w + 3) >> 3 , (h + 7) >> 3
-        // 2: (w + 3) >> 2 , (h + 3) >> 3
-        // 3: (w + 1) >> 2 , (h + 3) >> 2
-        // 4: (w + 1) >> 1 , (h + 1) >> 2
-        // 5: (w) >> 1     , (h + 1) >> 1
-        // 6: (w)          , (h) >> 1
-        self.sub_dimensions = [ (width: (self.width  + 7) >> 3, height: (self.height + 7) >> 3),
-                                (width: (self.width  + 3) >> 3, height: (self.height + 7) >> 3),
-                                (width: (self.width  + 3) >> 2, height: (self.height + 3) >> 3),
-                                (width: (self.width  + 1) >> 2, height: (self.height + 3) >> 2),
-                                (width: (self.width  + 1) >> 1, height: (self.height + 1) >> 2),
-                                (width:  self.width       >> 1, height: (self.height + 1) >> 1),
-                                (width:  self.width       >> 0, height:  self.height      >> 1),
-                                (width:  self.width           , height:  self.height          )]
-        self.sub_striders   = [ (u: stride(from: 0, to: self.width, by: 8), v: stride(from: 0, to: self.height, by: 8)),
-                                (u: stride(from: 4, to: self.width, by: 8), v: stride(from: 0, to: self.height, by: 8)),
-                                (u: stride(from: 0, to: self.width, by: 4), v: stride(from: 4, to: self.height, by: 8)),
-                                (u: stride(from: 2, to: self.width, by: 4), v: stride(from: 0, to: self.height, by: 4)),
-                                (u: stride(from: 0, to: self.width, by: 2), v: stride(from: 2, to: self.height, by: 4)),
-                                (u: stride(from: 1, to: self.width, by: 2), v: stride(from: 0, to: self.height, by: 2)),
-                                (u: stride(from: 0, to: self.width, by: 1), v: stride(from: 1, to: self.height, by: 2))]
-        self.sub_array_bounds = self.sub_dimensions.map
-        {
-            let scanline_bits_n:Int  = $0.width * channels * bit_depth
-            let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
-            return (i: $0.height, j: scanline_bytes_n)
-        }
-
-        self.interlaced_data_size = self.sub_array_bounds.dropLast().map{ $0.i * $0.j }.reduce(0, +)
-        self.noninterlaced_data_size = self.sub_array_bounds[7].i * self.sub_array_bounds[7].j
+        self.width      = width
+        self.height     = height
+        self.bit_depth  = bit_depth
+        self.color_type = color_type
+        self.interlaced = interlaced
     }
 
     init(_ data:[UInt8]) throws
@@ -346,8 +249,158 @@ struct PNGHeader:CustomStringConvertible
                       color_type: color_type,
                       interlaced: interlaced)
     }
+}
 
-    func write() -> [UInt8]
+public
+struct PNGProperties:CustomStringConvertible
+{
+    public
+    enum ColorType:Int
+    {
+        case grayscale      = 0,
+             rgb            = 2,
+             indexed        = 3,
+             grayscale_a    = 4,
+             rgba           = 6
+    }
+
+    public
+    let width:Int,
+        height:Int,
+        bit_depth:Int,
+        color_type:ColorType,
+        interlaced:Bool
+
+    public
+    let channels:Int
+
+    public
+    let sub_dimensions:[(width:Int, height:Int)]
+    // expose this just in case someone wants the sub_dimensions without the image data
+
+    let sub_array_bounds:[(i:Int, j:Int)],
+        bpp:Int,
+        interlaced_data_size:Int,
+        noninterlaced_data_size:Int
+
+    private
+    typealias SubStrider = (u:StrideTo<Int>, v:StrideTo<Int>)
+    private
+    let sub_striders:[SubStrider]
+
+    private
+    var sub_array_ranges:[Range<Int>]
+    {
+        var accumulator:Int = 0
+        return self.sub_array_bounds.dropLast().map
+        {
+            let upper:Int = accumulator + $0.i * $0.j
+            let range:Range<Int> = accumulator ..< upper
+            accumulator = upper
+            return range
+        }
+    }
+
+    public
+    var deinterlaced_properties:PNGProperties
+    {
+        return PNGProperties(width: self.width, height: self.height,
+                             bit_depth_unchecked: self.bit_depth,
+                             color_type         : self.color_type,
+                             interlaced         : false)
+    }
+
+    public
+    var description:String
+    {
+        return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color_type), interlaced: \(self.interlaced)}"
+    }
+
+    init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color_type:ColorType, interlaced:Bool)
+    {
+        self.width      = width
+        self.height     = height
+        self.bit_depth  = bit_depth
+        self.color_type = color_type
+        self.interlaced = interlaced
+
+        let channels:Int
+        switch color_type
+        {
+        case .grayscale, .indexed:
+            channels = 1
+        case .grayscale_a:
+            channels = 2
+        case .rgb:
+            channels = 3
+        case .rgba:
+            channels = 4
+        }
+        self.channels = channels
+
+        self.bpp        = max(1, (channels * bit_depth) >> 3)
+
+        /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
+        // 0: (w + 7) >> 3 , (h + 7) >> 3
+        // 1: (w + 3) >> 3 , (h + 7) >> 3
+        // 2: (w + 3) >> 2 , (h + 3) >> 3
+        // 3: (w + 1) >> 2 , (h + 3) >> 2
+        // 4: (w + 1) >> 1 , (h + 1) >> 2
+        // 5: (w) >> 1     , (h + 1) >> 1
+        // 6: (w)          , (h) >> 1
+        self.sub_dimensions = [ (width: (width  + 7) >> 3, height: (height + 7) >> 3),
+                                (width: (width  + 3) >> 3, height: (height + 7) >> 3),
+                                (width: (width  + 3) >> 2, height: (height + 3) >> 3),
+                                (width: (width  + 1) >> 2, height: (height + 3) >> 2),
+                                (width: (width  + 1) >> 1, height: (height + 1) >> 2),
+                                (width:  width       >> 1, height: (height + 1) >> 1),
+                                (width:  width       >> 0, height:  height      >> 1),
+                                (width:  width           , height:  height          )]
+        self.sub_striders   = [ (u: stride(from: 0, to: width, by: 8), v: stride(from: 0, to: height, by: 8)),
+                                (u: stride(from: 4, to: width, by: 8), v: stride(from: 0, to: height, by: 8)),
+                                (u: stride(from: 0, to: width, by: 4), v: stride(from: 4, to: height, by: 8)),
+                                (u: stride(from: 2, to: width, by: 4), v: stride(from: 0, to: height, by: 4)),
+                                (u: stride(from: 0, to: width, by: 2), v: stride(from: 2, to: height, by: 4)),
+                                (u: stride(from: 1, to: width, by: 2), v: stride(from: 0, to: height, by: 2)),
+                                (u: stride(from: 0, to: width, by: 1), v: stride(from: 1, to: height, by: 2))]
+        self.sub_array_bounds = self.sub_dimensions.map
+        {
+            let scanline_bits_n:Int  = $0.width * channels * bit_depth
+            let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
+            return (i: $0.height, j: scanline_bytes_n)
+        }
+
+        self.interlaced_data_size = self.sub_array_bounds.dropLast().map{ $0.i * $0.j }.reduce(0, +)
+        self.noninterlaced_data_size = self.sub_array_bounds[7].i * self.sub_array_bounds[7].j
+    }
+
+    init(header:Header)
+    {
+        self.init(width             : header.width,
+                 height             : header.height,
+                 bit_depth_unchecked: header.bit_depth,
+                 color_type         : header.color_type,
+                 interlaced         : header.interlaced)
+    }
+
+    public
+    init?(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlaced:Bool)
+    {
+        do
+        {
+            self.init(header: try Header(width: width, height: height,
+                                         bit_depth : bit_depth,
+                                         color_type: color_type,
+                                         interlaced: interlaced))
+        }
+        catch
+        {
+            print(error)
+            return nil
+        }
+    }
+
+    func serialize() -> [UInt8]
     {
         var bytes:[UInt8] = uint32_to_quad_byte(UInt32(self.width))        // [0:3]
         bytes.reserveCapacity(12)
@@ -361,25 +414,19 @@ struct PNGHeader:CustomStringConvertible
     }
 
     public
-    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGHeader)]?
+    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
     {
-        do
+        return zip(self.sub_array_ranges, self.sub_dimensions).map
         {
-            return try zip(self.sub_array_ranges, self.sub_dimensions).map
-            {
-                (range:Range<Int>, dimensions:(width:Int, height:Int)) in
+            (range:Range<Int>, dimensions:(width:Int, height:Int)) in
 
-                let header:PNGHeader = try PNGHeader(width: dimensions.width, height: dimensions.height,
-                                                     bit_depth: self.bit_depth,
-                                                     color_type: self.color_type,
-                                                     interlaced: false)
-                return (Array(raw_data[range]), header)
-            }
-        }
-        catch // PNGReadError.PNGSyntaxError // the Header should never fail to construct, because we know self.bit_depth is valid
-        {
-            fputs(String(describing: error), stderr)
-            return nil
+            let properties:PNGProperties = PNGProperties(width: dimensions.width,
+                                                         height: dimensions.height,
+                                                         bit_depth: self.bit_depth,
+                                                         color_type: self.color_type,
+                                                         interlaced: false)!
+            // the Properties should never fail to construct, because we know self.bit_depth is valid
+            return (Array(raw_data[range]), properties)
         }
     }
 
@@ -458,7 +505,7 @@ struct PNGHeader:CustomStringConvertible
             let quantum:UInt8 = UInt8.max / (UInt8.max >> (8 - UInt8(self.bit_depth)))
             output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
             {
-                let value:UInt8 = quantum * PNGHeader.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
+                let value:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
                 return RGBA(value, value, value, UInt8.max)
             }
         }
@@ -515,7 +562,7 @@ struct PNGHeader:CustomStringConvertible
             let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
             output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
             {
-                let value:UInt16 = quantum * UInt16(PNGHeader.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                let value:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 return RGBA(value, value, value, UInt16.max)
             }
         }
@@ -619,37 +666,61 @@ struct PNGHeader:CustomStringConvertible
 struct PNGConditions
 {
     private
-    var seen:Set<PNGChunk>        = [],
-        last_valid_chunk:PNGChunk = PNGChunk.__FIRST__
+    var last_valid_chunk:PNGChunk = PNGChunk.__FIRST__,
+        seen:Set<PNGChunk>        = []
+
+    var color_type:PNGProperties.ColorType?
 
     mutating
     func update(_ chunk:PNGChunk) throws
     {
-        if self.last_valid_chunk == .__FIRST__ && chunk != .IHDR
+        if self.last_valid_chunk == .__FIRST__
         {
-            throw PNGReadError.MissingHeaderError
+            guard chunk == .IHDR
+            else
+            {
+                throw PNGReadError.MissingHeaderError
+            }
+
+            self.last_valid_chunk = .IHDR
+            self.seen.insert(.IHDR)
+            return
         }
-        else if self.last_valid_chunk == .IEND
-        {
-            throw PNGReadError.PrematureIENDError
-        }
-        if chunk == .IEND && !self.seen.contains(.IDAT)
-        // separated from the switch block because it doesn’t work right for some reason
+
+        guard (self.last_valid_chunk != .IEND) || (chunk == .IEND && !self.seen.contains(.IDAT))
+        else
         {
             throw PNGReadError.PrematureIENDError
         }
 
+        guard let color_type = self.color_type
+        else
+        {
+            throw PNGReadError.MissingHeaderError
+        }
+
         switch chunk
         {
+        case                                                                              .tRNS:
+            if color_type == .grayscale_a || color_type == .rgba
+            {
+                throw PNGReadError.IllegalChunkError(chunk)
+            }
+            fallthrough
         // PLTE must come before bKGD, hIST, and tRNS
-        case .PLTE:
+        case               .PLTE:
+            if color_type == .grayscale || color_type == .grayscale_a
+            {
+                throw PNGReadError.IllegalChunkError(chunk)
+            }
+
             if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
             fallthrough
         // these chunks must occur before PLTE
-        case        .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
+        case                             .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
             if self.seen.contains(.PLTE)
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
@@ -657,7 +728,7 @@ struct PNGConditions
             fallthrough
 
         // these chunks must occur before IDAT
-        case .PLTE, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
+        case               .PLTE,        .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
             if self.seen.contains(.IDAT)
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
@@ -666,7 +737,7 @@ struct PNGConditions
 
 
         // these chunks cannot duplicate
-        case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME:
+        case        .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME:
             if self.seen.contains(chunk)
             {
                 throw PNGReadError.DuplicateChunkError(chunk)
@@ -678,11 +749,17 @@ struct PNGConditions
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
+
+            if color_type == .indexed && !self.seen.contains(.PLTE)
+            {
+                throw PNGReadError.MissingPalatteError
+            }
         default:
             break
         }
         self.last_valid_chunk = chunk
         self.seen.insert(chunk)
+
     }
 }
 
@@ -705,21 +782,21 @@ struct ScanlineIterator
         return self.use_zero_line != 0
     }
 
-    init(header:PNGHeader)
+    init(properties:PNGProperties)
     {
-        if header.interlaced
+        if properties.interlaced
         {
-            self.scanlines_remaining = header.sub_array_bounds[0].i
-            self.bytes_per_scanline  = header.sub_array_bounds[0].j
+            self.scanlines_remaining = properties.sub_array_bounds[0].i
+            self.bytes_per_scanline  = properties.sub_array_bounds[0].j
             self.interlaced = true
         }
         else
         {
-            self.scanlines_remaining = header.sub_array_bounds[7].i
-            self.bytes_per_scanline  = header.sub_array_bounds[7].j
+            self.scanlines_remaining = properties.sub_array_bounds[7].i
+            self.bytes_per_scanline  = properties.sub_array_bounds[7].j
             self.interlaced = false
         }
-        self.sub_array_bounds = header.sub_array_bounds
+        self.sub_array_bounds = properties.sub_array_bounds
     }
 
     mutating
@@ -754,12 +831,12 @@ struct ScanlineIterator
 
 struct Decoder
 {
-    let header:PNGHeader
+    let properties:PNGProperties
 
     private
-    var conditions = PNGConditions(),
-        current_chunk:PNGChunk = .__FIRST__,
-        stream_exhausted:Bool = false
+    var conditions:PNGConditions = PNGConditions(),
+        current_chunk:PNGChunk   = .__FIRST__,
+        stream_exhausted:Bool    = false
 
     private
     let z_iterator:ZInflator
@@ -780,22 +857,22 @@ struct Decoder
         }
 
         // read the image header
-        if let (chunk, chunk_data) = try Decoder.read_chunk(from: stream, conditions: &self.conditions, recognizing: Set([.IHDR]))
-        {
-            assert(chunk == .IHDR) // this should already be verified from the PNG conditions struct
-            self.current_chunk = .IHDR
-            self.header = try PNGHeader(chunk_data)
-        }
+
+        guard let (chunk, chunk_data) = try Decoder.read_chunk(from: stream, conditions: &self.conditions, recognizing: Set([.IHDR]))
         else
         {
             throw PNGReadError.MissingHeaderError
         }
+        assert(chunk == .IHDR) // this should already be verified from the PNG conditions struct
+        self.current_chunk = .IHDR
+        let header:Header = try Header(chunk_data)
 
+        self.conditions.color_type = header.color_type
         self.z_iterator = try ZInflator()
 
         // read non-IDAT chunks
         //                                     v— recognized generally contains an .IDAT enum to ensure we don’t miss the first .IDAT
-        let pre_idat_chunks:Set<PNGChunk> = recognized.union(self.header.color_type == .indexed ? [.PLTE, .IEND] : [.IEND])
+        let pre_idat_chunks:Set<PNGChunk> = recognized.union(header.color_type == .indexed ? [.PLTE, .IEND] : [.IEND])
 
         outer_loop: while true
         {
@@ -817,6 +894,8 @@ struct Decoder
                 }
             }
         }
+
+        self.properties = PNGProperties(header: header)
     }
 
     mutating
@@ -879,13 +958,13 @@ struct Decoder
         case 0:
             break
         case 1:
-            Decoder.defilter_sub    (dest, bpp: self.header.bpp)
+            Decoder.defilter_sub    (dest, bpp: self.properties.bpp)
         case 2:
             Decoder.defilter_up     (dest, previous_line: reference)
         case 3:
-            Decoder.defilter_average(dest, previous_line: reference, bpp: self.header.bpp)
+            Decoder.defilter_average(dest, previous_line: reference, bpp: self.properties.bpp)
         case 4:
-            Decoder.defilter_paeth  (dest, previous_line: reference, bpp: self.header.bpp)
+            Decoder.defilter_paeth  (dest, previous_line: reference, bpp: self.properties.bpp)
         default:
             break // won’t happen
         }
@@ -1041,7 +1120,7 @@ class PNGDecoder
     let zero_line:[UInt8]
 
     public
-    var header:PNGHeader { return self.decoder.header }
+    var properties:PNGProperties { return self.decoder.properties }
 
     public
     init(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws
@@ -1056,7 +1135,7 @@ class PNGDecoder
         }
 
         self.decoder        = try Decoder(stream: stream, recognizing: recognized)
-        self.scanline_iter  = ScanlineIterator(header: self.decoder.header)
+        self.scanline_iter  = ScanlineIterator(properties: self.decoder.properties)
         self.zero_line      = self.scanline_iter.make_zero_line()
     }
 
@@ -1111,15 +1190,15 @@ struct Encoder
     let bpp:Int,
         z_iterator:ZDeflator
 
-    init(stream:FilePointer, header:PNGHeader, chunk_size:Int) throws
+    init(stream:FilePointer, properties:PNGProperties, chunk_size:Int) throws
     {
-        self.bpp            = header.bpp
+        self.bpp            = properties.bpp
         self.z_iterator     = try ZDeflator()
         self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
         self.chunk_capacity_remaining = chunk_size
 
         try Encoder.write_buffer(to: stream, buffer: PNG_SIGNATURE)
-        try Encoder.write_chunk(to: stream, chunk_data: header.write(), chunk: .IHDR)
+        try Encoder.write_chunk(to: stream, chunk_data: properties.serialize(), chunk: .IHDR)
     }
 
     // make NO assumptions about the `.count` property of the reference line;
@@ -1303,7 +1382,7 @@ class PNGEncoder
         reference_line:[UInt8]
 
     public
-    init(path:String, header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+    init(path:String, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
     {
         if let stream = fopen(posix_path(path), "wb")
         {
@@ -1314,8 +1393,8 @@ class PNGEncoder
             throw PNGReadError.FileError(posix_path(path))
         }
 
-        self.reference_line = [UInt8](repeating: 0, count: header.sub_array_bounds[7].j)
-        self.encoder = try Encoder(stream: self.stream, header: header, chunk_size: chunk_size)
+        self.reference_line = [UInt8](repeating: 0, count: properties.sub_array_bounds[7].j)
+        self.encoder = try Encoder(stream: self.stream, properties: properties, chunk_size: chunk_size)
     }
 
     deinit
@@ -1350,7 +1429,7 @@ class PNGEncoder
 }
 
 public
-func decode_png(path:String) throws -> ([UInt8], PNGHeader)
+func decode_png(path:String) throws -> ([UInt8], PNGProperties)
 {
     guard let stream:FilePointer = fopen(posix_path(path), "rb")
     else
@@ -1360,11 +1439,13 @@ func decode_png(path:String) throws -> ([UInt8], PNGHeader)
     defer { fclose(stream) }
 
     var decoder:Decoder                = try Decoder(stream: stream, recognizing: Set([.IDAT])),
-        scanline_iter:ScanlineIterator = ScanlineIterator(header: decoder.header)
+        scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties)
 
     let zero_line:[UInt8]              = scanline_iter.make_zero_line()
 
-    let buffer_size:Int = decoder.header.interlaced ? decoder.header.interlaced_data_size : decoder.header.noninterlaced_data_size
+    let buffer_size:Int = decoder.properties.interlaced ?
+                                decoder.properties.interlaced_data_size :
+                                decoder.properties.noninterlaced_data_size
     var buffer:[UInt8]  = [UInt8](repeating: 0, count: buffer_size)
     try buffer.withUnsafeMutableBufferPointer
     {
@@ -1392,13 +1473,13 @@ func decode_png(path:String) throws -> ([UInt8], PNGHeader)
         }
     }
 
-    return (buffer, decoder.header)
+    return (buffer, decoder.properties)
 }
 
 public
-func encode_png(path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func encode_png(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
-    guard raw_data.count == header.noninterlaced_data_size
+    guard raw_data.count == properties.noninterlaced_data_size
     else
     {
         throw PNGWriteError.DimemsionError
@@ -1411,9 +1492,9 @@ func encode_png(path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int 
     }
     defer { fclose(stream) }
 
-    var encoder:Encoder        = try Encoder(stream: stream, header: header, chunk_size: chunk_size)
+    var encoder:Encoder        = try Encoder(stream: stream, properties: properties, chunk_size: chunk_size)
 
-    let bytes_per_scanline:Int = header.sub_array_bounds[7].j
+    let bytes_per_scanline:Int = properties.sub_array_bounds[7].j
     let zero_line:[UInt8]      = [UInt8](repeating: 0, count: bytes_per_scanline)
 
     try raw_data.withUnsafeBufferPointer

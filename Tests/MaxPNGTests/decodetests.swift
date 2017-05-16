@@ -2,10 +2,10 @@
 
 func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
 {
-    let (png_raw_data, png_header):([UInt8], PNGHeader)
+    let (png_raw_data, png_properties):([UInt8], PNGProperties)
     do
     {
-        (png_raw_data, png_header) = try decode_png(path: path_png)
+        (png_raw_data, png_properties) = try decode_png(path: path_png)
     }
     catch
     {
@@ -14,9 +14,9 @@ func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
     }
 
     let png_data:[UInt8]
-    if png_header.interlaced
+    if png_properties.interlaced
     {
-        guard let deinterlaced:[UInt8] = png_header.deinterlace(raw_data: png_raw_data)
+        guard let deinterlaced:[UInt8] = png_properties.deinterlace(raw_data: png_raw_data)
         else
         {
             print(PNGReadError.InterlaceDimensionError)
@@ -29,7 +29,7 @@ func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
         png_data = png_raw_data
     }
 
-    return test_against_rgba64(png_data: png_data, header: png_header, path_rgba: path_rgba)
+    return test_against_rgba64(png_data: png_data, properties: png_properties, path_rgba: path_rgba)
 }
 
 func run_tests(test_cases:[String])
