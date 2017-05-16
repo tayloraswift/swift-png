@@ -48,11 +48,11 @@ func skip_png(_ rpath:String) throws
 public
 func reencode_png_stream(_ rpath:String, output:String) throws
 {
-    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png_contiguous(relative_path: rpath)
+    let (png_data, png_header):([UInt8], PNGHeader) = try decode_png(relative_path: rpath)
     print(png_header)
 
     print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
-    try encode_png_contiguous(relative_path: output, raw_data: png_data, header: png_header)
+    try encode_png(relative_path: output, raw_data: png_data, header: png_header)
     print_progress(percent: 1, width: TERM_WIDTH)
     print()
 }
