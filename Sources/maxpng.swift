@@ -397,7 +397,7 @@ struct PNGProperties:CustomStringConvertible
         }
     }
 
-    func serialize() -> [UInt8]
+    func serialize_header() -> [UInt8]
     {
         var bytes:[UInt8] = uint32_to_quad_byte(UInt32(self.width))        // [0:3]
         bytes.reserveCapacity(12)
@@ -413,16 +413,21 @@ struct PNGProperties:CustomStringConvertible
     public
     func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
     {
+        guard raw_data.count == self.interlaced_data_size
+        else
+        {
+            return nil
+        }
+
         return zip(self.sub_array_ranges, self.sub_dimensions).map
         {
             (range:Range<Int>, dimensions:(width:Int, height:Int)) in
 
-            let properties:PNGProperties = PNGProperties(width: dimensions.width,
-                                                         height: dimensions.height,
-                                                         bit_depth: self.bit_depth,
-                                                         color: self.color,
-                                                         interlaced: false)!
-            // the Properties should never fail to construct, because we know self.bit_depth is valid
+            let properties:PNGProperties = PNGProperties(width              : dimensions.width,
+                                                         height             : dimensions.height,
+                                                         bit_depth_unchecked: self.bit_depth,
+                                                         color              : self.color,
+                                                         interlaced         : false)
             return (Array(raw_data[range]), properties)
         }
     }
@@ -1195,7 +1200,7 @@ struct Encoder
         self.chunk_capacity_remaining = chunk_size
 
         try Encoder.write_buffer(to: stream, buffer: PNG_SIGNATURE)
-        try Encoder.write_chunk(to: stream, chunk_data: properties.serialize(), chunk: .IHDR)
+        try Encoder.write_chunk(to: stream, chunk_data: properties.serialize_header(), chunk: .IHDR)
     }
 
     // make NO assumptions about the `.count` property of the reference line;
