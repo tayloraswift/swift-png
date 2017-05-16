@@ -20,7 +20,7 @@ try encode_png(path: "Tests/output.png",
                raw_data: [0, 0, 0, 255, 255, 255, 255, 0, 255,
                           255, 255, 255, 0, 0, 0, 0, 255, 0,
                           120, 120, 255, 150, 120, 255, 180, 120, 255],
-               header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
+               header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlaced: false))
 
 passed = passed && test_decompose_and_deinterlace(path: "Tests/interlace", index: 0)
 

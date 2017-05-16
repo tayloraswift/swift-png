@@ -182,7 +182,7 @@ struct PNGHeader:CustomStringConvertible
         height:Int,
         bit_depth:Int,
         color_type:ColorType,
-        interlace:Bool
+        interlaced:Bool
 
     public
     let channels:Int
@@ -217,23 +217,23 @@ struct PNGHeader:CustomStringConvertible
     var deinterlaced_header:PNGHeader
     {
         return try! PNGHeader(width: self.width, height: self.height, bit_depth: self.bit_depth,
-                              color_type: self.color_type, interlace: false)
+                              color_type: self.color_type, interlaced: false)
     }
 
     public
     var description:String
     {
-        return "<PNG header>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color_type), interlaced: \(self.interlace)}"
+        return "<PNG header>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color_type), interlaced: \(self.interlaced)}"
     }
 
     public
-    init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlace:Bool) throws
+    init(width:Int, height:Int, bit_depth:Int, color_type:ColorType, interlaced:Bool) throws
     {
         self.width = width
         self.height = height
         self.bit_depth = bit_depth
         self.color_type = color_type
-        self.interlace = interlace
+        self.interlaced = interlaced
 
         /* validate color type */
         let allowed_bit_depths:[Int],
@@ -324,15 +324,15 @@ struct PNGHeader:CustomStringConvertible
         {
             throw PNGReadError.PNGSyntaxError("Filter method does not equal 0")
         }
-        let interlace:Bool
+        let interlaced:Bool
         let interlace_i = Int(data[12]) // TODO: turn this into a switch case
         if interlace_i == 0
         {
-            interlace = false
+            interlaced = false
         }
         else if interlace_i == 1
         {
-            interlace = true
+            interlaced = true
         }
         else
         {
@@ -344,7 +344,7 @@ struct PNGHeader:CustomStringConvertible
                       height    : Int(quad_byte_to_uint32(Array(data[4...7]))),
                       bit_depth : Int(data[8]),
                       color_type: color_type,
-                      interlace : interlace)
+                      interlaced: interlaced)
     }
 
     func write() -> [UInt8]
@@ -356,7 +356,7 @@ struct PNGHeader:CustomStringConvertible
         bytes.append(UInt8(self.color_type.rawValue))                   // [9]
         bytes.append(0)                                                 // [10] = 0
         bytes.append(0)                                                 // [11] = 0
-        bytes.append(self.interlace ? 1 : 0)                            // [12]
+        bytes.append(self.interlaced ? 1 : 0)                            // [12]
         return bytes
     }
 
@@ -372,7 +372,7 @@ struct PNGHeader:CustomStringConvertible
                 let header:PNGHeader = try PNGHeader(width: dimensions.width, height: dimensions.height,
                                                      bit_depth: self.bit_depth,
                                                      color_type: self.color_type,
-                                                     interlace: false)
+                                                     interlaced: false)
                 return (Array(raw_data[range]), header)
             }
         }
@@ -690,7 +690,7 @@ struct ScanlineIterator
 {
     private
     let sub_array_bounds:[(i:Int, j:Int)],
-        interlace:Bool
+        interlaced:Bool
 
     private
     var interlace_level:Int = 0,
@@ -707,17 +707,17 @@ struct ScanlineIterator
 
     init(header:PNGHeader)
     {
-        if header.interlace
+        if header.interlaced
         {
             self.scanlines_remaining = header.sub_array_bounds[0].i
             self.bytes_per_scanline  = header.sub_array_bounds[0].j
-            self.interlace = true
+            self.interlaced = true
         }
         else
         {
             self.scanlines_remaining = header.sub_array_bounds[7].i
             self.bytes_per_scanline  = header.sub_array_bounds[7].j
-            self.interlace = false
+            self.interlaced = false
         }
         self.sub_array_bounds = header.sub_array_bounds
     }
@@ -729,7 +729,7 @@ struct ScanlineIterator
         else
         {
             self.interlace_level    += 1
-            guard self.interlace && self.interlace_level < 7
+            guard self.interlaced && self.interlace_level < 7
             else
             {
                 return false
@@ -748,7 +748,7 @@ struct ScanlineIterator
 
     func make_zero_line() -> [UInt8]
     {
-        return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlace ? 6 : 7].j) // the most zeros we will ever need
+        return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlaced ? 6 : 7].j) // the most zeros we will ever need
     }
 }
 
@@ -1364,7 +1364,7 @@ func decode_png(path:String) throws -> ([UInt8], PNGHeader)
 
     let zero_line:[UInt8]              = scanline_iter.make_zero_line()
 
-    let buffer_size:Int = decoder.header.interlace ? decoder.header.interlaced_data_size : decoder.header.noninterlaced_data_size
+    let buffer_size:Int = decoder.header.interlaced ? decoder.header.interlaced_data_size : decoder.header.noninterlaced_data_size
     var buffer:[UInt8]  = [UInt8](repeating: 0, count: buffer_size)
     try buffer.withUnsafeMutableBufferPointer
     {

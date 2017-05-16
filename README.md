@@ -20,7 +20,7 @@ You can also use it to create your own PNG files:
 ````swift
 import MaxPNG
 
-let my_png_settings = PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false)
+let my_png_settings = PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlaced: false)
 let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
                            255,255,255,    0  ,0  ,0  ,    0  ,255,0  ,
                            120,120,255,    150,120,255,    180,120,255]
@@ -62,7 +62,7 @@ struct PNGHeader
         height:Int,
         bit_depth:Int,
         color_type:ColorType,
-        interlace:Bool
+        interlaced:Bool
 
     let channels:Int
 

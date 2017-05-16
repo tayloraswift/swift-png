@@ -14,7 +14,7 @@ func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
     }
 
     let png_data:[UInt8]
-    if png_header.interlace
+    if png_header.interlaced
     {
         guard let deinterlaced:[UInt8] = png_header.deinterlace(raw_data: png_raw_data)
         else
