@@ -16,20 +16,20 @@ var passed:Bool = true
 
 run_tests(test_cases: test_cases)
 
-try encode_png(relative_path: "Tests/output.png",
+try encode_png(path: "Tests/output.png",
                raw_data: [0, 0, 0, 255, 255, 255, 255, 0, 255,
                           255, 255, 255, 0, 0, 0, 0, 255, 0,
                           120, 120, 255, 150, 120, 255, 180, 120, 255],
                header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
 
-passed = passed && test_decompose_and_deinterlace(relative_path: "Tests/interlace", index: 0)
+passed = passed && test_decompose_and_deinterlace(path: "Tests/interlace", index: 0)
 
 try reencode_png("Tests/" + image_test_in, output: "Tests/" + image_test_out)
 
 
 
 print("Testing images \(image_test_ref) == \(image_test_out)")
-if test_decoded_identical(relative_path_png: "Tests/" + image_test_out, relative_path_rgba: "Tests/" + image_test_ref)
+if test_decoded_identical(path_png: "Tests/" + image_test_out, path_rgba: "Tests/" + image_test_ref)
 {
     print("images identical")
     passed = passed && true
@@ -41,7 +41,7 @@ else
 }
 
 print("Testing images \(interlace_test_ref) == \(interlace_test_out)")
-if test_decoded_identical(relative_path_png: "Tests/" + interlace_test_out, relative_path_rgba: "Tests/" + interlace_test_ref)
+if test_decoded_identical(path_png: "Tests/" + interlace_test_out, path_rgba: "Tests/" + interlace_test_ref)
 {
     print("images identical")
     passed = passed && true
