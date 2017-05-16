@@ -1352,16 +1352,18 @@ func deinterlace(scanlines:[[UInt8]], header:PNGHeader) throws -> [[UInt8]]
 public
 func absolute_unix_path(_ relative_path:String) -> String
 {
-    guard relative_path.characters.count > 1
+    guard let first_char:Character = relative_path.characters.first
     else
     {
         return relative_path
     }
     var expanded_path:String = relative_path
-    if relative_path[relative_path.startIndex ..< relative_path.index(relative_path.startIndex, offsetBy: 2)] == "~/"
+    if first_char == "~"
     {
-        expanded_path = String(cString: getenv("HOME")) +
-                        relative_path[relative_path.index(relative_path.startIndex, offsetBy: 1) ..< relative_path.endIndex]
+        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        {
+            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
+        }
     }
     return expanded_path
 }
@@ -1388,9 +1390,6 @@ func decode_png(absolute_path:String) throws -> ([[UInt8]], PNGHeader)
 public
 func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 {
-    //let (png_data, header):([[UInt8]], PNGHeader) = try decode_png(absolute_path: absolute_path)
-    //return (png_data.flatMap{ $0 }, header)
-
     guard let stream:FilePointer = fopen(absolute_path, "rb")
     else
     {
@@ -1403,8 +1402,6 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 
     let zero_line:[UInt8]              = scanline_iter.make_zero_line()
 
-    var reference_line:UnsafeBufferPointer<UInt8>?
-
     let buffer_size:Int = decoder.header.interlace ? decoder.header.interlaced_data_size : decoder.header.noninterlaced_data_size
     var buffer:[UInt8]  = [UInt8](repeating: 0, count: buffer_size)
     try buffer.withUnsafeMutableBufferPointer
@@ -1412,6 +1409,7 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
         (bp) in
 
         var offset:Int = 0
+        var reference_line:UnsafeBufferPointer<UInt8>?
         while scanline_iter.update_scanline_size()
         {
             let dest = UnsafeMutableBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
@@ -1420,10 +1418,7 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
             let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
             if scanline_iter.first_scanline
             {
-                zero_line.withUnsafeBufferPointer
-                {
-                    decoder.defilter_scanline(dest: dest, reference: $0, filter: filter)
-                }
+                decoder.defilter_scanline(dest: dest, reference: zero_line, filter: filter)
             }
             else
             {
@@ -1442,7 +1437,7 @@ func decode_png_contiguous(absolute_path:String) throws -> ([UInt8], PNGHeader)
 
     return (buffer, decoder.header)
 }
-/*
+
 public
 func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = 1 << 16) throws
 {
@@ -1452,13 +1447,41 @@ func encode_png_contiguous(absolute_path:String, raw_data:[UInt8], header:PNGHea
         throw PNGWriteError.DimemsionError
     }
 
-    let encoder = try PNGEncoder(path: absolute_path, header: header, chunk_size: chunk_size)
+    guard let stream:FilePointer = fopen(absolute_path, "wb")
+    else
+    {
+        throw PNGReadError.FileError(absolute_path)
+    }
+    defer { fclose(stream) }
 
+    var encoder:Encoder        = try Encoder(stream: stream, header: header, chunk_size: chunk_size)
 
+    let bytes_per_scanline:Int = header.sub_array_bounds[7].j
+    let zero_line:[UInt8]      = [UInt8](repeating: 0, count: bytes_per_scanline)
 
-    return
+    try raw_data.withUnsafeBufferPointer
+    {
+        bp in
+
+        var reference_line:UnsafeBufferPointer<UInt8>?
+
+        let src = UnsafeBufferPointer<UInt8>(start: bp.baseAddress!, count: bytes_per_scanline)
+        encoder.filter_scanline(src: src, reference: zero_line)
+        reference_line = src
+        try encoder.compress_scanline(stream: stream, finish: false)
+
+        for offset in stride(from: bytes_per_scanline, to: raw_data.count, by: bytes_per_scanline)
+        {
+            let src = UnsafeBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: bytes_per_scanline)
+            encoder.filter_scanline(src: src, reference: reference_line!)
+            reference_line = src
+            try encoder.compress_scanline(stream: stream, finish: false)
+        }
+    }
+
+    try encoder.finish(stream: stream)
 }
-*/
+
 
 public
 func decode_png(relative_path:String) throws -> ([[UInt8]], PNGHeader)
@@ -1470,6 +1493,15 @@ public
 func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
 {
     return try decode_png_contiguous(absolute_path: absolute_unix_path(relative_path))
+}
+
+public
+func encode_png_contiguous(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = 1 << 16) throws
+{
+    try encode_png_contiguous(absolute_path : absolute_unix_path(relative_path),
+                              raw_data      : raw_data,
+                              header        : header,
+                              chunk_size    : chunk_size)
 }
 
 class ZIterator
