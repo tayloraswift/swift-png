@@ -16,8 +16,8 @@ enum PNGReadError:Error
          PNGSyntaxError(String),
          DataCorruptionError(String),
 
-         DuplicateChunkError(PNGChunkType),
-         ChunkOrderingError(PNGChunkType),
+         DuplicateChunkError(PNGChunk),
+         ChunkOrderingError(PNGChunk),
          MissingHeaderError,
          PrematureEOSError,
          PrematureIENDError,
@@ -81,14 +81,14 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
 struct PNGConditions
 {
     private(set)
-    var seen = Set<PNGChunkType>()
+    var seen = Set<PNGChunk>()
     private(set)
-    var last_valid_chunk:PNGChunkType = PNGChunkType.__FIRST__
+    var last_valid_chunk:PNGChunk = PNGChunk.__FIRST__
 
     mutating
-    func update(_ chunk_type:PNGChunkType) throws
+    func update(_ chunk:PNGChunk) throws
     {
-        if self.last_valid_chunk == .__FIRST__ && chunk_type != .IHDR
+        if self.last_valid_chunk == .__FIRST__ && chunk != .IHDR
         {
             throw PNGReadError.MissingHeaderError
         }
@@ -96,26 +96,26 @@ struct PNGConditions
         {
             throw PNGReadError.PrematureIENDError
         }
-        if chunk_type == .IEND && !self.seen.contains(.IDAT)
+        if chunk == .IEND && !self.seen.contains(.IDAT)
         // separated from the switch block because it doesn’t work right for some reason
         {
             throw PNGReadError.PrematureIENDError
         }
 
-        switch chunk_type
+        switch chunk
         {
         // PLTE must come before bKGD, hIST, and tRNS
         case .PLTE:
             if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
             {
-                throw PNGReadError.ChunkOrderingError(chunk_type)
+                throw PNGReadError.ChunkOrderingError(chunk)
             }
             fallthrough
         // these chunks must occur before PLTE
         case        .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
             if self.seen.contains(.PLTE)
             {
-                throw PNGReadError.ChunkOrderingError(chunk_type)
+                throw PNGReadError.ChunkOrderingError(chunk)
             }
             fallthrough
 
@@ -123,34 +123,34 @@ struct PNGConditions
         case .PLTE, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
             if self.seen.contains(.IDAT)
             {
-                throw PNGReadError.ChunkOrderingError(chunk_type)
+                throw PNGReadError.ChunkOrderingError(chunk)
             }
             fallthrough
 
 
         // these chunks cannot duplicate
         case .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME:
-            if self.seen.contains(chunk_type)
+            if self.seen.contains(chunk)
             {
-                throw PNGReadError.DuplicateChunkError(chunk_type)
+                throw PNGReadError.DuplicateChunkError(chunk)
             }
 
         // IDAT blocks much be consecutive
         case .IDAT:
             if self.last_valid_chunk != .IDAT && self.seen.contains(.IDAT)
             {
-                throw PNGReadError.ChunkOrderingError(chunk_type)
+                throw PNGReadError.ChunkOrderingError(chunk)
             }
         default:
             break
         }
-        self.last_valid_chunk = chunk_type
-        self.seen.insert(chunk_type)
+        self.last_valid_chunk = chunk
+        self.seen.insert(chunk)
     }
 }
 
 public
-enum PNGChunkType:String
+enum PNGChunk:String
 {
     case __FIRST__,
          IHDR,
@@ -253,71 +253,71 @@ func write_png_buffer(_ f:FilePointer, buffer:[UInt8]) throws
     }
 }
 
-func png_read_chunk(f:FilePointer, conditions:inout PNGConditions, one_of:Set<PNGChunkType>)
-throws -> (chunk_type:PNGChunkType, chunk_data:[UInt8])?
+func png_read_chunk(f:FilePointer, conditions:inout PNGConditions, recognizing recognized:Set<PNGChunk>)
+throws -> (chunk:PNGChunk, chunk_data:[UInt8])?
 {
     /* — CHUNK LENGTH READ — */
     let length:Int = quad_byte_to_int(try read_png_buffer(f, 4))
 
     /* — CHUNK TYPE READ AND VALIDATION — */
-    let chunk_type_buffer = try read_png_buffer(f, 4)
-    guard let chunk_type = PNGChunkType(buffer: chunk_type_buffer)
+    let chunk_name_buffer = try read_png_buffer(f, 4)
+    guard let chunk = PNGChunk(buffer: chunk_name_buffer)
     else
     {
-        guard (chunk_type_buffer[0] & (1 << 5)) != 0
+        guard (chunk_name_buffer[0] & (1 << 5)) != 0
         else
         {
-            throw PNGReadError.UnexpectedCriticalChunkError(buffer_to_string(chunk_type_buffer))
+            throw PNGReadError.UnexpectedCriticalChunkError(buffer_to_string(chunk_name_buffer))
         }
-        guard (chunk_type_buffer[2] & (1 << 5)) == 0
+        guard (chunk_name_buffer[2] & (1 << 5)) == 0
         else
         {
-            throw PNGReadError.PNGSyntaxError("Third byte of chunk type \(buffer_to_string(chunk_type_buffer)) must have bit 5 set to 0.")
+            throw PNGReadError.PNGSyntaxError("Third byte of chunk type \(buffer_to_string(chunk_name_buffer)) must have bit 5 set to 0.")
         }
 
         try skip_png_buffer(f, length)
         // ignore unrecognized chunk
-        fputs("unrecognized: \(buffer_to_string(chunk_type_buffer))", stderr)
+        fputs("unrecognized: \(buffer_to_string(chunk_name_buffer))", stderr)
         return nil
     }
     // all the recognized chunks have valid names so there’s no need to check them
 
     // check ordering conditions
-    try conditions.update(chunk_type)
-    if one_of.contains(chunk_type)
+    try conditions.update(chunk)
+    if recognized.contains(chunk)
     {
         /* — CHUNK DATA READ — */
         let chunk_data = try read_png_buffer(f, length)
 
         /* — CHUNK CRC32 READ — */
         let stored_chunk_crc:UInt = UInt(quad_byte_to_int(try read_png_buffer(f, 4)))
-        var calculated_crc:UInt   = crc32(0, chunk_type_buffer, 4)
+        var calculated_crc:UInt   = crc32(0, chunk_name_buffer, 4)
             calculated_crc        = crc32(calculated_crc, chunk_data, UInt32(length))
         guard stored_chunk_crc == calculated_crc
         else
         {
-            throw PNGReadError.DataCorruptionError(chunk_type.rawValue)
+            throw PNGReadError.DataCorruptionError(chunk.rawValue)
         }
-        return (chunk_type, chunk_data)
+        return (chunk, chunk_data)
     }
     else
     {
         try skip_png_buffer(f, length)
-        //print("skipped: \(chunk_type)")
         return nil
     }
 }
 
-func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk_type:PNGChunkType) throws
+func png_write_chunk(f:FilePointer, chunk_data:[UInt8], chunk:PNGChunk) throws
 {
     try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(chunk_data.count))) // length section
-    let chunk_type_buffer:[UInt8] = [UInt8](chunk_type.rawValue.utf8)
-    assert(chunk_type_buffer.count == 4)
-    try write_png_buffer(f, buffer: chunk_type_buffer) // chunk type section
+    let chunk_name_buffer:[UInt8] = [UInt8](chunk.rawValue.utf8)
+    assert(chunk_name_buffer.count == 4)
+    try write_png_buffer(f, buffer: chunk_name_buffer) // chunk type section
     try write_png_buffer(f, buffer: chunk_data) // chunk data section
-    var calculated_crc:UInt = crc32(0, chunk_type_buffer, 4)
+    var calculated_crc:UInt = crc32(0, chunk_name_buffer, 4)
         calculated_crc      = crc32(calculated_crc, chunk_data, UInt32(chunk_data.count))
-    try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(calculated_crc))) // crc section // this Int() cast only works because crc is a 32 bit value padded to 64 bits
+    try write_png_buffer(f, buffer: int_to_quad_byte(UInt32(calculated_crc))) // crc section
+    // this Int() cast only works because crc is a 32 bit value padded to 64 bits
 }
 
 func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
@@ -862,7 +862,7 @@ struct Decoder
 
     private
     var conditions = PNGConditions(),
-        current_chunk_type:PNGChunkType = .__FIRST__,
+        current_chunk:PNGChunk = .__FIRST__,
         stream_exhausted:Bool = false
 
     private
@@ -870,24 +870,24 @@ struct Decoder
 
     /*
     public private(set)
-    var palatte:[(r: Int, g: Int, b: Int)]? = nil // not implemented yet — the number of channels is not fixed
+    var palatte:[(r: Int, g: Int, b: Int)]? = nil // not implemented
     */
 
     public
-    init(stream:FilePointer, look_for:[PNGChunkType] = [.IDAT]) throws
+    init(stream:FilePointer, recognizing recognized:Set<PNGChunk>) throws
     {
-        /* check if it's, you know, actually a PNG */
-        guard (try read_png_buffer(stream, 8) == PNG_SIGNATURE) // compare with PNG signature
+        // check if it's, you know, actually a PNG
+        guard try read_png_buffer(stream, 8) == PNG_SIGNATURE
         else
         {
             throw PNGReadError.FiletypeError
         }
 
-        /* read the image header */
-        if let (chunk_type, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IHDR]))
+        // read the image header
+        if let (chunk, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, recognizing: Set([.IHDR]))
         {
-            assert(chunk_type == .IHDR) // this should already be verified from the PNG conditions struct
-            self.current_chunk_type = .IHDR
+            assert(chunk == .IHDR) // this should already be verified from the PNG conditions struct
+            self.current_chunk = .IHDR
             self.header = try PNGHeader(chunk_data)
         }
         else
@@ -897,23 +897,16 @@ struct Decoder
 
         self.z_iterator = try ZInflator()
 
-        try self.read_png_info(stream: stream, look_for: look_for)
-    }
-
-    private mutating
-    func read_png_info(stream:FilePointer, look_for:[PNGChunkType]) throws // only ever call this function ONCE!
-    {
-        assert(self.current_chunk_type != .IDAT)
-        var active_chunks:Set<PNGChunkType> = Set(look_for)
-        active_chunks.insert(.IEND) // we must always be vigilant
+        // read non-IDAT chunks
+        let pre_idat_chunks:Set<PNGChunk> = recognized.union([.IEND])
 
         outer_loop: while true
         {
-            if let (chunk_type, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: active_chunks)
+            if let (chunk, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, recognizing: pre_idat_chunks)
             {
-                self.current_chunk_type = chunk_type
+                self.current_chunk = chunk
 
-                switch chunk_type
+                switch chunk
                 {
                     case .PLTE:
                         fputs("indexed-colored pngs are not yet supported", stderr)
@@ -923,7 +916,7 @@ struct Decoder
                     case .IEND:
                         break outer_loop
                     default:
-                        fputs("Reading chunk \(chunk_type) is not yet supported. tragic", stderr)
+                        fputs("Reading chunk \(chunk) is not yet supported. tragic", stderr)
                 }
             }
         }
@@ -948,10 +941,10 @@ struct Decoder
             }
 
             // if the inflator is out of input
-            guard let (_, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
+            guard let (_, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, recognizing: Set<PNGChunk>([.IDAT]))
             else
             {
-                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunkType
+                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunk
                 throw PNGReadError.ChunkOrderingError(.__INTERRUPTOR__)
             }
             self.z_iterator.add_input(chunk_data)
@@ -967,10 +960,10 @@ struct Decoder
             }
 
             // if the inflator is out of input
-            guard let (_, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, one_of: Set<PNGChunkType>([.IDAT]))
+            guard let (_, chunk_data) = try png_read_chunk(f: stream, conditions: &self.conditions, recognizing: Set<PNGChunk>([.IDAT]))
             else
             {
-                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunkType
+                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunk
                 throw PNGReadError.ChunkOrderingError(.__INTERRUPTOR__)
             }
             self.z_iterator.add_input(chunk_data)
@@ -1030,7 +1023,8 @@ struct Decoder
         }
         for i in bpp..<buffer.count
         {
-            buffer[i] = buffer[i] &+ UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i])) >> 1) // the second part will never overflow because of the right shift
+            buffer[i] = buffer[i] &+ UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i])) >> 1)
+            // the second part will never overflow because of the right shift
         }
     }
 
@@ -1066,7 +1060,7 @@ class PNGDecoder
     var header:PNGHeader { return self.decoder.header }
 
     public
-    init(path:String, look_for:[PNGChunkType] = [.IDAT]) throws
+    init(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws
     {
         if let stream:FilePointer = fopen(posix_path(path), "rb")
         {
@@ -1077,7 +1071,7 @@ class PNGDecoder
             throw PNGReadError.FileError(posix_path(path))
         }
 
-        self.decoder        = try Decoder(stream: stream, look_for: look_for)
+        self.decoder        = try Decoder(stream: stream, recognizing: recognized)
         self.scanline_iter  = ScanlineIterator(header: self.decoder.header)
         self.zero_line      = self.scanline_iter.make_zero_line()
     }
@@ -1141,7 +1135,7 @@ struct Encoder
         self.chunk_capacity_remaining = chunk_size
 
         try write_png_buffer(stream, buffer: PNG_SIGNATURE)
-        try png_write_chunk(f: stream, chunk_data: header.write(), chunk_type: .IHDR)
+        try png_write_chunk(f: stream, chunk_data: header.write(), chunk: .IHDR)
     }
 
     // make NO assumptions about the `.count` property of the reference line;
@@ -1201,9 +1195,9 @@ struct Encoder
 
         if self.chunk_capacity_remaining != self.chunk_data.count // meaning, there is still data in the buffer
         {
-            try png_write_chunk(f: stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk_type: .IDAT)
+            try png_write_chunk(f: stream, chunk_data: [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining)), chunk: .IDAT)
         }
-        try png_write_chunk(f: stream, chunk_data: [], chunk_type: .IEND)
+        try png_write_chunk(f: stream, chunk_data: [], chunk: .IEND)
     }
 
     private mutating
@@ -1212,7 +1206,7 @@ struct Encoder
         if self.chunk_capacity_remaining == 0
         {
             /* emit chunk */
-            try png_write_chunk(f: stream, chunk_data: self.chunk_data, chunk_type: .IDAT)
+            try png_write_chunk(f: stream, chunk_data: self.chunk_data, chunk: .IDAT)
             self.chunk_capacity_remaining = self.chunk_data.count
             return true
         }
@@ -1356,7 +1350,7 @@ func decode_png(path:String) throws -> ([UInt8], PNGHeader)
     }
     defer { fclose(stream) }
 
-    var decoder:Decoder                = try Decoder(stream: stream, look_for: [.IDAT]),
+    var decoder:Decoder                = try Decoder(stream: stream, recognizing: Set([.IDAT])),
         scanline_iter:ScanlineIterator = ScanlineIterator(header: decoder.header)
 
     let zero_line:[UInt8]              = scanline_iter.make_zero_line()
