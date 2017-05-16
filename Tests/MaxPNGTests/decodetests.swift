@@ -1,24 +1,4 @@
-import Glibc
 @testable import MaxPNG
-
-func load_rgba_data<Pixel:UnsignedInteger>(posix_path:String, n_pixels:Int) -> [RGBA<Pixel>]
-{
-    guard let stream:FilePointer = fopen(posix_path, "rb")
-    else
-    {
-        fatalError("Failed to read rgba file '\(posix_path)'")
-    }
-    defer { fclose(stream) }
-
-    var pixel_data = [RGBA<Pixel>](repeating: RGBA(0, 0, 0, 0), count: n_pixels)
-    guard fread(&pixel_data, MemoryLayout<RGBA<Pixel>>.stride, n_pixels, stream) == n_pixels
-    else
-    {
-        fatalError("Failed to read rgba file '\(posix_path)'")
-    }
-
-    return pixel_data
-}
 
 func test_decoded_identical(relative_path_png:String, relative_path_rgba:String) -> Bool
 {
@@ -29,7 +9,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
     }
     catch
     {
-        print("Error: \(error)")
+        print(error)
         return false
     }
 
@@ -39,7 +19,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
         guard let deinterlaced:[UInt8] = png_header.deinterlace(raw_data: png_raw_data)
         else
         {
-            print("Error: \(PNGReadError.InterlaceDimensionError)")
+            print(PNGReadError.InterlaceDimensionError)
             return false
         }
         png_data = deinterlaced
@@ -49,32 +29,7 @@ func test_decoded_identical(relative_path_png:String, relative_path_rgba:String)
         png_data = png_raw_data
     }
 
-    guard let rgba_data_png:[RGBA<UInt16>] = png_header.rgba64(raw_data: png_data)
-    else
-    {
-        return false
-    }
-    /*
-    let rgba_data_png:[RGBA<UInt16>] = rgba_data_png_32.map
-    {
-        let r:UInt16 = UInt16($0.r),
-            g:UInt16 = UInt16($0.g),
-            b:UInt16 = UInt16($0.b),
-            a:UInt16 = UInt16($0.a)
-        //return RGBA(r, g, b, a)
-        return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, a << 8 | a)
-    }
-    */
-    let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(posix_path: posix_path(relative_path_rgba),
-                                                       n_pixels: png_header.width * png_header.height)
-
-    if rgba_data_rgba != rgba_data_png
-    {
-        print("RGBA(\(rgba_data_rgba.count)) : \(rgba_data_rgba[0...7])")
-        print("PNG (\(rgba_data_png.count )) : \(rgba_data_png[0...7])")
-    }
-
-    return rgba_data_rgba == rgba_data_png
+    return test_against_rgba64(png_data: png_data, header: png_header, relative_path_rgba: relative_path_rgba)
 }
 
 func run_tests(test_cases:[String])
@@ -85,11 +40,11 @@ func run_tests(test_cases:[String])
         let path_rgba:String = "Tests/MaxPNGTests/unit/rgba/\(test_case).png.rgba"
         if test_decoded_identical(relative_path_png: path_png, relative_path_rgba: path_rgba)
         {
-            print("\(green_bold)(\(i)) test '\(test_case)' passed\(color_off)\n")
+            print("\(green_bold)(decode:\(i)) test '\(test_case)' passed\(color_off)\n")
         }
         else
         {
-            print("\(red_bold)(\(i)) test '\(test_case)' failed\(color_off)\n")
+            print("\(red_bold  )(decode:\(i)) test '\(test_case)' failed\(color_off)\n")
         }
     }
 }
