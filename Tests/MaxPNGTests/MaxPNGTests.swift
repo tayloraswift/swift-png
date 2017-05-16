@@ -15,6 +15,45 @@ let color_off = "\u{001B}[0m"
 
 let TERM_WIDTH:Int = 64
 
+func load_rgba_data<Pixel:UnsignedInteger>(posix_path:String, n_pixels:Int) -> [RGBA<Pixel>]
+{
+    guard let stream:FilePointer = fopen(posix_path, "rb")
+    else
+    {
+        fatalError("Failed to read rgba file '\(posix_path)'")
+    }
+    defer { fclose(stream) }
+
+    var pixel_data = [RGBA<Pixel>](repeating: RGBA(0, 0, 0, 0), count: n_pixels)
+    guard fread(&pixel_data, MemoryLayout<RGBA<Pixel>>.stride, n_pixels, stream) == n_pixels
+    else
+    {
+        fatalError("Failed to read rgba file '\(posix_path)'")
+    }
+
+    return pixel_data
+}
+
+func test_against_rgba64(png_data:[UInt8], header:PNGHeader, relative_path_rgba:String) -> Bool
+{
+    guard let rgba_data_png:[RGBA<UInt16>] = header.rgba64(raw_data: png_data)
+    else
+    {
+        return false
+    }
+
+    let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(posix_path: posix_path(relative_path_rgba),
+                                                       n_pixels: header.width * header.height)
+
+    if rgba_data_rgba != rgba_data_png
+    {
+        print("RGBA(\(rgba_data_rgba.count)) : \(rgba_data_rgba[0...7])")
+        print("PNG (\(rgba_data_png.count )) : \(rgba_data_png[0...7])")
+    }
+
+    return rgba_data_rgba == rgba_data_png
+}
+
 func print_progress(percent:Double, width:Int, eraser:String = "\r")
 {
     let bar_width:Int = width - 6
@@ -39,14 +78,7 @@ func print_progress(percent:Double, width:Int, eraser:String = "\r")
 }
 
 public
-func skip_png(_ rpath:String) throws
-{
-    let path = posix_path(rpath)
-    let _ = try PNGDecoder(path: path, look_for: [])
-}
-
-public
-func reencode_png_stream(_ rpath:String, output:String) throws
+func reencode_png(_ rpath:String, output:String) throws
 {
     let (png_data, png_header):([UInt8], PNGHeader) = try decode_png(relative_path: rpath)
     print(png_header)
@@ -56,52 +88,3 @@ func reencode_png_stream(_ rpath:String, output:String) throws
     print_progress(percent: 1, width: TERM_WIDTH)
     print()
 }
-
-/*
-public
-func decompose_png(_ rpath:String, output:String) throws
-{
-    let png_decode = try PNGDecoder(path: absolute_unix_path(rpath))
-    print(png_decode.header)
-    var scanlines:[[UInt8]] = []
-    scanlines.reserveCapacity(png_decode.header.height)
-    var i:Int = 0
-    let interlace_scanlines:Double = Double(png_decode.header.sub_dimensions.dropLast().map{ $0.height }.reduce(0, +))
-    print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
-    while let scanline = try png_decode.next_scanline()
-    {
-        i += 1
-        scanlines.append(scanline)
-        print_progress(percent: Double(i) / interlace_scanlines, width: TERM_WIDTH)
-    }
-    print("")
-
-    let out = absolute_unix_path(output)
-    var l:Int = 0
-    for (offset: i, element: (width: h, height: k)) in png_decode.header.sub_dimensions.dropLast().enumerated()
-    {
-        let frag_header = try PNGHeader(width: h, height: k,
-                                        bit_depth: png_decode.header.bit_depth,
-                                        color_type: png_decode.header.color_type,
-                                        interlace: false)
-        let png_encode = try PNGEncoder(path: "\(out)_subimage_\(i).png", header: frag_header)
-        for scanline in scanlines[l..<(l + k)]
-        {
-            try png_encode.add_scanline(scanline)
-        }
-        try png_encode.finish()
-        l += k
-    }
-
-    let deinterlaced_header = try PNGHeader(width: png_decode.header.width, height: png_decode.header.height,
-                                            bit_depth: png_decode.header.bit_depth,
-                                            color_type: png_decode.header.color_type,
-                                            interlace: false)
-    let deinterlaced_encode = try PNGEncoder(path: out, header: deinterlaced_header)
-    for scanline in try deinterlace(scanlines: scanlines, header: png_decode.header)
-    {
-        try deinterlaced_encode.add_scanline(scanline)
-    }
-    try deinterlaced_encode.finish()
-}
-*/

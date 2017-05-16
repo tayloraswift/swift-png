@@ -4,7 +4,7 @@ import Glibc
 
 let interlace_test_ref:String = "interlace.rgba",
     interlace_test_in:String = "interlace.png",
-    interlace_test_out:String = "deinterlace.png",
+    interlace_test_out:String = "interlace_deinterlace.png",
     image_test_ref:String = "taylor.rgba",
     image_test_in:String = "taylor.png",
     image_test_out:String = "taylor_reconverted.png"
@@ -22,8 +22,9 @@ try encode_png(relative_path: "Tests/output.png",
                           120, 120, 255, 150, 120, 255, 180, 120, 255],
                header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
 
-//try decompose_png("Tests/" + interlace_test_in, output: "Tests/" + interlace_test_out)
-//try reencode_png_stream("Tests/" + image_test_in, output: "Tests/" + image_test_out)
+passed = passed && test_decompose_and_deinterlace(relative_path: "Tests/interlace", index: 0)
+
+try reencode_png("Tests/" + image_test_in, output: "Tests/" + image_test_out)
 
 
 

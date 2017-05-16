@@ -357,9 +357,7 @@ struct PNGHeader:CustomStringConvertible
     public
     let channels:Int
 
-
-
-    public
+    public // expose this just in case someone wants the sub_dimensions without the image data
     let sub_dimensions:[(width:Int, height:Int)]
 
     let sub_array_bounds:[(i:Int, j:Int)],
@@ -383,6 +381,13 @@ struct PNGHeader:CustomStringConvertible
             accumulator = upper
             return range
         }
+    }
+
+    public
+    var deinterlaced_header:PNGHeader
+    {
+        return try! PNGHeader(width: self.width, height: self.height, bit_depth: self.bit_depth,
+                              color_type: self.color_type, interlace: false)
     }
 
     public
@@ -522,6 +527,29 @@ struct PNGHeader:CustomStringConvertible
         bytes.append(0)                                                 // [11] = 0
         bytes.append(self.interlace ? 1 : 0)                            // [12]
         return bytes
+    }
+
+    public
+    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGHeader)]?
+    {
+        do
+        {
+            return try zip(self.sub_array_ranges, self.sub_dimensions).map
+            {
+                (range:Range<Int>, dimensions:(width:Int, height:Int)) in
+
+                let header:PNGHeader = try PNGHeader(width: dimensions.width, height: dimensions.height,
+                                                     bit_depth: self.bit_depth,
+                                                     color_type: self.color_type,
+                                                     interlace: false)
+                return (Array(raw_data[range]), header)
+            }
+        }
+        catch // PNGReadError.PNGSyntaxError // the Header should never fail to construct, because we know self.bit_depth is valid
+        {
+            fputs(String(describing: error), stderr)
+            return nil
+        }
     }
 
     public
