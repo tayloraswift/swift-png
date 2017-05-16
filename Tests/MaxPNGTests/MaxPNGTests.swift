@@ -46,18 +46,6 @@ func skip_png(_ rpath:String) throws
 }
 
 public
-func write_png(_ rpath:String, _ scanlines:[[UInt8]], header:PNGHeader) throws
-{
-    let path = absolute_unix_path(rpath)
-    let png = try PNGEncoder(path: path, header: header)
-    for scanline in scanlines
-    {
-        try png.add_scanline(scanline)
-    }
-    try png.finish()
-}
-
-public
 func reencode_png_stream(_ rpath:String, output:String) throws
 {
     let path = absolute_unix_path(rpath)

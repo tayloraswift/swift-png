@@ -16,11 +16,16 @@ var passed:Bool = true
 
 run_tests(test_cases: test_cases)
 
+try encode_png_contiguous(relative_path: "Tests/output.png",
+                          raw_data: [0, 0, 0, 255, 255, 255, 255, 0, 255,
+                                     255, 255, 255, 0, 0, 0, 0, 255, 0,
+                                     120, 120, 255, 150, 120, 255, 180, 120, 255],
+                          header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
+
 try decompose_png("Tests/" + interlace_test_in, output: "Tests/" + interlace_test_out)
 try reencode_png_stream("Tests/" + image_test_in, output: "Tests/" + image_test_out)
 
-try write_png("Tests/output.png", [[0, 0, 0, 255, 255, 255, 255, 0, 255], [255, 255, 255, 0, 0, 0, 0, 255, 0], [120, 120, 255, 150, 120, 255, 180, 120, 255]],
-                header: PNGHeader(width: 3, height: 3, bit_depth: 8, color_type: .rgb, interlace: false))
+
 
 print("Testing images \(image_test_ref) == \(image_test_out)")
 if test_decoded_identical(relative_path_png: "Tests/" + image_test_out, relative_path_rgba: "Tests/" + image_test_ref)
