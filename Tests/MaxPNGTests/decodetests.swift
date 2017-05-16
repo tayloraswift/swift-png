@@ -22,15 +22,31 @@ func load_rgba_data<Pixel:UnsignedInteger>(posix_path:String, n_pixels:Int) -> [
 
 func test_decoded_identical(relative_path_png:String, relative_path_rgba:String) -> Bool
 {
-    let (png_data, png_header):([UInt8], PNGHeader)
+    let (png_raw_data, png_header):([UInt8], PNGHeader)
     do
     {
-        (png_data, png_header) = try decode_png_contiguous(relative_path: relative_path_png)
+        (png_raw_data, png_header) = try decode_png(relative_path: relative_path_png)
     }
     catch
     {
         print("Error: \(error)")
         return false
+    }
+
+    let png_data:[UInt8]
+    if png_header.interlace
+    {
+        guard let deinterlaced:[UInt8] = png_header.deinterlace(raw_data: png_raw_data)
+        else
+        {
+            print("Error: \(PNGReadError.InterlaceDimensionError)")
+            return false
+        }
+        png_data = deinterlaced
+    }
+    else
+    {
+        png_data = png_raw_data
     }
 
     guard let rgba_data_png:[RGBA<UInt16>] = png_header.rgba64(raw_data: png_data)

@@ -1301,7 +1301,7 @@ class PNGEncoder
 }
 
 public
-func decode_png_contiguous(posix_path:String) throws -> ([UInt8], PNGHeader)
+func decode_png(posix_path:String) throws -> ([UInt8], PNGHeader)
 {
     guard let stream:FilePointer = fopen(posix_path, "rb")
     else
@@ -1343,24 +1343,11 @@ func decode_png_contiguous(posix_path:String) throws -> ([UInt8], PNGHeader)
         }
     }
 
-    if decoder.header.interlace
-    {
-        guard let deinterlaced:[UInt8] = decoder.header.deinterlace(raw_data: buffer)
-        else
-        {
-            throw PNGReadError.InterlaceDimensionError
-        }
-
-        return (deinterlaced, decoder.header)
-    }
-    else
-    {
-        return (buffer, decoder.header)
-    }
+    return (buffer, decoder.header)
 }
 
 public
-func encode_png_contiguous(posix_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func encode_png(posix_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
     guard raw_data.count == header.noninterlaced_data_size
     else
@@ -1423,15 +1410,15 @@ func posix_path(_ relative_path:String) -> String
 }
 
 public
-func decode_png_contiguous(relative_path:String) throws -> ([UInt8], PNGHeader)
+func decode_png(relative_path:String) throws -> ([UInt8], PNGHeader)
 {
-    return try decode_png_contiguous(posix_path: posix_path(relative_path))
+    return try decode_png(posix_path: posix_path(relative_path))
 }
 
 public
-func encode_png_contiguous(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func encode_png(relative_path:String, raw_data:[UInt8], header:PNGHeader, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
-    try encode_png_contiguous(posix_path: posix_path(relative_path), raw_data: raw_data, header: header, chunk_size: chunk_size)
+    try encode_png(posix_path: posix_path(relative_path), raw_data: raw_data, header: header, chunk_size: chunk_size)
 }
 
 class ZIterator
