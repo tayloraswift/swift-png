@@ -552,6 +552,12 @@ struct PNGProperties:CustomStringConvertible
     public
     func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]?
     {
+        guard raw_data.count == self.noninterlaced_data_size
+        else
+        {
+            return nil
+        }
+
         guard self.bit_depth <= 8
         else
         {
@@ -634,13 +640,26 @@ struct PNGProperties:CustomStringConvertible
     public
     func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
     {
+        guard raw_data.count == self.noninterlaced_data_size
+        else
+        {
+            return nil
+        }
+
         let output:[RGBA<UInt16>]
         if self.bit_depth < 8 // channels is guaranteed to be 1
         {
+            // well that’s a mouthful isn’t it...
+            let bit_strider:LazySequence<FlattenSequence<LazyMapSequence<StrideTo<Int>, LazySequence<StrideTo<Int>>>>> =
+            stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
+            {
+                stride(from: $0 << 3, to: $0 << 3 + self.width * self.bit_depth, by: self.bit_depth).lazy
+            }
+
             if self.color == .grayscale
             {
                 let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
-                output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+                output = bit_strider.map
                 {
                     let value:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                     return RGBA(value, value, value, UInt16.max)
@@ -654,7 +673,7 @@ struct PNGProperties:CustomStringConvertible
                     return nil
                 }
 
-                let indices:[Int] = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+                let indices:[Int] = bit_strider.map
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }

@@ -45,13 +45,30 @@ func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:S
     let rgba_data_rgba:[RGBA<UInt16>] = load_rgba_data(path: path_rgba,
                                                        n_pixels: properties.width * properties.height)
 
-    if rgba_data_rgba != rgba_data_png
+    var pass:Bool = false,
+        mismatch_index:Int = 0
+
+    if rgba_data_png.count == rgba_data_rgba.count
     {
-        print("RGBA(\(rgba_data_rgba.count)) : \(rgba_data_rgba[0...7])")
-        print("PNG (\(rgba_data_png.count )) : \(rgba_data_png[0...7])")
+        pass = true
+        for i:Int in rgba_data_png.indices
+        {
+            if rgba_data_png[i] != rgba_data_rgba[i]
+            {
+                mismatch_index = i
+                pass = false
+                break
+            }
+        }
     }
 
-    return rgba_data_rgba == rgba_data_png
+    if !pass
+    {
+        print("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< mismatch_index + 8])")
+        print("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< mismatch_index + 8])")
+    }
+
+    return pass
 }
 
 func print_progress(percent:Double, width:Int, eraser:String = "\r")
