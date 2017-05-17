@@ -104,6 +104,8 @@ enum PNGChunk:String
          tEXt,
          zTXt,
 
+         PRIVATE,
+
          __INTERRUPTOR__
 
     init?(buffer:[UInt8])
@@ -173,7 +175,7 @@ struct Header
     let width:Int,
         height:Int,
         bit_depth:Int,
-        color:PNGProperties.ColorType,
+        color:ColorType,
         interlaced:Bool
 
     init(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool) throws
@@ -273,6 +275,39 @@ struct PNGProperties:CustomStringConvertible
 
     public
     let channels:Int
+
+    // other chunks
+    public
+    struct PalatteEntry:CustomStringConvertible
+    {
+        public
+        let r:UInt8,
+            g:UInt8,
+            b:UInt8
+
+        public
+        var description:String
+        {
+            let big_endian:UInt32 = UInt32.max & (UInt32(self.r) << 16 | UInt32(self.g) << 8 | UInt32(self.b))
+            return "#" + String(String(big_endian, radix: 16).characters.dropFirst(2))
+        }
+    }
+    public
+    let palatte:[PalatteEntry]? = nil//,
+    /*
+        chromaticity:Chromaticity?,
+        gamma:UInt32?
+        profile:ColorProfile?
+        sBIT:Int?
+        sRGB:RenderingIntent?
+        bKGD:ColorKey
+        hIST:[UInt16],
+        tRNS:[ColorKey]
+        pHYs:PhysicalSize,
+        sPLT:SuggestedPalatte,
+        tIME:Time,
+
+    */
 
     public
     let sub_dimensions:[(width:Int, height:Int)]
@@ -570,81 +605,42 @@ struct PNGProperties:CustomStringConvertible
         }
         else
         {
-            if self.bit_depth == 8
+            let d:Int = self.bit_depth == 8 ? 0 : 1
+
+            switch self.color
             {
-                switch self.color
+            case .grayscale:
+                output = stride(from: 0, to: raw_data.count, by: 1 << d).map
                 {
-                case .grayscale:
-                    output = raw_data.map
-                    {
-                        let value:UInt16 = UInt16($0) << 8 | UInt16($0)
-                        return RGBA(value, value, value, UInt16.max)
-                    }
-                case .grayscale_a:
-                    output = stride(from: 0, to: raw_data.count, by: 2).map
-                    {
-                        let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
-                            alpha:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1])
-                        return RGBA(value, value, value, alpha)
-                    }
-                case .rgb:
-                    output = stride(from: 0, to: raw_data.count, by: 3).map
-                    {
-                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
-                            g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
-                            b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2])
-                        return RGBA(r, g, b, UInt16.max)
-                    }
-                case .rgba:
-                    output = stride(from: 0, to: raw_data.count, by: 4).map
-                    {
-                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0    ]),
-                            g:UInt16 = UInt16(raw_data[$0 + 1]) << 8 | UInt16(raw_data[$0 + 1]),
-                            b:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 2]),
-                            a:UInt16 = UInt16(raw_data[$0 + 3]) << 8 | UInt16(raw_data[$0 + 3])
-                        return RGBA(r, g, b, a)
-                    }
-                case .indexed:
-                    return nil // should never reach here
+                    let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ])
+                    return RGBA(v, v, v, UInt16.max)
                 }
-            }
-            else
-            {
-                switch self.color
+            case .grayscale_a:
+                output = stride(from: 0, to: raw_data.count, by: 2 << d).map
                 {
-                case .grayscale:
-                    output = stride(from: 0, to: raw_data.count, by: 2).map
-                    {
-                        let value:UInt16 = UInt16(raw_data[$0]) << 8 | UInt16(raw_data[$0 + 1])
-                        return RGBA(value, value, value, UInt16.max)
-                    }
-                case .grayscale_a:
-                    output = stride(from: 0, to: raw_data.count, by: 4).map
-                    {
-                        let value:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
-                            alpha:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3])
-                        return RGBA(value, value, value, alpha)
-                    }
-                case .rgb:
-                    output = stride(from: 0, to: raw_data.count, by: 6).map
-                    {
-                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
-                            g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
-                            b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5])
-                        return RGBA(r, g, b, UInt16.max)
-                    }
-                case .rgba:
-                    output = stride(from: 0, to: raw_data.count, by: 8).map
-                    {
-                        let r:UInt16 = UInt16(raw_data[$0    ]) << 8 | UInt16(raw_data[$0 + 1]),
-                            g:UInt16 = UInt16(raw_data[$0 + 2]) << 8 | UInt16(raw_data[$0 + 3]),
-                            b:UInt16 = UInt16(raw_data[$0 + 4]) << 8 | UInt16(raw_data[$0 + 5]),
-                            a:UInt16 = UInt16(raw_data[$0 + 6]) << 8 | UInt16(raw_data[$0 + 7])
-                        return RGBA(r, g, b, a)
-                    }
-                case .indexed:
-                    return nil // should never reach here
+                    let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
+                        a:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)])
+                    return RGBA(v, v, v, a)
                 }
+            case .rgb:
+                output = stride(from: 0, to: raw_data.count, by: 3 << d).map
+                {
+                    let r:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
+                        g:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)]),
+                        b:UInt16 = UInt16(raw_data[$0 + 2 << d]) << 8 | UInt16(raw_data[$0 + (2 << d | d)])
+                    return RGBA(r, g, b, UInt16.max)
+                }
+            case .rgba:
+                output = stride(from: 0, to: raw_data.count, by: 4 << d).map
+                {
+                    let r:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
+                        g:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)]),
+                        b:UInt16 = UInt16(raw_data[$0 + 2 << d]) << 8 | UInt16(raw_data[$0 + (2 << d | d)]),
+                        a:UInt16 = UInt16(raw_data[$0 + 3 << d]) << 8 | UInt16(raw_data[$0 + (3 << d | d)])
+                    return RGBA(r, g, b, a)
+                }
+            case .indexed:
+                return nil // should never reach here
             }
         }
 
