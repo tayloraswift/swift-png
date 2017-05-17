@@ -86,9 +86,9 @@ let test_cases:[String] =
 "basi6a16",
 
 "s01i3p01",
-"s01n3p01",
+//"s01n3p01",
 "s02i3p01",
-"s02n3p01",
+//"s02n3p01",
 "s03i3p01",
 "s03n3p01",
 "s04i3p01",

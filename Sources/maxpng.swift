@@ -291,9 +291,17 @@ struct PNGProperties:CustomStringConvertible
             let big_endian:UInt32 = UInt32.max & (UInt32(self.r) << 16 | UInt32(self.g) << 8 | UInt32(self.b))
             return "#" + String(String(big_endian, radix: 16).characters.dropFirst(2))
         }
+
+        public
+        init(_ r:UInt8, _ g:UInt8, _ b:UInt8)
+        {
+            self.r = r
+            self.g = g
+            self.b = b
+        }
     }
-    public
-    let palatte:[PalatteEntry]? = nil//,
+    public private(set)
+    var palatte:[PalatteEntry]?//,
     /*
         chromaticity:Chromaticity?,
         gamma:UInt32?
@@ -445,6 +453,27 @@ struct PNGProperties:CustomStringConvertible
         return bytes
     }
 
+    public mutating
+    func set_palatte(_ palatte:[PalatteEntry])
+    {
+        self.palatte = palatte.count > 256 ? Array(palatte[0 ..< 256]) : palatte
+    }
+
+    mutating
+    func set_palatte(_ bytes:[UInt8]) throws
+    {
+        guard bytes.count % 3 == 0
+        else
+        {
+            throw PNGReadError.PNGSyntaxError("Palatte is \(bytes.count) bytes long, which is not divisible by 3")
+        }
+
+        self.palatte = stride(from: 0, to: min(bytes.count, 1 << self.bit_depth * 3), by: 3).map
+        {
+            PalatteEntry(bytes[$0], bytes[$0 + 1], bytes[$0 + 2])
+        }
+    }
+
     public
     func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
     {
@@ -583,24 +612,54 @@ struct PNGProperties:CustomStringConvertible
         return output
     }
 
-    public
-    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
+    private
+    func deindex64(indices:[Int], palatte:[PalatteEntry]) -> [RGBA<UInt16>]?
     {
-        guard self.color != .indexed
+        // check that they don’t exceed the range of the palatte
+        guard indices.map({ $0 < palatte.count ? 0 : 1 }).reduce(0, +) == 0
         else
         {
-            fputs("Normalizing indexed PNGs is unsupported\n", stderr)
             return nil
         }
 
+        return indices.map
+        {
+            let r:UInt16 = UInt16(palatte[$0].r),
+                g:UInt16 = UInt16(palatte[$0].g),
+                b:UInt16 = UInt16(palatte[$0].b)
+            return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, UInt16.max)
+        }
+    }
+
+    public
+    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
+    {
         let output:[RGBA<UInt16>]
         if self.bit_depth < 8 // channels is guaranteed to be 1
         {
-            let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
-            output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+            if self.color == .grayscale
             {
-                let value:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
-                return RGBA(value, value, value, UInt16.max)
+                let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
+                output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+                {
+                    let value:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                    return RGBA(value, value, value, UInt16.max)
+                }
+            }
+            else // indexed
+            {
+                guard let palatte = self.palatte
+                else
+                {
+                    return nil
+                }
+
+                let indices:[Int] = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+                {
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                }
+
+                return deindex64(indices: indices, palatte: palatte)
             }
         }
         else
@@ -640,7 +699,12 @@ struct PNGProperties:CustomStringConvertible
                     return RGBA(r, g, b, a)
                 }
             case .indexed:
-                return nil // should never reach here
+                guard let palatte = self.palatte
+                else
+                {
+                    return nil
+                }
+                return deindex64(indices: raw_data.map(Int.init), palatte: palatte)
             }
         }
 
@@ -697,16 +761,18 @@ struct PNGConditions
             throw PNGReadError.MissingHeaderError
         }
 
-        switch chunk
+
+        if chunk ==                                                                       .tRNS
         {
-        case                                                                              .tRNS:
             if color == .grayscale_a || color == .rgba
             {
                 throw PNGReadError.IllegalChunkError(chunk)
             }
-            fallthrough
+        }
+
         // PLTE must come before bKGD, hIST, and tRNS
-        case               .PLTE:
+        if chunk ==        .PLTE
+        {
             if color == .grayscale || color == .grayscale_a
             {
                 throw PNGReadError.IllegalChunkError(chunk)
@@ -716,24 +782,34 @@ struct PNGConditions
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
-            fallthrough
+        }
+
         // these chunks must occur before PLTE
+        switch chunk
+        {
         case                             .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
             if self.seen.contains(.PLTE)
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
-            fallthrough
+        default:
+            break
+        }
 
         // these chunks must occur before IDAT
+        switch chunk
+        {
         case               .PLTE,        .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
             if self.seen.contains(.IDAT)
             {
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
-            fallthrough
+        default:
+            break
+        }
 
-
+        switch chunk
+        {
         // these chunks cannot duplicate
         case        .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME:
             if self.seen.contains(chunk)
@@ -757,7 +833,6 @@ struct PNGConditions
         }
         self.last_valid_chunk = chunk
         self.seen.insert(chunk)
-
     }
 }
 
@@ -866,7 +941,9 @@ struct Decoder
         let header:Header = try Header(chunk_data)
 
         self.conditions.color = header.color
-        self.z_iterator = try ZInflator()
+        self.z_iterator       = try ZInflator()
+
+        var properties        = PNGProperties(header: header)
 
         // read non-IDAT chunks
         //                                     v— recognized generally contains an .IDAT enum to ensure we don’t miss the first .IDAT
@@ -881,7 +958,7 @@ struct Decoder
                 switch chunk
                 {
                     case .PLTE:
-                        fputs("Indexed-colored pngs are unsupported\n", stderr)
+                        try properties.set_palatte(chunk_data)
                     case .IDAT:
                         self.z_iterator.add_input(chunk_data)
                         break outer_loop // we have a check in the conditions preventing IEND from coming early
@@ -893,7 +970,7 @@ struct Decoder
             }
         }
 
-        self.properties = PNGProperties(header: header)
+        self.properties = properties
     }
 
     mutating
