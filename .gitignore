@@ -3,3 +3,4 @@
 /Packages
 /*.xcodeproj
 /Tests/*.png
+/Tests/MaxPNGTests/unit/out/*.png

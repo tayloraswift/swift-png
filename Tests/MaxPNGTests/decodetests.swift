@@ -1,19 +1,34 @@
 import MaxPNG
 
-func normalize_and_compare(path_png:String, path_rgba:String, log:inout [String]) -> Bool
+func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
 {
-    let (png_raw_data, png_properties):([UInt8], PNGProperties)
-    do
+    let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
+    guard let (deinterlaced, properties):([UInt8], PNGProperties) = normalize_deinterlace(path: path_png, log: &log)
+    else
     {
-        (png_raw_data, png_properties) = try decode_png(path: path_png, recognizing: [.IDAT, .tRNS])
-    }
-    catch
-    {
-        log.append(String(describing: error))
         return false
     }
 
-    return normalize_and_compare(raw_data: png_raw_data, properties: png_properties, path_rgba: path_rgba, log: &log)
+    if properties.bit_depth == 16
+    {
+        return true
+    }
+
+    let rgba64:[RGBA<UInt8>] = properties.rgba64(raw_data: deinterlaced)!.map
+    {
+        let r:UInt8 = UInt8($0.r >> 8),
+            g:UInt8 = UInt8($0.g >> 8),
+            b:UInt8 = UInt8($0.b >> 8),
+            a:UInt8 = UInt8($0.a >> 8)
+        return RGBA(r, g, b, a)
+    }
+    guard let rgba32:[RGBA<UInt8>] = properties.rgba32(raw_data: deinterlaced)
+    else
+    {
+        return false
+    }
+
+    return rgba32 == rgba64
 }
 
 func decode_test(test_name:String, log:inout [String]) -> Bool
@@ -23,14 +38,12 @@ func decode_test(test_name:String, log:inout [String]) -> Bool
     return normalize_and_compare(path_png: path_png, path_rgba: path_rgba, log: &log)
 }
 
-func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
+func test_reencode_png(src_path:String, ref_path:String, dest_path:String, log:inout [String]) -> Bool
 {
-    let dest_path:String = "Tests/"      + test_name + "_rewritten.png"
-    let ref_path:String  = "Tests/MaxPNGTests/large/rgba/" + test_name + ".rgba"
     var encode_passed:Bool = true
     do
     {
-        let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: "Tests/MaxPNGTests/large/png/" + test_name + ".png")
+        let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: src_path, recognizing: [.IDAT, .tRNS])
         try encode_png(path: dest_path, raw_data: png_data, properties: png_properties)
     }
     catch
@@ -40,6 +53,24 @@ func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
     }
 
     return encode_passed && normalize_and_compare(path_png: dest_path, path_rgba: ref_path, log: &log)
+}
+
+func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
+{
+    let dest_path:String = "Tests/"      + test_name + "_rewritten.png",
+        ref_path:String  = "Tests/MaxPNGTests/large/rgba/" + test_name + ".rgba",
+        src_path:String  = "Tests/MaxPNGTests/large/png/" + test_name + ".png"
+
+    return test_reencode_png(src_path: src_path, ref_path: ref_path, dest_path: dest_path, log: &log)
+}
+
+func test_reencode_unit_png(test_name:String, log:inout [String]) -> Bool
+{
+    let dest_path:String = "Tests/MaxPNGTests/unit/out/\(test_name).png",
+        ref_path:String  = "Tests/MaxPNGTests/unit/rgba/\(test_name).png.rgba",
+        src_path:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
+
+    return test_reencode_png(src_path: src_path, ref_path: ref_path, dest_path: dest_path, log: &log)
 }
 
 func test_progressive(test_name:String, log:inout [String]) -> Bool
