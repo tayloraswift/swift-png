@@ -1,4 +1,4 @@
-@testable import MaxPNG
+import MaxPNG
 
 func normalize_and_compare(path_png:String, path_rgba:String, log:inout [String]) -> Bool
 {
@@ -32,9 +32,11 @@ func normalize_and_compare(path_png:String, path_rgba:String, log:inout [String]
     return test_against_rgba64(png_data: png_data, properties: png_properties, path_rgba: path_rgba, log: &log)
 }
 
+public
 typealias TestFunc = (String, inout [String]) -> Bool
 
-func run_tests(_ tests:[(String, [String], TestFunc)])
+public
+func run_tests(_ tests:[(String, [String], TestFunc)], verbose:Bool, only_run test_subset:Set<String>?)
 {
     typealias TestRecord = (index: Int, number:String, name:String)
 
@@ -44,11 +46,18 @@ func run_tests(_ tests:[(String, [String], TestFunc)])
     var pass_vector:[TestRecord]   = []
     var log:[[String]]      = []
     var i:Int               = 0
-    print_progress(percent: 0, text: [(test_counter, light_cyan_bold), ("", nil)], erase: false)
+    if !verbose
+    {
+        print_progress(percent: 0, text: [(test_counter, light_cyan_bold), ("", nil)], erase: false)
+    }
     for (test_group, test_cases, test_func):(String, [String], TestFunc) in tests
     {
         for (j, test_case) in test_cases.enumerated()
         {
+            if let test_subset = test_subset, !test_subset.contains(test_case)
+            {
+                continue
+            }
             let record:TestRecord  = (index: i, number: "\(test_group):\(j)", name: test_case)
             let output:(String, String?)
             var log_entry:[String] = []
@@ -65,21 +74,33 @@ func run_tests(_ tests:[(String, [String], TestFunc)])
 
             log.append(log_entry)
 
-            test_counter = "—— Testing: \(i + 1) of \(test_count) tests ——"
-            print_progress(percent: Double(i)/Double(test_count), text: [(test_counter, light_cyan_bold), output], erase: true)
+            if verbose
+            {
+                print((output.1 ?? "") + output.0 + color_off)
+                print(log[i].joined(separator: "\n"))
+            }
+            else
+            {
+                test_counter = "—— Testing: \(i + 1) of \(test_count) tests ——"
+                print_progress(percent: Double(i)/Double(test_count), text: [(test_counter, light_cyan_bold), output], erase: true)
+            }
+
             i += 1
         }
     }
 
     let summary:String = "\(pass_vector.count) passed, \(fail_vector.count) failed"
-    print_progress(percent: 1, text: [(test_counter, light_cyan_bold), (summary, light_cyan_bold)], erase: true)
+    print_progress(percent: 1, text: [(test_counter, light_cyan_bold), (summary, light_cyan_bold)], erase: true && !verbose)
     print()
 
-    for (index: i, number: number, name: name) in fail_vector
+    if !verbose
     {
-        print(red_bold + "[\(i)] (\(number)) test '\(name)' failed" + color_off)
-        print(log[i].joined(separator: "\n"))
-        print()
+        for (index: i, number: number, name: name) in fail_vector
+        {
+            print(red_bold + "[\(i)] (\(number)) test '\(name)' failed" + color_off)
+            print(log[i].joined(separator: "\n"))
+            print()
+        }
     }
 }
 
@@ -285,6 +306,7 @@ func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
     return encode_passed && normalize_and_compare(path_png: dest_path, path_rgba: ref_path, log: &log)
 }
 
+public
 let tests:[(String, [String], TestFunc)] =
 [
     ("decode", decode_test_cases, decode_test),

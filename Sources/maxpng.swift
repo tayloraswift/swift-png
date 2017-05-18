@@ -559,11 +559,11 @@ struct PNGProperties:CustomStringConvertible
         var deinterlaced = [UInt8](repeating: 0, count: self.noninterlaced_data_size)
 
         var src_byte_base:Int = 0
-        for (range, (stride_h, stride_v)):(Range<Int>, SubStrider) in zip(self.sub_array_ranges, self.sub_striders)
+        for (bounds, (stride_h, stride_v)):((i:Int, j:Int), SubStrider) in zip(self.sub_array_bounds, self.sub_striders)
         {
-            var src_pixel_offset:Int = 0
             for dest_pixel_base in stride_v.map({ $0 * self.width })
             {
+                var src_pixel_offset:Int = 0
                 for dest_pixel_offset in stride_h
                 {
                     if self.bit_depth < 8
@@ -577,7 +577,7 @@ struct PNGProperties:CustomStringConvertible
                         src_byte <<= src_bit_offset
                         // mask out right
                         src_byte >>= (8 - UInt8(self.bit_depth))
-
+                        //print("<\(bounds.j)> (\(dest_pixel_base/self.width), \(dest_pixel_offset)) @ \(src_byte_index) + \(src_bit_offset) = \(src_byte)")
                         let dest_byte_index:Int   =       ((dest_pixel_base + dest_pixel_offset) * self.bit_depth) >> 3,
                             dest_bit_offset:UInt8 = UInt8(((dest_pixel_base + dest_pixel_offset) * self.bit_depth) & 7)
                         // shift it to destination
@@ -593,8 +593,8 @@ struct PNGProperties:CustomStringConvertible
 
                     src_pixel_offset += 1
                 }
+                src_byte_base += bounds.j
             }
-            src_byte_base += range.count
         }
 
         return deinterlaced
