@@ -44,7 +44,7 @@ try out.finish()
 
 Resource management is as Swifty as it made sense to be; most resources will be released when MaxPNG’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
 
-MaxPNG provides the PNG’s formatting information in the `PNGProperties` struct which is returned by the contiguous decoder function `decode_png(path:)`, and provided as a member `.properties` on the progressive decoder class `PNGDecoder`. These property structures are similarly taken as parameters by the contiguous encoder function `encode_png(path:raw_data:properties:)` and the progressive encoder class initializer `PNGEncoder.init(path:properties:)`.
+MaxPNG provides the PNG’s formatting information in the `PNGProperties` struct which is returned by the contiguous decoder function `decode_png(path:recognizing:)`, and provided as a member `.properties` on the progressive decoder class `PNGDecoder`. These property structures are similarly taken as parameters by the contiguous encoder function `encode_png(path:raw_data:properties:)` and the progressive encoder class initializer `PNGEncoder.init(path:properties:)`.
 
 ````swift
 struct PNGProperties
@@ -66,9 +66,18 @@ struct PNGProperties
 
     let channels:Int
 
+    private(set)
+    var palatte:[RGBA<UInt8>]?,
+        chroma_key:RGBA<UInt16>?
+
+    var quantum16:UInt16 { get }
+
     let sub_dimensions:[(width:Int, height:Int)]
 
     var deinterlaced_properties:PNGProperties { get }
+
+    mutating
+    func set_palatte(_ palatte:[RGBA<UInt8>]) -> Void
 }
 ````
 
@@ -100,8 +109,6 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable
         a:Pixel
 }
 ````
-
-At the moment, indexed-color PNGs are unsupported. Tragic. Hmu on the issues page if you need them.
 
 ## FAQ
 
@@ -144,11 +151,11 @@ Some PNGs are so large that loading them into your RAM will make you very sad. T
 
 > Why did it “skip” `nUGZ`??? That’s my favorite chunk!!!
 
-Right now, MaxPNG only recognizes the chunks `IHDR`, `IDAT`, and `IEND`. `PLTE` is ignored but it would probably take about an afternoon or two to implement; I’m just lazy because I have seen maybe 5 indexed PNGs in my entire life. Most of the ancillary PNG chunks are actually trivial to implement and add to MaxPNG (they just involve casting bytes to integers and binding them to structs), I just haven’t gotten around to it.
+Right now, MaxPNG only recognizes the chunks `IHDR`, `IDAT`, `IEND`, `PLTE`, and `.tRNS`. The other ancillary chunks are currently unrecognized, but still validated for chunk ordering.
 
 > Wait, MaxPNG lets you skip `IDAT`??? Why would you ever want to do that?
 
-By default, MaxPNG will decode the image pixel data, but if you pass `PNGDecoder.init(path:look_for:)` an empty array in its `look_for:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
+By default, MaxPNG will decode the image pixel data, but if you pass `PNGDecoder.init(path:recognizing:)` an empty array in its `recognizing:[PNGChunkType]` field, it will ignore the pixel data chunks. Sometimes you want to do this if, for example, you just want to get the dimensions of the PNG file. Decoding the pixel data we don’t care about would just be a waste of time.
 
 > Does MaxPNG do gamma correction?
 
