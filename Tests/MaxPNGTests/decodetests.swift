@@ -5,11 +5,11 @@ func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
     let (png_raw_data, png_properties):([UInt8], PNGProperties)
     do
     {
-        (png_raw_data, png_properties) = try decode_png(path: path_png)
+        (png_raw_data, png_properties) = try decode_png(path: path_png, recognizing: [.IDAT, .tRNS])
     }
     catch
     {
-        print(error)
+        //print(error)
         return false
     }
 
@@ -19,7 +19,7 @@ func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
         guard let deinterlaced:[UInt8] = png_properties.deinterlace(raw_data: png_raw_data)
         else
         {
-            print(PNGReadError.InterlaceDimensionError)
+            //print(PNGReadError.InterlaceDimensionError)
             return false
         }
         png_data = deinterlaced
@@ -34,19 +34,30 @@ func test_decoded_identical(path_png:String, path_rgba:String) -> Bool
 
 func run_tests(test_cases:[String])
 {
+    var test_counter:String = "—— Testing: 0 of \(test_cases.count) tests ——"
+    var number_passed:Int = 0
+    print_progress(percent: 0, text: [(test_counter, light_cyan_bold), ("", nil)], erase: false)
     for (i, test_case) in test_cases.enumerated()
     {
         let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_case).png"
         let path_rgba:String = "Tests/MaxPNGTests/unit/rgba/\(test_case).png.rgba"
+        let output:(String, String?)
         if test_decoded_identical(path_png: path_png, path_rgba: path_rgba)
         {
-            print("\(green_bold)(decode:\(i)) test '\(test_case)' passed\(color_off)\n")
+            output = ("(decode:\(i)) test '\(test_case)' passed", green_bold)
+            number_passed += 1
         }
         else
         {
-            print("\(red_bold  )(decode:\(i)) test '\(test_case)' failed\(color_off)\n")
+            output = ("(decode:\(i)) test '\(test_case)' failed", red_bold)
         }
+
+        test_counter = "—— Testing: \(i + 1) of \(test_cases.count) tests ——"
+        print_progress(percent: Double(i)/Double(test_cases.count), text: [(test_counter, light_cyan_bold), output], erase: true)
     }
+
+    let summary:String = "\(number_passed) passed, \(test_cases.count - number_passed) failed"
+    print_progress(percent: 1, text: [(test_counter, light_cyan_bold), (summary, light_cyan_bold)], erase: true)
 }
 
 let test_cases:[String] =
@@ -86,9 +97,9 @@ let test_cases:[String] =
 "basi6a16",
 
 "s01i3p01",
-//"s01n3p01",
+"s01n3p01",
 "s02i3p01",
-//"s02n3p01",
+"s02n3p01",
 "s03i3p01",
 "s03n3p01",
 "s04i3p01",
