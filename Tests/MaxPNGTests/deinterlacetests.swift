@@ -1,6 +1,6 @@
 import MaxPNG
 
-func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
+func test_decompose(path:String, log:inout [String]) -> Bool
 {
     let (png_raw_data, png_properties):([UInt8], PNGProperties)
     do
@@ -9,26 +9,22 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
     }
     catch
     {
-        print(error)
+        log.append(String(describing: error))
         return false
     }
 
     guard let deinterlaced:[UInt8] = png_properties.deinterlace(raw_data: png_raw_data)
     else
     {
-        print(PNGReadError.InterlaceDimensionError)
+        log.append(String(describing: PNGReadError.InterlaceDimensionError))
         return false
     }
 
     var passing:Bool = true
 
-    if test_against_rgba64(png_data: deinterlaced, properties: png_properties.deinterlaced_properties, path_rgba: path + ".rgba")
+    if !test_against_rgba64(png_data: deinterlaced, properties: png_properties.deinterlaced_properties, path_rgba: path + ".rgba", log: &log)
     {
-        print("\(green_bold)(deinterlace:\(index)) test '\(path).png' passed\(color_off)")
-    }
-    else
-    {
-        print("\(red_bold  )(deinterlace:\(index)) test '\(path).png' failed\(color_off)")
+        log.append("subtest deinterlace '\(path).png' failed")
         passing = false
     }
 
@@ -40,14 +36,14 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
     }
     catch
     {
-        print(error)
+        log.append(String(describing: error))
         return false
     }
 
 
     for (i, (sub_data, sub_properties)) in png_properties.decompose(raw_data: png_raw_data)!.enumerated()
     {
-        let extended_name:String = path + "_deinterlace_\(i)"
+        let extended_name:String = path + "_\(i)"
         do
         {
             try encode_png(path: extended_name + ".png",
@@ -56,20 +52,21 @@ func test_decompose_and_deinterlace(path:String, index:Int) -> Bool
         }
         catch
         {
-            print(error)
+            log.append(String(describing: error))
             passing = false
         }
 
-        if test_against_rgba64(png_data: sub_data, properties: sub_properties, path_rgba: extended_name + ".rgba")
+        if !test_against_rgba64(png_data: sub_data, properties: sub_properties, path_rgba: extended_name + ".rgba", log: &log)
         {
-            print("\(green_bold)(decompose:\(index):\(i)) test '\(extended_name).png' passed\(color_off)")
-        }
-        else
-        {
-            print("\(red_bold  )(decompose:\(index):\(i)) test '\(extended_name).png' failed\(color_off)")
+            log.append("subtest decompose '\(path).png' (\(i + 1)/7) failed")
             passing = false
         }
     }
 
     return passing
+}
+
+func test_decompose(test_name:String, log:inout [String]) -> Bool
+{
+    return test_decompose(path: "Tests/\(test_name)", log: &log)
 }
