@@ -64,6 +64,11 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
         return "(\(self.r), \(self.g), \(self.b), \(self.a))"
     }
 
+    var grayscale:Pixel?
+    {
+        return self.r == self.g && self.g == self.b ? self.r : nil
+    }
+
     public
     init(_ r:Pixel, _ g:Pixel, _ b:Pixel, _ a:Pixel)
     {
@@ -475,6 +480,34 @@ struct PNGProperties:CustomStringConvertible
         }
     }
 
+    func serialize_palatte() -> [UInt8]?
+    {
+        guard let palatte = self.palatte
+        else
+        {
+            return nil
+        }
+
+        let max_entries:Int = min(palatte.count, 1 << self.bit_depth)
+        var bytes:[UInt8] = []
+        bytes.reserveCapacity(max_entries * 3)
+
+        for palatte_entry in palatte[0 ..< max_entries]
+        {
+            bytes.append(palatte_entry.r)
+            bytes.append(palatte_entry.g)
+            bytes.append(palatte_entry.b)
+        }
+
+        return bytes
+    }
+
+    public mutating
+    func set_chroma_key(_ key:RGBA<UInt16>)
+    {
+        self.chroma_key = key.with_alpha(UInt16.max)
+    }
+
     mutating
     func set_transparency(_ bytes:[UInt8]) throws
     {
@@ -522,6 +555,46 @@ struct PNGProperties:CustomStringConvertible
             self.chroma_key = nil
         default:
             break // this is an error, but it should have already been caught by PNGConditions
+        }
+    }
+
+    func serialize_transparency() -> [UInt8]?
+    {
+        switch self.color
+        {
+        case .grayscale:
+            guard let chroma_key = self.chroma_key, let chroma_value = chroma_key.grayscale
+            else
+            {
+                return nil
+            }
+
+            let v:UInt16 = chroma_value >> (16 - UInt16(self.bit_depth)) // quantize
+            return [UInt8(v >> 8), UInt8(truncatingBitPattern: v)]
+        case .rgb:
+            guard let chroma_key = self.chroma_key
+            else
+            {
+                return nil
+            }
+
+            let drop_bits:UInt16 = (16 - UInt16(self.bit_depth))
+            let r:UInt16 = chroma_key.r >> drop_bits, // quantize
+                g:UInt16 = chroma_key.g >> drop_bits,
+                b:UInt16 = chroma_key.b >> drop_bits
+            return [UInt8(r >> 8), UInt8(truncatingBitPattern: r),
+                    UInt8(g >> 8), UInt8(truncatingBitPattern: g),
+                    UInt8(b >> 8), UInt8(truncatingBitPattern: b)]
+        case .indexed:
+            guard let palatte = self.palatte
+            else
+            {
+                return nil
+            }
+
+            return palatte.map{ $0.a }
+        default:
+            return nil
         }
     }
 
@@ -1370,6 +1443,16 @@ struct Encoder
 
         try Encoder.write_buffer(to: stream, buffer: PNG_SIGNATURE)
         try Encoder.write_chunk(to: stream, chunk_data: properties.serialize_header(), chunk: .IHDR)
+
+        if let bytes:[UInt8] = properties.serialize_palatte()
+        {
+            try Encoder.write_chunk(to: stream, chunk_data: bytes, chunk: .PLTE)
+        }
+
+        if let bytes:[UInt8] = properties.serialize_transparency()
+        {
+            try Encoder.write_chunk(to: stream, chunk_data: bytes, chunk: .tRNS)
+        }
     }
 
     // make NO assumptions about the `.count` property of the reference line;
@@ -1548,9 +1631,13 @@ class PNGEncoder
 {
     private
     var encoder:Encoder,
+        scanline_iter:ScanlineIterator,
         stream:FilePointer,
 
-        reference_line:[UInt8]
+        reference_line:[UInt8] = []
+
+    private
+    let zero_line:[UInt8]
 
     public
     init(path:String, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
@@ -1564,8 +1651,9 @@ class PNGEncoder
             throw PNGReadError.FileError(posix_path(path))
         }
 
-        self.reference_line = [UInt8](repeating: 0, count: properties.sub_array_bounds[7].j)
-        self.encoder = try Encoder(stream: self.stream, properties: properties, chunk_size: chunk_size)
+        self.encoder       = try Encoder(stream: self.stream, properties: properties, chunk_size: chunk_size)
+        self.scanline_iter = ScanlineIterator(properties: properties)
+        self.zero_line     = self.scanline_iter.make_zero_line()
     }
 
     deinit
@@ -1576,7 +1664,7 @@ class PNGEncoder
     public
     func add_scanline(_ src:[UInt8]) throws
     {
-        guard src.count == reference_line.count
+        guard self.scanline_iter.update_scanline_size(), src.count == self.scanline_iter.bytes_per_scanline
         else
         {
             throw PNGWriteError.DimemsionError
@@ -1584,11 +1672,10 @@ class PNGEncoder
 
         src.withUnsafeBufferPointer
         {
-            self.encoder.filter_scanline(src: $0, reference: self.reference_line)
+            self.encoder.filter_scanline(src: $0, reference: self.scanline_iter.first_scanline ? self.zero_line : self.reference_line)
         }
 
         self.reference_line = src
-
         try self.encoder.compress_scanline(stream: self.stream, finish: false)
     }
 

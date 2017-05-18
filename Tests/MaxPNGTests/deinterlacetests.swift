@@ -1,11 +1,11 @@
 import MaxPNG
 
-func test_decompose(path:String, log:inout [String]) -> Bool
+func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:inout [String]) -> Bool
 {
     let (png_raw_data, png_properties):([UInt8], PNGProperties)
     do
     {
-        (png_raw_data, png_properties) = try decode_png(path: path + ".png")
+        (png_raw_data, png_properties) = try decode_png(path: path_png + ".png")
     }
     catch
     {
@@ -22,15 +22,15 @@ func test_decompose(path:String, log:inout [String]) -> Bool
 
     var passing:Bool = true
 
-    if !test_against_rgba64(png_data: deinterlaced, properties: png_properties.deinterlaced_properties, path_rgba: path + ".rgba", log: &log)
+    if !test_against_rgba64(png_data: deinterlaced, properties: png_properties.deinterlaced_properties, path_rgba: path_rgba + ".rgba", log: &log)
     {
-        log.append("subtest deinterlace '\(path).png' failed")
+        log.append("subtest deinterlace '\(path_png).png' failed")
         passing = false
     }
 
     do
     {
-        try encode_png(path: path + "_deinterlace.png",
+        try encode_png(path: path_dest + "_deinterlace.png",
                        raw_data: deinterlaced,
                        properties: png_properties.deinterlaced_properties)
     }
@@ -43,10 +43,9 @@ func test_decompose(path:String, log:inout [String]) -> Bool
 
     for (i, (sub_data, sub_properties)) in png_properties.decompose(raw_data: png_raw_data)!.enumerated()
     {
-        let extended_name:String = path + "_\(i)"
         do
         {
-            try encode_png(path: extended_name + ".png",
+            try encode_png(path: path_dest + "_\(i).png",
                            raw_data: sub_data,
                            properties: sub_properties)
         }
@@ -56,9 +55,9 @@ func test_decompose(path:String, log:inout [String]) -> Bool
             passing = false
         }
 
-        if !test_against_rgba64(png_data: sub_data, properties: sub_properties, path_rgba: extended_name + ".rgba", log: &log)
+        if !test_against_rgba64(png_data: sub_data, properties: sub_properties, path_rgba: path_rgba + "_\(i).rgba", log: &log)
         {
-            log.append("subtest decompose '\(path).png' (\(i + 1)/7) failed")
+            log.append("subtest decompose '\(path_png).png' (\(i + 1)/7) failed")
             passing = false
         }
     }
@@ -68,5 +67,6 @@ func test_decompose(path:String, log:inout [String]) -> Bool
 
 func test_decompose(test_name:String, log:inout [String]) -> Bool
 {
-    return test_decompose(path: "Tests/\(test_name)", log: &log)
+    return test_decompose(path_png: "Tests/MaxPNGTests/large/png/\(test_name)",
+                          path_rgba: "Tests/MaxPNGTests/large/rgba/\(test_name)", path_dest: "Tests/\(test_name)", log: &log)
 }
