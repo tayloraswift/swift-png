@@ -1,4 +1,4 @@
-@testable import MaxPNG
+import MaxPNG
 
 func decode_png_progressive(path:String) throws -> ([[UInt8]], PNGProperties)
 {
