@@ -443,11 +443,11 @@ struct PNGProperties:CustomStringConvertible
         var bytes:[UInt8] = uint32_to_quad_byte(UInt32(self.width))        // [0:3]
         bytes.reserveCapacity(12)
         bytes.append(contentsOf: uint32_to_quad_byte(UInt32(self.height))) // [4:7]
-        bytes.append(UInt8(self.bit_depth))                             // [8]
-        bytes.append(UInt8(self.color.rawValue))                   // [9]
-        bytes.append(0)                                                 // [10] = 0
-        bytes.append(0)                                                 // [11] = 0
-        bytes.append(self.interlaced ? 1 : 0)                            // [12]
+        bytes.append(UInt8(self.bit_depth))                                // [8]
+        bytes.append(UInt8(self.color.rawValue))                           // [9]
+        bytes.append(0)                                                    // [10] = 0
+        bytes.append(0)                                                    // [11] = 0
+        bytes.append(self.interlaced ? 1 : 0)                              // [12]
         return bytes
     }
 
@@ -1617,6 +1617,7 @@ func decode_png(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
     let buffer_size:Int = decoder.properties.interlaced ?
                                 decoder.properties.interlaced_data_size :
                                 decoder.properties.noninterlaced_data_size
+
     var buffer:[UInt8]  = [UInt8](repeating: 0, count: buffer_size)
     try buffer.withUnsafeMutableBufferPointer
     {
@@ -1650,7 +1651,7 @@ func decode_png(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
 public
 func encode_png(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
-    guard raw_data.count == properties.noninterlaced_data_size
+    guard raw_data.count == (properties.interlaced ? properties.interlaced_data_size : properties.noninterlaced_data_size)
     else
     {
         throw PNGWriteError.DimemsionError
@@ -1663,27 +1664,32 @@ func encode_png(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_s
     }
     defer { fclose(stream) }
 
-    var encoder:Encoder        = try Encoder(stream: stream, properties: properties, chunk_size: chunk_size)
+    var encoder:Encoder                = try Encoder(stream: stream, properties: properties, chunk_size: chunk_size),
+        scanline_iter:ScanlineIterator = ScanlineIterator(properties: properties)
 
-    let bytes_per_scanline:Int = properties.sub_array_bounds[7].j
-    let zero_line:[UInt8]      = [UInt8](repeating: 0, count: bytes_per_scanline)
+    let zero_line:[UInt8]      = scanline_iter.make_zero_line()
 
     try raw_data.withUnsafeBufferPointer
     {
         bp in
 
+        var offset:Int = 0
         var reference_line:UnsafeBufferPointer<UInt8>?
-
-        let src = UnsafeBufferPointer<UInt8>(start: bp.baseAddress!, count: bytes_per_scanline)
-        encoder.filter_scanline(src: src, reference: zero_line)
-        reference_line = src
-        try encoder.compress_scanline(stream: stream, finish: false)
-
-        for offset in stride(from: bytes_per_scanline, to: raw_data.count, by: bytes_per_scanline)
+        while scanline_iter.update_scanline_size()
         {
-            let src = UnsafeBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: bytes_per_scanline)
-            encoder.filter_scanline(src: src, reference: reference_line!)
+            let src = UnsafeBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
+            if scanline_iter.first_scanline
+            {
+                encoder.filter_scanline(src: src, reference: zero_line)
+            }
+            else
+            {
+                encoder.filter_scanline(src: src, reference: reference_line!)
+            }
+
             reference_line = src
+            offset += scanline_iter.bytes_per_scanline
+
             try encoder.compress_scanline(stream: stream, finish: false)
         }
     }
