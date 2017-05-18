@@ -67,8 +67,8 @@ func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:S
 
     if !pass
     {
-        log.append("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< mismatch_index + 8])")
-        log.append("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< mismatch_index + 8])")
+        log.append("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< min(mismatch_index + 8, rgba_data_rgba.count)])")
+        log.append("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< min(mismatch_index + 8, rgba_data_png.count )])")
     }
 
     return pass
