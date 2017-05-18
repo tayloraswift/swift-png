@@ -73,6 +73,21 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
         self.a = a
     }
 
+    func with_alpha(_ a:Pixel) -> RGBA<Pixel>
+    {
+        return RGBA(self.r, self.g, self.b, a)
+    }
+
+    func compare_opaque(_ v:Pixel) -> Bool
+    {
+        return self.r == v && self.g == v && self.b == v
+    }
+
+    func compare_opaque(_ r:Pixel, _ g:Pixel, _ b:Pixel) -> Bool
+    {
+        return self.r == r && self.g == g && self.b == b
+    }
+
     public static
     func == (_ lhs:RGBA<Pixel>, _ rhs:RGBA<Pixel>) -> Bool
     {
@@ -277,31 +292,9 @@ struct PNGProperties:CustomStringConvertible
     let channels:Int
 
     // other chunks
-    public
-    struct PalatteEntry:CustomStringConvertible
-    {
-        public
-        let r:UInt8,
-            g:UInt8,
-            b:UInt8
-
-        public
-        var description:String
-        {
-            let big_endian:UInt32 = UInt32.max & (UInt32(self.r) << 16 | UInt32(self.g) << 8 | UInt32(self.b))
-            return "#" + String(String(big_endian, radix: 16).characters.dropFirst(2))
-        }
-
-        public
-        init(_ r:UInt8, _ g:UInt8, _ b:UInt8)
-        {
-            self.r = r
-            self.g = g
-            self.b = b
-        }
-    }
     public private(set)
-    var palatte:[PalatteEntry]?//,
+    var palatte:[RGBA<UInt8>]?,
+        chroma_key:RGBA<UInt16>?//,
     /*
         chromaticity:Chromaticity?,
         gamma:UInt32?
@@ -310,7 +303,6 @@ struct PNGProperties:CustomStringConvertible
         sRGB:RenderingIntent?
         bKGD:ColorKey
         hIST:[UInt16],
-        tRNS:[ColorKey]
         pHYs:PhysicalSize,
         sPLT:SuggestedPalatte,
         tIME:Time,
@@ -351,6 +343,12 @@ struct PNGProperties:CustomStringConvertible
                              bit_depth_unchecked: self.bit_depth,
                              color              : self.color,
                              interlaced         : false)
+    }
+
+    public
+    var quantum16:UInt16
+    {
+        return UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
     }
 
     public
@@ -454,7 +452,7 @@ struct PNGProperties:CustomStringConvertible
     }
 
     public mutating
-    func set_palatte(_ palatte:[PalatteEntry])
+    func set_palatte(_ palatte:[RGBA<UInt8>])
     {
         self.palatte = palatte.count > 256 ? Array(palatte[0 ..< 256]) : palatte
     }
@@ -470,7 +468,60 @@ struct PNGProperties:CustomStringConvertible
 
         self.palatte = stride(from: 0, to: min(bytes.count, 1 << self.bit_depth * 3), by: 3).map
         {
-            PalatteEntry(bytes[$0], bytes[$0 + 1], bytes[$0 + 2])
+            let r:UInt8 = bytes[$0    ],
+                g:UInt8 = bytes[$0 + 1],
+                b:UInt8 = bytes[$0 + 2]
+            return RGBA(r, g, b, UInt8.max)
+        }
+    }
+
+    mutating
+    func set_transparency(_ bytes:[UInt8]) throws
+    {
+        switch self.color
+        {
+        case .grayscale:
+            guard bytes.count == 2
+            else
+            {
+                throw PNGReadError.PNGSyntaxError("Grayscale chroma key is \(bytes.count) bytes long, but it should be 2 bytes long")
+            }
+
+            let quantum:UInt16 = self.quantum16
+            let v:UInt16 = quantum * (UInt16(bytes[0]) << 8 | UInt16(bytes[1]))
+            self.chroma_key = RGBA(v, v, v, UInt16.max)
+        case .rgb:
+            guard bytes.count == 6
+            else
+            {
+                throw PNGReadError.PNGSyntaxError("RGB chroma key is \(bytes.count) bytes long, but it should be 6 bytes long")
+            }
+
+            let quantum:UInt16 = self.quantum16
+            let r:UInt16 = quantum * (UInt16(bytes[0]) << 8 | UInt16(bytes[1])),
+                g:UInt16 = quantum * (UInt16(bytes[2]) << 8 | UInt16(bytes[3])),
+                b:UInt16 = quantum * (UInt16(bytes[4]) << 8 | UInt16(bytes[5]))
+            self.chroma_key = RGBA(r, g, b, UInt16.max)
+        case .indexed:
+            guard let palatte = self.palatte
+            else
+            {
+                throw PNGReadError.MissingPalatteError
+            }
+
+            guard bytes.count <= palatte.count
+            else
+            {
+                throw PNGReadError.PNGSyntaxError("\(bytes.count) chroma keys were provided, but we only have \(palatte.count) palatte entries")
+            }
+
+            for (i, alpha):(Int, UInt8) in bytes.enumerated()
+            {
+                self.palatte![i] = palatte[i].with_alpha(alpha)
+            }
+            self.chroma_key = nil
+        default:
+            break // this is an error, but it should have already been caught by PNGConditions
         }
     }
 
@@ -619,7 +670,7 @@ struct PNGProperties:CustomStringConvertible
     }
 
     private
-    func deindex64(indices:[Int], palatte:[PalatteEntry]) -> [RGBA<UInt16>]?
+    func deindex64(indices:[Int], palatte:[RGBA<UInt8>]) -> [RGBA<UInt16>]?
     {
         // check that they don’t exceed the range of the palatte
         guard indices.map({ $0 < palatte.count ? 0 : 1 }).reduce(0, +) == 0
@@ -632,8 +683,9 @@ struct PNGProperties:CustomStringConvertible
         {
             let r:UInt16 = UInt16(palatte[$0].r),
                 g:UInt16 = UInt16(palatte[$0].g),
-                b:UInt16 = UInt16(palatte[$0].b)
-            return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, UInt16.max)
+                b:UInt16 = UInt16(palatte[$0].b),
+                a:UInt16 = UInt16(palatte[$0].a)
+            return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, a << 8 | a)
         }
     }
 
@@ -658,11 +710,16 @@ struct PNGProperties:CustomStringConvertible
 
             if self.color == .grayscale
             {
-                let quantum:UInt16 = UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
+                let quantum:UInt16 = self.quantum16
                 output = bit_strider.map
                 {
-                    let value:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
-                    return RGBA(value, value, value, UInt16.max)
+                    let v:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                    // test against chroma key
+                    if let chroma_key = self.chroma_key, chroma_key.compare_opaque(v)
+                    {
+                        return RGBA(v, v, v, 0)
+                    }
+                    return RGBA(v, v, v, UInt16.max)
                 }
             }
             else // indexed
@@ -677,7 +734,6 @@ struct PNGProperties:CustomStringConvertible
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
-
                 return deindex64(indices: indices, palatte: palatte)
             }
         }
@@ -691,6 +747,10 @@ struct PNGProperties:CustomStringConvertible
                 output = stride(from: 0, to: raw_data.count, by: 1 << d).map
                 {
                     let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ])
+                    if let chroma_key = self.chroma_key, chroma_key.compare_opaque(v)
+                    {
+                        return RGBA(v, v, v, 0)
+                    }
                     return RGBA(v, v, v, UInt16.max)
                 }
             case .grayscale_a:
@@ -706,6 +766,10 @@ struct PNGProperties:CustomStringConvertible
                     let r:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
                         g:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)]),
                         b:UInt16 = UInt16(raw_data[$0 + 2 << d]) << 8 | UInt16(raw_data[$0 + (2 << d | d)])
+                    if let chroma_key = self.chroma_key, chroma_key.compare_opaque(r, g, b)
+                    {
+                        return RGBA(r, g, b, 0)
+                    }
                     return RGBA(r, g, b, UInt16.max)
                 }
             case .rgba:
@@ -983,6 +1047,9 @@ struct Decoder
                         break outer_loop // we have a check in the conditions preventing IEND from coming early
                     case .IEND:
                         break outer_loop
+
+                    case .tRNS:
+                        try properties.set_transparency(chunk_data)
                     default:
                         fputs("Reading chunk \(chunk) is not yet supported. tragic\n", stderr)
                 }
@@ -1523,7 +1590,7 @@ class PNGEncoder
 }
 
 public
-func decode_png(path:String) throws -> ([UInt8], PNGProperties)
+func decode_png(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> ([UInt8], PNGProperties)
 {
     guard let stream:FilePointer = fopen(posix_path(path), "rb")
     else
@@ -1532,7 +1599,7 @@ func decode_png(path:String) throws -> ([UInt8], PNGProperties)
     }
     defer { fclose(stream) }
 
-    var decoder:Decoder                = try Decoder(stream: stream, recognizing: Set([.IDAT])),
+    var decoder:Decoder                = try Decoder(stream: stream, recognizing: recognized),
         scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties)
 
     let zero_line:[UInt8]              = scanline_iter.make_zero_line()

@@ -8,12 +8,15 @@ let green_bold = "\u{001B}[1;32m"
 let light_green = "\u{001B}[92m"
 let light_green_bold = "\u{001B}[1;92m"
 
+let light_cyan = "\u{001B}[96m"
+let light_cyan_bold = "\u{001B}[1;96m"
+
 let red = "\u{001B}[0;31m"
 let red_bold = "\u{001B}[1;31m"
 
 let color_off = "\u{001B}[0m"
 
-let TERM_WIDTH:Int = 64
+let TERM_WIDTH:Int = 72
 
 func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
 {
@@ -36,6 +39,7 @@ func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<P
 
 func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:String) -> Bool
 {
+    usleep(10000)
     guard let rgba_data_png:[RGBA<UInt16>] = properties.rgba64(raw_data: png_data)
     else
     {
@@ -64,33 +68,34 @@ func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:S
 
     if !pass
     {
-        print("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< mismatch_index + 8])")
-        print("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< mismatch_index + 8])")
+        //print("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< mismatch_index + 8])")
+        //print("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< mismatch_index + 8])")
     }
 
     return pass
 }
 
-func print_progress(percent:Double, width:Int, eraser:String = "\r")
+func print_progress(percent:Double, text:[(String, String?)], erase:Bool = false, width:Int = TERM_WIDTH)
 {
-    let bar_width:Int = width - 6
+    let bar_width:Int = width - 8
     let percent_label:String = "\(Int(percent * 100))%"
-    print(eraser, terminator: "")
-    for _ in 0...(4 - percent_label.characters.count)
+    let percent_padding:String = String(repeating: " ", count: 5 - percent_label.characters.count)
+
+    if erase
     {
-        fputc(0x20, stdout)
+        let erasers:String = String(repeating: "\u{001B}[1A\u{001B}[K", count: text.count + 1)
+        print(erasers, terminator: "")
     }
-    print("\(percent_label) \(green)[\(light_green_bold)", terminator: "")
+
+    for (str, color):(String, String?) in text
+    {
+        print(String(repeating: " ", count: max(0, (width - str.characters.count)) >> 1) + (color ?? "") + str + color_off)
+    }
+
+    print("\(percent_padding)\(percent_label) \(green)[\(light_green_bold)", terminator: "")
     let bar_segments:Int = Int(percent * Double(bar_width))
-    for _ in 0..<bar_segments
-    {
-        fputc(Int32(UnicodeScalar("=")!.value), stdout)
-    }
-    for _ in bar_segments..<bar_width
-    {
-        fputc(Int32(UnicodeScalar("-")!.value), stdout)
-    }
-    print("\(color_off)\(green)]\(color_off)", terminator: "")
+    print(String(repeating: "=", count: bar_segments) + String(repeating: "-", count: bar_width - bar_segments), terminator: "")
+    print("\(color_off)\(green)]\(color_off)")
     fflush(stdout)
 }
 
@@ -100,8 +105,8 @@ func reencode_png(_ path:String, output:String) throws
     let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: path)
     print(png_properties)
 
-    print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
+    //print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
     try encode_png(path: output, raw_data: png_data, properties: png_properties)
-    print_progress(percent: 1, width: TERM_WIDTH)
+    //print_progress(percent: 1, width: TERM_WIDTH)
     print()
 }
