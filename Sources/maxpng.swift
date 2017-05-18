@@ -926,7 +926,7 @@ struct ScanlineIterator
         interlaced:Bool
 
     private
-    var interlace_level:Int = 0,
+    var adam_i:Int = 0,
         scanlines_remaining:Int,
         use_zero_line:UInt8 = 0b10
 
@@ -961,15 +961,25 @@ struct ScanlineIterator
         guard self.scanlines_remaining > 0
         else
         {
-            self.interlace_level    += 1
-            guard self.interlaced && self.interlace_level < 7
+            guard self.interlaced
             else
             {
                 return false
             }
 
-            self.scanlines_remaining = self.sub_array_bounds[self.interlace_level].i - 1
-            self.bytes_per_scanline  = self.sub_array_bounds[self.interlace_level].j
+            repeat
+            {
+                self.adam_i += 1
+            } while self.sub_array_bounds[self.adam_i].i == 0 || self.sub_array_bounds[self.adam_i].j == 0
+
+            guard self.adam_i < 7
+            else
+            {
+                return false
+            }
+
+            self.scanlines_remaining = self.sub_array_bounds[self.adam_i].i - 1
+            self.bytes_per_scanline  = self.sub_array_bounds[self.adam_i].j
             self.use_zero_line       = 0b01
             return true
         }
