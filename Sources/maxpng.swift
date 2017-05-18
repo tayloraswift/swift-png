@@ -100,6 +100,19 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
     }
 }
 
+extension RGBA where Pixel == UInt16
+{
+    func compare_opaque(_ v:UInt8) -> Bool
+    {
+        return UInt8(self.r >> 8) == v && UInt8(self.g >> 8) == v && UInt8(self.b >> 8) == v
+    }
+
+    func compare_opaque(_ r:UInt8, _ g:UInt8, _ b:UInt8) -> Bool
+    {
+        return UInt8(self.r >> 8) == r && UInt8(self.g >> 8) == g && UInt8(self.b >> 8) == b
+    }
+}
+
 public
 enum PNGChunk:String
 {
@@ -354,6 +367,12 @@ struct PNGProperties:CustomStringConvertible
     var quantum16:UInt16
     {
         return UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
+    }
+
+    public
+    var quantum8:UInt8
+    {
+        return UInt8.max  / (UInt8.max  >> (8  -  UInt8(self.bit_depth)))
     }
 
     public
@@ -673,36 +692,64 @@ struct PNGProperties:CustomStringConvertible
         return deinterlaced
     }
 
+    private
+    func deindex32(indices:[Int], palatte:[RGBA<UInt8>]) -> [RGBA<UInt8>]?
+    {
+        // check that they don’t exceed the range of the palatte
+        guard indices.map({ $0 < palatte.count ? 0 : 1 }).reduce(0, +) == 0
+        else
+        {
+            return nil
+        }
+
+        return indices.map{ palatte[$0] }
+    }
+
     public
     func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]?
     {
-        guard raw_data.count == self.noninterlaced_data_size
+        guard raw_data.count == self.noninterlaced_data_size, self.bit_depth <= 8
         else
         {
-            return nil
-        }
-
-        guard self.bit_depth <= 8
-        else
-        {
-            return nil
-        }
-
-        guard self.color != .indexed
-        else
-        {
-            fputs("Normalizing indexed PNGs is unsupported\n", stderr)
             return nil
         }
 
         let output:[RGBA<UInt8>]
         if self.bit_depth < 8 // channels is guaranteed to be 1
         {
-            let quantum:UInt8 = UInt8.max / (UInt8.max >> (8 - UInt8(self.bit_depth)))
-            output = stride(from: 0, to: raw_data.count << 3, by: self.bit_depth).map
+            let bit_strider:LazySequence<FlattenSequence<LazyMapSequence<StrideTo<Int>, LazySequence<StrideTo<Int>>>>> =
+            stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
             {
-                let value:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
-                return RGBA(value, value, value, UInt8.max)
+                stride(from: $0 << 3, to: $0 << 3 + self.width * self.bit_depth, by: self.bit_depth).lazy
+            }
+
+            if self.color == .grayscale
+            {
+                let quantum:UInt8 = self.quantum8
+                output = bit_strider.map
+                {
+                    let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
+                    // test against chroma key
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
+                    {
+                        return RGBA(v, v, v, 0)
+                    }
+                    return RGBA(v, v, v, UInt8.max)
+                }
+            }
+            else // indexed
+            {
+                guard let palatte = self.palatte
+                else
+                {
+                    return nil
+                }
+
+                let indices:[Int] = bit_strider.map
+                {
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                }
+                return deindex32(indices: indices, palatte: palatte)
             }
         }
         else
@@ -710,12 +757,22 @@ struct PNGProperties:CustomStringConvertible
             switch self.color
             {
             case .grayscale:
-                output = raw_data.map{ value in RGBA(value, value, value, UInt8.max) }
+                output = raw_data.map
+                {
+                    (v:UInt8) in
+
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
+                    {
+                        return RGBA(v, v, v, 0)
+                    }
+                    return RGBA(v, v, v, UInt8.max)
+                }
             case .grayscale_a:
                 output = stride(from: 0, to: raw_data.count, by: 2).map
                 {
-                    let value:UInt8 = raw_data[$0]
-                    return RGBA(value, value, value, raw_data[$0 + 1])
+                    let v:UInt8 = raw_data[$0    ],
+                        a:UInt8 = raw_data[$0 + 1]
+                    return RGBA(v, v, v, a)
                 }
             case .rgb:
                 output = stride(from: 0, to: raw_data.count, by: 3).map
@@ -723,6 +780,10 @@ struct PNGProperties:CustomStringConvertible
                     let r:UInt8 = raw_data[$0    ],
                         g:UInt8 = raw_data[$0 + 1],
                         b:UInt8 = raw_data[$0 + 2]
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
+                    {
+                        return RGBA(r, g, b, 0)
+                    }
                     return RGBA(r, g, b, UInt8.max)
                 }
             case .rgba:
@@ -735,7 +796,12 @@ struct PNGProperties:CustomStringConvertible
                     return RGBA(r, g, b, a)
                 }
             case .indexed:
-                return nil // should never reach here
+                guard let palatte = self.palatte
+                else
+                {
+                    return nil
+                }
+                return deindex32(indices: raw_data.map(Int.init), palatte: palatte)
             }
         }
 
@@ -788,7 +854,7 @@ struct PNGProperties:CustomStringConvertible
                 {
                     let v:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                     // test against chroma key
-                    if let chroma_key = self.chroma_key, chroma_key.compare_opaque(v)
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                     {
                         return RGBA(v, v, v, 0)
                     }
@@ -820,7 +886,7 @@ struct PNGProperties:CustomStringConvertible
                 output = stride(from: 0, to: raw_data.count, by: 1 << d).map
                 {
                     let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ])
-                    if let chroma_key = self.chroma_key, chroma_key.compare_opaque(v)
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                     {
                         return RGBA(v, v, v, 0)
                     }
@@ -839,7 +905,7 @@ struct PNGProperties:CustomStringConvertible
                     let r:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
                         g:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)]),
                         b:UInt16 = UInt16(raw_data[$0 + 2 << d]) << 8 | UInt16(raw_data[$0 + (2 << d | d)])
-                    if let chroma_key = self.chroma_key, chroma_key.compare_opaque(r, g, b)
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
                     {
                         return RGBA(r, g, b, 0)
                     }

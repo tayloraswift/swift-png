@@ -20,25 +20,43 @@ let color_off = "\u{001B}[0m"
 
 let TERM_WIDTH:Int = 72
 
-func normalize_and_compare(raw_data:[UInt8], properties:PNGProperties, path_rgba:String, log:inout [String]) -> Bool
+func normalize_and_compare(path_png:String, path_rgba:String, log:inout [String]) -> Bool
 {
-    let png_data:[UInt8]
+    guard let (deinterlaced, properties):([UInt8], PNGProperties) = normalize_deinterlace(path: path_png, log: &log)
+    else
+    {
+        return false
+    }
+    return test_against_rgba64(png_data: deinterlaced, properties: properties, path_rgba: path_rgba, log: &log)
+}
+
+func normalize_deinterlace(path:String, log:inout [String]) -> ([UInt8], PNGProperties)?
+{
+    let (png_raw_data, properties):([UInt8], PNGProperties)
+    do
+    {
+        (png_raw_data, properties) = try decode_png(path: path, recognizing: [.IDAT, .tRNS])
+    }
+    catch
+    {
+        log.append(String(describing: error))
+        return nil
+    }
+
     if properties.interlaced
     {
-        guard let deinterlaced:[UInt8] = properties.deinterlace(raw_data: raw_data)
+        guard let deinterlaced:[UInt8] = properties.deinterlace(raw_data: png_raw_data)
         else
         {
             log.append(String(describing: PNGReadError.InterlaceDimensionError))
-            return false
+            return nil
         }
-        png_data = deinterlaced
+        return (deinterlaced, properties)
     }
     else
     {
-        png_data = raw_data
+        return (png_raw_data, properties)
     }
-
-    return test_against_rgba64(png_data: png_data, properties: properties, path_rgba: path_rgba, log: &log)
 }
 
 func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
@@ -208,7 +226,9 @@ func run_tests(_ tests:[(String, [String], TestFunc)], verbose:Bool, only_run te
 public
 let tests:[(String, [String], TestFunc)] =
 [
-    ("decode", decode_test_cases, decode_test),
+    ("rgba32", decode_test_cases, rgba32_64_test),
+    ("decode-unit", decode_test_cases, decode_test),
+    ("reencode-unit", decode_test_cases, test_reencode_unit_png), 
     ("decompose", ["decompose1"], test_decompose(test_name:log:)),
     ("reencode", ["becky palatte", "taylor", "if red got the grammy", "wildest dreams adam7"], test_reencode_wild_png),
     ("progressive", ["becky palatte", "taylor", "wildest dreams adam7", "if red got the grammy"], test_progressive)
