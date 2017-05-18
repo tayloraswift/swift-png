@@ -13,95 +13,7 @@ func normalize_and_compare(path_png:String, path_rgba:String, log:inout [String]
         return false
     }
 
-    let png_data:[UInt8]
-    if png_properties.interlaced
-    {
-        guard let deinterlaced:[UInt8] = png_properties.deinterlace(raw_data: png_raw_data)
-        else
-        {
-            log.append(String(describing: PNGReadError.InterlaceDimensionError))
-            return false
-        }
-        png_data = deinterlaced
-    }
-    else
-    {
-        png_data = png_raw_data
-    }
-
-    return test_against_rgba64(png_data: png_data, properties: png_properties, path_rgba: path_rgba, log: &log)
-}
-
-public
-typealias TestFunc = (String, inout [String]) -> Bool
-
-public
-func run_tests(_ tests:[(String, [String], TestFunc)], verbose:Bool, only_run test_subset:Set<String>?)
-{
-    typealias TestRecord = (index: Int, number:String, name:String)
-
-    let test_count:Int      = tests.map{ $0.1.count }.reduce(0, +)
-    var test_counter:String = "—— Testing: 0 of \(test_count) tests ——"
-    var fail_vector:[TestRecord]   = []
-    var pass_vector:[TestRecord]   = []
-    var log:[[String]]      = []
-    var i:Int               = 0
-    if !verbose
-    {
-        print_progress(percent: 0, text: [(test_counter, light_cyan_bold), ("", nil)], erase: false)
-    }
-    for (test_group, test_cases, test_func):(String, [String], TestFunc) in tests
-    {
-        for (j, test_case) in test_cases.enumerated()
-        {
-            if let test_subset = test_subset, !test_subset.contains(test_case)
-            {
-                continue
-            }
-            let record:TestRecord  = (index: i, number: "\(test_group):\(j)", name: test_case)
-            let output:(String, String?)
-            var log_entry:[String] = []
-            if test_func(record.name, &log_entry)
-            {
-                output = ("(\(record.number)) test '\(record.name)' passed", green_bold)
-                pass_vector.append(record)
-            }
-            else
-            {
-                output = ("(\(record.number)) test '\(record.name)' failed", red_bold)
-                fail_vector.append(record)
-            }
-
-            log.append(log_entry)
-
-            if verbose
-            {
-                print((output.1 ?? "") + output.0 + color_off)
-                print(log[i].joined(separator: "\n"))
-            }
-            else
-            {
-                test_counter = "—— Testing: \(i + 1) of \(test_count) tests ——"
-                print_progress(percent: Double(i)/Double(test_count), text: [(test_counter, light_cyan_bold), output], erase: true)
-            }
-
-            i += 1
-        }
-    }
-
-    let summary:String = "\(pass_vector.count) passed, \(fail_vector.count) failed"
-    print_progress(percent: 1, text: [(test_counter, light_cyan_bold), (summary, light_cyan_bold)], erase: true && !verbose)
-    print()
-
-    if !verbose
-    {
-        for (index: i, number: number, name: name) in fail_vector
-        {
-            print(red_bold + "[\(i)] (\(number)) test '\(name)' failed" + color_off)
-            print(log[i].joined(separator: "\n"))
-            print()
-        }
-    }
+    return normalize_and_compare(raw_data: png_raw_data, properties: png_properties, path_rgba: path_rgba, log: &log)
 }
 
 func decode_test(test_name:String, log:inout [String]) -> Bool
@@ -109,6 +21,55 @@ func decode_test(test_name:String, log:inout [String]) -> Bool
     let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
     let path_rgba:String = "Tests/MaxPNGTests/unit/rgba/\(test_name).png.rgba"
     return normalize_and_compare(path_png: path_png, path_rgba: path_rgba, log: &log)
+}
+
+func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
+{
+    let dest_path:String = "Tests/"      + test_name + "_rewritten.png"
+    let ref_path:String  = "Tests/MaxPNGTests/large/rgba/" + test_name + ".rgba"
+    var encode_passed:Bool = true
+    do
+    {
+        let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: "Tests/MaxPNGTests/large/png/" + test_name + ".png")
+        try encode_png(path: dest_path, raw_data: png_data, properties: png_properties)
+    }
+    catch
+    {
+        log.append(String(describing: error))
+        encode_passed = false
+    }
+
+    return encode_passed && normalize_and_compare(path_png: dest_path, path_rgba: ref_path, log: &log)
+}
+
+func test_progressive(test_name:String, log:inout [String]) -> Bool
+{
+    let src_path:String  = "Tests/MaxPNGTests/large/png/"  + test_name + ".png",
+        ref_path:String  = "Tests/MaxPNGTests/large/rgba/" + test_name + ".rgba",
+        dest_path:String = "Tests/" + test_name + "_progressive.png"
+
+    let decoder:PNGDecoder
+    var encoder:PNGEncoder?
+    do
+    {
+        decoder = try PNGDecoder(path: src_path)
+        encoder = try PNGEncoder(path: dest_path, properties: decoder.properties)
+
+        while let scanline = try decoder.next_scanline()
+        {
+            try encoder!.add_scanline(scanline)
+        }
+        try encoder!.finish()
+    }
+    catch
+    {
+        log.append(String(describing: error))
+        return false
+    }
+
+    // force the encoder to release file lock
+    encoder = nil
+    return normalize_and_compare(path_png: dest_path, path_rgba: ref_path, log: &log)
 }
 
 let decode_test_cases:[String] =
@@ -285,31 +246,4 @@ let decode_test_cases:[String] =
 "z03n2c08",
 "z06n2c08",
 "z09n2c08"
-]
-
-func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
-{
-    let dest_path:String = "Tests/" + test_name + "_rewritten.png"
-    let ref_path:String  = "Tests/" + test_name + ".rgba"
-    var encode_passed:Bool = true
-    do
-    {
-        let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: "Tests/" + test_name + ".png")
-        try encode_png(path: dest_path, raw_data: png_data, properties: png_properties)
-    }
-    catch
-    {
-        log.append(String(describing: error))
-        encode_passed = false
-    }
-
-    return encode_passed && normalize_and_compare(path_png: dest_path, path_rgba: ref_path, log: &log)
-}
-
-public
-let tests:[(String, [String], TestFunc)] =
-[
-    ("decode", decode_test_cases, decode_test),
-    ("decompose", ["decompose1"], test_decompose(test_name:log:)),
-    ("reencode", ["taylor", "wildest dreams adam7", "if red got the grammy", "becky palatte"], test_reencode_wild_png)
 ]

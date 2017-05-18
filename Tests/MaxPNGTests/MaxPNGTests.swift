@@ -14,9 +14,32 @@ let light_cyan_bold = "\u{001B}[1;96m"
 let red = "\u{001B}[0;31m"
 let red_bold = "\u{001B}[1;31m"
 
+let pink_bold = "\u{001B}[1m\u{001B}[38;5;204m"
+
 let color_off = "\u{001B}[0m"
 
 let TERM_WIDTH:Int = 72
+
+func normalize_and_compare(raw_data:[UInt8], properties:PNGProperties, path_rgba:String, log:inout [String]) -> Bool
+{
+    let png_data:[UInt8]
+    if properties.interlaced
+    {
+        guard let deinterlaced:[UInt8] = properties.deinterlace(raw_data: raw_data)
+        else
+        {
+            log.append(String(describing: PNGReadError.InterlaceDimensionError))
+            return false
+        }
+        png_data = deinterlaced
+    }
+    else
+    {
+        png_data = raw_data
+    }
+
+    return test_against_rgba64(png_data: png_data, properties: properties, path_rgba: path_rgba, log: &log)
+}
 
 func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
 {
@@ -102,3 +125,91 @@ func print_progress(percent:Double, text:[(String, String?)], erase:Bool = false
     print("\(color_off)\(light_green)]\(color_off)")
     fflush(stdout)
 }
+
+public
+typealias TestFunc = (String, inout [String]) -> Bool
+
+public
+func run_tests(_ tests:[(String, [String], TestFunc)], verbose:Bool, only_run test_subset:Set<String>?) -> Int32
+{
+    typealias TestRecord = (index: Int, number:String, name:String)
+
+    let test_count:Int      = tests.map{ $0.1.count }.reduce(0, +)
+    var test_counter:String = "—— Testing: 0 of \(test_count) tests ——"
+    var fail_vector:[TestRecord]   = []
+    var pass_vector:[TestRecord]   = []
+    var log:[[String]]      = []
+    var i:Int               = 0
+    if !verbose
+    {
+        print_progress(percent: 0, text: [(test_counter, light_cyan_bold), ("", nil)], erase: false)
+    }
+    for (test_group, test_cases, test_func):(String, [String], TestFunc) in tests
+    {
+        for (j, test_case) in test_cases.enumerated()
+        {
+            if let test_subset = test_subset, !test_subset.contains(test_case)
+            {
+                continue
+            }
+            let record:TestRecord  = (index: i, number: "\(test_group):\(j)", name: test_case)
+            let output:(String, String?)
+            var log_entry:[String] = []
+            if test_func(record.name, &log_entry)
+            {
+                output = ("(\(record.number)) test '\(record.name)' passed", green_bold)
+                pass_vector.append(record)
+            }
+            else
+            {
+                output = ("(\(record.number)) test '\(record.name)' failed", red_bold)
+                fail_vector.append(record)
+            }
+
+            log.append(log_entry)
+
+            if verbose
+            {
+                print((output.1 ?? "") + output.0 + color_off)
+                print(log[i].joined(separator: "\n"))
+            }
+            else
+            {
+                test_counter = "—— Testing: \(i + 1) of \(test_count) tests ——"
+                print_progress(percent: Double(i)/Double(test_count), text: [(test_counter, light_cyan_bold), output], erase: true)
+            }
+
+            i += 1
+        }
+    }
+
+    let summary:String = "\(pass_vector.count) passed, \(fail_vector.count) failed"
+    print_progress(percent: 1, text: [(test_counter, light_cyan_bold), (summary, light_cyan_bold)], erase: true && !verbose)
+    print()
+
+    if !verbose
+    {
+        for (index: i, number: number, name: name) in fail_vector
+        {
+            print(red_bold + "[\(i)] (\(number)) test '\(name)' failed" + color_off)
+            print(log[i].joined(separator: "\n"))
+            print()
+        }
+    }
+
+    if fail_vector.count == 0 && pass_vector.count > 0
+    {
+        print_centered("<13", color: pink_bold)
+    }
+
+    return Int32(fail_vector.count)
+}
+
+public
+let tests:[(String, [String], TestFunc)] =
+[
+    ("decode", decode_test_cases, decode_test),
+    ("decompose", ["decompose1"], test_decompose(test_name:log:)),
+    ("reencode", ["becky palatte", "taylor", "if red got the grammy", "wildest dreams adam7"], test_reencode_wild_png),
+    ("progressive", ["becky palatte", "taylor", "wildest dreams adam7", "if red got the grammy"], test_progressive)
+]
