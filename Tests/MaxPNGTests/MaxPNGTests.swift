@@ -37,9 +37,8 @@ func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<P
     return pixel_data
 }
 
-func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:String) -> Bool
+func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:String, log:inout [String]) -> Bool
 {
-    usleep(10000)
     guard let rgba_data_png:[RGBA<UInt16>] = properties.rgba64(raw_data: png_data)
     else
     {
@@ -68,11 +67,16 @@ func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:S
 
     if !pass
     {
-        //print("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< mismatch_index + 8])")
-        //print("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< mismatch_index + 8])")
+        log.append("RGBA[\(rgba_data_rgba.count)](\(mismatch_index)): \(rgba_data_rgba[mismatch_index ..< mismatch_index + 8])")
+        log.append("PNG [\(rgba_data_png.count )](\(mismatch_index)): \(rgba_data_png [mismatch_index ..< mismatch_index + 8])")
     }
 
     return pass
+}
+
+func print_centered(_ str:String, color:String?, width:Int = TERM_WIDTH)
+{
+    print(String(repeating: " ", count: max(0, (width - str.characters.count)) >> 1) + (color ?? "") + str + color_off)
 }
 
 func print_progress(percent:Double, text:[(String, String?)], erase:Bool = false, width:Int = TERM_WIDTH)
@@ -89,24 +93,12 @@ func print_progress(percent:Double, text:[(String, String?)], erase:Bool = false
 
     for (str, color):(String, String?) in text
     {
-        print(String(repeating: " ", count: max(0, (width - str.characters.count)) >> 1) + (color ?? "") + str + color_off)
+        print_centered(str, color: color, width: width)
     }
 
-    print("\(percent_padding)\(percent_label) \(green)[\(light_green_bold)", terminator: "")
+    print("\(percent_padding)\(percent_label) \(light_green)[\(light_green_bold)", terminator: "")
     let bar_segments:Int = Int(percent * Double(bar_width))
     print(String(repeating: "=", count: bar_segments) + String(repeating: "-", count: bar_width - bar_segments), terminator: "")
-    print("\(color_off)\(green)]\(color_off)")
+    print("\(color_off)\(light_green)]\(color_off)")
     fflush(stdout)
-}
-
-public
-func reencode_png(_ path:String, output:String) throws
-{
-    let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: path)
-    print(png_properties)
-
-    //print_progress(percent: 0, width: TERM_WIDTH, eraser: "")
-    try encode_png(path: output, raw_data: png_data, properties: png_properties)
-    //print_progress(percent: 1, width: TERM_WIDTH)
-    print()
 }
