@@ -561,7 +561,7 @@ struct PNGProperties:CustomStringConvertible
         var src_byte_base:Int = 0
         for (bounds, (stride_h, stride_v)):((i:Int, j:Int), SubStrider) in zip(self.sub_array_bounds, self.sub_striders)
         {
-            for dest_pixel_base in stride_v.map({ $0 * self.width })
+            for dest_byte_base in stride_v.map({ $0 * self.sub_array_bounds[7].j })
             {
                 var src_pixel_offset:Int = 0
                 for dest_pixel_offset in stride_h
@@ -577,16 +577,16 @@ struct PNGProperties:CustomStringConvertible
                         src_byte <<= src_bit_offset
                         // mask out right
                         src_byte >>= (8 - UInt8(self.bit_depth))
-                        //print("<\(bounds.j)> (\(dest_pixel_base/self.width), \(dest_pixel_offset)) @ \(src_byte_index) + \(src_bit_offset) = \(src_byte)")
-                        let dest_byte_index:Int   =       ((dest_pixel_base + dest_pixel_offset) * self.bit_depth) >> 3,
-                            dest_bit_offset:UInt8 = UInt8(((dest_pixel_base + dest_pixel_offset) * self.bit_depth) & 7)
+
+                        let dest_byte_index:Int   = dest_byte_base + (dest_pixel_offset * self.bit_depth) >> 3,
+                            dest_bit_offset:UInt8 =            UInt8((dest_pixel_offset * self.bit_depth) & 7)
                         // shift it to destination
                         deinterlaced[dest_byte_index] |= src_byte << (8 - dest_bit_offset - UInt8(self.bit_depth))
                     }
                     else
                     {
-                        let dest_byte_index:Int = (dest_pixel_base + dest_pixel_offset) * self.bpp,
-                             src_byte_index:Int =    src_byte_base + src_pixel_offset   * self.bpp
+                        let dest_byte_index:Int = dest_byte_base + dest_pixel_offset * self.bpp,
+                             src_byte_index:Int =  src_byte_base + src_pixel_offset  * self.bpp
                         deinterlaced[dest_byte_index ..< dest_byte_index + self.bpp] =
                             raw_data[src_byte_index  ..< src_byte_index  + self.bpp]
                     }
