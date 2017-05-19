@@ -7,7 +7,7 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 ------
 
-## Symbols 
+## Symbols
 
 ### Free functions
 
@@ -28,9 +28,13 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 #### `struct` [`PNGProperties`](pngproperties.md)
 
-> The non-pixel image data associated with a PNG file, as specified in the PNG standard. 
+> The non-pixel image data associated with a PNG file, as specified in the PNG standard.
 
-### Classes 
+#### `struct` [`PNGProperties.ColorFormat`](pngproperties_colorformat.md)
+
+> The five PNG color formats, as defined in the [PNG standard](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.IHDR).
+
+### Classes
 
 #### `class` [`PNGDecoder`](pngdecoder.md)
 
@@ -40,7 +44,7 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 > A progressive PNG writer object that encodes pixel data lazily, scanline by scanline
 
-### Enumerations 
+### Enumerations
 
 #### `enum` [`PNGChunk`](pngchunk.md)
 > Public PNG chunks, as specified in the [PNG standard](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html).

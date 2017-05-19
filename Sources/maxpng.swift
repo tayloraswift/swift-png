@@ -14,7 +14,7 @@ enum PNGReadError:Error
          IncompleteChunkError,
          UnexpectedCriticalChunkError(String),
          PNGSyntaxError(String),
-         DataCorruptionError(String),
+         DataCorruptionError(PNGChunk),
 
          IllegalChunkError(PNGChunk),
          DuplicateChunkError(PNGChunk),
@@ -22,9 +22,7 @@ enum PNGReadError:Error
          MissingHeaderError,
          MissingPalatteError,
          PrematureEOSError,
-         PrematureIENDError,
-
-         InterlaceDimensionError
+         PrematureIENDError
 }
 
 public
@@ -311,7 +309,7 @@ struct PNGProperties:CustomStringConvertible
 
     // other chunks
     public private(set)
-    var palatte:[RGBA<UInt8>]?,
+    var palette:[RGBA<UInt8>]?,
         chroma_key:RGBA<UInt16>?//,
     /*
         chromaticity:Chromaticity?,
@@ -476,13 +474,13 @@ struct PNGProperties:CustomStringConvertible
     }
 
     public mutating
-    func set_palatte(_ palatte:[RGBA<UInt8>])
+    func set_palette(_ palette:[RGBA<UInt8>])
     {
-        self.palatte = palatte.count > 256 ? Array(palatte[0 ..< 256]) : palatte
+        self.palette = palette.count > 256 ? Array(palette[0 ..< 256]) : palette
     }
 
     mutating
-    func set_palatte(_ bytes:[UInt8]) throws
+    func set_palette(_ bytes:[UInt8]) throws
     {
         guard bytes.count % 3 == 0
         else
@@ -490,7 +488,7 @@ struct PNGProperties:CustomStringConvertible
             throw PNGReadError.PNGSyntaxError("Palatte is \(bytes.count) bytes long, which is not divisible by 3")
         }
 
-        self.palatte = stride(from: 0, to: min(bytes.count, 1 << self.bit_depth * 3), by: 3).map
+        self.palette = stride(from: 0, to: min(bytes.count, 1 << self.bit_depth * 3), by: 3).map
         {
             let r:UInt8 = bytes[$0    ],
                 g:UInt8 = bytes[$0 + 1],
@@ -499,23 +497,23 @@ struct PNGProperties:CustomStringConvertible
         }
     }
 
-    func serialize_palatte() -> [UInt8]?
+    func serialize_palette() -> [UInt8]?
     {
-        guard let palatte = self.palatte
+        guard let palette = self.palette
         else
         {
             return nil
         }
 
-        let max_entries:Int = min(palatte.count, 1 << self.bit_depth)
+        let max_entries:Int = min(palette.count, 1 << self.bit_depth)
         var bytes:[UInt8] = []
         bytes.reserveCapacity(max_entries * 3)
 
-        for palatte_entry in palatte[0 ..< max_entries]
+        for palette_entry in palette[0 ..< max_entries]
         {
-            bytes.append(palatte_entry.r)
-            bytes.append(palatte_entry.g)
-            bytes.append(palatte_entry.b)
+            bytes.append(palette_entry.r)
+            bytes.append(palette_entry.g)
+            bytes.append(palette_entry.b)
         }
 
         return bytes
@@ -555,21 +553,21 @@ struct PNGProperties:CustomStringConvertible
                 b:UInt16 = quantum * (UInt16(bytes[4]) << 8 | UInt16(bytes[5]))
             self.chroma_key = RGBA(r, g, b, UInt16.max)
         case .indexed:
-            guard let palatte = self.palatte
+            guard let palette = self.palette
             else
             {
                 throw PNGReadError.MissingPalatteError
             }
 
-            guard bytes.count <= palatte.count
+            guard bytes.count <= palette.count
             else
             {
-                throw PNGReadError.PNGSyntaxError("\(bytes.count) chroma keys were provided, but we only have \(palatte.count) palatte entries")
+                throw PNGReadError.PNGSyntaxError("\(bytes.count) chroma keys were provided, but we only have \(palette.count) palette entries")
             }
 
             for (i, alpha):(Int, UInt8) in bytes.enumerated()
             {
-                self.palatte![i] = palatte[i].with_alpha(alpha)
+                self.palette![i] = palette[i].with_alpha(alpha)
             }
             self.chroma_key = nil
         default:
@@ -605,13 +603,13 @@ struct PNGProperties:CustomStringConvertible
                     UInt8(g >> 8), UInt8(truncatingBitPattern: g),
                     UInt8(b >> 8), UInt8(truncatingBitPattern: b)]
         case .indexed:
-            guard let palatte = self.palatte
+            guard let palette = self.palette
             else
             {
                 return nil
             }
 
-            return palatte.map{ $0.a }
+            return palette.map{ $0.a }
         default:
             return nil
         }
@@ -693,16 +691,16 @@ struct PNGProperties:CustomStringConvertible
     }
 
     private
-    func deindex32(indices:[Int], palatte:[RGBA<UInt8>]) -> [RGBA<UInt8>]?
+    func deindex32(indices:[Int], palette:[RGBA<UInt8>]) -> [RGBA<UInt8>]?
     {
-        // check that they don’t exceed the range of the palatte
-        guard indices.map({ $0 < palatte.count ? 0 : 1 }).reduce(0, +) == 0
+        // check that they don’t exceed the range of the palette
+        guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
         else
         {
             return nil
         }
 
-        return indices.map{ palatte[$0] }
+        return indices.map{ palette[$0] }
     }
 
     public
@@ -739,7 +737,7 @@ struct PNGProperties:CustomStringConvertible
             }
             else // indexed
             {
-                guard let palatte = self.palatte
+                guard let palette = self.palette
                 else
                 {
                     return nil
@@ -749,7 +747,7 @@ struct PNGProperties:CustomStringConvertible
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
-                return deindex32(indices: indices, palatte: palatte)
+                return deindex32(indices: indices, palette: palette)
             }
         }
         else
@@ -796,12 +794,12 @@ struct PNGProperties:CustomStringConvertible
                     return RGBA(r, g, b, a)
                 }
             case .indexed:
-                guard let palatte = self.palatte
+                guard let palette = self.palette
                 else
                 {
                     return nil
                 }
-                return deindex32(indices: raw_data.map(Int.init), palatte: palatte)
+                return deindex32(indices: raw_data.map(Int.init), palette: palette)
             }
         }
 
@@ -809,10 +807,10 @@ struct PNGProperties:CustomStringConvertible
     }
 
     private
-    func deindex64(indices:[Int], palatte:[RGBA<UInt8>]) -> [RGBA<UInt16>]?
+    func deindex64(indices:[Int], palette:[RGBA<UInt8>]) -> [RGBA<UInt16>]?
     {
-        // check that they don’t exceed the range of the palatte
-        guard indices.map({ $0 < palatte.count ? 0 : 1 }).reduce(0, +) == 0
+        // check that they don’t exceed the range of the palette
+        guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
         else
         {
             return nil
@@ -820,10 +818,10 @@ struct PNGProperties:CustomStringConvertible
 
         return indices.map
         {
-            let r:UInt16 = UInt16(palatte[$0].r),
-                g:UInt16 = UInt16(palatte[$0].g),
-                b:UInt16 = UInt16(palatte[$0].b),
-                a:UInt16 = UInt16(palatte[$0].a)
+            let r:UInt16 = UInt16(palette[$0].r),
+                g:UInt16 = UInt16(palette[$0].g),
+                b:UInt16 = UInt16(palette[$0].b),
+                a:UInt16 = UInt16(palette[$0].a)
             return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, a << 8 | a)
         }
     }
@@ -863,7 +861,7 @@ struct PNGProperties:CustomStringConvertible
             }
             else // indexed
             {
-                guard let palatte = self.palatte
+                guard let palette = self.palette
                 else
                 {
                     return nil
@@ -873,7 +871,7 @@ struct PNGProperties:CustomStringConvertible
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
-                return deindex64(indices: indices, palatte: palatte)
+                return deindex64(indices: indices, palette: palette)
             }
         }
         else
@@ -921,12 +919,12 @@ struct PNGProperties:CustomStringConvertible
                     return RGBA(r, g, b, a)
                 }
             case .indexed:
-                guard let palatte = self.palatte
+                guard let palette = self.palette
                 else
                 {
                     return nil
                 }
-                return deindex64(indices: raw_data.map(Int.init), palatte: palatte)
+                return deindex64(indices: raw_data.map(Int.init), palette: palette)
             }
         }
 
@@ -1148,7 +1146,7 @@ struct Decoder
 
     /*
     public private(set)
-    var palatte:[(r: Int, g: Int, b: Int)]? = nil // not implemented
+    var palette:[(r: Int, g: Int, b: Int)]? = nil // not implemented
     */
 
     public
@@ -1190,7 +1188,7 @@ struct Decoder
                 switch chunk
                 {
                     case .PLTE:
-                        try properties.set_palatte(chunk_data)
+                        try properties.set_palette(chunk_data)
                     case .IDAT:
                         self.z_iterator.add_input(chunk_data)
                         break outer_loop // we have a check in the conditions preventing IEND from coming early
@@ -1404,7 +1402,7 @@ struct Decoder
             guard stored_chunk_crc == calculated_crc
             else
             {
-                throw PNGReadError.DataCorruptionError(chunk.rawValue)
+                throw PNGReadError.DataCorruptionError(chunk)
             }
             return (chunk, chunk_data)
         }
@@ -1510,7 +1508,7 @@ struct Encoder
         try Encoder.write_buffer(to: stream, buffer: PNG_SIGNATURE)
         try Encoder.write_chunk(to: stream, chunk_data: properties.serialize_header(), chunk: .IHDR)
 
-        if let bytes:[UInt8] = properties.serialize_palatte()
+        if let bytes:[UInt8] = properties.serialize_palette()
         {
             try Encoder.write_chunk(to: stream, chunk_data: bytes, chunk: .PLTE)
         }

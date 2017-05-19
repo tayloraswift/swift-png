@@ -16,7 +16,7 @@ func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:ino
     guard let deinterlaced:[UInt8] = png_properties.deinterlace(raw_data: png_raw_data)
     else
     {
-        log.append(String(describing: PNGReadError.InterlaceDimensionError))
+        log.append("InterlaceDimensionError")
         return false
     }
 

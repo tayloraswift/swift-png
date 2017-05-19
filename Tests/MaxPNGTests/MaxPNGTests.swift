@@ -48,7 +48,7 @@ func normalize_deinterlace(path:String, log:inout [String]) -> ([UInt8], PNGProp
         guard let deinterlaced:[UInt8] = properties.deinterlace(raw_data: png_raw_data)
         else
         {
-            log.append(String(describing: PNGReadError.InterlaceDimensionError))
+            log.append("InterlaceDimensionError")
             return nil
         }
         return (deinterlaced, properties)
