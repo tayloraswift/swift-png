@@ -52,6 +52,18 @@ A normalized color unit consisting of four color samples.
 
 > Returns a copy of the instance with premultiplied alpha. Only available when `Sample` is `UInt16`.
 
+#### `var argb32:UInt32 { get }`
+
+> Returns the RGBA color encoded as a 32 bit unsigned integer. The alpha sample lives in the 8 most significant bits, followed by the red sample, the green sample, and then the blue sample. This value is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. Only available when `Sample` is `UInt8`.
+
+#### `var argb64:UInt64 { get }`
+
+> Returns the RGBA color encoded as a 64 bit unsigned long integer. The alpha sample lives in the 16 most significant bits, followed by the red sample, the green sample, and then the blue sample. This value is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. Only available when `Sample` is `UInt16`.
+
+#### `var premultiplied:`[`RGBA`](rgba.md)`<UInt16> { get }`
+
+> Returns a copy of the instance with premultiplied alpha. Only available when `Sample` is `UInt16`.
+
 ## Relationships
 
 ### Generic constraints

@@ -16,7 +16,7 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `init?(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool)`
 
-> Initialize and validate an instance with the given value, producing `nil` if the values are invalid (for example, a mismatched `color` type and `bit_depth` value).
+> Initialize and validate an instance with the given value, producing `nil` if the values are invalid (for example, a mismatched `color` format and `bit_depth` value).
 
 ### Instance properties
 
@@ -46,19 +46,19 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `var palette:[`[`RGBA`](rgba.md)`<UInt8>]? { get }`
 
-> The color palette, if any, of the image. A color palette is forbidden in any images with a grayscale `color` format.
+> The color palette, if any, of the image. A color palette is forbidden in any images with a grayscale [`color`](#let-colorpngpropertiescolorformat) format.
 
 #### `var chroma_key:`[`RGBA`](rgba.md)`<UInt16>? { get }`
 
-> The chroma key, if any, of the image. A chroma key is forbidden in any images with a transparent `color` format. The chroma key’s samples are normalized to the range `0 ... 65535`, even if the image itself is of a lower `bit_depth`.
+> The chroma key, if any, of the image. A chroma key is forbidden in any images with a transparent [`color`](#let-colorpngpropertiescolorformat) format. The chroma key’s samples are normalized to the range `0 ... 65535`, even if the image itself is of a lower [`bit_depth`](#let-bit_depthint).
 
 #### `let sub_dimensions:[(width:Int, height:Int)]`
 
-> The pixel dimensions of the seven subimages that would exist in an interlaced image of the same `width` and `height`. The eighth tuple in the array is equal to the `width` and `height` of the image.
+> The pixel dimensions of the seven subimages that would exist in an interlaced image of the same [`width`](#let-widthint) and [`height`](#let-heightint). The eighth tuple in the array is equal to the [`width`](#let-widthint) and [`height`](#let-heightint) of the image.
 
 #### `var deinterlaced_properties:`[`PNGProperties`](pngproperties.md)` { get }`
 
-> Produces a copy of the instance, with the `interlace` property set to `false`.
+> Produces a copy of the instance, with the [`interlaced`](#let-interlacedbool) property set to `false`.
 
 #### `var quantum8:UInt8 { get }`
 
@@ -76,11 +76,11 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `mutating func set_palette(_ palette:[`[`RGBA`](rgba.md)`<UInt8>])`
 
-> Transfers up to 256 entries in the given palette vector to the image’s color `palette`. If the image bit depth is less than `8`, only the first 2<sup>bit depth</sup> entries will be used by the encoder.
+> Transfers up to 256 entries in the given palette vector to the image’s color [`palette`](#var-palettergbauint8--get-). If the image bit depth is less than 8, only the first 2<sup>bit depth</sup> entries will be used by the encoder.
 
 #### `mutating func set_chroma_key(_ key:`[`RGBA`](rgba.md)`<UInt16>)`
 
-> Sets the image `chroma_key` to the given value. The alpha sample is ignored and set to `UInt16.max`. If the image is not of an opaque `color` format, the chroma key will be ignored by the encoder.
+> Sets the image [`chroma_key`](#var-chroma_keyrgbauint16--get-) to the given value. The alpha sample is ignored and set to `UInt16.max`. If the image is not of an opaque [`color`](#let-colorpngpropertiescolorformat) format, the chroma key will be ignored by the encoder.
 
 #### `func decompose(raw_data:[UInt8]) -> [([UInt8], `[`PNGProperties`](pngproperties.md)`)]?`
 
@@ -92,11 +92,15 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `func rgba32(raw_data:[UInt8]) -> [`[`RGBA`](rgba.md)`<UInt8>]?`
 
-> Takes the given `raw_data` and assembles it into an array of 32 bit [`RGBA`](rgba.md) structures. The samples are normalized to the range `0 ... 255`. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image, or if the image has a `bit_depth` greater than 8. If the image was of an `indexed` color format, this function will look up the appropriate entry in the image `palette`. If the palette entry, or the palette itself does not exist, this function returns `nil`.
+> Takes the given `raw_data` and assembles it into an array of 32 bit [`RGBA`](rgba.md) structures. The samples are normalized to the range `0 ... 255`. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image, or if the image has a [`bit_depth`](#let-bit_depthint) greater than 8. If the image was of an [`indexed`](pngproperties_colorformat.md#case-indexed--3) [`color`](#let-colorpngpropertiescolorformat) format, this function will look up the appropriate entry in the image [`palette`](#var-palettergbauint8--get-). If the palette entry, or the palette itself does not exist, this function returns `nil`.
 
 #### `func rgba64(raw_data:[UInt8]) -> [`[`RGBA`](rgba.md)`<UInt16>]?`
 
-> Takes the given `raw_data` and assembles it into an array of 64 bit [`RGBA`](rgba.md) structures. The samples are normalized to the range `0 ... 65535`. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image. If the image was of an `indexed` color format, this function will look up the appropriate entry in the image `palette`. If the palette entry, or the palette itself does not exist, this function returns `nil`.
+> Takes the given `raw_data` and assembles it into an array of 64 bit [`RGBA`](rgba.md) structures. The samples are normalized to the range `0 ... 65535`. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image. If the image was of an [`indexed`](pngproperties_colorformat.md#case-indexed--3) color format, this function will look up the appropriate entry in the image [`palette`](#var-palettergbauint8--get-). If the palette entry, or the palette itself does not exist, this function returns `nil`.
+
+#### `func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]?`
+
+> Takes the given `raw_data` and assembles it into an array of 32 bit unsigned integers. The alpha sample lives in the 8 most significant bits, followed by the red sample, the green sample, and then the blue sample. The samples are normalized to the range `0 ... 255`. This buffer is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image. If the image was of an [`indexed`](pngproperties_colorformat.md#case-indexed--3) color format, this function will look up the appropriate entry in the image [`palette`](#var-palettergbauint8--get-). If the palette entry, or the palette itself does not exist, this function returns `nil`. Unlike the [`rgba32(raw_data:)`](#func-rgba32raw_datauint8---rgbauint8) function, this function will succeed even if the image [`bit_depth`](#let-bit_depthint) is greater than 8; the sample is divided by 256 and the 8 least significant bits of information are lost.
 
 ## Relationships
 

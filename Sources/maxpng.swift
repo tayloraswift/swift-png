@@ -109,11 +109,17 @@ extension RGBA where Sample == UInt8
             b:UInt8  = UInt8((UInt16(self.b) &* f) >> 8)
         return RGBA(r, g, b, self.a)
     }
+
+    public
+    var argb32:UInt32
+    {
+        return UInt32(self.a) << 24 | UInt32(self.r) << 16 | UInt32(self.g) << 8 | UInt32(self.b)
+    }
 }
 
 extension RGBA where Sample == UInt16
 {
-    public 
+    public
     var premultiplied:RGBA<UInt16>
     {
         let f:UInt32 = UInt32(self.a) + 1,
@@ -121,6 +127,12 @@ extension RGBA where Sample == UInt16
             g:UInt16 = UInt16((UInt32(self.g) &* f) >> 8),
             b:UInt16 = UInt16((UInt32(self.b) &* f) >> 8)
         return RGBA(r, g, b, self.a)
+    }
+
+    public
+    var argb64:UInt64
+    {
+        return UInt64(self.a) << 48 | UInt64(self.r) << 32 | UInt64(self.g) << 16 | UInt64(self.b)
     }
 
     func compare_opaque(_ v:UInt8) -> Bool
@@ -714,6 +726,15 @@ struct PNGProperties:CustomStringConvertible
     }
 
     private
+    var bit_strider:LazySequence<FlattenSequence<LazyMapSequence<StrideTo<Int>, LazySequence<StrideTo<Int>>>>>
+    {
+        return stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
+        {
+            stride(from: $0 << 3, to: $0 << 3 + self.width * self.bit_depth, by: self.bit_depth).lazy
+        }
+    }
+
+    private
     func deindex32(indices:[Int], palette:[RGBA<UInt8>]) -> [RGBA<UInt8>]?
     {
         // check that they don’t exceed the range of the palette
@@ -738,16 +759,10 @@ struct PNGProperties:CustomStringConvertible
         let output:[RGBA<UInt8>]
         if self.bit_depth < 8 // channels is guaranteed to be 1
         {
-            let bit_strider:LazySequence<FlattenSequence<LazyMapSequence<StrideTo<Int>, LazySequence<StrideTo<Int>>>>> =
-            stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
-            {
-                stride(from: $0 << 3, to: $0 << 3 + self.width * self.bit_depth, by: self.bit_depth).lazy
-            }
-
             if self.color == .grayscale
             {
                 let quantum:UInt8 = self.quantum8
-                output = bit_strider.map
+                output = self.bit_strider.map
                 {
                     let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
                     // test against chroma key
@@ -766,7 +781,7 @@ struct PNGProperties:CustomStringConvertible
                     return nil
                 }
 
-                let indices:[Int] = bit_strider.map
+                let indices:[Int] = self.bit_strider.map
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
@@ -861,17 +876,10 @@ struct PNGProperties:CustomStringConvertible
         let output:[RGBA<UInt16>]
         if self.bit_depth < 8 // channels is guaranteed to be 1
         {
-            // well that’s a mouthful isn’t it...
-            let bit_strider:LazySequence<FlattenSequence<LazyMapSequence<StrideTo<Int>, LazySequence<StrideTo<Int>>>>> =
-            stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
-            {
-                stride(from: $0 << 3, to: $0 << 3 + self.width * self.bit_depth, by: self.bit_depth).lazy
-            }
-
             if self.color == .grayscale
             {
                 let quantum:UInt16 = self.quantum16
-                output = bit_strider.map
+                output = self.bit_strider.map
                 {
                     let v:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                     // test against chroma key
@@ -890,7 +898,7 @@ struct PNGProperties:CustomStringConvertible
                     return nil
                 }
 
-                let indices:[Int] = bit_strider.map
+                let indices:[Int] = self.bit_strider.map
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
@@ -948,6 +956,117 @@ struct PNGProperties:CustomStringConvertible
                     return nil
                 }
                 return deindex64(indices: raw_data.map(Int.init), palette: palette)
+            }
+        }
+
+        return output
+    }
+
+    private
+    func deindex_argb32_premultiplied(indices:[Int], palette:[RGBA<UInt8>]) -> [UInt32]?
+    {
+        // check that they don’t exceed the range of the palette
+        guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
+        else
+        {
+            return nil
+        }
+
+        return indices.map{ palette[$0].premultiplied.argb32 }
+    }
+
+    public
+    func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]?
+    {
+        guard raw_data.count == self.noninterlaced_data_size
+        else
+        {
+            return nil
+        }
+
+        let output:[UInt32]
+        if self.bit_depth < 8 // channels is guaranteed to be 1
+        {
+            if self.color == .grayscale
+            {
+                let quantum:UInt8 = self.quantum8
+                output = self.bit_strider.map
+                {
+                    let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
+                    // test against chroma key
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
+                    {
+                        return 0
+                    }
+                    return RGBA(v, v, v, UInt8.max).argb32
+                }
+            }
+            else // indexed
+            {
+                guard let palette = self.palette
+                else
+                {
+                    return nil
+                }
+
+                let indices:[Int] = self.bit_strider.map
+                {
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                }
+                return deindex_argb32_premultiplied(indices: indices, palette: palette)
+            }
+        }
+        else
+        {
+            let d:Int = self.bit_depth == 8 ? 0 : 1
+
+            switch self.color
+            {
+            case .grayscale:
+                output = stride(from: 0, to: raw_data.count, by: 1 << d).map
+                {
+                    let v:UInt8 = raw_data[$0]
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v) // this function is overloaded to take an UInt8, even though the key is a UInt16
+                    {
+                        return 0
+                    }
+                    return RGBA(v, v, v, UInt8.max).argb32
+                }
+            case .grayscale_a:
+                output = stride(from: 0, to: raw_data.count, by: 2 << d).map
+                {
+                    let v:UInt8 = raw_data[$0         ],
+                        a:UInt8 = raw_data[$0 + 1 << d]
+                    return RGBA(v, v, v, a).premultiplied.argb32
+                }
+            case .rgb:
+                output = stride(from: 0, to: raw_data.count, by: 3 << d).map
+                {
+                    let r:UInt8 = raw_data[$0         ],
+                        g:UInt8 = raw_data[$0 + 1 << d],
+                        b:UInt8 = raw_data[$0 + 2 << d]
+                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
+                    {
+                        return 0
+                    }
+                    return RGBA(r, g, b, UInt8.max).argb32
+                }
+            case .rgba:
+                output = stride(from: 0, to: raw_data.count, by: 4 << d).map
+                {
+                    let r:UInt8 = raw_data[$0         ],
+                        g:UInt8 = raw_data[$0 + 1 << d],
+                        b:UInt8 = raw_data[$0 + 2 << d],
+                        a:UInt8 = raw_data[$0 + 3 << d]
+                    return RGBA(r, g, b, a).premultiplied.argb32
+                }
+            case .indexed:
+                guard let palette = self.palette
+                else
+                {
+                    return nil
+                }
+                return deindex_argb32_premultiplied(indices: raw_data.map(Int.init), palette: palette)
             }
         }
 

@@ -226,6 +226,7 @@ func run_tests(_ tests:[(String, [String], TestFunc)], verbose:Bool, only_run te
 public
 let tests:[(String, [String], TestFunc)] =
 [
+    ("argb32", decode_test_cases, argb32_premultiplied_64_test),
     ("rgba32", decode_test_cases, rgba32_64_test),
     ("decode-unit", decode_test_cases, decode_test),
     ("reencode-unit", decode_test_cases, test_reencode_unit_png),

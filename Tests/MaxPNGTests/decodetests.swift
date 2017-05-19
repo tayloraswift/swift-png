@@ -31,6 +31,32 @@ func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
     return rgba32 == rgba64
 }
 
+func argb32_premultiplied_64_test(test_name:String, log:inout [String]) -> Bool
+{
+    let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
+    guard let (deinterlaced, properties):([UInt8], PNGProperties) = normalize_deinterlace(path: path_png, log: &log)
+    else
+    {
+        return false
+    }
+
+    let rgba64:[UInt32] = properties.rgba64(raw_data: deinterlaced)!.map
+    {
+        let r:UInt8 = UInt8($0.r >> 8),
+            g:UInt8 = UInt8($0.g >> 8),
+            b:UInt8 = UInt8($0.b >> 8),
+            a:UInt8 = UInt8($0.a >> 8)
+        return RGBA(r, g, b, a).premultiplied.argb32
+    }
+    guard let argb32_premultiplied:[UInt32] = properties.argb32_premultiplied(raw_data: deinterlaced)
+    else
+    {
+        return false
+    }
+
+    return argb32_premultiplied == rgba64
+}
+
 func decode_test(test_name:String, log:inout [String]) -> Bool
 {
     let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
