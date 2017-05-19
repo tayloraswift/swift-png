@@ -24,4 +24,4 @@ A progressive PNG reader object that provides pixel data lazily, scanline by sca
 
 #### `func next_scanline() throws -> [UInt8]?`
 
-> Returns the next scanline in the image, or `nil` if the decoder is finished decoding. If the image is [`interlaced`](pngproperties.md#let-interlaced:Bool), the scanlines may not all be the same size.
+> Returns the next scanline in the image, or `nil` if the decoder is finished decoding. If the image is [`interlaced`](pngproperties.md#let-interlacedbool), the scanlines may not all be the same size.

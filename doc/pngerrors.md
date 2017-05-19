@@ -41,13 +41,13 @@ Errors that may occur when reading and decoding a PNG file from disk.
 > The PNG file is missing its [image header](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.IHDR) chunk.
 
 #### `case MissingPalatteError`
-> The PNG file is of `indexed` [color format](pngproperties_colorformat.md) and is missing its [palette](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.PLTE) chunk.
+> The PNG file is of [`indexed`](pngproperties_colorformat.md#case-indexed) color format and is missing its [palette](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.PLTE) chunk.
 
 #### `case PrematureEOSError`
 > MaxPNG encountered the end of the `DEFLATE` stream before reading the expected amount of data.
 
 #### `case PrematureIENDError`
-> MaxPNG encountered the [`IEND`](pngchunk.md#case-IEND) chunk before it encountered any [`IDAT`](pngchunk.md#case-IDAT) chunks.
+> MaxPNG encountered the [`IEND`](pngchunk.md#case-iend) chunk before it encountered any [`IDAT`](pngchunk.md#case-idat) chunks.
 
 ------
 
