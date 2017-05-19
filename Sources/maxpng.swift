@@ -50,13 +50,13 @@ enum PNGCompressionError:Error
 }
 
 public
-struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
+struct RGBA<Sample:UnsignedInteger>:Equatable, CustomStringConvertible
 {
     public
-    let r:Pixel,
-        g:Pixel,
-        b:Pixel,
-        a:Pixel
+    let r:Sample,
+        g:Sample,
+        b:Sample,
+        a:Sample
 
     public
     var description:String
@@ -64,13 +64,13 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
         return "(\(self.r), \(self.g), \(self.b), \(self.a))"
     }
 
-    var grayscale:Pixel?
+    var grayscale:Sample?
     {
         return self.r == self.g && self.g == self.b ? self.r : nil
     }
 
     public
-    init(_ r:Pixel, _ g:Pixel, _ b:Pixel, _ a:Pixel)
+    init(_ r:Sample, _ g:Sample, _ b:Sample, _ a:Sample)
     {
         self.r = r
         self.g = g
@@ -78,29 +78,29 @@ struct RGBA<Pixel:UnsignedInteger>:Equatable, CustomStringConvertible
         self.a = a
     }
 
-    func with_alpha(_ a:Pixel) -> RGBA<Pixel>
+    func with_alpha(_ a:Sample) -> RGBA<Sample>
     {
         return RGBA(self.r, self.g, self.b, a)
     }
 
-    func compare_opaque(_ v:Pixel) -> Bool
+    func compare_opaque(_ v:Sample) -> Bool
     {
         return self.r == v && self.g == v && self.b == v
     }
 
-    func compare_opaque(_ r:Pixel, _ g:Pixel, _ b:Pixel) -> Bool
+    func compare_opaque(_ r:Sample, _ g:Sample, _ b:Sample) -> Bool
     {
         return self.r == r && self.g == g && self.b == b
     }
 
     public static
-    func == (_ lhs:RGBA<Pixel>, _ rhs:RGBA<Pixel>) -> Bool
+    func == (_ lhs:RGBA<Sample>, _ rhs:RGBA<Sample>) -> Bool
     {
         return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b && lhs.a == rhs.a
     }
 }
 
-extension RGBA where Pixel == UInt16
+extension RGBA where Sample == UInt16
 {
     func compare_opaque(_ v:UInt8) -> Bool
     {
@@ -203,15 +203,15 @@ func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
 
 struct Header
 {
-    typealias ColorType = PNGProperties.ColorType
+    typealias ColorFormat = PNGProperties.ColorFormat
 
     let width:Int,
         height:Int,
         bit_depth:Int,
-        color:ColorType,
+        color:ColorFormat,
         interlaced:Bool
 
-    init(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool) throws
+    init(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool) throws
     {
         // validate color type
         let allowed_bit_depths:[Int]
@@ -245,7 +245,7 @@ struct Header
             throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
         }
 
-        guard let color = ColorType(rawValue: Int(data[9]))
+        guard let color = ColorFormat(rawValue: Int(data[9]))
         else
         {
             throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
@@ -290,7 +290,7 @@ public
 struct PNGProperties:CustomStringConvertible
 {
     public
-    enum ColorType:Int
+    enum ColorFormat:Int
     {
         case grayscale      = 0,
              rgb            = 2,
@@ -303,7 +303,7 @@ struct PNGProperties:CustomStringConvertible
     let width:Int,
         height:Int,
         bit_depth:Int,
-        color:ColorType,
+        color:ColorFormat,
         interlaced:Bool
 
     public
@@ -381,7 +381,7 @@ struct PNGProperties:CustomStringConvertible
         return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color), interlaced: \(self.interlaced)}"
     }
 
-    init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color:ColorType, interlaced:Bool)
+    init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color:ColorFormat, interlaced:Bool)
     {
         self.width      = width
         self.height     = height
@@ -449,7 +449,7 @@ struct PNGProperties:CustomStringConvertible
     }
 
     public
-    init?(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool)
+    init?(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool)
     {
         do
         {
@@ -953,7 +953,7 @@ struct PNGConditions
     var last_valid_chunk:PNGChunk = PNGChunk.__FIRST__,
         seen:Set<PNGChunk>        = []
 
-    var color:PNGProperties.ColorType?
+    var color:PNGProperties.ColorFormat?
 
     mutating
     func update(_ chunk:PNGChunk) throws
