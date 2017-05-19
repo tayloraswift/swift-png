@@ -13,7 +13,7 @@ MaxPNG is simple to use:
 ````swift
 import MaxPNG
 
-let (png_raw_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: "my_png_file.png")
+let (png_raw_data, png_properties):([UInt8], PNGProperties) = try png_decode(path: "my_png_file.png")
 ````
 
 You can also use it to create your own PNG files:
@@ -24,7 +24,7 @@ let my_png_settings = PNGProperties(width: 3, height: 3, bit_depth: 8, color: .r
 let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
                            255,255,255,    0  ,0  ,0  ,    0  ,255,0  ,
                            120,120,255,    150,120,255,    180,120,255]
-try encode_png(path: "my_output_png.png", raw_data: my_png_data, properties: my_png_settings)
+try png_encode(path: "my_output_png.png", raw_data: my_png_data, properties: my_png_settings)
 ````
 
 MaxPNG also provides a progressive API that reads and writes PNGs scanline by scanline.
@@ -44,7 +44,7 @@ try out.finish()
 
 Resource management is as Swifty as it made sense to be; most resources will be released when MaxPNG’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
 
-MaxPNG provides the PNG’s formatting information in the `PNGProperties` struct which is returned by the contiguous decoder function `decode_png(path:recognizing:)`, and provided as a member `.properties` on the progressive decoder class `PNGDecoder`. These property structures are similarly taken as parameters by the contiguous encoder function `encode_png(path:raw_data:properties:)` and the progressive encoder class initializer `PNGEncoder.init(path:properties:)`.
+MaxPNG provides the PNG’s formatting information in the `PNGProperties` struct which is returned by the contiguous decoder function `png_decode(path:recognizing:)`, and provided as a member `.properties` on the progressive decoder class `PNGDecoder`. These property structures are similarly taken as parameters by the contiguous encoder function `png_encode(path:raw_data:properties:)` and the progressive encoder class initializer `PNGEncoder.init(path:properties:)`.
 
 ````swift
 struct PNGProperties
