@@ -16,7 +16,7 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 > Decompress, decode, and validate the raw pixel contents of a PNG file, without performing deinterlacing or deindexing.
 
-#### `func `[`png_encode`](functions.md#png_encode)`(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int) throws`
+#### `func `[`png_encode`](functions.md#png_encode)`(path:String, raw_data:[UInt8], properties:`[`PNGProperties`](pngproperties.md)`, chunk_size:Int) throws`
 
 > Compress, encode, validate, and write the contents of a raw pixel buffer to a PNG file.
 
