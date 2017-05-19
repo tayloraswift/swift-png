@@ -11,13 +11,13 @@ Errors that may occur when reading and decoding a PNG file from disk.
 ### Enumeration Cases
 
 #### `case FileError(String)`
-> MaxPNG was unable to open the PNG file. The associated value contains the path to the unreadable file.
+> MaxPNG was unable to open the PNG file stream. The associated value contains the path to the unreadable file.
 
 #### `case FiletypeError`
 > The file is not a PNG file.
 
 #### `case IncompleteChunkError`
-> MaxPNG was unable to read from the file the number of bytes the chunk declared itself as having.
+> MaxPNG was unable to read from the file stream the number of bytes the chunk declared itself as having.
 
 #### `case UnexpectedCriticalChunkError(String)`
 > MaxPNG encountered an unrecognized [critical chunk](http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html#Chunk-naming-conventions). The associated value contains the name of the chunk.
@@ -48,3 +48,66 @@ Errors that may occur when reading and decoding a PNG file from disk.
 
 #### `case PrematureIENDError`
 > MaxPNG encountered the [`IEND`](pngchunk.md#case-IEND) chunk before it encountered any [`IDAT`](pngchunk.md#case-IDAT) chunks.
+
+------
+
+###### Enumeration
+
+# `PNGWriteError:Error`
+
+Errors that may occur when writing and encoding a PNG file from disk.
+
+------
+
+## Symbols
+
+### Enumeration Cases
+
+#### `case FileWriteError`
+> MaxPNG was unable to write to the PNG file stream.
+
+#### `case DimemsionError`
+> The length of the input data does not match the dimensions given in the [`PNGProperties`](pngproperties.md) struct.
+
+------
+
+###### Enumeration
+
+# `PNGDecompressionError:Error`
+
+Errors that may occur when decompressing a PNG `DEFLATE` stream.
+
+------
+
+## Symbols
+
+### Enumeration Cases
+
+#### `case StreamError`
+> Zlib could not initiate the inflate stream.
+
+#### `case MissingDictionaryError`
+> Zlib [needs some dict](http://www.zlib.net/manual.html#Constants).
+
+#### `case DataError`
+> Zlib returned with [`Z_DATA_ERROR`](http://www.zlib.net/manual.html#Constants).
+
+#### `case MemoryError`
+> Zlib returned with [`Z_MEM_ERROR`](http://www.zlib.net/manual.html#Constants).
+
+------
+
+###### Enumeration
+
+# `PNGCompressionError:Error`
+
+Errors that may occur when compressing a PNG `DEFLATE` stream.
+
+------
+
+## Symbols
+
+### Enumeration Cases
+
+#### `case StreamError`
+> Zlib could not initiate the deflate stream.

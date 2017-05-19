@@ -38,25 +38,25 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 #### `class` [`PNGDecoder`](pngdecoder.md)
 
-> A progressive PNG reader object that provides pixel data lazily, scanline by scanline.
+> A progressive PNG reader object that provides pixel data lazily, scanline by scanline, and closes all file and decompression streams when it goes out of scope
 
 #### `class` [`PNGEncoder`](pngencoder.md)
 
-> A progressive PNG writer object that encodes pixel data lazily, scanline by scanline
+> A progressive PNG writer object that encodes pixel data lazily, scanline by scanline, and closes all file and compression streams when it goes out of scope
 
 ### Enumerations
 
 #### `enum` [`PNGChunk`](pngchunk.md)
 > Public PNG chunks, as specified in the [PNG standard](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html).
 
-#### `enum` [`PNGReadError`](pngerrors.md#PNGReadError)
+#### `enum` [`PNGReadError`](pngerrors.md#PNGReadError:Error)
 > Errors that may occur when reading and decoding a PNG file from disk.
 
-#### `enum` [`PNGWriteError`](pngerrors.md#PNGWriteError)
+#### `enum` [`PNGWriteError`](pngerrors.md#PNGWriteError:Error)
 > Errors that may occur when writing and encoding a PNG file from disk.
 
-#### `enum` [`PNGDecompressionError`](pngerrors.md#PNGDecompressionError)
+#### `enum` [`PNGDecompressionError`](pngerrors.md#PNGDecompressionError:Error)
 > Errors that may occur when decompressing a PNG `DEFLATE` stream.
 
-#### `enum` [`PNGCompressionError`](pngerrors.md#PNGCompressionError)
+#### `enum` [`PNGCompressionError`](pngerrors.md#PNGCompressionError:Error)
 > Errors that may occur when compressing a PNG `DEFLATE` stream.

@@ -18,7 +18,7 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 > Initialize and validate an instance with the given value, producing `nil` if the values are invalid (for example, a mismatched `color` type and `bit_depth` value).
 
-### Instance properties 
+### Instance properties
 
 #### `let width:Int`
 
@@ -35,6 +35,10 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 #### `let color:PNGProperties.ColorFormat`
 
 > The format of the pixels in the image (grayscale, grayscale with alpha, rgb color, rgba transparent color, indexed color).
+
+#### `let interlaced:Bool`
+
+> Whether or not the image is [interlaced](http://www.libpng.org/pub/png/spec/1.2/PNG-DataRep.html#DR.Interlaced-data-order) in ADAM7 order.
 
 #### `let channels:Int`
 
