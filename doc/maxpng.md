@@ -58,5 +58,5 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 #### `enum` [`PNGDecompressionError`](pngerrors.md#pngdecompressionerrorerror)
 > Errors that may occur when decompressing a PNG `DEFLATE` stream.
 
-#### `enum` [`PNGCompressionError`](pngerrors.md#pngcompressionerrorerror:Error)
+#### `enum` [`PNGCompressionError`](pngerrors.md#pngcompressionerrorerrorerror)
 > Errors that may occur when compressing a PNG `DEFLATE` stream.
