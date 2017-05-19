@@ -30,10 +30,6 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 > The non-pixel image data associated with a PNG file, as specified in the PNG standard.
 
-#### `struct` [`PNGProperties.ColorFormat`](pngproperties_colorformat.md)
-
-> The five PNG color formats, as defined in the [PNG standard](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.IHDR).
-
 ### Classes
 
 #### `class` [`PNGDecoder`](pngdecoder.md)
@@ -48,6 +44,9 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 #### `enum` [`PNGChunk`](pngchunk.md)
 > Public PNG chunks, as specified in the [PNG standard](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html).
+
+#### `enum` [`PNGProperties.ColorFormat`](pngproperties_colorformat.md)
+> The five PNG color formats, as defined in the [PNG standard](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.IHDR).
 
 #### `enum` [`PNGReadError`](pngerrors.md#pngreaderrorerror)
 > Errors that may occur when reading and decoding a PNG file from disk.
