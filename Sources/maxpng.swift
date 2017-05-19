@@ -123,9 +123,9 @@ extension RGBA where Sample == UInt16
     var premultiplied:RGBA<UInt16>
     {
         let f:UInt32 = UInt32(self.a) + 1,
-            r:UInt16 = UInt16((UInt32(self.r) &* f) >> 8),
-            g:UInt16 = UInt16((UInt32(self.g) &* f) >> 8),
-            b:UInt16 = UInt16((UInt32(self.b) &* f) >> 8)
+            r:UInt16 = UInt16((UInt32(self.r) &* f) >> 16),
+            g:UInt16 = UInt16((UInt32(self.g) &* f) >> 16),
+            b:UInt16 = UInt16((UInt32(self.b) &* f) >> 16)
         return RGBA(r, g, b, self.a)
     }
 
