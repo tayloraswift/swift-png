@@ -40,7 +40,7 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 > The number of bits per *sample* in the image.
 
-#### `let color:PNGProperties.ColorFormat`
+#### `let color:`[`PNGProperties.ColorFormat`](pngproperties_colorformat.md)
 
 > The format of the pixels in the image (grayscale, grayscale with alpha, rgb color, rgba transparent color, indexed color).
 
