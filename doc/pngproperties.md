@@ -82,7 +82,7 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 > Sets the image `chroma_key` to the given value. The alpha sample is ignored and set to `UInt16.max`. If the image is not of an opaque `color` format, the chroma key will be ignored by the encoder.
 
-#### `func decompose(raw_data:[UInt8]) -> [([UInt8], [`PNGProperties`](pngproperties.md)`)]?`
+#### `func decompose(raw_data:[UInt8]) -> [([UInt8], `[`PNGProperties`](pngproperties.md)`)]?`
 
 > Takes the given `raw_data` and extracts the seven ADAM7 subimage buffers from it, along with appropriate [`PNGProperties`](pngproperties.md) structures for each subimage. If the length of the input buffer is not the correct ADAM7 length, this function returns `nil`.
 
