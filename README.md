@@ -67,7 +67,7 @@ struct PNGProperties
     let channels:Int
 
     private(set)
-    var palatte:[RGBA<UInt8>]?,
+    var palette:[RGBA<UInt8>]?,
         chroma_key:RGBA<UInt16>?
 
     var quantum16:UInt16 { get }
@@ -77,7 +77,7 @@ struct PNGProperties
     var deinterlaced_properties:PNGProperties { get }
 
     mutating
-    func set_palatte(_ palatte:[RGBA<UInt8>]) -> Void
+    func set_palette(_ palette:[RGBA<UInt8>]) -> Void
 }
 ````
 
