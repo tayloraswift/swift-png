@@ -98,8 +98,31 @@ struct RGBA<Sample:UnsignedInteger>:Equatable, CustomStringConvertible
     }
 }
 
+extension RGBA where Sample == UInt8
+{
+    public
+    var premultiplied:RGBA<UInt8>
+    {
+        let f:UInt16 = UInt16(self.a) + 1,
+            r:UInt8  = UInt8((UInt16(self.r) &* f) >> 8),
+            g:UInt8  = UInt8((UInt16(self.g) &* f) >> 8),
+            b:UInt8  = UInt8((UInt16(self.b) &* f) >> 8)
+        return RGBA(r, g, b, self.a)
+    }
+}
+
 extension RGBA where Sample == UInt16
 {
+    public 
+    var premultiplied:RGBA<UInt16>
+    {
+        let f:UInt32 = UInt32(self.a) + 1,
+            r:UInt16 = UInt16((UInt32(self.r) &* f) >> 8),
+            g:UInt16 = UInt16((UInt32(self.g) &* f) >> 8),
+            b:UInt16 = UInt16((UInt32(self.b) &* f) >> 8)
+        return RGBA(r, g, b, self.a)
+    }
+
     func compare_opaque(_ v:UInt8) -> Bool
     {
         return UInt8(self.r >> 8) == v && UInt8(self.g >> 8) == v && UInt8(self.b >> 8) == v
