@@ -25,16 +25,16 @@ Errors that may occur when reading and decoding a PNG file from disk.
 #### `case PNGSyntaxError(String)`
 > MaxPNG encountered a malformed, but recognized, PNG chunk. The associated value contains the error message.
 
-#### `case DataCorruptionError(PNGChunk)`
+#### `case DataCorruptionError(`[`PNGChunk`](pngchunk.md)`)`
 > The CRC32 value of at least one chunk did not match the computed [CRC32 checksum](www.libpng.org/pub/png/spec/1.2/PNG-Structure.html#CRC-algorithm) of the chunk data. The associated value contains the type of the corrupted chunk.
 
-#### `case IllegalChunkError(PNGChunk)`
+#### `case IllegalChunkError(`[`PNGChunk`](pngchunk.md)`)`
 > MaxPNG encountered at least one chunk forbidden by the color format of the image, or the presence of another previously read chunk. The associated value contains the type of the offending chunk.
 
-#### `case DuplicateChunkError(PNGChunk)`
+#### `case DuplicateChunkError(`[`PNGChunk`](pngchunk.md)`)`
 > MaxPNG encountered a second occurrence of a PNG chunk that is [only allowed to occur once](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.Summary-of-standard-chunks) per PNG file. The associated value contains the type of the repeated chunk.
 
-#### `case ChunkOrderingError(PNGChunk)`
+#### `case ChunkOrderingError(`[`PNGChunk`](pngchunk.md)`)`
 > MaxPNG encountered a PNG chunk that violates the [ordering rules](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.Summary-of-standard-chunks) of the PNG standard. The associated value contains the type of the offending chunk.
 
 #### `case MissingHeaderError`

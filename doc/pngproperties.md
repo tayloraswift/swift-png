@@ -17,22 +17,22 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 #### `init?(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool)`
 
 > Initialize and validate an instance with the given value, producing `nil` if the values are invalid (for example, a mismatched `color` format and `bit_depth` value). The following are valid `color` and `bit_depth` format values.
-        
+
 >| Color format  | Allowed bit depths |
 >| ------------- | ------------- |
 >| [`grayscale`](pngproperties_colorformat.md#case-grayscale--0)  | `1`, `2`, `4`, `8`, `16` |
 >| [`rgb`](pngproperties_colorformat.md#case-rgb--2)  | `8`, `16` |
->| [`indexed`](pngproperties_colorformat.md#case-indexed--3)  | `1`, `2`, `4`, `8`  |
->| [`grayscale_a`](pngproperties_colorformat.md#case-grayscale_a--4)  | `8`, `16`  |
->| [`rgba`](pngproperties_colorformat.md#case-rgba--6)  | `8`, `16`  |
+>| [`indexed`](pngproperties_colorformat.md#case-indexed--3)  | `1`, `2`, `4`, `8` |
+>| [`grayscale_a`](pngproperties_colorformat.md#case-grayscale_a--4)  | `8`, `16` |
+>| [`rgba`](pngproperties_colorformat.md#case-rgba--6)  | `8`, `16` |
 
 ### Instance properties
 
-#### `let width:Int`
+#### `var width:Int { get }`
 
 > The width, in pixels, of the image.
 
-#### `let height:Int`
+#### `var height:Int { get }`
 
 > The height, in pixels, of the image.
 
@@ -48,10 +48,6 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 > Whether or not the image is [interlaced](http://www.libpng.org/pub/png/spec/1.2/PNG-DataRep.html#DR.Interlaced-data-order) in ADAM7 order.
 
-#### `let channels:Int`
-
-> The number of samples per pixel in the image.
-
 #### `var palette:[`[`RGBA`](rgba.md)`<UInt8>]? { get }`
 
 > The color palette, if any, of the image. A color palette is forbidden in any images with a grayscale [`color`](#let-colorpngpropertiescolorformat) format.
@@ -62,7 +58,7 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `let sub_dimensions:[(width:Int, height:Int)]`
 
-> The pixel dimensions of the seven subimages that would exist in an interlaced image of the same [`width`](#let-widthint) and [`height`](#let-heightint). The eighth tuple in the array is equal to the [`width`](#let-widthint) and [`height`](#let-heightint) of the image.
+> The pixel dimensions of the seven subimages that would exist in an interlaced image of the same [`width`](#var-widthint--get-) and [`height`](#var-heightint--get-). The eighth tuple in the array stores the [`width`](#var-widthint--get-) and [`height`](#var-heightint--get-) of the image.
 
 #### `var deinterlaced_properties:`[`PNGProperties`](pngproperties.md)` { get }`
 
@@ -70,11 +66,11 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `var quantum8:UInt8 { get }`
 
-> The size of the quantized levels of the image samples, if normalized to the range `0 ... 255`
+> The size of the quantized levels of the image samples, if normalized to the range `0 ... 255`. Multiplying a raw sample value by the 8 bit quantum size will normalize it to the full range of a `UInt8`.
 
 #### `var quantum16:UInt16 { get }`
 
-> The size of the quantized levels of the image samples, if normalized to the range `0 ... 65535`
+> The size of the quantized levels of the image samples, if normalized to the range `0 ... 65535`. Multiplying a raw sample value by the 16 bit quantum size will normalize it to the full range of a `UInt16`.
 
 #### `var description:String { get }`
 
@@ -84,11 +80,11 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `mutating func set_palette(_ palette:[`[`RGBA`](rgba.md)`<UInt8>])`
 
-> Transfers up to 256 entries in the given palette vector to the image’s color [`palette`](#var-palettergbauint8--get-). If the image bit depth is less than 8, only the first 2<sup>bit depth</sup> entries will be used by the encoder.
+> Transfers up to 256 entries in the given palette vector to the image’s color [`palette`](#var-palettergbauint8--get-). If the image bit depth is less than 8, only the first 2<sup>bit depth</sup> entries will be used by the encoder. If a color palette is forbidden by the image [`color`](#let-colorpngpropertiescolorformat) format, the palette will still be assigned to the instance property, but it will be ignored by the encoder and all other utility functions.
 
 #### `mutating func set_chroma_key(_ key:`[`RGBA`](rgba.md)`<UInt16>)`
 
-> Sets the image [`chroma_key`](#var-chroma_keyrgbauint16--get-) to the given value. The alpha sample is ignored and set to `UInt16.max`. If the image is not of an opaque [`color`](#let-colorpngpropertiescolorformat) format, the chroma key will be ignored by the encoder.
+> Sets the image [`chroma_key`](#var-chroma_keyrgbauint16--get-) to the given value. The alpha sample is ignored and set to `UInt16.max`. If the image is not of an opaque [`color`](#let-colorpngpropertiescolorformat) format, the chroma key will still be set, but it will be ignored by the encoder and all other utility functions.
 
 #### `func decompose(raw_data:[UInt8]) -> [([UInt8], `[`PNGProperties`](pngproperties.md)`)]?`
 

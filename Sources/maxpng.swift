@@ -330,17 +330,40 @@ struct PNGProperties:CustomStringConvertible
              indexed        = 3,
              grayscale_a    = 4,
              rgba           = 6
+
+        public
+        var channels:Int
+        {
+            switch self
+            {
+            case .grayscale, .indexed:
+                return 1
+            case .grayscale_a:
+                return 2
+            case .rgb:
+                return 3
+            case .rgba:
+                return 4
+            }
+        }
     }
 
     public
-    let width:Int,
-        height:Int,
-        bit_depth:Int,
-        color:ColorFormat,
-        interlaced:Bool
+    var width:Int
+    {
+        return self.sub_dimensions[7].width
+    }
 
     public
-    let channels:Int
+    var height:Int
+    {
+        return self.sub_dimensions[7].height
+    }
+
+    public
+    let bit_depth:Int,
+        color:ColorFormat,
+        interlaced:Bool
 
     // other chunks
     public private(set)
@@ -357,7 +380,6 @@ struct PNGProperties:CustomStringConvertible
         pHYs:PhysicalSize,
         sPLT:SuggestedPalatte,
         tIME:Time,
-
     */
 
     public
@@ -416,26 +438,11 @@ struct PNGProperties:CustomStringConvertible
 
     init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color:ColorFormat, interlaced:Bool)
     {
-        self.width      = width
-        self.height     = height
         self.bit_depth  = bit_depth
         self.color      = color
         self.interlaced = interlaced
 
-        let channels:Int
-        switch color
-        {
-        case .grayscale, .indexed:
-            channels = 1
-        case .grayscale_a:
-            channels = 2
-        case .rgb:
-            channels = 3
-        case .rgba:
-            channels = 4
-        }
-        self.channels = channels
-
+        let channels:Int = self.color.channels
         self.bpp        = max(1, (channels * bit_depth) >> 3)
 
         /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
