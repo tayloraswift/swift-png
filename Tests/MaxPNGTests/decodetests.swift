@@ -43,8 +43,8 @@ func test_reencode_png(src_path:String, ref_path:String, dest_path:String, log:i
     var encode_passed:Bool = true
     do
     {
-        let (png_data, png_properties):([UInt8], PNGProperties) = try decode_png(path: src_path, recognizing: [.IDAT, .tRNS])
-        try encode_png(path: dest_path, raw_data: png_data, properties: png_properties)
+        let (png_data, png_properties):([UInt8], PNGProperties) = try png_decode(path: src_path, recognizing: [.IDAT, .tRNS])
+        try png_encode(path: dest_path, raw_data: png_data, properties: png_properties)
     }
     catch
     {

@@ -5,7 +5,7 @@ func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:ino
     let (png_raw_data, png_properties):([UInt8], PNGProperties)
     do
     {
-        (png_raw_data, png_properties) = try decode_png(path: path_png + ".png")
+        (png_raw_data, png_properties) = try png_decode(path: path_png + ".png")
     }
     catch
     {
@@ -30,7 +30,7 @@ func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:ino
 
     do
     {
-        try encode_png(path: path_dest + "_deinterlace.png",
+        try png_encode(path: path_dest + "_deinterlace.png",
                        raw_data: deinterlaced,
                        properties: png_properties.deinterlaced_properties)
     }
@@ -45,7 +45,7 @@ func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:ino
     {
         do
         {
-            try encode_png(path: path_dest + "_\(i).png",
+            try png_encode(path: path_dest + "_\(i).png",
                            raw_data: sub_data,
                            properties: sub_properties)
         }

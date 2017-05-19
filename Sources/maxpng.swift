@@ -1753,7 +1753,7 @@ class PNGEncoder
 }
 
 public
-func decode_png(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> ([UInt8], PNGProperties)
+func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> ([UInt8], PNGProperties)
 {
     guard let stream:FilePointer = fopen(posix_path(path), "rb")
     else
@@ -1802,7 +1802,7 @@ func decode_png(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
 }
 
 public
-func encode_png(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
     guard raw_data.count == (properties.interlaced ? properties.interlaced_data_size : properties.noninterlaced_data_size)
     else
