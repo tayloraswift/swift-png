@@ -6,7 +6,7 @@ A normalized color unit consisting of four color samples.
 
 ------
 
-## Symbols 
+## Symbols
 
 ### Initializers
 
@@ -14,7 +14,7 @@ A normalized color unit consisting of four color samples.
 
 > Creates an instance with the given sample values.
 
-### Instance properties 
+### Instance properties
 
 #### `let r:Sample`
 
@@ -36,11 +36,21 @@ A normalized color unit consisting of four color samples.
 
 > A textual description of the RGBA color.
 
-### Operator functions 
+### Operator functions
 
-#### `static func == (_ lhs:RGBA<Sample>, _ rhs:RGBA<Sample>) -> Bool`
+#### `static func == (_ lhs:`[`RGBA`](rgba.md)`<Sample>, _ rhs:`[`RGBA`](rgba.md)`<Sample>) -> Bool`
 
 > Returns a Boolean value indicating whether all four samples in each of two RGBA colors are equal.
+
+### Extensions
+
+#### `var premultiplied:`[`RGBA`](rgba.md)`<UInt8> { get }`
+
+> Returns a copy of the instance with premultiplied alpha. Only available when `Sample` is `UInt8`.
+
+#### `var premultiplied:`[`RGBA`](rgba.md)`<UInt16> { get }`
+
+> Returns a copy of the instance with premultiplied alpha. Only available when `Sample` is `UInt16`.
 
 ## Relationships
 
@@ -48,6 +58,6 @@ A normalized color unit consisting of four color samples.
 
 #### `Sample:`[`UnsignedInteger`](https://developer.apple.com/reference/swift/unsignedinteger)
 
-### Conforms to 
+### Conforms to
 
 #### [`Equatable`](https://developer.apple.com/reference/swift/equatable), [`CustomStringConvertible`](https://developer.apple.com/reference/swift/customstringconvertible)
