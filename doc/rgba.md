@@ -62,11 +62,11 @@ A normalized color unit consisting of four color samples.
 
 #### `var argb32:UInt32 { get }`
 
-> Returns the RGBA color encoded as a 32 bit unsigned integer. The alpha sample lives in the 8 most significant bits, followed by the red sample, the green sample, and then the blue sample. This value is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. Only available when `Sample` is `UInt8`.
+> Returns the RGBA color encoded as a 32 bit unsigned integer. The alpha sample lives in the 8 most significant bits, followed by the red sample, the green sample, and then the blue sample. This value is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. This computed property does *not* premultiply alpha; use it in combination with the [`premultiplied`](#var-premultipliedrgbauint8--get-) property to perform both operations. Only available when `Sample` is `UInt8`.
 
 #### `var argb64:UInt64 { get }`
 
-> Returns the RGBA color encoded as a 64 bit unsigned long integer. The alpha sample lives in the 16 most significant bits, followed by the red sample, the green sample, and then the blue sample. This value is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. Only available when `Sample` is `UInt16`.
+> Returns the RGBA color encoded as a 64 bit unsigned long integer. The alpha sample lives in the 16 most significant bits, followed by the red sample, the green sample, and then the blue sample. This value is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. This computed property does *not* premultiply alpha; use it in combination with the [`premultiplied`](#var-premultipliedrgbauint16--get-) property to perform both operations. Only available when `Sample` is `UInt16`.
 
 ## Relationships
 
