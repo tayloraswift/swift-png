@@ -6,9 +6,15 @@
 [![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/LICENSE.gpl3)
 [![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
 
-**MaxPNG** is written in *pure Swift* with the exception of one dependency on the `zlib` C library, the standard Linux compression library. MaxPNG does not reference or use Apple’s Foundation library.
+An efficient, powerful, safe, and free PNG library, written in pure Swift. MaxPNG is 
 
-MaxPNG is simple to use:
+### *…modern*
+
+MaxPNG is written in pure Swift, and it has a dependency on just a single C library — [zlib](http://www.zlib.net/). MaxPNG makes no reference to slow, legacy Objective C frameworks, in fact, it doesn’t even import Foundation. You get the benefit of a comfortable Swift API, without the overhead of aging Apple frameworks. MaxPNG is actively maintained, and builds on the latest Swift 3.1.
+
+### *…easy to use*
+
+Decode or encode a PNG file in just one function call.
 
 ````swift
 import MaxPNG
@@ -16,22 +22,22 @@ import MaxPNG
 let (png_raw_data, png_properties):([UInt8], PNGProperties) = try png_decode(path: "my_png_file.png")
 ````
 
-You can also use it to create your own PNG files:
 ````swift
-import MaxPNG
-
 let my_png_settings = PNGProperties(width: 3, height: 3, bit_depth: 8, color: .rgb, interlaced: false)
 let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
                            255,255,255,    0  ,0  ,0  ,    0  ,255,0  ,
                            120,120,255,    150,120,255,    180,120,255]
 try png_encode(path: "my_output_png.png", raw_data: my_png_data, properties: my_png_settings)
 ````
+MaxPNG’s entire public API is [documented](doc/maxpng.md).
 
-MaxPNG also provides a progressive API that reads and writes PNGs scanline by scanline.
+MaxPNG is batteries-included, providing several utility [functions](doc/pngproperties.md#instance-methods) that will deinterlace and normalize image data, turning any PNG file into an array of RGBA samples. In most cases, MaxPNG’s default output can even be sent directly to a graphics API such as OpenGL.
+
+### *…powerful*
+
+MaxPNG includes a progressive API that reads and writes PNGs scanline by scanline, allowing you to process enormous PNG files. The progressive decoder and encoder objects also clean up after themselves, so you never have to worry about closing file streams or managing zlib internal state.
 
 ````swift
-import MaxPNG
-
 let png = try PNGDecoder(path: "my_png_file.png")
 let out = try PNGEncoder(path: "my_resaved_png.png", properties: png.properties)
 
@@ -41,74 +47,13 @@ while let scanline = try png.next_scanline()
 }
 try out.finish()
 ````
+### *…safe*
 
-Resource management is as Swifty as it made sense to be; most resources will be released when MaxPNG’s objects are deinitialized, but if you are writing PNGs, you must always call `PNGEncoder.finish()`, or else the PNG file you’re writing to won’t get closed properly. (It’ll also be missing its `IEND` chunk which would be bad.) If for some reason you want to deallocate the inflator/deflator structs early, just force the encoder or decoder object out of scope by rebinding its variable to `nil` as you would for any other Swift object.
+MaxPNG is written in pure Swift, and so it should behave like a Swift library. Its decoder is fully standards-compliant, passing all 161 official PNG [unit tests](http://www.schaik.com/pngsuite/pngsuite.html#basic), among others. It supports interlacing, indexed color, and even chroma key transparency. MaxPNG also throws [errors](doc/pngerrors.md) like a Swift library should, minimizing the chance that you’ll end up with a corrupt PNG.
 
-MaxPNG provides the PNG’s formatting information in the `PNGProperties` struct which is returned by the contiguous decoder function `png_decode(path:recognizing:)`, and provided as a member `.properties` on the progressive decoder class `PNGDecoder`. These property structures are similarly taken as parameters by the contiguous encoder function `png_encode(path:raw_data:properties:)` and the progressive encoder class initializer `PNGEncoder.init(path:properties:)`.
+### *…free*
 
-````swift
-struct PNGProperties
-{
-    enum ColorType:Int
-    {
-        case grayscale      = 0,
-             rgb            = 2,
-             indexed        = 3,
-             grayscale_a    = 4,
-             rgba           = 6
-    }
-
-    let color:ColorType,
-        width:Int,
-        height:Int,
-        bit_depth:Int
-        interlaced:Bool
-
-    let channels:Int
-
-    private(set)
-    var palette:[RGBA<UInt8>]?,
-        chroma_key:RGBA<UInt16>?
-
-    var quantum16:UInt16 { get }
-
-    let sub_dimensions:[(width:Int, height:Int)]
-
-    var deinterlaced_properties:PNGProperties { get }
-
-    mutating
-    func set_palette(_ palette:[RGBA<UInt8>]) -> Void
-}
-````
-
-The `PNGProperties` structure also includes several useful utility functions for processing PNG image data.
-
-````swift
-    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
-
-    func deinterlace(raw_data:[UInt8]) -> [UInt8]?
-
-    /* NOT IMPLEMENTED
-    func grayscale8(raw_data:[UInt8]) -> [UInt8]
-    func argb32(raw_data:[UInt8]) -> [UInt32]
-    */
-
-    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]?
-
-    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
-````
-
-The latter two functions widen raw PNG scanlines into normalized 32 bit and 64 bit RGBA structures. These structures should not be used for interfacing with graphics API’s such as OpenGL; by design, MaxPNG’s raw `[UInt8]` output is compatible with OpenGL. The function `argb32(raw_data:)` (not yet implemented) will be designed to work with the [Cairo API](https://www.cairographics.org/manual/cairo-Image-Surfaces.html).
-
-````swift
-struct RGBA<Pixel:UnsignedInteger>:Equatable
-{
-    let r:Pixel,
-        g:Pixel,
-        b:Pixel,
-        a:Pixel
-}
-````
+MaxPNG was built on Linux, and developed on github from the start. It has nothing to do with Apple, or any Apple framework, even Foundation. I created it because there was [no existing, maintained](#swift-png-parser) open source Swift PNG library.
 
 ## FAQ
 
@@ -133,7 +78,7 @@ Use `PNGProperties`’s member function `.deinterlace(raw_data:)`.
 ````swift
 PNGProperties › func deinterlace(raw_data:[UInt8]) -> [UInt8]?
 ````
-The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color type parameters passed through the `PNGProperties` struct.
+The scanlines passed in the scanline array must be in [ADAM7 order](https://en.wikipedia.org/wiki/Adam7_algorithm), and their sizes must agree with the bit depth and color format parameters passed through the `PNGProperties` struct.
 
 ### General
 
@@ -145,7 +90,7 @@ Cause it either a) doesn’t work in Swift, or b) it actually does work but the 
 
 ZLib is a standard compression/decompression library that is installed by default on most Linux systems. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure Swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.) For me, using ZLib sounded like a lot less work so I went with that.
 
-> Why does MaxPNG decode my pictures line-by-line?
+> What is the progressive API good for?
 
 Some PNGs are so large that loading them into your RAM will make you very sad. These PNGs are not meant to be viewed, rather processed as data for other purposes. (Think satellite scan data.) Reading them line by line avoids this problem by letting you stream the picture in and out of your program while you do your thing (such as downsampling them to something small enough that you *can* view on your screen). At any rate, if you really want the entire image, you can just dump the scanline buffers into one big buffer if you have the memory.
 
@@ -163,7 +108,7 @@ No. Gamma is meant to be applied at the image *display* stage. MaxPNG only gives
 
 > Can I add extra chunks to my PNG output?
 
-At the moment, no, MaxPNG only supports writing bare image data to disk.
+At the moment, no. MaxPNG currently only writes the basic `IHDR`, `IDAT`, `IEND` chunks, and the `PLTE` and `tRNS` chunks if applicable.
 
 > I hate maxpng isnt there any other png encoder/decoder out there i stg
 
