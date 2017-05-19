@@ -35,7 +35,7 @@ func normalize_deinterlace(path:String, log:inout [String]) -> ([UInt8], PNGProp
     let (png_raw_data, properties):([UInt8], PNGProperties)
     do
     {
-        (png_raw_data, properties) = try decode_png(path: path, recognizing: [.IDAT, .tRNS])
+        (png_raw_data, properties) = try png_decode(path: path, recognizing: [.IDAT, .tRNS])
     }
     catch
     {
@@ -228,7 +228,7 @@ let tests:[(String, [String], TestFunc)] =
 [
     ("rgba32", decode_test_cases, rgba32_64_test),
     ("decode-unit", decode_test_cases, decode_test),
-    ("reencode-unit", decode_test_cases, test_reencode_unit_png), 
+    ("reencode-unit", decode_test_cases, test_reencode_unit_png),
     ("decompose", ["decompose1"], test_decompose(test_name:log:)),
     ("reencode", ["becky palatte", "taylor", "if red got the grammy", "wildest dreams adam7"], test_reencode_wild_png),
     ("progressive", ["becky palatte", "taylor", "wildest dreams adam7", "if red got the grammy"], test_progressive)
