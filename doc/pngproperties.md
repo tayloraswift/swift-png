@@ -16,7 +16,15 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `init?(width:Int, height:Int, bit_depth:Int, color:ColorType, interlaced:Bool)`
 
-> Initialize and validate an instance with the given value, producing `nil` if the values are invalid (for example, a mismatched `color` format and `bit_depth` value).
+> Initialize and validate an instance with the given value, producing `nil` if the values are invalid (for example, a mismatched `color` format and `bit_depth` value). The following are valid `color` and `bit_depth` format values.
+        
+>| Color format  | Allowed bit depths |
+>| ------------- | ------------- |
+>| [`grayscale`](pngproperties_colorformat.md#case-grayscale--0)  | `1`, `2`, `4`, `8`, `16` |
+>| [`rgb`](pngproperties_colorformat.md#case-rgb--2)  | `8`, `16` |
+>| [`indexed`](pngproperties_colorformat.md#case-indexed--3)  | `1`, `2`, `4`, `8`  |
+>| [`grayscale_a`](pngproperties_colorformat.md#case-grayscale_a--4)  | `8`, `16`  |
+>| [`rgba`](pngproperties_colorformat.md#case-rgba--6)  | `8`, `16`  |
 
 ### Instance properties
 
@@ -100,7 +108,11 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 #### `func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]?`
 
-> Takes the given `raw_data` and assembles it into an array of 32 bit unsigned integers. The alpha sample lives in the 8 most significant bits, followed by the red sample, the green sample, and then the blue sample. The samples are normalized to the range `0 ... 255`. This buffer is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image. If the image was of an [`indexed`](pngproperties_colorformat.md#case-indexed--3) color format, this function will look up the appropriate entry in the image [`palette`](#var-palettergbauint8--get-). If the palette entry, or the palette itself does not exist, this function returns `nil`. Unlike the [`rgba32(raw_data:)`](#func-rgba32raw_datauint8---rgbauint8) function, this function will succeed even if the image [`bit_depth`](#let-bit_depthint) is greater than 8; the sample is divided by 256 and the 8 least significant bits of information are lost.
+> Takes the given `raw_data` and assembles it into an array of 32 bit unsigned integers. The alpha sample lives in the 8 most significant bits, followed by the red sample, the green sample, and then the blue sample. The red, green, and blue samples are premultiplied with the alpha according to this formula:
+
+>     premultiplied_sample = (sample * (alpha + 1)) >> 8
+
+> The samples are normalized to the range `0 ... 255`. This buffer is [compatible](https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t) with the Cairo graphics library, independent of endianess. The input data must be deinterlaced if it was originally interlaced, or this function will produce incorrect output. This function will return `nil` if the length of the input buffer does not match the expected data size of the image. If the image was of an [`indexed`](pngproperties_colorformat.md#case-indexed--3) color format, this function will look up the appropriate entry in the image [`palette`](#var-palettergbauint8--get-). If the palette entry, or the palette itself does not exist, this function returns `nil`. Unlike the [`rgba32(raw_data:)`](#func-rgba32raw_datauint8---rgbauint8) function, this function will succeed even if the image [`bit_depth`](#let-bit_depthint) is greater than 8; the sample is divided by 256 and the 8 least significant bits of information are lost.
 
 ## Relationships
 
