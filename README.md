@@ -29,9 +29,9 @@ let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
                            120,120,255,    150,120,255,    180,120,255]
 try png_encode(path: "my_output_png.png", raw_data: my_png_data, properties: my_png_settings)
 ````
-MaxPNG’s entire public API is [documented](doc/maxpng.md).
+**MaxPNG’s entire public API is [documented](doc/maxpng.md).**
 
-MaxPNG is batteries-included, providing several utility [functions](doc/pngproperties.md#instance-methods) that will deinterlace and normalize image data, turning any PNG file into an array of RGBA samples. In most cases, MaxPNG’s default output can even be sent directly to a graphics API such as OpenGL.
+MaxPNG is batteries-included, providing several utility [functions](doc/pngproperties.md#instance-methods) that will deinterlace and normalize image data, turning any PNG file into an array of RGBA samples. In most cases, MaxPNG’s default output can be sent directly to a graphics API such as OpenGL. MaxPNG even includes functions to premultiply image alpha, and format data buffers that can be sent to the [Cairo graphics library](https://cairographics.org/).
 
 ### *…powerful*
 
@@ -88,7 +88,7 @@ Cause it either a) doesn’t work in Swift, or b) it actually does work but the 
 
 > Why does it depend on `zlib` then?
 
-ZLib is a standard compression/decompression library that is installed by default on most Linux systems. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure Swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.) For me, using ZLib sounded like a lot less work so I went with that.
+ZLib is a standard compression/decompression library that is installed by default on most Linux systems. Although it is written in C library, it is wrapped by almost every major programming language including Java and Python. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure Swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.)
 
 > What is the progressive API good for?
 

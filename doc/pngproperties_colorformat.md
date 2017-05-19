@@ -17,7 +17,7 @@ The five PNG color formats, as defined in the [PNG standard](http://www.libpng.o
 > Each pixel is a red, green, and blue triple.
 
 #### `case indexed = 3`
-> Each pixel is a palette index and a [`PLTE`](pngchunk.md#case-PLTE) chunk must appear.
+> Each pixel is a palette index and a [`PLTE`](pngchunk.md#case-plte) chunk must appear.
 
 #### `case grayscale_a = 4`
 > Each pixel is a grayscale sample, followed by an alpha sample.
