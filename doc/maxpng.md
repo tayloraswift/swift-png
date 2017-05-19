@@ -12,11 +12,11 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 ### Free functions
 
 
-#### `func `[`png_decode`](functions.md#png_decode)`(path:String, recognizing recognized:Set<`[`PNGChunk`](pngchunk.md)`>)`
+#### `func `[`png_decode`](png_decode.md)`(path:String, recognizing recognized:Set<`[`PNGChunk`](pngchunk.md)`>)`
 
 > Decompress, decode, and validate the raw pixel contents of a PNG file, without performing deinterlacing or deindexing.
 
-#### `func `[`png_encode`](functions.md#png_encode)`(path:String, raw_data:[UInt8], properties:`[`PNGProperties`](pngproperties.md)`, chunk_size:Int) throws`
+#### `func `[`png_encode`](png_encode.md)`(path:String, raw_data:[UInt8], properties:`[`PNGProperties`](pngproperties.md)`, chunk_size:Int) throws`
 
 > Compress, encode, validate, and write the contents of a raw pixel buffer to a PNG file.
 
