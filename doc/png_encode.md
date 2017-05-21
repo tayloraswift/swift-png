@@ -6,10 +6,12 @@ Compress, encode, validate, and write the contents of a raw pixel buffer to a PN
 
 ------
 
-## Declaration
+## Declarations
 
 ````swift
 png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = 65536) throws
+
+png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNGProperties, chunk_size:Int = 65536) throws
 ````
 
 ## Discussion

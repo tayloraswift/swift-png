@@ -20,6 +20,10 @@ Efficiently decode, validate, and encode image data stored in the PNG format, an
 
 > Compress, encode, validate, and write the contents of a raw pixel buffer to a PNG file.
 
+#### `func `[`png_encode`](png_encode.md)`(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:`[`PNGProperties`](pngproperties.md)`, chunk_size:Int) throws`
+
+> Compress, encode, validate, and write the contents of a raw pixel buffer to a PNG file.
+
 ### Structures
 
 #### `struct` [`RGBA`](rgba.md)
