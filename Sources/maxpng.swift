@@ -368,19 +368,7 @@ struct PNGProperties:CustomStringConvertible
     // other chunks
     public private(set)
     var palette:[RGBA<UInt8>]?,
-        chroma_key:RGBA<UInt16>?//,
-    /*
-        chromaticity:Chromaticity?,
-        gamma:UInt32?
-        profile:ColorProfile?
-        sBIT:Int?
-        sRGB:RenderingIntent?
-        bKGD:ColorKey
-        hIST:[UInt16],
-        pHYs:PhysicalSize,
-        sPLT:SuggestedPalatte,
-        tIME:Time,
-    */
+        chroma_key:RGBA<UInt16>?
 
     public
     let sub_dimensions:[(width:Int, height:Int)]
@@ -1949,7 +1937,7 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
 }
 
 public
-func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
     guard raw_data.count == (properties.interlaced ? properties.interlaced_data_size : properties.noninterlaced_data_size)
     else
@@ -1969,32 +1957,36 @@ func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_s
 
     let zero_line:[UInt8]      = scanline_iter.make_zero_line()
 
-    try raw_data.withUnsafeBufferPointer
+    var offset:Int = 0
+    var reference_line:UnsafeBufferPointer<UInt8>?
+    while scanline_iter.update_scanline_size()
     {
-        bp in
-
-        var offset:Int = 0
-        var reference_line:UnsafeBufferPointer<UInt8>?
-        while scanline_iter.update_scanline_size()
+        let src = UnsafeBufferPointer<UInt8>(start: raw_data.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
+        if scanline_iter.first_scanline
         {
-            let src = UnsafeBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
-            if scanline_iter.first_scanline
-            {
-                encoder.filter_scanline(src: src, reference: zero_line)
-            }
-            else
-            {
-                encoder.filter_scanline(src: src, reference: reference_line!)
-            }
-
-            reference_line = src
-            offset += scanline_iter.bytes_per_scanline
-
-            try encoder.compress_scanline(stream: stream, finish: false)
+            encoder.filter_scanline(src: src, reference: zero_line)
         }
+        else
+        {
+            encoder.filter_scanline(src: src, reference: reference_line!)
+        }
+
+        reference_line = src
+        offset += scanline_iter.bytes_per_scanline
+
+        try encoder.compress_scanline(stream: stream, finish: false)
     }
 
     try encoder.finish(stream: stream)
+}
+
+public
+func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+{
+    try raw_data.withUnsafeBufferPointer
+    {
+        try png_encode(path: path, raw_data: $0, properties: properties, chunk_size: chunk_size)
+    }
 }
 
 class ZIterator
