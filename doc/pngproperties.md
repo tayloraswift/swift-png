@@ -86,6 +86,22 @@ The non-pixel image data associated with a PNG file, as specified in the PNG sta
 
 > Sets the image [`chroma_key`](#var-chroma_keyrgbauint16--get-) to the given value. The alpha sample is ignored and set to `UInt16.max`. If the image is not of an opaque [`color`](#let-colorpngpropertiescolorformat) format, the chroma key will still be set, but it will be ignored by the encoder and all other utility functions.
 
+#### `func make_interlaced_buffer(initialized_to repeated_value:UInt8) -> [UInt8]`
+
+> *[Since: 2.1]* Creates an empty buffer with the right size to fit an interlaced image of width [`width`](#var-widthint--get-) and height [`height`](#var-heightint--get-). All entries are initialized to `repeated_value`.
+
+#### `func make_interlaced_buffer() -> [UInt8]`
+
+> *[Since: 2.1]* Creates an empty buffer with the right size to fit an interlaced image of width [`width`](#var-widthint--get-) and height [`height`](#var-heightint--get-). All entries are initialized to 0.
+
+#### `func make_noninterlaced_buffer(initialized_to repeated_value:UInt8) -> [UInt8]`
+
+> *[Since: 2.1]* Creates an empty buffer with the right size to fit a non-interlaced image of width [`width`](#var-widthint--get-) and height [`height`](#var-heightint--get-). All entries are initialized to `repeated_value`.
+
+#### `func make_noninterlaced_buffer() -> [UInt8]`
+
+> *[Since: 2.1]* Creates an empty buffer with the right size to fit an non-interlaced image of width [`width`](#var-widthint--get-) and height [`height`](#var-heightint--get-). All entries are initialized to 0.
+
 #### `func decompose(raw_data:[UInt8]) -> [([UInt8], `[`PNGProperties`](pngproperties.md)`)]?`
 
 > Takes the given `raw_data` and extracts the seven ADAM7 subimage buffers from it, along with appropriate [`PNGProperties`](pngproperties.md) structures for each subimage. If the length of the input buffer is not the correct ADAM7 length, this function returns `nil`.
