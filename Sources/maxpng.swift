@@ -646,6 +646,30 @@ struct PNGProperties:CustomStringConvertible
     }
 
     public
+    func make_interlaced_buffer(initialized_to repeated_value:UInt8) -> [UInt8]
+    {
+        return [UInt8](repeating: repeated_value, count: self.interlaced_data_size)
+    }
+
+    public
+    func make_interlaced_buffer() -> [UInt8]
+    {
+        return self.make_interlaced_buffer(initialized_to: 0)
+    }
+
+    public
+    func make_noninterlaced_buffer(initialized_to repeated_value:UInt8) -> [UInt8]
+    {
+        return [UInt8](repeating: repeated_value, count: self.noninterlaced_data_size)
+    }
+
+    public
+    func make_noninterlaced_buffer() -> [UInt8]
+    {
+        return self.make_noninterlaced_buffer(initialized_to: 0)
+    }
+
+    public
     func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
     {
         guard raw_data.count == self.interlaced_data_size
@@ -1885,6 +1909,21 @@ class PNGEncoder
     {
         try self.encoder.finish(stream: self.stream)
     }
+}
+
+public
+func rgba_from_argb32(_ argb32:[UInt32]) -> [UInt8]
+{
+    var rgba:[UInt8] = []
+    rgba.reserveCapacity(argb32.count * 4)
+    for argb in argb32
+    {
+        rgba.append(UInt8(truncatingBitPattern: argb >> 16))
+        rgba.append(UInt8(truncatingBitPattern: argb >> 8 ))
+        rgba.append(UInt8(truncatingBitPattern: argb      ))
+        rgba.append(UInt8(truncatingBitPattern: argb >> 24))
+    }
+    return rgba
 }
 
 public

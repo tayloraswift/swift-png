@@ -6,7 +6,9 @@
 [![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/LICENSE.gpl3)
 [![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
 
-An efficient, powerful, safe, and free PNG library, written in pure Swift. MaxPNG is 
+<img align="right" src="max.png">
+
+An efficient, powerful, safe, and free PNG library, written in pure Swift. MaxPNG is
 
 ### *…modern*
 
