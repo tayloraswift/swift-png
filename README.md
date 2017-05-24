@@ -1,5 +1,7 @@
 # maxpng
 
+[![Platforms](https://img.shields.io/badge/platform-linux-lightgrey.svg)](https://developer.apple.com/swift/)
+[![Release tag](https://img.shields.io/github/release/kelvin13/maxpng.svg)](https://github.com/kelvin13/maxpng/releases)
 [![Build](https://travis-ci.org/kelvin13/maxpng.svg?branch=master)](https://travis-ci.org/kelvin13/maxpng)
 [![Issues](https://img.shields.io/github/issues/kelvin13/maxpng.svg)](https://github.com/kelvin13/maxpng/issues?state=open)
 [![Language](https://img.shields.io/badge/version-swift_3-ffa020.svg)](https://developer.apple.com/swift)
@@ -91,6 +93,10 @@ Cause it either a) doesn’t work in Swift, or b) it actually does work but the 
 > Why does it depend on `zlib` then?
 
 ZLib is a standard compression/decompression library that is installed by default on most Linux systems. Although it is written in C library, it is wrapped by almost every major programming language including Java and Python. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure Swift, `INFLATE` algorithm. (Be warned though, it doesn’t compile on Swift ≥3.1.)
+
+> Does MaxPNG work on Mac OSX?
+
+I don’t know as I have never tried building it on OSX, but there’s no reason it shouldn’t unless Zlib and the C standard library aren’t present. `import Glibc` may need to be replaced with `import Darwin`.
 
 > What is the progressive API good for?
 
