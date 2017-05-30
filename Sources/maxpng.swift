@@ -1287,11 +1287,6 @@ struct ScanlineIterator
         return true
     }
 
-    func make_zero_line() -> [UInt8]
-    {
-        return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlaced ? 6 : 7].j) // the most zeros we will ever need
-    }
-
     func make_unmanaged_zero_line() -> UnsafeBufferPointer<UInt8>
     {
         let n:Int = self.sub_array_bounds[self.interlaced ? 6 : 7].j
@@ -1859,7 +1854,7 @@ class PNGEncoder
         reference_line:[UInt8] = []
 
     private
-    let zero_line:[UInt8]
+    let zero_line:UnsafeBufferPointer<UInt8>
 
     public
     init(path:String, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
@@ -1875,11 +1870,12 @@ class PNGEncoder
 
         self.encoder       = try Encoder(stream: self.stream, properties: properties, chunk_size: chunk_size)
         self.scanline_iter = ScanlineIterator(properties: properties)
-        self.zero_line     = self.scanline_iter.make_zero_line()
+        self.zero_line     = self.scanline_iter.make_unmanaged_zero_line()
     }
 
     deinit
     {
+        UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
         fclose(self.stream)
     }
 
@@ -1894,7 +1890,19 @@ class PNGEncoder
 
         src.withUnsafeBufferPointer
         {
-            self.encoder.filter_scanline(src: $0, reference: self.scanline_iter.first_scanline ? self.zero_line : self.reference_line)
+            bp in
+
+            if self.scanline_iter.first_scanline
+            {
+                self.encoder.filter_scanline(src: bp, reference: self.zero_line)
+            }
+            else
+            {
+                self.reference_line.withUnsafeBufferPointer
+                {
+                    self.encoder.filter_scanline(src: bp, reference: $0)
+                }
+            }
         }
 
         self.reference_line = src
@@ -1994,21 +2002,23 @@ func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNG
     var encoder:Encoder                = try Encoder(stream: stream, properties: properties, chunk_size: chunk_size),
         scanline_iter:ScanlineIterator = ScanlineIterator(properties: properties)
 
-    let zero_line:[UInt8]      = scanline_iter.make_zero_line()
-
     var offset:Int = 0
-    var reference_line:UnsafeBufferPointer<UInt8>?
+    let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
+    defer
+    {
+        UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+    }
+
+    var reference_line:UnsafeBufferPointer<UInt8> = zero_line
     while scanline_iter.update_scanline_size()
     {
         let src = UnsafeBufferPointer<UInt8>(start: raw_data.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
         if scanline_iter.first_scanline
         {
-            encoder.filter_scanline(src: src, reference: zero_line)
+            reference_line = zero_line
         }
-        else
-        {
-            encoder.filter_scanline(src: src, reference: reference_line!)
-        }
+
+        encoder.filter_scanline(src: src, reference: reference_line)
 
         reference_line = src
         offset += scanline_iter.bytes_per_scanline
