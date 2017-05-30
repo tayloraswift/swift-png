@@ -1,5 +1,5 @@
 import Glibc
-@testable import MaxPNG
+import MaxPNG
 
 let bold = "\u{001B}[1m"
 let green = "\u{001B}[0;32m"
@@ -19,6 +19,26 @@ let pink_bold = "\u{001B}[1m\u{001B}[38;5;204m"
 let color_off = "\u{001B}[0m"
 
 let TERM_WIDTH:Int = 72
+
+// duplicate of the internal library function, copied so we can test with release config,
+// and not have it exposed as part of the public API
+func posix_path(_ path:String) -> String
+{
+    guard let first_char:Character = path.characters.first
+    else
+    {
+        return path
+    }
+    var expanded_path:String = path
+    if first_char == "~"
+    {
+        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        {
+            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
+        }
+    }
+    return expanded_path
+}
 
 func normalize_and_compare(path_png:String, path_rgba:String, log:inout [String]) -> Bool
 {
@@ -61,7 +81,7 @@ func normalize_deinterlace(path:String, log:inout [String]) -> ([UInt8], PNGProp
 
 func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
 {
-    guard let stream:FilePointer = fopen(posix_path(path), "rb")
+    guard let stream:UnsafeMutablePointer<FILE> = fopen(posix_path(path), "rb")
     else
     {
         fatalError("Failed to read rgba file '\(posix_path(path))'")
