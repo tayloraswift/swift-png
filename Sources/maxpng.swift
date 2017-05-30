@@ -1291,6 +1291,14 @@ struct ScanlineIterator
     {
         return [UInt8](repeating: 0, count: self.sub_array_bounds[self.interlaced ? 6 : 7].j) // the most zeros we will ever need
     }
+
+    func make_unmanaged_zero_line() -> UnsafeBufferPointer<UInt8>
+    {
+        let n:Int = self.sub_array_bounds[self.interlaced ? 6 : 7].j
+        let base_address = UnsafeMutablePointer<UInt8>.allocate(capacity: n)
+        base_address.initialize(to: 0, count: n)
+        return UnsafeBufferPointer<UInt8>(start: base_address, count: n)
+    }
 }
 
 struct Decoder
@@ -1304,11 +1312,6 @@ struct Decoder
 
     private
     let z_iterator:ZInflator
-
-    /*
-    public private(set)
-    var palette:[(r: Int, g: Int, b: Int)]? = nil // not implemented
-    */
 
     public
     init(stream:FilePointer, recognizing recognized:Set<PNGChunk>) throws
@@ -1419,8 +1422,7 @@ struct Decoder
 
     // make NO assumptions about the `.count` property of the reference line;
     // it is often greater than the size of the actual data
-    func defilter_scanline<ReferenceLine:Collection>(dest:UnsafeMutableBufferPointer<UInt8>, reference:ReferenceLine, filter:UInt8)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func defilter_scanline(dest:UnsafeMutableBufferPointer<UInt8>, reference:UnsafeBufferPointer<UInt8>, filter:UInt8)
     {
         switch filter
         {
@@ -1449,8 +1451,7 @@ struct Decoder
     }
 
     private static
-    func defilter_up<ReferenceLine:Collection>(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:ReferenceLine)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func defilter_up(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:UnsafeBufferPointer<UInt8>)
     {
         for i in 0..<buffer.count
         {
@@ -1459,8 +1460,7 @@ struct Decoder
     }
 
     private static
-    func defilter_average<ReferenceLine:Collection>(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:ReferenceLine, bpp:Int)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func defilter_average(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
     {
         for i in 0..<bpp
         {
@@ -1474,8 +1474,7 @@ struct Decoder
     }
 
     private static
-    func defilter_paeth<ReferenceLine:Collection>(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:ReferenceLine, bpp:Int)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func defilter_paeth(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
     {
         for i in 0..<bpp
         {
@@ -1586,7 +1585,7 @@ class PNGDecoder
         reference_line:[UInt8] = []
 
     private
-    let zero_line:[UInt8]
+    let zero_line:UnsafeBufferPointer<UInt8>
 
     public
     var properties:PNGProperties { return self.decoder.properties }
@@ -1605,11 +1604,12 @@ class PNGDecoder
 
         self.decoder        = try Decoder(stream: stream, recognizing: recognized)
         self.scanline_iter  = ScanlineIterator(properties: self.decoder.properties)
-        self.zero_line      = self.scanline_iter.make_zero_line()
+        self.zero_line      = self.scanline_iter.make_unmanaged_zero_line()
     }
 
     deinit
     {
+        UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
         fclose(self.stream)
     }
 
@@ -1630,10 +1630,7 @@ class PNGDecoder
             let filter:UInt8 = try self.decoder.decompress_scanline(stream: self.stream, dest: bp)
             if self.scanline_iter.first_scanline
             {
-                self.zero_line.withUnsafeBufferPointer
-                {
-                    self.decoder.defilter_scanline(dest: bp, reference: $0, filter: filter)
-                }
+                self.decoder.defilter_scanline(dest: bp, reference: self.zero_line, filter: filter)
             }
             else
             {
@@ -1911,6 +1908,7 @@ class PNGEncoder
     }
 }
 
+// UNDOCUMENTED
 public
 func rgba_from_argb32(_ argb32:[UInt32]) -> [UInt8]
 {
@@ -1939,8 +1937,6 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
     var decoder:Decoder                = try Decoder(stream: stream, recognizing: recognized),
         scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties)
 
-    let zero_line:[UInt8]              = scanline_iter.make_zero_line()
-
     let buffer_size:Int = decoder.properties.interlaced ?
                                 decoder.properties.interlaced_data_size :
                                 decoder.properties.noninterlaced_data_size
@@ -1951,7 +1947,13 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
         (bp) in
 
         var offset:Int = 0
-        var reference_line:UnsafeBufferPointer<UInt8>?
+        let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
+        defer
+        {
+            UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+        }
+
+        var reference_line:UnsafeBufferPointer<UInt8> = zero_line
         while scanline_iter.update_scanline_size()
         {
             let dest = UnsafeMutableBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
@@ -1960,12 +1962,10 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
             let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
             if scanline_iter.first_scanline
             {
-                decoder.defilter_scanline(dest: dest, reference: zero_line, filter: filter)
+                reference_line = zero_line
             }
-            else
-            {
-                decoder.defilter_scanline(dest: dest, reference: reference_line!, filter: filter)
-            }
+
+            decoder.defilter_scanline(dest: dest, reference: reference_line, filter: filter)
 
             reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
             offset += scanline_iter.bytes_per_scanline
