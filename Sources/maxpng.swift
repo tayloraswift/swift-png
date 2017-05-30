@@ -2123,7 +2123,8 @@ func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_s
 class ZIterator
 {
     var stream:z_stream_s
-    var input_ref:[UInt8] = [] // strongref the input buffer to prevent it from being deallocated prematurely
+    // strongref the input buffer to prevent it from being deallocated prematurely
+    var input_buffer:[UInt8] = []
 
     init() throws
     {
@@ -2138,9 +2139,9 @@ class ZIterator
     final
     func add_input(_ input:[UInt8])
     {
-        self.input_ref       = input
+        self.input_buffer    = input
         self.stream.avail_in = UInt32(input.count)
-        self.stream.next_in  = UnsafeMutablePointer<UInt8>(mutating: self.input_ref)
+        //self.stream.next_in  = UnsafeMutablePointer<UInt8>(mutating: self.input_ref) // this is memory-unsafe since it could still get deallocated
     }
 
     final
@@ -2179,7 +2180,13 @@ class ZInflator : ZIterator
         self.stream.avail_out = 1
         self.stream.next_out = _byte
 
-        let inflate_status:Int32 = inflate(&self.stream, Z_NO_FLUSH)
+        var inflate_status:Int32 = 0
+        self.input_buffer.withUnsafeMutableBufferPointer
+        {
+            self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
+            inflate_status       = inflate(&self.stream, Z_NO_FLUSH)
+        }
+
         assert(inflate_status != Z_STREAM_ERROR) // this should never happen
         switch inflate_status
         {
@@ -2206,7 +2213,13 @@ class ZInflator : ZIterator
 
     func get_output_bytes(sentinel:inout Bool) throws -> UInt32
     {
-        let inflate_status:Int32 = inflate(&self.stream, Z_NO_FLUSH)
+        var inflate_status:Int32 = 0
+        self.input_buffer.withUnsafeMutableBufferPointer
+        {
+            self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
+            inflate_status       = inflate(&self.stream, Z_NO_FLUSH)
+        }
+
         assert(inflate_status != Z_STREAM_ERROR) // this should never happen
         switch inflate_status
         {
@@ -2246,7 +2259,13 @@ class ZDeflator : ZIterator
 
     func get_output(sentinel:inout Bool, finish:Bool) throws -> UInt32
     {
-        let deflate_status:Int32 = deflate(&stream, finish ? Z_FINISH : Z_NO_FLUSH)
+        var deflate_status:Int32 = 0
+        self.input_buffer.withUnsafeMutableBufferPointer
+        {
+            self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
+            deflate_status       = deflate(&self.stream, finish ? Z_FINISH : Z_NO_FLUSH)
+        }
+
         assert(deflate_status != Z_STREAM_ERROR) // this should never happen
 
         sentinel = deflate_status == Z_STREAM_END
