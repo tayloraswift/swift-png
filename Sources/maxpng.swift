@@ -1978,9 +1978,19 @@ func png_decode_unmanaged(path:String, recognizing recognized:Set<PNGChunk> = Se
     defer { fclose(stream) }
 
     var decoder:Decoder = try Decoder(stream: stream, recognizing: recognized)
-    let count:Int       = decoder.properties.data_size, 
+    let count:Int       = decoder.properties.data_size,
         base_address    = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
-    try decode_data(into: UnsafeMutableBufferPointer(start: base_address, count: count), decoder: &decoder, stream: stream)
+
+    do
+    {
+        try decode_data(into: UnsafeMutableBufferPointer(start: base_address, count: count), decoder: &decoder, stream: stream)
+    }
+    catch
+    {
+        // deallocate the unused buffer
+        base_address.deallocate(capacity: count)
+        throw error
+    }
 
     return (UnsafeBufferPointer(start: base_address, count: count), decoder.properties)
 }
