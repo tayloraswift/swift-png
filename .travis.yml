@@ -7,4 +7,4 @@ install:
 - mkdir swift
 - curl https://swift.org/builds/$SWIFT_VERSION-release/ubuntu1404/$SWIFT_VERSION-RELEASE/$SWIFT_VERSION-RELEASE-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
 script:
-- env PATH=$(pwd)/swift/$SWIFT_VERSION-RELEASE-ubuntu14.04/usr/bin:$PATH swift test
+- env PATH=$(pwd)/swift/$SWIFT_VERSION-RELEASE-ubuntu14.04/usr/bin:$PATH swift test -c release
