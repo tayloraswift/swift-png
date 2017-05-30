@@ -379,6 +379,11 @@ struct PNGProperties:CustomStringConvertible
         interlaced_data_size:Int,
         noninterlaced_data_size:Int
 
+    var data_size:Int
+    {
+        return self.interlaced ? self.interlaced_data_size : self.noninterlaced_data_size
+    }
+
     private
     typealias SubStrider = (u:StrideTo<Int>, v:StrideTo<Int>)
     private
@@ -1932,6 +1937,54 @@ func rgba_from_argb32(_ argb32:[UInt32]) -> [UInt8]
     return rgba
 }
 
+func decode_data(into buffer:UnsafeMutableBufferPointer<UInt8>, decoder:inout Decoder, stream:FilePointer) throws
+{
+    var scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties),
+        offset:Int = 0
+    let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
+    defer
+    {
+        UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+    }
+
+    var reference_line:UnsafeBufferPointer<UInt8> = zero_line
+    while scanline_iter.update_scanline_size()
+    {
+        let dest = UnsafeMutableBufferPointer<UInt8>(start: buffer.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
+        //print("allocated: \(bp.baseAddress!  ) – \(bp.baseAddress! + bp.count) , offset = \(offset)/\(buffer_size)")
+        //print("write to : \(dest.baseAddress!) – \(dest.baseAddress! + dest.count) (\(_count))")
+        let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
+        if scanline_iter.first_scanline
+        {
+            reference_line = zero_line
+        }
+
+        decoder.defilter_scanline(dest: dest, reference: reference_line, filter: filter)
+
+        reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
+        offset += scanline_iter.bytes_per_scanline
+    }
+}
+
+// UNDOCUMENTED
+public
+func png_decode_unmanaged(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> (UnsafeBufferPointer<UInt8>, PNGProperties)
+{
+    guard let stream:FilePointer = fopen(posix_path(path), "rb")
+    else
+    {
+        throw PNGReadError.FileError(posix_path(path))
+    }
+    defer { fclose(stream) }
+
+    var decoder:Decoder = try Decoder(stream: stream, recognizing: recognized)
+    let count:Int       = decoder.properties.data_size, 
+        base_address    = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
+    try decode_data(into: UnsafeMutableBufferPointer(start: base_address, count: count), decoder: &decoder, stream: stream)
+
+    return (UnsafeBufferPointer(start: base_address, count: count), decoder.properties)
+}
+
 public
 func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> ([UInt8], PNGProperties)
 {
@@ -1942,42 +1995,11 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
     }
     defer { fclose(stream) }
 
-    var decoder:Decoder                = try Decoder(stream: stream, recognizing: recognized),
-        scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties)
-
-    let buffer_size:Int = decoder.properties.interlaced ?
-                                decoder.properties.interlaced_data_size :
-                                decoder.properties.noninterlaced_data_size
-
-    var buffer:[UInt8]  = [UInt8](repeating: 0, count: buffer_size)
+    var decoder:Decoder = try Decoder(stream: stream, recognizing: recognized)
+    var buffer:[UInt8]  = [UInt8](repeating: 0, count: decoder.properties.data_size)
     try buffer.withUnsafeMutableBufferPointer
     {
-        (bp) in
-
-        var offset:Int = 0
-        let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
-        defer
-        {
-            UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
-        }
-
-        var reference_line:UnsafeBufferPointer<UInt8> = zero_line
-        while scanline_iter.update_scanline_size()
-        {
-            let dest = UnsafeMutableBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
-            //print("allocated: \(bp.baseAddress!  ) – \(bp.baseAddress! + bp.count) , offset = \(offset)/\(buffer_size)")
-            //print("write to : \(dest.baseAddress!) – \(dest.baseAddress! + dest.count) (\(_count))")
-            let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
-            if scanline_iter.first_scanline
-            {
-                reference_line = zero_line
-            }
-
-            decoder.defilter_scanline(dest: dest, reference: reference_line, filter: filter)
-
-            reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
-            offset += scanline_iter.bytes_per_scanline
-        }
+        try decode_data(into: $0, decoder: &decoder, stream: stream)
     }
 
     return (buffer, decoder.properties)
@@ -1986,7 +2008,7 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
 public
 func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
 {
-    guard raw_data.count == (properties.interlaced ? properties.interlaced_data_size : properties.noninterlaced_data_size)
+    guard raw_data.count == properties.data_size
     else
     {
         throw PNGWriteError.DimemsionError
