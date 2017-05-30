@@ -79,7 +79,7 @@ func normalize_deinterlace(path:String, log:inout [String]) -> ([UInt8], PNGProp
     }
 }
 
-func load_rgba_data<Pixel:UnsignedInteger>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
+func load_rgba_data<Pixel>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
 {
     guard let stream:UnsafeMutablePointer<FILE> = fopen(posix_path(path), "rb")
     else

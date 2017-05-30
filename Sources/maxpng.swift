@@ -758,7 +758,7 @@ struct PNGProperties:CustomStringConvertible
         }
     }
 
-    private
+    private static
     func deindex32(indices:[Int], palette:[RGBA<UInt8>]) -> [RGBA<UInt8>]?
     {
         // check that they don’t exceed the range of the palette
@@ -809,7 +809,7 @@ struct PNGProperties:CustomStringConvertible
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
-                return deindex32(indices: indices, palette: palette)
+                return PNGProperties.deindex32(indices: indices, palette: palette)
             }
         }
         else
@@ -861,14 +861,14 @@ struct PNGProperties:CustomStringConvertible
                 {
                     return nil
                 }
-                return deindex32(indices: raw_data.map(Int.init), palette: palette)
+                return PNGProperties.deindex32(indices: raw_data.map(Int.init), palette: palette)
             }
         }
 
         return output
     }
 
-    private
+    private static
     func deindex64(indices:[Int], palette:[RGBA<UInt8>]) -> [RGBA<UInt16>]?
     {
         // check that they don’t exceed the range of the palette
@@ -926,7 +926,7 @@ struct PNGProperties:CustomStringConvertible
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
-                return deindex64(indices: indices, palette: palette)
+                return PNGProperties.deindex64(indices: indices, palette: palette)
             }
         }
         else
@@ -979,14 +979,14 @@ struct PNGProperties:CustomStringConvertible
                 {
                     return nil
                 }
-                return deindex64(indices: raw_data.map(Int.init), palette: palette)
+                return PNGProperties.deindex64(indices: raw_data.map(Int.init), palette: palette)
             }
         }
 
         return output
     }
 
-    private
+    private static
     func deindex_argb32_premultiplied(indices:[Int], palette:[RGBA<UInt8>]) -> [UInt32]?
     {
         // check that they don’t exceed the range of the palette
@@ -1037,7 +1037,7 @@ struct PNGProperties:CustomStringConvertible
                 {
                     Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
-                return deindex_argb32_premultiplied(indices: indices, palette: palette)
+                return PNGProperties.deindex_argb32_premultiplied(indices: indices, palette: palette)
             }
         }
         else
@@ -1090,15 +1090,115 @@ struct PNGProperties:CustomStringConvertible
                 {
                     return nil
                 }
-                return deindex_argb32_premultiplied(indices: raw_data.map(Int.init), palette: palette)
+                return PNGProperties.deindex_argb32_premultiplied(indices: raw_data.map(Int.init), palette: palette)
             }
         }
 
         return output
     }
 
+    private static
+    func deindex_unsafe_expand(indices:[Int], palette:[RGBA<UInt8>]) -> UnsafeMutableBufferPointer<UInt8>?
+    {
+        // check that they don’t exceed the range of the palette
+        guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
+        else
+        {
+            return nil
+        }
+
+        let base_address       = UnsafeMutablePointer<UInt8>.allocate(capacity: indices.count)
+        let overwriting_buffer = UnsafeMutableBufferPointer(start: base_address, count: indices.count)
+
+        for (i, src_index) in zip(stride(from: 0, to: indices.count * 3, by: 3), indices)
+        {
+            overwriting_buffer[i    ] = palette[src_index].r
+            overwriting_buffer[i + 1] = palette[src_index].g
+            overwriting_buffer[i + 2] = palette[src_index].b
+        }
+        return overwriting_buffer
+    }
+
+    // UNDOCUMENTED, ignores chroma keys
+    public
+    func unsafe_expand(reallocating unmanaged_data:inout UnsafeMutableBufferPointer<UInt8>) -> Bool
+    {
+        guard unmanaged_data.count == self.noninterlaced_data_size
+        else
+        {
+            return false
+        }
+
+        let reallocated_data:UnsafeMutableBufferPointer<UInt8>
+        if self.bit_depth < 8 // channels is guaranteed to be 1
+        {
+            let pixels:Int = self.width * self.height
+
+            if self.color == .grayscale
+            {
+                let base_address       = UnsafeMutablePointer<UInt8>.allocate(capacity: pixels)
+                let overwriting_buffer = UnsafeMutableBufferPointer<UInt8>(start: base_address, count: pixels)
+
+                let quantum:UInt8 = self.quantum8
+                for (i, src_index):(Int, Int) in self.bit_strider.enumerated()
+                {
+                    overwriting_buffer[i] = quantum * PNGProperties.bitval_extract(bit_index: src_index, bits: self.bit_depth, src: unmanaged_data)
+                }
+
+                reallocated_data = overwriting_buffer
+            }
+            else // indexed
+            {
+                guard let palette = self.palette
+                else
+                {
+                    return false
+                }
+
+                let indices:[Int] = self.bit_strider.map
+                {
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: unmanaged_data))
+                }
+                guard let overwriting_buffer = PNGProperties.deindex_unsafe_expand(indices: indices, palette: palette)
+                else
+                {
+                    return false
+                }
+
+                reallocated_data = overwriting_buffer
+            }
+        }
+        else
+        {
+            switch self.color
+            {
+            case .grayscale, .grayscale_a, .rgb, .rgba:
+                return true
+            case .indexed:
+                guard let palette = self.palette
+                else
+                {
+                    return false
+                }
+
+                guard let overwriting_buffer = PNGProperties.deindex_unsafe_expand(indices: unmanaged_data.map(Int.init), palette: palette)
+                else
+                {
+                    return false
+                }
+
+                reallocated_data = overwriting_buffer
+            }
+        }
+
+        unmanaged_data.baseAddress?.deallocate(capacity: unmanaged_data.count)
+        unmanaged_data = reallocated_data
+        return true
+    }
+
     static private
-    func bitval_extract(bit_index:Int, bits:Int, src:[UInt8]) -> UInt8
+    func bitval_extract<Source:RandomAccessCollection>(bit_index:Int, bits:Int, src:Source) -> UInt8
+    where Source.Iterator.Element == UInt8, Source.Index == Int
     {
         let byte_offset:Int  = bit_index >> 3
         let bit_offset:UInt8 = UInt8(bit_index & 7)
