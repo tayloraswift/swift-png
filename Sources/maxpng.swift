@@ -1071,42 +1071,37 @@ struct PNGProperties:CustomStringConvertible
 
     // UNDOCUMENTED, ignores chroma keys
     public
-    func unsafe_expand(reallocating unmanaged_data:inout UnsafeMutableBufferPointer<UInt8>) -> Bool
+    func expand(raw_data:[UInt8]) -> [UInt8]?
     {
-        guard unmanaged_data.count == self.noninterlaced_data_size
+        guard raw_data.count == self.noninterlaced_data_size
         else
         {
-            return false
+            return nil
         }
 
-        var reallocated_data:UnsafeMutableBufferPointer<UInt8>
+        var reallocated_data:[UInt8]
         switch self.color
         {
         case .grayscale_a, .rgb, .rgba: // these formats always fall on byte boundaries
-            return true
+            return raw_data
         case .grayscale:
             guard self.bit_depth < 8
             else
             {
-                return true
+                return raw_data
             }
 
-            let samples:Int = self.width * self.height
-
-            let base_address = UnsafeMutablePointer<UInt8>.allocate(capacity: samples)
-            reallocated_data = UnsafeMutableBufferPointer<UInt8>(start: base_address, count: samples)
-
             let quantum:UInt8 = self.quantum8
-            for (i, src_index):(Int, Int) in self.bit_strider.enumerated()
+            reallocated_data = self.bit_strider.map
             {
-                reallocated_data[i] = quantum * PNGProperties.bitval_extract(bit_index: src_index, bits: self.bit_depth, src: unmanaged_data)
+                return quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
             }
 
         case .indexed:
             guard let palette = self.palette
             else
             {
-                return false
+                return nil
             }
 
             let indices:[Int]
@@ -1114,36 +1109,32 @@ struct PNGProperties:CustomStringConvertible
             {
                 indices = self.bit_strider.map
                 {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: unmanaged_data))
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
                 }
             }
             else
             {
-                indices = unmanaged_data.map(Int.init)
+                indices = raw_data.map(Int.init)
             }
 
             // check that they don’t exceed the range of the palette
             guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
             else
             {
-                return false
+                return nil
             }
 
-            let samples:Int = self.width * self.height * 3
-
-            let base_address = UnsafeMutablePointer<UInt8>.allocate(capacity: samples)
-            reallocated_data = UnsafeMutableBufferPointer(start: base_address, count: samples)
-            for (i, src_index) in zip(stride(from: 0, to: indices.count * 3, by: 3), indices)
+            reallocated_data = []
+            reallocated_data.reserveCapacity(self.width * self.height * 3)
+            for src_index in indices
             {
-                reallocated_data[i    ] = palette[src_index].r
-                reallocated_data[i + 1] = palette[src_index].g
-                reallocated_data[i + 2] = palette[src_index].b
+                reallocated_data.append(palette[src_index].r)
+                reallocated_data.append(palette[src_index].g)
+                reallocated_data.append(palette[src_index].b)
             }
         }
 
-        unmanaged_data.baseAddress?.deallocate(capacity: unmanaged_data.count)
-        unmanaged_data = reallocated_data
-        return true
+        return reallocated_data
     }
 
     static private
@@ -1987,64 +1978,6 @@ func rgba_from_argb32(_ argb32:[UInt32]) -> [UInt8]
     return rgba
 }
 
-func decode_data(into buffer:UnsafeMutableBufferPointer<UInt8>, decoder:inout Decoder, stream:FilePointer) throws
-{
-    var scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties),
-        offset:Int = 0
-    let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
-    defer
-    {
-        UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
-    }
-
-    var reference_line:UnsafeBufferPointer<UInt8> = zero_line
-    while scanline_iter.update_scanline_size()
-    {
-        let dest = UnsafeMutableBufferPointer<UInt8>(start: buffer.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
-        //print("allocated: \(bp.baseAddress!  ) – \(bp.baseAddress! + bp.count) , offset = \(offset)/\(buffer_size)")
-        //print("write to : \(dest.baseAddress!) – \(dest.baseAddress! + dest.count) (\(_count))")
-        let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
-        if scanline_iter.first_scanline
-        {
-            reference_line = zero_line
-        }
-
-        decoder.defilter_scanline(dest: dest, reference: reference_line, filter: filter)
-
-        reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
-        offset += scanline_iter.bytes_per_scanline
-    }
-}
-
-// UNDOCUMENTED
-public
-func png_decode_unmanaged(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> (UnsafeBufferPointer<UInt8>, PNGProperties)
-{
-    guard let stream:FilePointer = fopen(posix_path(path), "rb")
-    else
-    {
-        throw PNGReadError.FileError(posix_path(path))
-    }
-    defer { fclose(stream) }
-
-    var decoder:Decoder = try Decoder(stream: stream, recognizing: recognized)
-    let count:Int       = decoder.properties.data_size,
-        base_address    = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
-
-    do
-    {
-        try decode_data(into: UnsafeMutableBufferPointer(start: base_address, count: count), decoder: &decoder, stream: stream)
-    }
-    catch
-    {
-        // deallocate the unused buffer
-        base_address.deallocate(capacity: count)
-        throw error
-    }
-
-    return (UnsafeBufferPointer(start: base_address, count: count), decoder.properties)
-}
-
 public
 func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> ([UInt8], PNGProperties)
 {
@@ -2059,7 +1992,33 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
     var buffer:[UInt8]  = [UInt8](repeating: 0, count: decoder.properties.data_size)
     try buffer.withUnsafeMutableBufferPointer
     {
-        try decode_data(into: $0, decoder: &decoder, stream: stream)
+        bp in
+
+        var scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties),
+            offset:Int = 0
+        let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
+        defer
+        {
+            UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+        }
+
+        var reference_line:UnsafeBufferPointer<UInt8> = zero_line
+        while scanline_iter.update_scanline_size()
+        {
+            let dest = UnsafeMutableBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
+            //print("allocated: \(bp.baseAddress!  ) – \(bp.baseAddress! + bp.count) , offset = \(offset)/\(buffer_size)")
+            //print("write to : \(dest.baseAddress!) – \(dest.baseAddress! + dest.count) (\(_count))")
+            let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
+            if scanline_iter.first_scanline
+            {
+                reference_line = zero_line
+            }
+
+            decoder.defilter_scanline(dest: dest, reference: reference_line, filter: filter)
+
+            reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
+            offset += scanline_iter.bytes_per_scanline
+        }
     }
 
     return (buffer, decoder.properties)
