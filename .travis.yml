@@ -2,9 +2,9 @@ language: generic
 sudo: required
 dist: trusty
 env:
-- SWIFT_VERSION=swift-3.1.1
+- SWIFT_BRANCH=swift-4.0-branch SWIFT_VERSION=swift-4.0-DEVELOPMENT-SNAPSHOT-2017-06-02-a
 install:
 - mkdir swift
-- curl https://swift.org/builds/$SWIFT_VERSION-release/ubuntu1404/$SWIFT_VERSION-RELEASE/$SWIFT_VERSION-RELEASE-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
+- curl https://swift.org/builds/$SWIFT_BRANCH/ubuntu1404/$SWIFT_VERSION/$SWIFT_VERSION-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
 script:
-- env PATH=$(pwd)/swift/$SWIFT_VERSION-RELEASE-ubuntu14.04/usr/bin:$PATH swift test -c release
+- env PATH=$(pwd)/swift/$SWIFT_VERSION-ubuntu14.04/usr/bin:$PATH swift test -c release
