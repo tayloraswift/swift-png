@@ -1,7 +1,13 @@
+// swift-tools-version:4.0
+
 import PackageDescription
 
 let package = Package(
     name: "MaxPNG",
-
-    dependencies: [.Package(url: "https://github.com/kelvin13/swift-zlib", majorVersion: 1)]
+    products: [.library(name: "MaxPNG", targets: ["MaxPNG"])],
+    targets:  [.target(name: "Zlib"),
+               .target(name: "MaxPNG", dependencies: ["Zlib"]),
+               .testTarget(name: "MaxPNGTests", dependencies: ["MaxPNG"])
+                ],
+    swiftLanguageVersions: [4]
 )

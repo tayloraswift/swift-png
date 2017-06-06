@@ -4,7 +4,7 @@
 [![Release tag](https://img.shields.io/github/release/kelvin13/maxpng.svg)](https://github.com/kelvin13/maxpng/releases)
 [![Build](https://travis-ci.org/kelvin13/maxpng.svg?branch=master)](https://travis-ci.org/kelvin13/maxpng)
 [![Issues](https://img.shields.io/github/issues/kelvin13/maxpng.svg)](https://github.com/kelvin13/maxpng/issues?state=open)
-[![Language](https://img.shields.io/badge/version-swift_3-ffa020.svg)](https://developer.apple.com/swift)
+[![Language](https://img.shields.io/badge/version-swift_4-ffa020.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/LICENSE.gpl3)
 [![Queen](https://img.shields.io/badge/taylor-swift-e030ff.svg)](https://www.google.com/search?q=where+is+ts6&oq=where+is+ts6)
 
@@ -14,7 +14,7 @@ An efficient, powerful, safe, and free PNG library, written in pure Swift. MaxPN
 
 ### *…modern*
 
-MaxPNG is written in pure Swift, and it has a dependency on just a single C library — [zlib](http://www.zlib.net/). MaxPNG makes no reference to slow, legacy Objective C frameworks, in fact, it doesn’t even import Foundation. You get the benefit of a comfortable Swift API, without the overhead of aging Apple frameworks. MaxPNG is actively maintained, and builds on the latest Swift 3.1.
+MaxPNG is written in pure Swift, and it has a dependency on just a single C library — [zlib](http://www.zlib.net/). MaxPNG makes no reference to slow, legacy Objective C frameworks, in fact, it doesn’t even import Foundation. You get the benefit of a comfortable Swift API, without the overhead of aging Apple frameworks. MaxPNG is actively maintained, and the latest release snapshot builds on Swift 3.1.1. (Current `master` branch is written in Swift 4.)
 
 ### *…easy to use*
 

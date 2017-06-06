@@ -1,7 +1,6 @@
 import Zlib
 import Glibc
 
-let DEFAULT_CHUNK_SIZE:Int = 1 << 16
 let PNG_SIGNATURE:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
 typealias FilePointer = UnsafeMutablePointer<FILE>
@@ -446,14 +445,15 @@ struct PNGProperties:CustomStringConvertible
         // 4: (w + 1) >> 1 , (h + 1) >> 2
         // 5: (w) >> 1     , (h + 1) >> 1
         // 6: (w)          , (h) >> 1
-        self.sub_dimensions = [ (width: (width  + 7) >> 3, height: (height + 7) >> 3),
-                                (width: (width  + 3) >> 3, height: (height + 7) >> 3),
-                                (width: (width  + 3) >> 2, height: (height + 3) >> 3),
-                                (width: (width  + 1) >> 2, height: (height + 3) >> 2),
-                                (width: (width  + 1) >> 1, height: (height + 1) >> 2),
-                                (width:  width       >> 1, height: (height + 1) >> 1),
-                                (width:  width       >> 0, height:  height      >> 1),
-                                (width:  width           , height:  height          )]
+        let sub_dimensions:[(width:Int, height:Int)] = [(width: (width + 7) >> 3, height: (height + 7) >> 3),
+                                                        (width: (width + 3) >> 3, height: (height + 7) >> 3),
+                                                        (width: (width + 3) >> 2, height: (height + 3) >> 3),
+                                                        (width: (width + 1) >> 2, height: (height + 3) >> 2),
+                                                        (width: (width + 1) >> 1, height: (height + 1) >> 2),
+                                                        (width:  width      >> 1, height: (height + 1) >> 1),
+                                                        (width:  width      >> 0, height:  height      >> 1),
+                                                        (width:  width          , height:  height          )]
+        self.sub_dimensions = sub_dimensions
         self.sub_striders   = [ (u: stride(from: 0, to: width, by: 8), v: stride(from: 0, to: height, by: 8)),
                                 (u: stride(from: 4, to: width, by: 8), v: stride(from: 0, to: height, by: 8)),
                                 (u: stride(from: 0, to: width, by: 4), v: stride(from: 4, to: height, by: 8)),
@@ -461,7 +461,7 @@ struct PNGProperties:CustomStringConvertible
                                 (u: stride(from: 0, to: width, by: 2), v: stride(from: 2, to: height, by: 4)),
                                 (u: stride(from: 1, to: width, by: 2), v: stride(from: 0, to: height, by: 2)),
                                 (u: stride(from: 0, to: width, by: 1), v: stride(from: 1, to: height, by: 2))]
-        self.sub_array_bounds = self.sub_dimensions.map
+        self.sub_array_bounds = sub_dimensions.map
         {
             let scanline_bits_n:Int  = $0.width * channels * bit_depth
             let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
@@ -622,7 +622,7 @@ struct PNGProperties:CustomStringConvertible
             }
 
             let v:UInt16 = chroma_value >> (16 - UInt16(self.bit_depth)) // quantize
-            return [UInt8(v >> 8), UInt8(truncatingBitPattern: v)]
+            return [UInt8(v >> 8), UInt8(extendingOrTruncating: v)]
         case .rgb:
             guard let chroma_key = self.chroma_key
             else
@@ -634,9 +634,9 @@ struct PNGProperties:CustomStringConvertible
             let r:UInt16 = chroma_key.r >> drop_bits, // quantize
                 g:UInt16 = chroma_key.g >> drop_bits,
                 b:UInt16 = chroma_key.b >> drop_bits
-            return [UInt8(r >> 8), UInt8(truncatingBitPattern: r),
-                    UInt8(g >> 8), UInt8(truncatingBitPattern: g),
-                    UInt8(b >> 8), UInt8(truncatingBitPattern: b)]
+            return [UInt8(r >> 8), UInt8(extendingOrTruncating: r),
+                    UInt8(g >> 8), UInt8(extendingOrTruncating: g),
+                    UInt8(b >> 8), UInt8(extendingOrTruncating: b)]
         case .indexed:
             guard let palette = self.palette
             else
@@ -685,14 +685,14 @@ struct PNGProperties:CustomStringConvertible
 
         return zip(self.sub_array_ranges, self.sub_dimensions).map
         {
-            (range:Range<Int>, dimensions:(width:Int, height:Int)) in
+            (z:(range:Range<Int>, dimensions:(width:Int, height:Int))) in
 
-            let properties:PNGProperties = PNGProperties(width              : dimensions.width,
-                                                         height             : dimensions.height,
+            let properties:PNGProperties = PNGProperties(width              : z.dimensions.width,
+                                                         height             : z.dimensions.height,
                                                          bit_depth_unchecked: self.bit_depth,
                                                          color              : self.color,
                                                          interlaced         : false)
-            return (Array(raw_data[range]), properties)
+            return (Array<UInt8>(raw_data[z.range]), properties)
         }
     }
 
@@ -1903,7 +1903,7 @@ class PNGEncoder
     let zero_line:UnsafeBufferPointer<UInt8>
 
     public
-    init(path:String, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+    init(path:String, properties:PNGProperties, chunk_size:Int = 1 << 16) throws
     {
         if let stream = fopen(posix_path(path), "wb")
         {
@@ -1970,10 +1970,10 @@ func rgba_from_argb32(_ argb32:[UInt32]) -> [UInt8]
     rgba.reserveCapacity(argb32.count * 4)
     for argb in argb32
     {
-        rgba.append(UInt8(truncatingBitPattern: argb >> 16))
-        rgba.append(UInt8(truncatingBitPattern: argb >> 8 ))
-        rgba.append(UInt8(truncatingBitPattern: argb      ))
-        rgba.append(UInt8(truncatingBitPattern: argb >> 24))
+        rgba.append(UInt8(extendingOrTruncating: argb >> 16))
+        rgba.append(UInt8(extendingOrTruncating: argb >> 8 ))
+        rgba.append(UInt8(extendingOrTruncating: argb      ))
+        rgba.append(UInt8(extendingOrTruncating: argb >> 24))
     }
     return rgba
 }
@@ -2025,7 +2025,7 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
 }
 
 public
-func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNGProperties, chunk_size:Int = 1 << 16) throws
 {
     guard raw_data.count == properties.data_size
     else
@@ -2071,7 +2071,7 @@ func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNG
 }
 
 public
-func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = DEFAULT_CHUNK_SIZE) throws
+func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = 1 << 16) throws
 {
     try raw_data.withUnsafeBufferPointer
     {
