@@ -175,13 +175,13 @@ enum PNGChunk:String
 
     init?(buffer:[UInt8])
     {
-        self.init(rawValue: String(buffer.flatMap(UnicodeScalar.init).map(Character.init)))
+        self.init(rawValue: String(decoding: buffer, as: Unicode.UTF8.self))
     }
 }
 
 func posix_path(_ path:String) -> String
 {
-    guard let first_char:Character = path.characters.first
+    guard let first_char:Character = path.first
     else
     {
         return path
@@ -189,9 +189,9 @@ func posix_path(_ path:String) -> String
     var expanded_path:String = path
     if first_char == "~"
     {
-        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        if expanded_path.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
         {
-            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
+            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.dropFirst())
         }
     }
     return expanded_path
@@ -511,7 +511,7 @@ struct PNGProperties:CustomStringConvertible
     public mutating
     func set_palette(_ palette:[RGBA<UInt8>])
     {
-        self.palette = palette.count > 256 ? Array(palette[0 ..< 256]) : palette
+        self.palette = palette.count > 256 ? Array(palette[..<256]) : palette
     }
 
     mutating
@@ -544,7 +544,7 @@ struct PNGProperties:CustomStringConvertible
         var bytes:[UInt8] = []
         bytes.reserveCapacity(max_entries * 3)
 
-        for palette_entry in palette[0 ..< max_entries]
+        for palette_entry in palette[..<max_entries]
         {
             bytes.append(palette_entry.r)
             bytes.append(palette_entry.g)
@@ -1720,8 +1720,7 @@ struct Encoder
 
     // make NO assumptions about the `.count` property of the reference line;
     // it is often greater than the size of the actual data
-    func filter_scanline<ReferenceLine:Collection>(src:UnsafeBufferPointer<UInt8>, reference:ReferenceLine)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func filter_scanline(src:UnsafeBufferPointer<UInt8>, reference:UnsafeBufferPointer<UInt8>)
     {
         var filter_data = [[UInt8]](repeating: [0] + src, count: 5)
 
@@ -1808,8 +1807,7 @@ struct Encoder
     }
 
     private static
-    func filter_up<ReferenceLine:Collection>(_ buffer:inout [UInt8], previous_line:ReferenceLine)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func filter_up(_ buffer:inout [UInt8], previous_line:UnsafeBufferPointer<UInt8>)
     {
         for i in 1..<buffer.count // we do not need to reverse here
         {
@@ -1818,8 +1816,7 @@ struct Encoder
     }
 
     private static
-    func filter_average<ReferenceLine:Collection>(_ buffer:inout [UInt8], previous_line:ReferenceLine, bpp:Int)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func filter_average(_ buffer:inout [UInt8], previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
     {
         for i in ((1 + bpp)..<buffer.count).reversed()
         {
@@ -1832,8 +1829,7 @@ struct Encoder
     }
 
     private static
-    func filter_paeth<ReferenceLine:Collection>(_ buffer:inout [UInt8], previous_line:ReferenceLine, bpp:Int)
-    where ReferenceLine.Iterator.Element == UInt8, ReferenceLine.Index == Int
+    func filter_paeth(_ buffer:inout [UInt8], previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
     {
 
         for i in ((1 + bpp)..<buffer.count).reversed()
@@ -2099,14 +2095,14 @@ class ZIterator
     func add_input(_ input:[UInt8])
     {
         self.input_buffer    = input
-        self.stream.avail_in = UInt32(input.count)
+        self.stream.avail_in = CUnsignedInt(input.count)
         //self.stream.next_in  = UnsafeMutablePointer<UInt8>(mutating: self.input_ref) // this is memory-unsafe since it could still get deallocated
     }
 
     final
     func set_output(dest:UnsafeMutableBufferPointer<UInt8>)
     {
-        self.stream.avail_out = UInt32(dest.count)
+        self.stream.avail_out = CUnsignedInt(dest.count)
         self.stream.next_out  = dest.baseAddress
     }
 }
@@ -2139,7 +2135,7 @@ class ZInflator : ZIterator
         self.stream.avail_out = 1
         self.stream.next_out = _byte
 
-        var inflate_status:Int32 = 0
+        var inflate_status:CInt = 0
         self.input_buffer.withUnsafeMutableBufferPointer
         {
             self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
@@ -2170,9 +2166,9 @@ class ZInflator : ZIterator
         return _byte.pointee
     }
 
-    func get_output_bytes(sentinel:inout Bool) throws -> UInt32
+    func get_output_bytes(sentinel:inout Bool) throws -> CUnsignedInt
     {
-        var inflate_status:Int32 = 0
+        var inflate_status:CInt = 0
         self.input_buffer.withUnsafeMutableBufferPointer
         {
             self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
@@ -2216,9 +2212,9 @@ class ZDeflator : ZIterator
         deflateEnd(&self.stream)
     }
 
-    func get_output(sentinel:inout Bool, finish:Bool) throws -> UInt32
+    func get_output(sentinel:inout Bool, finish:Bool) throws -> CUnsignedInt
     {
-        var deflate_status:Int32 = 0
+        var deflate_status:CInt = 0
         self.input_buffer.withUnsafeMutableBufferPointer
         {
             self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
@@ -2233,12 +2229,12 @@ class ZDeflator : ZIterator
 }
 
 // If you are wondering why these functions exist, it’s because Swift doesn’t know how to import C function macros yet.
-func inflateInit(_ strm:inout z_stream_s) -> Int32
+func inflateInit(_ strm:inout z_stream_s) -> CInt
 {
-    return inflateInit_(&strm, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+    return inflateInit_(&strm, ZLIB_VERSION, CInt(MemoryLayout<z_stream>.size))
 }
 
-func deflateInit(_ strm:inout z_stream_s, _ level:Int32) -> Int32
+func deflateInit(_ strm:inout z_stream_s, _ level:CInt) -> CInt
 {
-    return deflateInit_(&strm, level, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+    return deflateInit_(&strm, level, ZLIB_VERSION, CInt(MemoryLayout<z_stream>.size))
 }
