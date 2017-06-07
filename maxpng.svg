@@ -18,8 +18,8 @@
    inkscape:version="0.92.1 r15371"
    sodipodi:docname="maxpng.svg"
    inkscape:export-filename="/home/kelvin/dev/maxpng/max.png"
-   inkscape:export-xdpi="90"
-   inkscape:export-ydpi="90">
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96">
   <defs
      id="defs2">
     <linearGradient
@@ -418,8 +418,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1"
-     inkscape:cx="-233.40476"
-     inkscape:cy="142.73539"
+     inkscape:cx="-99.40476"
+     inkscape:cy="117.73539"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -439,7 +439,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -762,7 +762,7 @@
          id="tspan5580-6"
          x="14.602427"
          y="257.5336"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:14.11111164px;font-family:'DejaVu Sans Mono';-inkscape-font-specification:'DejaVu Sans Mono Bold';fill:#19171a;fill-opacity:0.89655175;stroke-width:0.26458335">2.0.0</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:14.11111164px;font-family:'DejaVu Sans Mono';-inkscape-font-specification:'DejaVu Sans Mono Bold';fill:#19171a;fill-opacity:0.89655175;stroke-width:0.26458335">2.0.1</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:5.64444447px;line-height:6.61458349px;font-family:'DejaVu Sans Mono';-inkscape-font-specification:'DejaVu Sans Mono';letter-spacing:-0.5291667px;word-spacing:0px;fill:#a95b35;fill-opacity:1;stroke:none;stroke-width:0.26458335"
