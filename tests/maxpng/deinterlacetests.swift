@@ -67,6 +67,6 @@ func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:ino
 
 func test_decompose(test_name:String, log:inout [String]) -> Bool
 {
-    return test_decompose(path_png: "Tests/MaxPNGTests/large/png/\(test_name)",
-                          path_rgba: "Tests/MaxPNGTests/large/rgba/\(test_name)", path_dest: "Tests/\(test_name)", log: &log)
+    return test_decompose(path_png: "tests/maxpng/large/png/\(test_name)",
+                          path_rgba: "tests/maxpng/large/rgba/\(test_name)", path_dest: "tests/\(test_name)", log: &log)
 }

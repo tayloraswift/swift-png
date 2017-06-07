@@ -2,7 +2,7 @@ import MaxPNG
 
 func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
 {
-    let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
+    let path_png:String  = "tests/maxpng/unit/png/\(test_name).png"
     guard let (deinterlaced, properties):([UInt8], PNGProperties) = normalize_deinterlace(path: path_png, log: &log)
     else
     {
@@ -33,7 +33,7 @@ func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
 
 func argb32_premultiplied_64_test(test_name:String, log:inout [String]) -> Bool
 {
-    let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
+    let path_png:String  = "tests/maxpng/unit/png/\(test_name).png"
     guard let (deinterlaced, properties):([UInt8], PNGProperties) = normalize_deinterlace(path: path_png, log: &log)
     else
     {
@@ -59,8 +59,8 @@ func argb32_premultiplied_64_test(test_name:String, log:inout [String]) -> Bool
 
 func decode_test(test_name:String, log:inout [String]) -> Bool
 {
-    let path_png:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
-    let path_rgba:String = "Tests/MaxPNGTests/unit/rgba/\(test_name).png.rgba"
+    let path_png:String  = "tests/maxpng/unit/png/\(test_name).png"
+    let path_rgba:String = "tests/maxpng/unit/rgba/\(test_name).png.rgba"
     return normalize_and_compare(path_png: path_png, path_rgba: path_rgba, log: &log)
 }
 
@@ -83,27 +83,27 @@ func test_reencode_png(src_path:String, ref_path:String, dest_path:String, log:i
 
 func test_reencode_wild_png(test_name:String, log:inout [String]) -> Bool
 {
-    let dest_path:String = "Tests/"      + test_name + "_rewritten.png",
-        ref_path:String  = "Tests/MaxPNGTests/large/rgba/" + test_name + ".rgba",
-        src_path:String  = "Tests/MaxPNGTests/large/png/" + test_name + ".png"
+    let dest_path:String = "tests/"      + test_name + "_rewritten.png",
+        ref_path:String  = "tests/maxpng/large/rgba/" + test_name + ".rgba",
+        src_path:String  = "tests/maxpng/large/png/" + test_name + ".png"
 
     return test_reencode_png(src_path: src_path, ref_path: ref_path, dest_path: dest_path, log: &log)
 }
 
 func test_reencode_unit_png(test_name:String, log:inout [String]) -> Bool
 {
-    let dest_path:String = "Tests/MaxPNGTests/unit/out/\(test_name).png",
-        ref_path:String  = "Tests/MaxPNGTests/unit/rgba/\(test_name).png.rgba",
-        src_path:String  = "Tests/MaxPNGTests/unit/png/\(test_name).png"
+    let dest_path:String = "tests/maxpng/unit/out/\(test_name).png",
+        ref_path:String  = "tests/maxpng/unit/rgba/\(test_name).png.rgba",
+        src_path:String  = "tests/maxpng/unit/png/\(test_name).png"
 
     return test_reencode_png(src_path: src_path, ref_path: ref_path, dest_path: dest_path, log: &log)
 }
 
 func test_progressive(test_name:String, log:inout [String]) -> Bool
 {
-    let src_path:String  = "Tests/MaxPNGTests/large/png/"  + test_name + ".png",
-        ref_path:String  = "Tests/MaxPNGTests/large/rgba/" + test_name + ".rgba",
-        dest_path:String = "Tests/" + test_name + "_progressive.png"
+    let src_path:String  = "tests/maxpng/large/png/"  + test_name + ".png",
+        ref_path:String  = "tests/maxpng/large/rgba/" + test_name + ".rgba",
+        dest_path:String = "tests/" + test_name + "_progressive.png"
 
     let decoder:PNGDecoder
     var encoder:PNGEncoder?

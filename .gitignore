@@ -1,6 +1,7 @@
 .DS_Store
 /.build
 /Packages
+Package.resolved
 /*.xcodeproj
-/Tests/*.png
-/Tests/MaxPNGTests/unit/out/*.png
+/tests/*.png
+/tests/maxpng/unit/out/*.png
