@@ -1557,7 +1557,7 @@ struct Decoder
     private static
     func buffer_to_string(_ buffer:[UInt8]) -> String
     {
-        return String(buffer.flatMap(UnicodeScalar.init).map(Character.init))
+        return String(buffer.flatMap(Unicode.Scalar.init).map(Character.init))
     }
 
     private static
