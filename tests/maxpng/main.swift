@@ -1,4 +1,3 @@
-import MaxPNGTests
 import MaxPNG
 import Glibc
 
