@@ -7,7 +7,7 @@ let package = Package(
     products:  [.library(name: "MaxPNG", targets: ["MaxPNG"])],
     targets:   [.target(name: "Zlib", path: "sources/zlib"),
                 .target(name: "MaxPNG", dependencies: ["Zlib"], path: "sources/maxpng"),
-                .testTarget(name: "Tests", dependencies: ["MaxPNG"], path: "tests/maxpng")
+                .testTarget(name: "MaxPNGTests", dependencies: ["MaxPNG"], path: "tests/maxpng")
                ],
     swiftLanguageVersions: [4]
 )
