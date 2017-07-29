@@ -109,8 +109,12 @@ extension RGBA where Sample == UInt8
         return RGBA(r, g, b, self.a)
     }
 
+    @available(*, unavailable, renamed: "argb8")
     public
-    var argb32:UInt32
+    var argb32:UInt32 { fatalError("unreachable") }
+
+    public
+    var argb8:UInt32
     {
         return UInt32(self.a) << 24 | UInt32(self.r) << 16 | UInt32(self.g) << 8 | UInt32(self.b)
     }
@@ -128,8 +132,12 @@ extension RGBA where Sample == UInt16
         return RGBA(r, g, b, self.a)
     }
 
+    @available(*, unavailable, renamed: "argb16")
     public
-    var argb64:UInt64
+    var argb64:UInt64 { fatalError("unreachable") }
+
+    public
+    var argb16:UInt64
     {
         return UInt64(self.a) << 48 | UInt64(self.r) << 32 | UInt64(self.g) << 16 | UInt64(self.b)
     }
@@ -233,115 +241,52 @@ func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     }
 }
 
-struct Header
-{
-    typealias ColorFormat = PNGProperties.ColorFormat
-
-    let width:Int,
-        height:Int,
-        bit_depth:Int,
-        color:ColorFormat,
-        interlaced:Bool
-
-    init(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool) throws
-    {
-        // validate color type
-        let allowed_bit_depths:[Int]
-        switch color
-        {
-        case .grayscale_a, .rgb, .rgba:
-            allowed_bit_depths = [8, 16]
-        case .indexed:
-            allowed_bit_depths = [1, 2, 4, 8]
-        case .grayscale:
-            allowed_bit_depths = [1, 2, 4, 8, 16]
-        }
-        guard allowed_bit_depths.contains(bit_depth)
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Color type '\(color)' cannot have a bit depth of \(bit_depth)")
-        }
-
-        self.width      = width
-        self.height     = height
-        self.bit_depth  = bit_depth
-        self.color      = color
-        self.interlaced = interlaced
-    }
-
-    init(_ data:[UInt8]) throws
-    {
-        guard data.count == 13
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
-        }
-
-        guard let color = ColorFormat(rawValue: Int(data[9]))
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(Int(data[9]))")
-        }
-
-        /* validate other fields */
-        guard Int(data[10]) == 0
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Compression method does not equal 0")
-        }
-        guard Int(data[11]) == 0
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Filter method does not equal 0")
-        }
-        let interlaced:Bool
-        let interlace_i = Int(data[12]) // TODO: turn this into a switch case
-        if interlace_i == 0
-        {
-            interlaced = false
-        }
-        else if interlace_i == 1
-        {
-            interlaced = true
-        }
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
-        }
-
-        // I think it unlikly to ever encounter a PNG with dimensions that overflow a signed Int32
-        try self.init(width     : Int(quad_byte_to_uint32(Array(data[0...3]))),
-                      height    : Int(quad_byte_to_uint32(Array(data[4...7]))),
-                      bit_depth : Int(data[8]),
-                      color     : color,
-                      interlaced: interlaced)
-    }
-}
-
 public
 struct PNGProperties:CustomStringConvertible
 {
     public
-    enum ColorFormat:Int
+    enum ColorFormat:UInt16 // bitfield contains depth in upper byte, then code in lower byte
     {
-        case grayscale      = 0,
-             rgb            = 2,
-             indexed        = 3,
-             grayscale_a    = 4,
-             rgba           = 6
+        case grayscale1     = 0x01_00,
+             grayscale2     = 0x02_00,
+             grayscale4     = 0x04_00,
+             grayscale8     = 0x08_00,
+             grayscale16    = 0x10_00,
+             rgb8           = 0x08_02,
+             rgb16          = 0x10_02,
+             indexed1       = 0x01_03,
+             indexed2       = 0x02_03,
+             indexed4       = 0x04_03,
+             indexed8       = 0x08_03,
+             grayscale_a8   = 0x08_04,
+             grayscale_a16  = 0x10_04,
+             rgba8          = 0x08_06,
+             rgba16         = 0x10_06
+
+        var code:UInt8
+        {
+            return UInt8(extendingOrTruncating: self.rawValue)
+        }
+
+        public
+        var depth:Int
+        {
+            return Int(self.rawValue >> 8)
+        }
 
         public
         var channels:Int
         {
             switch self
             {
-            case .grayscale, .indexed:
+            case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16,
+                .indexed1, .indexed2, .indexed4, .indexed8:
                 return 1
-            case .grayscale_a:
+            case .grayscale_a8, .grayscale_a16:
                 return 2
-            case .rgb:
+            case .rgb8, .rgb16:
                 return 3
-            case .rgba:
+            case .rgba8, .rgba16:
                 return 4
             }
         }
@@ -359,9 +304,12 @@ struct PNGProperties:CustomStringConvertible
         return self.sub_dimensions[7].height
     }
 
+    @available(*, unavailable, message: "use the color.depth property instead")
     public
-    let bit_depth:Int,
-        color:ColorFormat,
+    var bit_depth:Int { fatalError("unreachable") }
+
+    public
+    let color:ColorFormat,
         interlaced:Bool
 
     // other chunks
@@ -404,38 +352,35 @@ struct PNGProperties:CustomStringConvertible
     public
     var deinterlaced_properties:PNGProperties
     {
-        return PNGProperties(width: self.width, height: self.height,
-                             bit_depth_unchecked: self.bit_depth,
-                             color              : self.color,
-                             interlaced         : false)
+        return PNGProperties(width: self.width, height: self.height, color: self.color, interlaced: false)
     }
 
     public
     var quantum16:UInt16
     {
-        return UInt16.max / (UInt16.max >> (16 - UInt16(self.bit_depth)))
+        return UInt16.max / (UInt16.max >> (16 - UInt16(self.color.depth)))
     }
 
     public
     var quantum8:UInt8
     {
-        return UInt8.max  / (UInt8.max  >> (8  -  UInt8(self.bit_depth)))
+        return UInt8.max  / (UInt8.max  >> (8  -  UInt8(self.color.depth)))
     }
 
     public
     var description:String
     {
-        return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.bit_depth), color: \(self.color), interlaced: \(self.interlaced)}"
+        return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.color.depth), color: \(self.color), interlaced: \(self.interlaced)}"
     }
 
-    init(width:Int, height:Int, bit_depth_unchecked bit_depth:Int, color:ColorFormat, interlaced:Bool)
+    public
+    init(width:Int, height:Int, color:ColorFormat, interlaced:Bool)
     {
-        self.bit_depth  = bit_depth
         self.color      = color
         self.interlaced = interlaced
 
         let channels:Int = self.color.channels
-        self.bpp        = max(1, (channels * bit_depth) >> 3)
+        self.bpp        = max(1, (channels * color.depth) >> 3)
 
         /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
         // 0: (w + 7) >> 3 , (h + 7) >> 3
@@ -463,7 +408,7 @@ struct PNGProperties:CustomStringConvertible
                                 (u: stride(from: 0, to: width, by: 1), v: stride(from: 1, to: height, by: 2))]
         self.sub_array_bounds = sub_dimensions.map
         {
-            let scanline_bits_n:Int  = $0.width * channels * bit_depth
+            let scanline_bits_n:Int  = $0.width * channels * color.depth
             let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
             return (i: $0.height, j: scanline_bytes_n)
         }
@@ -472,27 +417,55 @@ struct PNGProperties:CustomStringConvertible
         self.noninterlaced_data_size = self.sub_array_bounds[7].i * self.sub_array_bounds[7].j
     }
 
-    init(header:Header)
-    {
-        self.init(width             : header.width,
-                 height             : header.height,
-                 bit_depth_unchecked: header.bit_depth,
-                 color              : header.color,
-                 interlaced         : header.interlaced)
-    }
-
+    @available(*, unavailable, message: "use the infallible init(width:height:color:interlaced:) instead")
     public
-    init?(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool)
+    init?(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool) { fatalError("unreachable") }
+
+    init(_ data:[UInt8]) throws
     {
-        do
+        guard data.count == 13
+        else
         {
-            self.init(header: try Header(width: width, height: height, bit_depth: bit_depth, color: color, interlaced: interlaced))
+            throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
         }
-        catch
+
+        guard let color = ColorFormat(rawValue: UInt16(data[8]) << 8 | UInt16(data[9]))
+        else
         {
-            print(error)
-            return nil
+            throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(data[9]) with bit depth \(data[8])")
         }
+
+        /* validate other fields */
+        guard Int(data[10]) == 0
+        else
+        {
+            throw PNGReadError.PNGSyntaxError("Compression method does not equal 0")
+        }
+        guard Int(data[11]) == 0
+        else
+        {
+            throw PNGReadError.PNGSyntaxError("Filter method does not equal 0")
+        }
+        let interlaced:Bool
+        let interlace_i = Int(data[12]) // TODO: turn this into a switch case
+        if interlace_i == 0
+        {
+            interlaced = false
+        }
+        else if interlace_i == 1
+        {
+            interlaced = true
+        }
+        else
+        {
+            throw PNGReadError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
+        }
+
+        // I think it unlikly to ever encounter a PNG with dimensions that overflow a signed Int32
+        self.init(  width     : Int(quad_byte_to_uint32(Array(data[0...3]))),
+                    height    : Int(quad_byte_to_uint32(Array(data[4...7]))),
+                    color     : color,
+                    interlaced: interlaced)
     }
 
     func serialize_header() -> [UInt8]
@@ -500,8 +473,8 @@ struct PNGProperties:CustomStringConvertible
         var bytes:[UInt8] = uint32_to_quad_byte(UInt32(self.width))        // [0:3]
         bytes.reserveCapacity(12)
         bytes.append(contentsOf: uint32_to_quad_byte(UInt32(self.height))) // [4:7]
-        bytes.append(UInt8(self.bit_depth))                                // [8]
-        bytes.append(UInt8(self.color.rawValue))                           // [9]
+        bytes.append(UInt8(self.color.depth))                                // [8]
+        bytes.append(self.color.code)                           // [9]
         bytes.append(0)                                                    // [10] = 0
         bytes.append(0)                                                    // [11] = 0
         bytes.append(self.interlaced ? 1 : 0)                              // [12]
@@ -523,7 +496,7 @@ struct PNGProperties:CustomStringConvertible
             throw PNGReadError.PNGSyntaxError("Palatte is \(bytes.count) bytes long, which is not divisible by 3")
         }
 
-        self.palette = stride(from: 0, to: min(bytes.count, 1 << self.bit_depth * 3), by: 3).map
+        self.palette = stride(from: 0, to: min(bytes.count, 1 << self.color.depth * 3), by: 3).map
         {
             let r:UInt8 = bytes[$0    ],
                 g:UInt8 = bytes[$0 + 1],
@@ -540,7 +513,7 @@ struct PNGProperties:CustomStringConvertible
             return nil
         }
 
-        let max_entries:Int = min(palette.count, 1 << self.bit_depth)
+        let max_entries:Int = min(palette.count, 1 << self.color.depth)
         var bytes:[UInt8] = []
         bytes.reserveCapacity(max_entries * 3)
 
@@ -565,7 +538,7 @@ struct PNGProperties:CustomStringConvertible
     {
         switch self.color
         {
-        case .grayscale:
+        case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
             guard bytes.count == 2
             else
             {
@@ -575,7 +548,7 @@ struct PNGProperties:CustomStringConvertible
             let quantum:UInt16 = self.quantum16
             let v:UInt16 = quantum * (UInt16(bytes[0]) << 8 | UInt16(bytes[1]))
             self.chroma_key = RGBA(v, v, v, UInt16.max)
-        case .rgb:
+        case .rgb8, .rgb16:
             guard bytes.count == 6
             else
             {
@@ -587,7 +560,7 @@ struct PNGProperties:CustomStringConvertible
                 g:UInt16 = quantum * (UInt16(bytes[2]) << 8 | UInt16(bytes[3])),
                 b:UInt16 = quantum * (UInt16(bytes[4]) << 8 | UInt16(bytes[5]))
             self.chroma_key = RGBA(r, g, b, UInt16.max)
-        case .indexed:
+        case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
             {
@@ -614,30 +587,30 @@ struct PNGProperties:CustomStringConvertible
     {
         switch self.color
         {
-        case .grayscale:
+        case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
             guard let chroma_key = self.chroma_key, let chroma_value = chroma_key.grayscale
             else
             {
                 return nil
             }
 
-            let v:UInt16 = chroma_value >> (16 - UInt16(self.bit_depth)) // quantize
+            let v:UInt16 = chroma_value >> (16 - UInt16(self.color.depth)) // quantize
             return [UInt8(v >> 8), UInt8(extendingOrTruncating: v)]
-        case .rgb:
+        case .rgb8, .rgb16:
             guard let chroma_key = self.chroma_key
             else
             {
                 return nil
             }
 
-            let drop_bits:UInt16 = (16 - UInt16(self.bit_depth))
+            let drop_bits:UInt16 = (16 - UInt16(self.color.depth))
             let r:UInt16 = chroma_key.r >> drop_bits, // quantize
                 g:UInt16 = chroma_key.g >> drop_bits,
                 b:UInt16 = chroma_key.b >> drop_bits
             return [UInt8(r >> 8), UInt8(extendingOrTruncating: r),
                     UInt8(g >> 8), UInt8(extendingOrTruncating: g),
                     UInt8(b >> 8), UInt8(extendingOrTruncating: b)]
-        case .indexed:
+        case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
             {
@@ -689,7 +662,6 @@ struct PNGProperties:CustomStringConvertible
 
             let properties:PNGProperties = PNGProperties(width              : z.dimensions.width,
                                                          height             : z.dimensions.height,
-                                                         bit_depth_unchecked: self.bit_depth,
                                                          color              : self.color,
                                                          interlaced         : false)
             return (Array<UInt8>(raw_data[z.range]), properties)
@@ -715,22 +687,22 @@ struct PNGProperties:CustomStringConvertible
                 var src_pixel_offset:Int = 0
                 for dest_pixel_offset in stride_h
                 {
-                    if self.bit_depth < 8
+                    if self.color.depth < 8
                     {
                         // channels is guaranteed to equal 1
-                        let src_byte_index:Int   = src_byte_base + (src_pixel_offset * self.bit_depth) >> 3,
-                            src_bit_offset:UInt8 =           UInt8((src_pixel_offset * self.bit_depth) & 7)
+                        let src_byte_index:Int   = src_byte_base + (src_pixel_offset * self.color.depth) >> 3,
+                            src_bit_offset:UInt8 =           UInt8((src_pixel_offset * self.color.depth) & 7)
                         var src_byte:UInt8       = raw_data[src_byte_index]
 
                         // mask out left
                         src_byte <<= src_bit_offset
                         // mask out right
-                        src_byte >>= (8 - UInt8(self.bit_depth))
+                        src_byte >>= (8 - UInt8(self.color.depth))
 
-                        let dest_byte_index:Int   = dest_byte_base + (dest_pixel_offset * self.bit_depth) >> 3,
-                            dest_bit_offset:UInt8 =            UInt8((dest_pixel_offset * self.bit_depth) & 7)
+                        let dest_byte_index:Int   = dest_byte_base + (dest_pixel_offset * self.color.depth) >> 3,
+                            dest_bit_offset:UInt8 =            UInt8((dest_pixel_offset * self.color.depth) & 7)
                         // shift it to destination
-                        deinterlaced[dest_byte_index] |= src_byte << (8 - dest_bit_offset - UInt8(self.bit_depth))
+                        deinterlaced[dest_byte_index] |= src_byte << (8 - dest_bit_offset - UInt8(self.color.depth))
                     }
                     else
                     {
@@ -754,14 +726,18 @@ struct PNGProperties:CustomStringConvertible
     {
         return stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
         {
-            stride(from: $0 << 3, to: $0 << 3 + self.width * self.bit_depth, by: self.bit_depth).lazy
+            stride(from: $0 << 3, to: $0 << 3 + self.width * self.color.depth, by: self.color.depth).lazy
         }
     }
 
+    @available(*, unavailable, renamed: "rgba8(raw_data:)")
     public
-    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]?
+    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]? { fatalError("unreachable") }
+
+    public
+    func rgba8(raw_data:[UInt8]) -> [RGBA<UInt8>]?
     {
-        guard raw_data.count == self.noninterlaced_data_size, self.bit_depth <= 8
+        guard raw_data.count == self.noninterlaced_data_size, self.color.depth <= 8
         else
         {
             return nil
@@ -770,42 +746,37 @@ struct PNGProperties:CustomStringConvertible
         let output:[RGBA<UInt8>]
         switch self.color
         {
-        case .grayscale:
-            if self.bit_depth < 8 // channels is guaranteed to be 1
+        case .grayscale1, .grayscale2, .grayscale4: // channels is guaranteed to be 1
+            let quantum:UInt8 = self.quantum8
+            output = self.bit_strider.map
             {
-                let quantum:UInt8 = self.quantum8
-                output = self.bit_strider.map
+                let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data)
+                // test against chroma key
+                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                 {
-                    let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
-                    // test against chroma key
-                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                    {
-                        return RGBA(v, v, v, 0)
-                    }
-                    return RGBA(v, v, v, UInt8.max)
+                    return RGBA(v, v, v, 0)
                 }
+                return RGBA(v, v, v, UInt8.max)
             }
-            else
+        case .grayscale8:
+            output = raw_data.map
             {
-                output = raw_data.map
-                {
-                    (v:UInt8) in
+                (v:UInt8) in
 
-                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                    {
-                        return RGBA(v, v, v, 0)
-                    }
-                    return RGBA(v, v, v, UInt8.max)
+                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
+                {
+                    return RGBA(v, v, v, 0)
                 }
+                return RGBA(v, v, v, UInt8.max)
             }
-        case .grayscale_a:
+        case .grayscale_a8:
             output = stride(from: 0, to: raw_data.count, by: 2).map
             {
                 let v:UInt8 = raw_data[$0    ],
                     a:UInt8 = raw_data[$0 + 1]
                 return RGBA(v, v, v, a)
             }
-        case .rgb:
+        case .rgb8:
             output = stride(from: 0, to: raw_data.count, by: 3).map
             {
                 let r:UInt8 = raw_data[$0    ],
@@ -817,7 +788,7 @@ struct PNGProperties:CustomStringConvertible
                 }
                 return RGBA(r, g, b, UInt8.max)
             }
-        case .rgba:
+        case .rgba8:
             output = stride(from: 0, to: raw_data.count, by: 4).map
             {
                 let r:UInt8 = raw_data[$0    ],
@@ -826,7 +797,7 @@ struct PNGProperties:CustomStringConvertible
                     a:UInt8 = raw_data[$0 + 3]
                 return RGBA(r, g, b, a)
             }
-        case .indexed:
+        case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
             {
@@ -834,11 +805,11 @@ struct PNGProperties:CustomStringConvertible
             }
 
             let indices:[Int]
-            if self.bit_depth < 8
+            if self.color.depth < 8
             {
                 indices = self.bit_strider.map
                 {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
                 }
             }
             else
@@ -854,13 +825,19 @@ struct PNGProperties:CustomStringConvertible
             }
 
             output = indices.map{ palette[$0] }
+        default:
+            fatalError("unreachable")
         }
 
         return output
     }
 
+    @available(*, unavailable, renamed: "rgba16(raw_data:)")
     public
-    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]?
+    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]? { fatalError("unreachable") }
+
+    public
+    func rgba16(raw_data:[UInt8]) -> [RGBA<UInt16>]?
     {
         guard raw_data.count == self.noninterlaced_data_size
         else
@@ -869,65 +846,60 @@ struct PNGProperties:CustomStringConvertible
         }
 
         let output:[RGBA<UInt16>]
-        let d:Int = self.bit_depth == 8 ? 0 : 1
+        let d:Int = self.color.depth == 8 ? 0 : 1
         switch self.color
         {
-        case .grayscale:
-            if self.bit_depth < 8
+        case .grayscale1, .grayscale2, .grayscale4:
+            let quantum:UInt16 = self.quantum16
+            output = self.bit_strider.map
             {
-                let quantum:UInt16 = self.quantum16
-                output = self.bit_strider.map
+                let v:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
+                // test against chroma key
+                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                 {
-                    let v:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
-                    // test against chroma key
-                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                    {
-                        return RGBA(v, v, v, 0)
-                    }
-                    return RGBA(v, v, v, UInt16.max)
+                    return RGBA(v, v, v, 0)
                 }
+                return RGBA(v, v, v, UInt16.max)
             }
-            else
+        case .grayscale8, .grayscale16:
+            output = stride(from: 0, to: raw_data.count, by: 1 &<< d).map
             {
-                output = stride(from: 0, to: raw_data.count, by: 1 << d).map
+                let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ])
+                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                 {
-                    let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ])
-                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                    {
-                        return RGBA(v, v, v, 0)
-                    }
-                    return RGBA(v, v, v, UInt16.max)
+                    return RGBA(v, v, v, 0)
                 }
+                return RGBA(v, v, v, UInt16.max)
             }
-        case .grayscale_a:
-            output = stride(from: 0, to: raw_data.count, by: 2 << d).map
+        case .grayscale_a8, .grayscale_a16:
+            output = stride(from: 0, to: raw_data.count, by: 2 &<< d).map
             {
-                let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
-                    a:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)])
+                let v:UInt16 = UInt16(raw_data[$0          ]) << 8 | UInt16(raw_data[$0 +            d ]),
+                    a:UInt16 = UInt16(raw_data[$0 + 1 &<< d]) << 8 | UInt16(raw_data[$0 + (1 &<< d | d)])
                 return RGBA(v, v, v, a)
             }
-        case .rgb:
+        case .rgb8, .rgb16:
             output = stride(from: 0, to: raw_data.count, by: 3 << d).map
             {
-                let r:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
-                    g:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)]),
-                    b:UInt16 = UInt16(raw_data[$0 + 2 << d]) << 8 | UInt16(raw_data[$0 + (2 << d | d)])
+                let r:UInt16 = UInt16(raw_data[$0          ]) << 8 | UInt16(raw_data[$0 +            d ]),
+                    g:UInt16 = UInt16(raw_data[$0 + 1 &<< d]) << 8 | UInt16(raw_data[$0 + (1 &<< d | d)]),
+                    b:UInt16 = UInt16(raw_data[$0 + 2 &<< d]) << 8 | UInt16(raw_data[$0 + (2 &<< d | d)])
                 if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
                 {
                     return RGBA(r, g, b, 0)
                 }
                 return RGBA(r, g, b, UInt16.max)
             }
-        case .rgba:
+        case .rgba8, .rgba16:
             output = stride(from: 0, to: raw_data.count, by: 4 << d).map
             {
-                let r:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ]),
-                    g:UInt16 = UInt16(raw_data[$0 + 1 << d]) << 8 | UInt16(raw_data[$0 + (1 << d | d)]),
-                    b:UInt16 = UInt16(raw_data[$0 + 2 << d]) << 8 | UInt16(raw_data[$0 + (2 << d | d)]),
-                    a:UInt16 = UInt16(raw_data[$0 + 3 << d]) << 8 | UInt16(raw_data[$0 + (3 << d | d)])
+                let r:UInt16 = UInt16(raw_data[$0          ]) << 8 | UInt16(raw_data[$0 +            d ]),
+                    g:UInt16 = UInt16(raw_data[$0 + 1 &<< d]) << 8 | UInt16(raw_data[$0 + (1 &<< d | d)]),
+                    b:UInt16 = UInt16(raw_data[$0 + 2 &<< d]) << 8 | UInt16(raw_data[$0 + (2 &<< d | d)]),
+                    a:UInt16 = UInt16(raw_data[$0 + 3 &<< d]) << 8 | UInt16(raw_data[$0 + (3 &<< d | d)])
                 return RGBA(r, g, b, a)
             }
-        case .indexed:
+        case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
             {
@@ -935,11 +907,11 @@ struct PNGProperties:CustomStringConvertible
             }
 
             let indices:[Int]
-            if self.bit_depth < 8
+            if self.color.depth < 8
             {
                 indices = self.bit_strider.map
                 {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
                 }
             }
             else
@@ -967,8 +939,12 @@ struct PNGProperties:CustomStringConvertible
         return output
     }
 
+    @available(*, unavailable, renamed: "argb8_premultiplied(raw_data:)")
     public
-    func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]?
+    func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]? { fatalError("unreachable") }
+
+    public
+    func argb8_premultiplied(raw_data:[UInt8]) -> [UInt32]?
     {
         guard raw_data.count == self.noninterlaced_data_size
         else
@@ -977,66 +953,60 @@ struct PNGProperties:CustomStringConvertible
         }
 
         let output:[UInt32]
-        let d:Int = self.bit_depth == 8 ? 0 : 1
+        let d:Int = self.color.depth == 8 ? 0 : 1
         switch self.color
         {
-        case .grayscale:
-            if self.bit_depth < 8
+        case .grayscale1, .grayscale2, .grayscale4:
+            let quantum:UInt8 = self.quantum8
+            output = self.bit_strider.map
             {
-                let quantum:UInt8 = self.quantum8
-                output = self.bit_strider.map
+                let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data)
+                // test against chroma key
+                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                 {
-                    let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
-                    // test against chroma key
-                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                    {
-                        return 0
-                    }
-                    return RGBA(v, v, v, UInt8.max).argb32
+                    return 0
                 }
+                return RGBA(v, v, v, UInt8.max).argb8
             }
-            else
+        case .grayscale8, .grayscale16:
+            output = stride(from: 0, to: raw_data.count, by: 1 &<< d).map
             {
-                output = stride(from: 0, to: raw_data.count, by: 1 << d).map
+                let v:UInt8 = raw_data[$0]
+                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
                 {
-                    let v:UInt8 = raw_data[$0]
-                    if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                    {
-                        return 0
-                    }
-                    return RGBA(v, v, v, UInt8.max).argb32
+                    return 0
                 }
+                return RGBA(v, v, v, UInt8.max).argb8
             }
-
-        case .grayscale_a:
-            output = stride(from: 0, to: raw_data.count, by: 2 << d).map
+        case .grayscale_a8, .grayscale_a16:
+            output = stride(from: 0, to: raw_data.count, by: 2 &<< d).map
             {
-                let v:UInt8 = raw_data[$0         ],
-                    a:UInt8 = raw_data[$0 + 1 << d]
-                return RGBA(v, v, v, a).premultiplied.argb32
+                let v:UInt8 = raw_data[$0          ],
+                    a:UInt8 = raw_data[$0 + 1 &<< d]
+                return RGBA(v, v, v, a).premultiplied.argb8
             }
-        case .rgb:
-            output = stride(from: 0, to: raw_data.count, by: 3 << d).map
+        case .rgb8, .rgb16:
+            output = stride(from: 0, to: raw_data.count, by: 3 &<< d).map
             {
-                let r:UInt8 = raw_data[$0         ],
-                    g:UInt8 = raw_data[$0 + 1 << d],
-                    b:UInt8 = raw_data[$0 + 2 << d]
+                let r:UInt8 = raw_data[$0          ],
+                    g:UInt8 = raw_data[$0 + 1 &<< d],
+                    b:UInt8 = raw_data[$0 + 2 &<< d]
                 if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
                 {
                     return 0
                 }
-                return RGBA(r, g, b, UInt8.max).argb32
+                return RGBA(r, g, b, UInt8.max).argb8
             }
-        case .rgba:
-            output = stride(from: 0, to: raw_data.count, by: 4 << d).map
+        case .rgba8, .rgba16:
+            output = stride(from: 0, to: raw_data.count, by: 4 &<< d).map
             {
-                let r:UInt8 = raw_data[$0         ],
-                    g:UInt8 = raw_data[$0 + 1 << d],
-                    b:UInt8 = raw_data[$0 + 2 << d],
-                    a:UInt8 = raw_data[$0 + 3 << d]
-                return RGBA(r, g, b, a).premultiplied.argb32
+                let r:UInt8 = raw_data[$0          ],
+                    g:UInt8 = raw_data[$0 + 1 &<< d],
+                    b:UInt8 = raw_data[$0 + 2 &<< d],
+                    a:UInt8 = raw_data[$0 + 3 &<< d]
+                return RGBA(r, g, b, a).premultiplied.argb8
             }
-        case .indexed:
+        case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
             {
@@ -1044,11 +1014,11 @@ struct PNGProperties:CustomStringConvertible
             }
 
             let indices:[Int]
-            if self.bit_depth < 8
+            if self.color.depth < 8
             {
                 indices = self.bit_strider.map
                 {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
                 }
             }
             else
@@ -1063,7 +1033,7 @@ struct PNGProperties:CustomStringConvertible
                 return nil
             }
 
-            output = indices.map{ palette[$0].premultiplied.argb32 }
+            output = indices.map{ palette[$0].premultiplied.argb8 }
         }
 
         return output
@@ -1082,22 +1052,18 @@ struct PNGProperties:CustomStringConvertible
         var reallocated_data:[UInt8]
         switch self.color
         {
-        case .grayscale_a, .rgb, .rgba: // these formats always fall on byte boundaries
+        case .grayscale8, .grayscale16, .rgb8, .rgb16, .grayscale_a8, .grayscale_a16, .rgba8, .rgba16:
+            // these formats always fall on byte boundaries
             return raw_data
-        case .grayscale:
-            guard self.bit_depth < 8
-            else
-            {
-                return raw_data
-            }
 
+        case .grayscale1, .grayscale2, .grayscale4:
             let quantum:UInt8 = self.quantum8
             reallocated_data = self.bit_strider.map
             {
-                return quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data)
+                return quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data)
             }
 
-        case .indexed:
+        case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
             {
@@ -1105,11 +1071,11 @@ struct PNGProperties:CustomStringConvertible
             }
 
             let indices:[Int]
-            if self.bit_depth < 8
+            if self.color.depth < 8
             {
                 indices = self.bit_strider.map
                 {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.bit_depth, src: raw_data))
+                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
                 }
             }
             else
@@ -1182,7 +1148,7 @@ struct PNGConditions
             throw PNGReadError.PrematureIENDError
         }
 
-        guard let color = self.color
+        guard let color_code:UInt8 = self.color?.code
         else
         {
             throw PNGReadError.MissingHeaderError
@@ -1191,7 +1157,8 @@ struct PNGConditions
 
         if chunk ==                                                                       .tRNS
         {
-            if color == .grayscale_a || color == .rgba
+            guard color_code & 0b100 == 0 // tRNS forbidden in alpha’d formats
+            else
             {
                 throw PNGReadError.IllegalChunkError(chunk)
             }
@@ -1200,7 +1167,8 @@ struct PNGConditions
         // PLTE must come before bKGD, hIST, and tRNS
         if chunk ==        .PLTE
         {
-            if color == .grayscale || color == .grayscale_a
+            guard color_code & 0b010 != 0 // PLTE requires non-grayscale format
+            else
             {
                 throw PNGReadError.IllegalChunkError(chunk)
             }
@@ -1251,7 +1219,7 @@ struct PNGConditions
                 throw PNGReadError.ChunkOrderingError(chunk)
             }
 
-            if color == .indexed && !self.seen.contains(.PLTE)
+            if color_code == 3 && !self.seen.contains(.PLTE)
             {
                 throw PNGReadError.MissingPalatteError
             }
@@ -1373,16 +1341,14 @@ struct Decoder
         }
         assert(chunk == .IHDR) // this should already be verified from the PNG conditions struct
         self.current_chunk = .IHDR
-        let header:Header = try Header(chunk_data)
+        var properties = try PNGProperties(chunk_data)
 
-        self.conditions.color = header.color
+        self.conditions.color = properties.color
         self.z_iterator       = try ZInflator()
-
-        var properties        = PNGProperties(header: header)
 
         // read non-IDAT chunks
         //                                     v— recognized generally contains an .IDAT enum to ensure we don’t miss the first .IDAT
-        let pre_idat_chunks:Set<PNGChunk> = recognized.union(header.color == .indexed ? [.PLTE, .IEND] : [.IEND])
+        let pre_idat_chunks:Set<PNGChunk> = recognized.union(properties.color.code == 3 ? [.PLTE, .IEND] : [.IEND])
 
         outer_loop: while true
         {
@@ -1960,11 +1926,11 @@ class PNGEncoder
 
 // UNDOCUMENTED
 public
-func rgba_from_argb32(_ argb32:[UInt32]) -> [UInt8]
+func rgba_from_argb8(_ argb8:[UInt32]) -> [UInt8]
 {
     var rgba:[UInt8] = []
-    rgba.reserveCapacity(argb32.count * 4)
-    for argb in argb32
+    rgba.reserveCapacity(argb8.count * 4)
+    for argb in argb8
     {
         rgba.append(UInt8(extendingOrTruncating: argb >> 16))
         rgba.append(UInt8(extendingOrTruncating: argb >> 8 ))

@@ -100,7 +100,7 @@ func load_rgba_data<Pixel>(path:String, n_pixels:Int) -> [RGBA<Pixel>]
 
 func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:String, log:inout [String]) -> Bool
 {
-    guard let rgba_data_png:[RGBA<UInt16>] = properties.rgba64(raw_data: png_data)
+    guard let rgba_data_png:[RGBA<UInt16>] = properties.rgba16(raw_data: png_data)
     else
     {
         return false
