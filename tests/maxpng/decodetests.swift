@@ -9,12 +9,12 @@ func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
         return false
     }
 
-    if properties.bit_depth == 16
+    if properties.color.depth == 16
     {
         return true
     }
 
-    let rgba64:[RGBA<UInt8>] = properties.rgba64(raw_data: deinterlaced)!.map
+    let rgba16:[RGBA<UInt8>] = properties.rgba16(raw_data: deinterlaced)!.map
     {
         let r:UInt8 = UInt8($0.r >> 8),
             g:UInt8 = UInt8($0.g >> 8),
@@ -22,13 +22,13 @@ func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
             a:UInt8 = UInt8($0.a >> 8)
         return RGBA(r, g, b, a)
     }
-    guard let rgba32:[RGBA<UInt8>] = properties.rgba32(raw_data: deinterlaced)
+    guard let rgba8:[RGBA<UInt8>] = properties.rgba8(raw_data: deinterlaced)
     else
     {
         return false
     }
 
-    return rgba32 == rgba64
+    return rgba8 == rgba16
 }
 
 func argb32_premultiplied_64_test(test_name:String, log:inout [String]) -> Bool
@@ -40,21 +40,21 @@ func argb32_premultiplied_64_test(test_name:String, log:inout [String]) -> Bool
         return false
     }
 
-    let rgba64:[UInt32] = properties.rgba64(raw_data: deinterlaced)!.map
+    let rgba16:[UInt32] = properties.rgba16(raw_data: deinterlaced)!.map
     {
         let r:UInt8 = UInt8($0.r >> 8),
             g:UInt8 = UInt8($0.g >> 8),
             b:UInt8 = UInt8($0.b >> 8),
             a:UInt8 = UInt8($0.a >> 8)
-        return RGBA(r, g, b, a).premultiplied.argb32
+        return RGBA(r, g, b, a).premultiplied.argb8
     }
-    guard let argb32_premultiplied:[UInt32] = properties.argb32_premultiplied(raw_data: deinterlaced)
+    guard let argb8_premultiplied:[UInt32] = properties.argb8_premultiplied(raw_data: deinterlaced)
     else
     {
         return false
     }
 
-    return argb32_premultiplied == rgba64
+    return argb8_premultiplied == rgba16
 }
 
 func decode_test(test_name:String, log:inout [String]) -> Bool
