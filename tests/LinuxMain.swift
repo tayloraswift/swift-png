@@ -1,4 +1,4 @@
-import Tests
+import MaxPNGTests
 import Glibc
 
 var arguments:[String] = CommandLine.arguments
