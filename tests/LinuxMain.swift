@@ -1,4 +1,4 @@
-import MaxPNG
+import Tests
 import Glibc
 
 var arguments:[String] = CommandLine.arguments
