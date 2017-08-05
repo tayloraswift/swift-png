@@ -243,7 +243,7 @@ func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
 }
 
 public
-struct PNGProperties:CustomStringConvertible
+struct PNGProperties
 {
     public
     enum ColorFormat:UInt16 // bitfield contains depth in upper byte, then code in lower byte
@@ -366,12 +366,6 @@ struct PNGProperties:CustomStringConvertible
     var quantum8:UInt8
     {
         return UInt8.max  / (UInt8.max  >> (8  -  UInt8(self.color.depth)))
-    }
-
-    public
-    var description:String
-    {
-        return "<PNG properties>{image dimensions: \(self.width) × \(self.height), bit depth: \(self.color.depth), color: \(self.color), interlaced: \(self.interlaced)}"
     }
 
     public
@@ -1116,6 +1110,14 @@ struct PNGProperties:CustomStringConvertible
         /* mask out right */
         src_byte >>= (8 - UInt8(bits))
         return src_byte
+    }
+}
+extension PNGProperties:CustomStringConvertible
+{
+    public
+    var description:String
+    {
+        return "PNG properties(width: \(self.width), height: \(self.height), color: \(self.color), interlaced: \(self.interlaced))"
     }
 }
 
