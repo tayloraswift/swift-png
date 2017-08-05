@@ -116,7 +116,7 @@ extension RGBA where Sample == UInt8
     public
     var argb8:UInt32
     {
-        return UInt32(self.a) << 24 | UInt32(self.r) << 16 | UInt32(self.g) << 8 | UInt32(self.b)
+        return UInt32(self.a) &<< 24 | UInt32(self.r) &<< 16 | UInt32(self.g) &<< 8 | UInt32(self.b)
     }
 }
 
@@ -126,9 +126,9 @@ extension RGBA where Sample == UInt16
     var premultiplied:RGBA<UInt16>
     {
         let f:UInt32 = UInt32(self.a) + 1,
-            r:UInt16 = UInt16((UInt32(self.r) &* f) >> 16),
-            g:UInt16 = UInt16((UInt32(self.g) &* f) >> 16),
-            b:UInt16 = UInt16((UInt32(self.b) &* f) >> 16)
+            r:UInt16 = UInt16((UInt32(self.r) &* f) &>> 16),
+            g:UInt16 = UInt16((UInt32(self.g) &* f) &>> 16),
+            b:UInt16 = UInt16((UInt32(self.b) &* f) &>> 16)
         return RGBA(r, g, b, self.a)
     }
 
@@ -139,17 +139,17 @@ extension RGBA where Sample == UInt16
     public
     var argb16:UInt64
     {
-        return UInt64(self.a) << 48 | UInt64(self.r) << 32 | UInt64(self.g) << 16 | UInt64(self.b)
+        return UInt64(self.a) &<< 48 | UInt64(self.r) &<< 32 | UInt64(self.g) &<< 16 | UInt64(self.b)
     }
 
     func compare_opaque(_ v:UInt8) -> Bool
     {
-        return UInt8(self.r >> 8) == v && UInt8(self.g >> 8) == v && UInt8(self.b >> 8) == v
+        return UInt8(self.r &>> 8) == v && UInt8(self.g &>> 8) == v && UInt8(self.b &>> 8) == v
     }
 
     func compare_opaque(_ r:UInt8, _ g:UInt8, _ b:UInt8) -> Bool
     {
-        return UInt8(self.r >> 8) == r && UInt8(self.g >> 8) == g && UInt8(self.b >> 8) == b
+        return UInt8(self.r &>> 8) == r && UInt8(self.g &>> 8) == g && UInt8(self.b &>> 8) == b
     }
 }
 
@@ -265,7 +265,7 @@ struct PNGProperties:CustomStringConvertible
 
         var code:UInt8
         {
-            return UInt8(extendingOrTruncating: self.rawValue)
+            return UInt8(truncatingIfNeeded: self.rawValue)
         }
 
         public
@@ -595,7 +595,7 @@ struct PNGProperties:CustomStringConvertible
             }
 
             let v:UInt16 = chroma_value >> (16 - UInt16(self.color.depth)) // quantize
-            return [UInt8(v >> 8), UInt8(extendingOrTruncating: v)]
+            return [UInt8(v >> 8), UInt8(truncatingIfNeeded: v)]
         case .rgb8, .rgb16:
             guard let chroma_key = self.chroma_key
             else
@@ -607,9 +607,9 @@ struct PNGProperties:CustomStringConvertible
             let r:UInt16 = chroma_key.r >> drop_bits, // quantize
                 g:UInt16 = chroma_key.g >> drop_bits,
                 b:UInt16 = chroma_key.b >> drop_bits
-            return [UInt8(r >> 8), UInt8(extendingOrTruncating: r),
-                    UInt8(g >> 8), UInt8(extendingOrTruncating: g),
-                    UInt8(b >> 8), UInt8(extendingOrTruncating: b)]
+            return [UInt8(r >> 8), UInt8(truncatingIfNeeded: r),
+                    UInt8(g >> 8), UInt8(truncatingIfNeeded: g),
+                    UInt8(b >> 8), UInt8(truncatingIfNeeded: b)]
         case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette = self.palette
             else
@@ -1930,12 +1930,12 @@ func rgba_from_argb8(_ argb8:[UInt32]) -> [UInt8]
 {
     var rgba:[UInt8] = []
     rgba.reserveCapacity(argb8.count * 4)
-    for argb in argb8
+    for argb:UInt32 in argb8
     {
-        rgba.append(UInt8(extendingOrTruncating: argb >> 16))
-        rgba.append(UInt8(extendingOrTruncating: argb >> 8 ))
-        rgba.append(UInt8(extendingOrTruncating: argb      ))
-        rgba.append(UInt8(extendingOrTruncating: argb >> 24))
+        rgba.append(UInt8(truncatingIfNeeded: argb >> 16))
+        rgba.append(UInt8(truncatingIfNeeded: argb >> 8 ))
+        rgba.append(UInt8(truncatingIfNeeded: argb      ))
+        rgba.append(UInt8(truncatingIfNeeded: argb >> 24))
     }
     return rgba
 }
