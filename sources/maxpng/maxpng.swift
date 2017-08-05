@@ -46,6 +46,7 @@ enum PNGCompressionError:Error
     case StreamError
 }
 
+@_fixed_layout
 public
 struct RGBA<Sample:UnsignedInteger>:Equatable, CustomStringConvertible
 {
@@ -103,9 +104,9 @@ extension RGBA where Sample == UInt8
     var premultiplied:RGBA<UInt8>
     {
         let f:UInt16 = UInt16(self.a) + 1,
-            r:UInt8  = UInt8((UInt16(self.r) &* f) >> 8),
-            g:UInt8  = UInt8((UInt16(self.g) &* f) >> 8),
-            b:UInt8  = UInt8((UInt16(self.b) &* f) >> 8)
+            r:UInt8  = UInt8(truncatingIfNeeded: (UInt16(self.r) &* f) >> 8),
+            g:UInt8  = UInt8(truncatingIfNeeded: (UInt16(self.g) &* f) >> 8),
+            b:UInt8  = UInt8(truncatingIfNeeded: (UInt16(self.b) &* f) >> 8)
         return RGBA(r, g, b, self.a)
     }
 
@@ -126,9 +127,9 @@ extension RGBA where Sample == UInt16
     var premultiplied:RGBA<UInt16>
     {
         let f:UInt32 = UInt32(self.a) + 1,
-            r:UInt16 = UInt16((UInt32(self.r) &* f) &>> 16),
-            g:UInt16 = UInt16((UInt32(self.g) &* f) &>> 16),
-            b:UInt16 = UInt16((UInt32(self.b) &* f) &>> 16)
+            r:UInt16 = UInt16(truncatingIfNeeded: (UInt32(self.r) &* f) &>> 16),
+            g:UInt16 = UInt16(truncatingIfNeeded: (UInt32(self.g) &* f) &>> 16),
+            b:UInt16 = UInt16(truncatingIfNeeded: (UInt32(self.b) &* f) &>> 16)
         return RGBA(r, g, b, self.a)
     }
 
