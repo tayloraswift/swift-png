@@ -6,7 +6,7 @@
 [![Issues](https://img.shields.io/github/issues/kelvin13/maxpng.svg)](https://github.com/kelvin13/maxpng/issues?state=open)
 [![Language](https://img.shields.io/badge/version-swift_4-ffa020.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/maxpng/blob/master/COPYING)
-[![KK25](https://img.shields.io/badge/KK25-HAPPY_BIRTHDAY_KARLIE!!!_%3C3-e030ff.svg)](https://www.google.com/search?q=karlie+kloss)
+[![KK25](https://img.shields.io/badge/karlie-kloss-e030ff.svg)](https://www.google.com/search?q=karlie+kloss)
 
 <img align="right" src="max.png">
 
