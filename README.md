@@ -96,7 +96,7 @@ ZLib is a standard compression/decompression library that is installed by defaul
 
 > Does MaxPNG work on Mac OSX?
 
-I don’t know as I have never tried building it on OSX, but there’s no reason it shouldn’t unless Zlib and the C standard library aren’t present. `import Glibc` may need to be replaced with `import Darwin`.
+MaxPNG works great on macOS with the preinstalled zlib.
 
 > What is the progressive API good for?
 

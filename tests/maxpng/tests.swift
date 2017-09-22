@@ -1,4 +1,9 @@
+#if os(macOS)
+import Darwin
+#elseif os(Linux)
 import Glibc
+#endif
+
 import MaxPNG
 
 let bold = "\u{001B}[1m"
