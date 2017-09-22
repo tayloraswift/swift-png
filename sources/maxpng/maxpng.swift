@@ -419,7 +419,10 @@ struct PNGProperties
 
     @available(*, unavailable, message: "use the infallible init(width:height:color:interlaced:) instead")
     public
-    init?(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool) { fatalError("unreachable") }
+    init?(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool) 
+    { 
+        fatalError("unreachable") 
+    }
 
     init(_ data:[UInt8]) throws
     {
@@ -732,7 +735,10 @@ struct PNGProperties
 
     @available(*, unavailable, renamed: "rgba8(raw_data:)")
     public
-    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]? { fatalError("unreachable") }
+    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]? 
+    { 
+        fatalError("unreachable") 
+    }
 
     public
     func rgba8(raw_data:[UInt8]) -> [RGBA<UInt8>]?
@@ -834,7 +840,10 @@ struct PNGProperties
 
     @available(*, unavailable, renamed: "rgba16(raw_data:)")
     public
-    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]? { fatalError("unreachable") }
+    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]? 
+    { 
+        fatalError("unreachable") 
+    }
 
     public
     func rgba16(raw_data:[UInt8]) -> [RGBA<UInt16>]?
@@ -941,7 +950,10 @@ struct PNGProperties
 
     @available(*, unavailable, renamed: "argb8_premultiplied(raw_data:)")
     public
-    func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]? { fatalError("unreachable") }
+    func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]? 
+    { 
+        fatalError("unreachable") 
+    }
 
     public
     func argb8_premultiplied(raw_data:[UInt8]) -> [UInt32]?
