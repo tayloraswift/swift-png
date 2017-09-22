@@ -1,5 +1,10 @@
+#if os(macOS)
+import Darwin
+import zlib
+#elseif os(Linux)
 import Zlib
 import Glibc
+#endif
 
 let PNG_SIGNATURE:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
