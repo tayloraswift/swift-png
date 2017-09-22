@@ -4,15 +4,17 @@ matrix:
     language: objective-c
     osx_image: xcode9
     script:
-      - swift test -c release
+      - swift build -c release 
+      - .build/release/tests
   - os: linux
     language: generic
     sudo: required
     dist: trusty
-    env:
-    - SWIFT_BRANCH=swift-4.0-branch SWIFT_VERSION=swift-4.0-DEVELOPMENT-SNAPSHOT-2017-08-02-a
+    env: 
+    - SWIFT_BRANCH=swift-4.0-release SWIFT_VERSION=swift-4.0-RELEASE
     install:
     - mkdir swift
     - curl https://swift.org/builds/$SWIFT_BRANCH/ubuntu1404/$SWIFT_VERSION/$SWIFT_VERSION-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
     script:
-    - env PATH=$(pwd)/swift/$SWIFT_VERSION-ubuntu14.04/usr/bin:$PATH swift test -c release
+    - env PATH=$(pwd)/swift/$SWIFT_VERSION-ubuntu14.04/usr/bin:$PATH swift build -c release
+    - .build/release/tests
