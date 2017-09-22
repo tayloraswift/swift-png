@@ -33,7 +33,7 @@ let my_png_data:[UInt8] = [0  ,0  ,0  ,    255,255,255,    255,0  ,255,
                            120,120,255,    150,120,255,    180,120,255]
 try png_encode(path: "my_output_png.png", raw_data: my_png_data, properties: my_png_settings)
 ````
-**MaxPNG’s entire public API is [documented](doc/maxpng.md).**
+**MaxPNG’s entire public API is [documented](doc/2.0.1).**
 
 MaxPNG is batteries-included, providing several utility [functions](doc/pngproperties.md#instance-methods) that will deinterlace and normalize image data, turning any PNG file into an array of RGBA samples. In most cases, MaxPNG’s default output can be sent directly to a graphics API such as OpenGL. MaxPNG even includes functions to premultiply image alpha, and format data buffers that can be sent to the [Cairo graphics library](https://cairographics.org/).
 
