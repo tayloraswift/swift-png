@@ -1738,9 +1738,9 @@ struct Encoder
         var stream_exhausted:Bool = false
         repeat
         {
-            var data = self.chunk_data
-            //try self.chunk_data.withUnsafeMutableBufferPointer
-            try data.withUnsafeMutableBufferPointer
+            //var data = self.chunk_data
+            //try data.withUnsafeMutableBufferPointer
+            try self.chunk_data.withUnsafeMutableBufferPointer
             {
                 let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
                 let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
