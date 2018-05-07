@@ -1325,7 +1325,11 @@ struct ScanlineIterator
     {
         let n:Int = self.sub_array_bounds[self.interlaced ? 6 : 7].j
         let base_address = UnsafeMutablePointer<UInt8>.allocate(capacity: n)
-        base_address.initialize(repeating: 0, count: n)
+        #if swift(>=4.1)
+            base_address.initialize(repeating: 0, count: n)
+        #else
+            base_address.initialize(to: 0, count: n)
+        #endif
         return UnsafeBufferPointer<UInt8>(start: base_address, count: n)
     }
 }
@@ -1543,7 +1547,11 @@ struct Decoder
     private static
     func buffer_to_string(_ buffer:[UInt8]) -> String
     {
-        return String(buffer.compactMap(Unicode.Scalar.init).map(Character.init))
+        #if swift(>=4.1)
+            return String(buffer.compactMap(Unicode.Scalar.init).map(Character.init))
+        #else
+            return String(buffer.flatMap(Unicode.Scalar.init).map(Character.init))
+        #endif
     }
 
     private static
@@ -1993,7 +2001,7 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
             #if swift(>=4.1)
                 UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
             #else
-                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
             #endif
         }
 
@@ -2045,7 +2053,7 @@ func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNG
             #if swift(>=4.1)
                 UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
             #else
-                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
             #endif
     }
 
