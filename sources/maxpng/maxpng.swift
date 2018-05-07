@@ -1636,7 +1636,11 @@ class PNGDecoder
 
     deinit
     {
-        UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
+        #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
+        #else
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+        #endif
         fclose(self.stream)
     }
 
@@ -1904,7 +1908,11 @@ class PNGEncoder
 
     deinit
     {
-        UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
+        #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
+        #else
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+        #endif 
         fclose(self.stream)
     }
 
@@ -1982,7 +1990,11 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
         let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
         defer
         {
-            UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
+            #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
+            #else
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+            #endif
         }
 
         var reference_line:UnsafeBufferPointer<UInt8> = zero_line
@@ -2030,7 +2042,11 @@ func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNG
     let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
     defer
     {
-        UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
+            #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
+            #else
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+            #endif
     }
 
     var reference_line:UnsafeBufferPointer<UInt8> = zero_line
@@ -2117,7 +2133,11 @@ class ZInflator : ZIterator
     func get_output_byte(sentinel:inout Bool) throws -> UInt8?
     {
         let _byte = UnsafeMutablePointer<UInt8>.allocate(capacity: 1)
-        defer { _byte.deallocate() }
+        #if swift(>=4.1)
+            defer { _byte.deallocate() }
+        #else
+            defer { _byte.deallocate(capacity: 1) }
+        #endif
 
         self.stream.avail_out = 1
         self.stream.next_out = _byte
