@@ -1736,20 +1736,18 @@ struct Encoder
     func compress_scanline(stream:FilePointer, finish:Bool) throws
     {
         var stream_exhausted:Bool = false
+        let s = self
         repeat
         {
-            //var data = self.chunk_data
-            //try data.withUnsafeMutableBufferPointer
             try self.chunk_data.withUnsafeMutableBufferPointer
             {
                 let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
                 let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
-                self.z_iterator.set_output(dest: dest)
+                s.z_iterator.set_output(dest: dest)
                 // like with the Inflator, the above is tracked internally by the zstream, but we can’t guarantee
                 // the stability of the underlying `chunk_data` buffer so we recalculate the destination each cycle.
 
-                let tmp = Int(try self.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
-                self.chunk_capacity_remaining = tmp
+                self.chunk_capacity_remaining = Int(try s.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
                 assert(!stream_exhausted || finish) // the_end cannot come yet
             }
         } while try self.attempt_emit_idat_chunk(stream: stream)
