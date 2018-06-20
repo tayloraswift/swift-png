@@ -35,7 +35,7 @@ try png_encode(path: "my_output_png.png", raw_data: my_png_data, properties: my_
 ````
 **MaxPNG’s entire public API is [documented](doc/2.0.1).**
 
-MaxPNG is batteries-included, providing several utility [functions](doc/pngproperties.md#instance-methods) that will deinterlace and normalize image data, turning any PNG file into an array of RGBA samples. In most cases, MaxPNG’s default output can be sent directly to a graphics API such as OpenGL. MaxPNG even includes functions to premultiply image alpha, and format data buffers that can be sent to the [Cairo graphics library](https://cairographics.org/).
+MaxPNG is batteries-included, providing several utility [functions](doc/2.0.1/pngproperties.md#instance-methods) that will deinterlace and normalize image data, turning any PNG file into an array of RGBA samples. In most cases, MaxPNG’s default output can be sent directly to a graphics API such as OpenGL. MaxPNG even includes functions to premultiply image alpha, and format data buffers that can be sent to the [Cairo graphics library](https://cairographics.org/).
 
 ### *…powerful*
 
@@ -53,7 +53,7 @@ try out.finish()
 ````
 ### *…safe*
 
-MaxPNG is written in pure Swift, and so it should behave like a Swift library. Its decoder is fully standards-compliant, passing all 161 official PNG [unit tests](http://www.schaik.com/pngsuite/pngsuite.html#basic), among others. It supports interlacing, indexed color, and even chroma key transparency. MaxPNG also throws [errors](doc/pngerrors.md) like a Swift library should, minimizing the chance that you’ll end up with a corrupt PNG.
+MaxPNG is written in pure Swift, and so it should behave like a Swift library. Its decoder is fully standards-compliant, passing all 161 official PNG [unit tests](http://www.schaik.com/pngsuite/pngsuite.html#basic), among others. It supports interlacing, indexed color, and even chroma key transparency. MaxPNG also throws [errors](doc/2.0.1/pngerrors.md) like a Swift library should, minimizing the chance that you’ll end up with a corrupt PNG.
 
 ### *…free*
 
