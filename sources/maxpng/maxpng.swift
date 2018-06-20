@@ -1325,7 +1325,11 @@ struct ScanlineIterator
     {
         let n:Int = self.sub_array_bounds[self.interlaced ? 6 : 7].j
         let base_address = UnsafeMutablePointer<UInt8>.allocate(capacity: n)
-        base_address.initialize(to: 0, count: n)
+        #if swift(>=4.1)
+            base_address.initialize(repeating: 0, count: n)
+        #else
+            base_address.initialize(to: 0, count: n)
+        #endif
         return UnsafeBufferPointer<UInt8>(start: base_address, count: n)
     }
 }
@@ -1543,7 +1547,11 @@ struct Decoder
     private static
     func buffer_to_string(_ buffer:[UInt8]) -> String
     {
-        return String(buffer.flatMap(Unicode.Scalar.init).map(Character.init))
+        #if swift(>=4.1)
+            return String(buffer.compactMap(Unicode.Scalar.init).map(Character.init))
+        #else
+            return String(buffer.flatMap(Unicode.Scalar.init).map(Character.init))
+        #endif
     }
 
     private static
@@ -1636,7 +1644,11 @@ class PNGDecoder
 
     deinit
     {
-        UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+        #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
+        #else
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+        #endif
         fclose(self.stream)
     }
 
@@ -1736,17 +1748,18 @@ struct Encoder
     func compress_scanline(stream:FilePointer, finish:Bool) throws
     {
         var stream_exhausted:Bool = false
+        let s = self
         repeat
         {
             try self.chunk_data.withUnsafeMutableBufferPointer
             {
                 let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
                 let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
-                self.z_iterator.set_output(dest: dest)
+                s.z_iterator.set_output(dest: dest)
                 // like with the Inflator, the above is tracked internally by the zstream, but we can’t guarantee
                 // the stability of the underlying `chunk_data` buffer so we recalculate the destination each cycle.
 
-                self.chunk_capacity_remaining = Int(try self.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
+                self.chunk_capacity_remaining = Int(try s.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
                 assert(!stream_exhausted || finish) // the_end cannot come yet
             }
         } while try self.attempt_emit_idat_chunk(stream: stream)
@@ -1903,7 +1916,11 @@ class PNGEncoder
 
     deinit
     {
-        UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+        #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
+        #else
+                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
+        #endif 
         fclose(self.stream)
     }
 
@@ -1981,7 +1998,11 @@ func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])
         let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
         defer
         {
-            UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+            #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
+            #else
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+            #endif
         }
 
         var reference_line:UnsafeBufferPointer<UInt8> = zero_line
@@ -2029,7 +2050,11 @@ func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNG
     let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
     defer
     {
-        UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+            #if swift(>=4.1)
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
+            #else
+                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
+            #endif
     }
 
     var reference_line:UnsafeBufferPointer<UInt8> = zero_line
@@ -2116,7 +2141,11 @@ class ZInflator : ZIterator
     func get_output_byte(sentinel:inout Bool) throws -> UInt8?
     {
         let _byte = UnsafeMutablePointer<UInt8>.allocate(capacity: 1)
-        defer { _byte.deallocate(capacity: 1) }
+        #if swift(>=4.1)
+            defer { _byte.deallocate() }
+        #else
+            defer { _byte.deallocate(capacity: 1) }
+        #endif
 
         self.stream.avail_out = 1
         self.stream.next_out = _byte
