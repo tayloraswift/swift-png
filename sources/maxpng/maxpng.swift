@@ -271,16 +271,16 @@ struct PNGProperties
 
         var code:UInt8
         {
-            return UInt8(truncatingIfNeeded: self.rawValue)
+            return .init(truncatingIfNeeded: self.rawValue)
         }
 
         public
         var depth:Int
         {
-            return Int(self.rawValue >> 8)
+            return .init(self.rawValue >> 8)
         }
 
-        public
+        public 
         var channels:Int
         {
             switch self
@@ -295,6 +295,14 @@ struct PNGProperties
             case .rgba8, .rgba16:
                 return 4
             }
+        }
+        
+        // UNDOCUMENTED 
+        public 
+        var components:Int 
+        {
+            //        base +     2 × colored     +    alpha
+            return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
         }
     }
 
