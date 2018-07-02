@@ -53,7 +53,7 @@ enum PNGCompressionError:Error
 
 @_fixed_layout
 public
-struct RGBA<Sample:UnsignedInteger>:Equatable, CustomStringConvertible
+struct RGBA<Sample>:Equatable, CustomStringConvertible where Sample:UnsignedInteger
 {
     public
     let r:Sample,

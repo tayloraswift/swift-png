@@ -31,7 +31,7 @@ let TERM_WIDTH:Int = 72
 // and not have it exposed as part of the public API
 func posix_path(_ path:String) -> String
 {
-    guard let first_char:Character = path.characters.first
+    guard let first_char:Character = path.first
     else
     {
         return path
@@ -39,9 +39,9 @@ func posix_path(_ path:String) -> String
     var expanded_path:String = path
     if first_char == "~"
     {
-        if expanded_path.characters.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        if expanded_path.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
         {
-            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.characters.dropFirst())
+            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.dropFirst())
         }
     }
     return expanded_path
@@ -144,14 +144,14 @@ func test_against_rgba64(png_data:[UInt8], properties:PNGProperties, path_rgba:S
 
 func print_centered(_ str:String, color:String?, width:Int = TERM_WIDTH)
 {
-    print(String(repeating: " ", count: max(0, (width - str.characters.count)) >> 1) + (color ?? "") + str + color_off)
+    print(String(repeating: " ", count: max(0, (width - str.count)) >> 1) + (color ?? "") + str + color_off)
 }
 
 func print_progress(percent:Double, text:[(String, String?)], erase:Bool = false, width:Int = TERM_WIDTH)
 {
     let bar_width:Int = width - 8
     let percent_label:String = "\(Int(percent * 100))%"
-    let percent_padding:String = String(repeating: " ", count: 5 - percent_label.characters.count)
+    let percent_padding:String = String(repeating: " ", count: 5 - percent_label.count)
 
     if erase
     {
