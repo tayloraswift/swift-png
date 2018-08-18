@@ -4,7 +4,7 @@ import Darwin
 import Glibc
 #endif
 
-import MaxPNG
+import PNG
 
 fileprivate 
 let bold = "\u{001B}[1m", 

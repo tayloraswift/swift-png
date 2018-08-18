@@ -1,0 +1,5 @@
+module zlib
+{
+    umbrella header "zlib.h"
+    link "z"
+}

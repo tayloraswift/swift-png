@@ -1,4 +1,4 @@
-import MaxPNG
+import PNG
 
 func rgba32_64_test(test_name:String, log:inout [String]) -> Bool
 {
