@@ -1,6 +1,0 @@
-module Zlib
-{
-    header "/usr/include/zlib.h"
-    link "z"
-    export *
-}

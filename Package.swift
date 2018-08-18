@@ -1,14 +1,14 @@
-// swift-tools-version:4.1
+// swift-tools-version:4.2
 
 import PackageDescription
 
 let package = Package(
-    name: "MaxPNG",
-    products:  [.library(name: "MaxPNG", targets: ["MaxPNG"]), 
-                .executable(name: "tests", targets: ["MaxPNGTests"])],
-    targets:   [.target(name: "Zlib", path: "sources/zlib"),
-                .target(name: "MaxPNG", dependencies: ["Zlib"], path: "sources/maxpng"),
-                .target(name: "MaxPNGTests", dependencies: ["MaxPNG"], path: "tests")
+    name: "PNG",
+    products:  [.library(name: "PNG", targets: ["PNG"]), 
+                .executable(name: "tests", targets: ["PNGTests"])],
+    targets:   [.systemLibrary(name: "zlib", path: "sources/zlib", pkgConfig: "zlib"),
+                .target(name: "PNG", dependencies: ["zlib"], path: "sources/png"),
+                .target(name: "PNGTests", dependencies: ["PNG"], path: "tests")
                ],
-    swiftLanguageVersions: [4]
+    swiftLanguageVersions: [.v4_2]
 )

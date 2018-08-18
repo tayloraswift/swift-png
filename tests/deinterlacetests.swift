@@ -1,4 +1,4 @@
-import MaxPNG
+import PNG
 
 func test_decompose(path_png:String, path_rgba:String, path_dest:String, log:inout [String]) -> Bool
 {
