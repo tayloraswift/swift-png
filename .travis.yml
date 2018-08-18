@@ -1,16 +1,11 @@
 matrix:
   include:
-  - os: osx
-    language: objective-c
-    script:
-      - swift build -c release 
-      - .build/release/tests
   - os: linux
     language: generic
     sudo: required
     dist: trusty
     env: 
-    - SWIFT_BRANCH=swift-4.1.2-release SWIFT_VERSION=swift-4.1.2-RELEASE
+    - SWIFT_BRANCH=swift-4.2-convergence SWIFT_VERSION=swift-4.2-CONVERGENCE
     install:
     - mkdir swift
     - curl https://swift.org/builds/$SWIFT_BRANCH/ubuntu1404/$SWIFT_VERSION/$SWIFT_VERSION-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
