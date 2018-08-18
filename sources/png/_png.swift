@@ -102,11 +102,6 @@ enum PNG
                 return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
             }
             
-            var bytesPerPixel:Int 
-            {
-                return max(1, (self.channels * self.depth) >> 3)
-            }
-            
             func shape(from size:Math<Int>.V2) -> Shape 
             {
                 let scanlineBitCount:Int = size.x * self.channels * self.depth
@@ -264,6 +259,78 @@ enum PNG
                     
                     return .init(properties: properties, data: .init(self.data[range]))
                 }
+            }
+            
+            func deinterlace() -> Rectangular 
+            {
+                guard case .adam7(let subImages) = self.properties.interlacing 
+                else 
+                {
+                    // image is not interlaced at all, return it transparently 
+                    assert(self.data.count == self.properties.shape.byteCount)
+                    return .init(properties: self.properties, data: self.data)
+                }
+                
+                let properties:Properties = .init(size: self.properties.shape.size, 
+                                                format: self.properties.format, 
+                                            interlaced: false)
+                let count:Int = properties.shape.byteCount
+                let deinterlaced:[UInt8] = .init(_unsafeUninitializedCapacity: count)
+                {
+                    (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
+                    
+                    let depth:Int = properties.format.depth
+                    if depth < 8 
+                    {
+                        var base:Int = self.data.startIndex 
+                        for subImage:Properties.Interlacing.SubImage in subImages 
+                        {
+                            for (sy, dy):(Int, Int) in subImage.strider.y.enumerated()
+                            {                            
+                                for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
+                                {
+                                    // image only has 1 channel 
+                                    let si:Int = (sx * depth) >> 3 + subImage.shape.pitch   * sy, 
+                                        di:Int = (dx * depth) >> 3 + properties.shape.pitch * dy
+                                    let sb:Int = (sx * depth) & 7, 
+                                        db:Int = (dx * depth) & 7
+                                    
+                                    // isolate relevant bits and store them into the destination
+                                    let bits:UInt8 = (self.data[base + si] &<< sb) &>> (8 - depth)
+                                    buffer[di]    |= bits &<< (8 - db - depth) 
+                                }
+                            }
+                            
+                            base += subImage.shape.byteCount
+                        }
+                    }
+                    else 
+                    {
+                        let bpp:Int = (properties.format.channels * depth) >> 3
+                        
+                        var base:Int = self.data.startIndex 
+                        for subImage:Properties.Interlacing.SubImage in subImages 
+                        {
+                            for (sy, dy):(Int, Int) in subImage.strider.y.enumerated()
+                            {                            
+                                for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
+                                {
+                                    let si:Int = sx * bpp + subImage.shape.pitch   * sy, 
+                                        di:Int = dx * bpp + properties.shape.pitch * dy
+                                    
+                                    for b:Int in 0 ..< bpp 
+                                    {
+                                        buffer[di + b] = self.data[base + si + b]
+                                    }
+                                }
+                            }
+                            
+                            base += subImage.shape.byteCount
+                        }
+                    }
+                }
+                
+                return .init(properties: properties, data: deinterlaced)
             }
         }
         
