@@ -159,6 +159,35 @@ enum PNG
             }
         }
         
+        struct Pitches:Sequence, IteratorProtocol 
+        {
+            private 
+            let footprints:[(pitch:Int, height:Int)]
+            
+            private 
+            var f:Int         = 0, 
+                scanlines:Int = 0
+            
+            mutating 
+            func next() -> Int? 
+            {
+                while self.scanlines == 0  
+                {
+                    guard self.f < self.footprints.count
+                    else 
+                    {
+                        return nil  
+                    }
+                    
+                    self.scanlines = self.footprints[self.f].pitch * self.footprints[self.f].height
+                    self.f += 1
+                }
+                
+                self.scanlines -= 1 
+                return self.footprints[self.f - 1].pitch
+            }
+        }
+        
         // stored properties 
         public 
         let format:Format
