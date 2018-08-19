@@ -5,7 +5,7 @@ matrix:
     sudo: required
     dist: trusty
     env: 
-    - SWIFT_BRANCH=swift-4.2-branch SWIFT_VERSION=swift-4.2-DEVELOPMENT_SNAPSHOT-2018-08-17-a
+    - SWIFT_BRANCH=swift-4.2-branch SWIFT_VERSION=swift-4.2-DEVELOPMENT-SNAPSHOT-2018-08-17-a
     install:
     - mkdir swift
     - curl https://swift.org/builds/$SWIFT_BRANCH/ubuntu1404/$SWIFT_VERSION/$SWIFT_VERSION-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null

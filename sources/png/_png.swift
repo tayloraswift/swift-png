@@ -65,11 +65,20 @@ enum PNG
                  grayscale_a16  = 0x10_04,
                  rgba8          = 0x08_06,
                  rgba16         = 0x10_06
-
-            var code:UInt8
+            
+            var isIndexed:Bool 
             {
-                return .init(truncatingIfNeeded: self.rawValue)
+                return self.rawValue & 1 != 0
             }
+            var hasColor:Bool 
+            {
+                return self.rawValue & 2 != 0
+            }
+            var hasAlpha:Bool 
+            {
+                return self.rawValue & 4 != 0
+            }
+            
             
             public 
             var depth:Int
@@ -340,6 +349,157 @@ enum PNG
         {
             let properties:Properties, 
                 data:[UInt8]
+        }
+    }
+    
+    enum Chunk:String
+    {
+        case __FIRST__,
+             IHDR,
+             PLTE,
+             IDAT,
+             IEND,
+
+             cHRM,
+             gAMA,
+             iCCP,
+             sBIT,
+             sRGB,
+             bKGD,
+             hIST,
+             tRNS,
+             pHYs,
+             sPLT,
+             tIME,
+             iTXt,
+             tEXt,
+             zTXt,
+
+             PRIVATE,
+
+             __INTERRUPTOR__
+    }
+    
+    enum ReadError:Error
+    {
+        case missingHeader, 
+             prematureIEND, 
+             illegalChunk(Chunk), 
+             misplacedChunk(Chunk), 
+             duplicateChunk(Chunk), 
+             missingPalette
+    }
+
+    // performs chunk ordering and presence validation
+    struct Conditions 
+    {
+        private 
+        var lastValidChunk:Chunk = .__FIRST__, 
+            seen:Set<Chunk>      = [], 
+            format:Properties.Format?
+        
+        mutating 
+        func push(_ chunk:Chunk) -> ReadError? 
+        {
+            if self.lastValidChunk == .__FIRST__
+            {
+                guard chunk == .IHDR 
+                else 
+                {
+                    return .missingHeader 
+                }
+                
+                self.lastValidChunk = .IHDR 
+                self.seen.insert(.IHDR)
+                return nil 
+            }
+            
+            guard self.lastValidChunk != .IEND || chunk == .IEND && !self.seen.contains(.IDAT)
+            else 
+            {
+                return .prematureIEND
+            }
+            
+            guard let format:Properties.Format = self.format
+            else 
+            {
+                return .missingHeader
+            }
+            
+            
+            if      chunk ==                                                                  .tRNS
+            {
+                guard !format.hasAlpha // tRNS forbidden in alpha’d formats
+                else
+                {
+                    return .illegalChunk(chunk)
+                }
+            }
+            else if chunk ==   .PLTE
+            {
+                // PLTE must come before bKGD, hIST, and tRNS
+                guard format.hasColor // PLTE requires non-grayscale format
+                else
+                {
+                    return .illegalChunk(chunk)
+                }
+
+                if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
+                {
+                    return .misplacedChunk(chunk)
+                }
+            }
+
+            // these chunks must occur before PLTE
+            switch chunk
+            {
+                case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
+                    if self.seen.contains(.PLTE)
+                    {
+                        return .misplacedChunk(chunk)
+                    }
+                    
+                    fallthrough 
+                
+                // these chunks (and the ones in previous cases) must occur before IDAT
+                case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
+                    if self.seen.contains(.IDAT)
+                    {
+                        return .misplacedChunk(chunk)
+                    }
+                    
+                    fallthrough 
+                
+                // these chunks (and the ones in previous cases) cannot duplicate
+                case    .IHDR,                                                                                     .tIME:
+                    if self.seen.contains(chunk)
+                    {
+                        return .duplicateChunk(chunk)
+                    }
+                
+                
+                // IDAT blocks much be consecutive
+                case .IDAT:
+                    if  self.lastValidChunk != .IDAT, 
+                        self.seen.contains(.IDAT)
+                    {
+                        return .misplacedChunk(chunk)
+                    }
+
+                    if  format.isIndexed, 
+                       !self.seen.contains(.PLTE)
+                    {
+                        return .missingPalette
+                    }
+                    
+                default:
+                    break
+            }
+            
+            self.lastValidChunk = chunk
+            self.seen.insert(chunk)
+            
+            return nil
         }
     }
 }
