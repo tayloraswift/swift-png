@@ -1,18 +1,12 @@
 import Glibc
 import zlib
 
-protocol DataSource
+fileprivate 
+extension ArraySlice where Element == UInt8 
 {
-    mutating 
-    func read(bytes:Int) -> [UInt8]?
-}
-extension DataSource 
-{    
-    static 
-    func load<T, U>(bigEndian:T.Type, as type:U.Type, from slice:ArraySlice<UInt8>) -> U 
-        where T:FixedWidthInteger, U:BinaryInteger
+    func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U where T:FixedWidthInteger, U:BinaryInteger
     {
-        return slice.withUnsafeBufferPointer 
+        return self.withUnsafeBufferPointer 
         {
             (buffer:UnsafeBufferPointer<UInt8>) in
             
@@ -37,7 +31,15 @@ extension DataSource
             return U(T(bigEndian: value))
         }
     }
-    
+}
+
+protocol DataSource
+{
+    mutating 
+    func read(bytes:Int) -> [UInt8]?
+}
+extension DataSource 
+{
     mutating  
     func next() throws -> (type:PNG.Chunk, data:[UInt8])
     {
@@ -47,9 +49,7 @@ extension DataSource
             throw PNG.ReadError.incompleteChunk
         }
         
-        let length:Int = Self.load(bigEndian: UInt32.self, 
-                                          as: Int.self, 
-                                        from: header.prefix(4)), 
+        let length:Int  = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self), 
             name:String = .init(decoding: header.suffix(4), as: Unicode.UTF8.self)
         
         let type:PNG.Chunk 
@@ -81,7 +81,7 @@ extension DataSource
             throw PNG.ReadError.incompleteChunk
         }
         
-        let checksum:UInt = Self.load(bigEndian: UInt32.self, as: UInt.self, from: data.suffix(4))
+        let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
         
         data.removeLast(4)
         
@@ -500,6 +500,51 @@ enum PNG
                  iTXt,
                  tEXt,
                  zTXt
+            
+            static 
+            func decodeIHDR(_ data:[UInt8]) throws -> Properties
+            {
+                guard data.count == 13 
+                else 
+                {
+                    throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
+                }
+                
+                let colorcode:UInt16 = data[8 ..< 10].load(bigEndian: UInt16.self, as: UInt16.self)
+                guard let format:Properties.Format = Properties.Format.init(rawValue: colorcode)
+                else 
+                {
+                    throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+                }
+                
+                // validate other fields 
+                guard data[10] == 0 
+                else 
+                {
+                    throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
+                }
+                guard data[11] == 0 
+                else 
+                {
+                    throw ReadError.syntaxError(message: "filter byte has value \(data[10]), expected 0")
+                }
+                
+                let interlaced:Bool 
+                switch data[12]
+                {
+                    case 0:
+                        interlaced = false 
+                    case 1: 
+                        interlaced = true 
+                    default:
+                        throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
+                }
+                
+                let width:Int  = data[0 ..< 4].load(bigEndian: UInt32.self, as: Int.self), 
+                    height:Int = data[4 ..< 7].load(bigEndian: UInt32.self, as: Int.self)
+                
+                return .init(size: (width, height), format: format, interlaced: interlaced)
+            }
         }
 
         case `public`(Public), `private`(String)
@@ -644,6 +689,4 @@ enum PNG
             return nil
         }
     }
-    
-    
 }
