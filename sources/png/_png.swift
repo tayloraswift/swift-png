@@ -541,7 +541,7 @@ enum PNG
                 }
                 
                 let width:Int  = data[0 ..< 4].load(bigEndian: UInt32.self, as: Int.self), 
-                    height:Int = data[4 ..< 7].load(bigEndian: UInt32.self, as: Int.self)
+                    height:Int = data[4 ..< 8].load(bigEndian: UInt32.self, as: Int.self)
                 
                 return .init(size: (width, height), format: format, interlaced: interlaced)
             }
