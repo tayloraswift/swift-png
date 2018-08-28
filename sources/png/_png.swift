@@ -1,13 +1,109 @@
 import Glibc
+import zlib
 
 protocol DataSource
 {
     mutating 
-    func read(bytes limit:Int) -> [UInt8]
+    func read(bytes:Int) -> [UInt8]?
+}
+extension DataSource 
+{    
+    static 
+    func load<T, U>(bigEndian:T.Type, as type:U.Type, from slice:ArraySlice<UInt8>) -> U 
+        where T:FixedWidthInteger, U:BinaryInteger
+    {
+        return slice.withUnsafeBufferPointer 
+        {
+            (buffer:UnsafeBufferPointer<UInt8>) in
+            
+            var storage:T = .init()
+            let value:T   = withUnsafeMutablePointer(to: &storage) 
+            {
+                $0.deinitialize(count: 1)
+                
+                guard                 buffer.count >= MemoryLayout<T>.size, 
+                        let source:UnsafeRawPointer = buffer.baseAddress.map(UnsafeRawPointer.init(_:))
+                else 
+                {
+                    fatalError("attempt to load \(T.self) from buffer of size \(buffer.count)")
+                }
+                
+                let raw:UnsafeMutableRawPointer = .init($0)
+                raw.copyMemory(from: source, byteCount: MemoryLayout<T>.size)
+                
+                return raw.load(as: T.self)
+            }
+            
+            return U(T(bigEndian: value))
+        }
+    }
+    
+    mutating  
+    func next() throws -> (type:PNG.Chunk, data:[UInt8])
+    {
+        guard let header:[UInt8] = self.read(bytes: 8)
+        else 
+        {
+            throw PNG.ReadError.incompleteChunk
+        }
+        
+        let length:Int = Self.load(bigEndian: UInt32.self, 
+                                          as: Int.self, 
+                                        from: header.prefix(4)), 
+            name:String = .init(decoding: header.suffix(4), as: Unicode.UTF8.self)
+        
+        let type:PNG.Chunk 
+        
+        if let `public`:PNG.Chunk.Public = PNG.Chunk.Public.init(rawValue: name)
+        {
+            type = .public(`public`)
+        }
+        else 
+        {
+            guard header[4    ] & (1 << 5) != 0
+            else 
+            {
+                throw PNG.ReadError.unrecognizedCriticalChunk(name)
+            }
+            
+            guard header[4 + 2] & (1 << 5) != 0
+            else 
+            {
+                throw PNG.ReadError.syntaxError(message: "third byte of chunk '\(name)' must have bit 5 clear")
+            }
+            
+            type = .private(name)
+        }
+        
+        guard var data:[UInt8] = self.read(bytes: length + MemoryLayout<UInt32>.size)
+        else 
+        {
+            throw PNG.ReadError.incompleteChunk
+        }
+        
+        let checksum:UInt = Self.load(bigEndian: UInt32.self, as: UInt.self, from: data.suffix(4))
+        
+        data.removeLast(4)
+        
+        let testsum:UInt  = header.suffix(4).withUnsafeBufferPointer
+        {
+            return crc32(crc32(0, $0.baseAddress, 4), data, UInt32(length))
+        } 
+        guard testsum == checksum
+        else 
+        {
+            throw PNG.ReadError.corruptedChunk
+        }
+        
+        return (type, data)
+    }
 }
 
 enum PNG
 {
+    private static 
+    let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
+    
     struct FileInterface:DataSource 
     {
         typealias FilePointer = UnsafeMutablePointer<FILE>
@@ -32,13 +128,13 @@ enum PNG
             fclose(self.descriptor)
         }
         
-        func read(bytes limit:Int) -> [UInt8]
+        func read(bytes:Int) -> [UInt8]?
         {
-            return .init(_unsafeUninitializedCapacity: limit) 
+            return .init(_unsafeUninitializedCapacity: bytes) 
             {
                 (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
                 
-                count = fread(buffer.baseAddress, 1, limit, self.descriptor)
+                count = fread(buffer.baseAddress, 1, bytes, self.descriptor)
             }
         }
     }
@@ -381,41 +477,47 @@ enum PNG
         }
     }
     
-    enum Chunk:String
+    enum Chunk
     {
-        case __FIRST__,
-             IHDR,
-             PLTE,
-             IDAT,
-             IEND,
+        enum Public:String 
+        {
+            case IHDR,
+                 PLTE,
+                 IDAT,
+                 IEND,
 
-             cHRM,
-             gAMA,
-             iCCP,
-             sBIT,
-             sRGB,
-             bKGD,
-             hIST,
-             tRNS,
-             pHYs,
-             sPLT,
-             tIME,
-             iTXt,
-             tEXt,
-             zTXt,
+                 cHRM,
+                 gAMA,
+                 iCCP,
+                 sBIT,
+                 sRGB,
+                 bKGD,
+                 hIST,
+                 tRNS,
+                 pHYs,
+                 sPLT,
+                 tIME,
+                 iTXt,
+                 tEXt,
+                 zTXt
+        }
 
-             PRIVATE,
-
-             __INTERRUPTOR__
+        case `public`(Public), `private`(String)
     }
     
     enum ReadError:Error
     {
-        case missingHeader, 
+        case incompleteChunk,  
+            
+             syntaxError(message: String), 
+        
+             missingHeader, 
              prematureIEND, 
-             illegalChunk(Chunk), 
-             misplacedChunk(Chunk), 
-             duplicateChunk(Chunk), 
+             corruptedChunk, 
+             illegalChunk(Chunk.Public), 
+             misplacedChunk(Chunk.Public), 
+             unrecognizedCriticalChunk(String), 
+             duplicateChunk(Chunk.Public), 
              missingPalette
     }
 
@@ -423,30 +525,26 @@ enum PNG
     struct Conditions 
     {
         private 
-        var lastValidChunk:Chunk = .__FIRST__, 
-            seen:Set<Chunk>      = [], 
-            format:Properties.Format?
+        var format:Properties.Format?, 
+            last:Chunk?, 
+            seen:Set<Chunk.Public> = []
         
         mutating 
         func push(_ chunk:Chunk) -> ReadError? 
         {
-            if self.lastValidChunk == .__FIRST__
+            guard let last:Chunk = self.last
+            else 
             {
-                guard chunk == .IHDR 
+                guard case .public(let type) = chunk, 
+                    type == .IHDR
                 else 
                 {
                     return .missingHeader 
                 }
                 
-                self.lastValidChunk = .IHDR 
+                self.last = .public(.IHDR)
                 self.seen.insert(.IHDR)
                 return nil 
-            }
-            
-            guard self.lastValidChunk != .IEND || chunk == .IEND && !self.seen.contains(.IDAT)
-            else 
-            {
-                return .prematureIEND
             }
             
             guard let format:Properties.Format = self.format
@@ -455,80 +553,97 @@ enum PNG
                 return .missingHeader
             }
             
-            
-            if      chunk ==                                                                  .tRNS
+            if case .public(let lastPublic) = last 
             {
-                guard !format.hasAlpha // tRNS forbidden in alpha’d formats
-                else
+                guard lastPublic != .IEND
+                else 
                 {
-                    return .illegalChunk(chunk)
+                    return .prematureIEND
                 }
             }
-            else if chunk ==   .PLTE
+            
+            if case .public(let type) = chunk 
             {
-                // PLTE must come before bKGD, hIST, and tRNS
-                guard format.hasColor // PLTE requires non-grayscale format
-                else
+                if      type ==                                                                   .tRNS
                 {
-                    return .illegalChunk(chunk)
+                    guard !format.hasAlpha // tRNS forbidden in alpha’d formats
+                    else
+                    {
+                        return .illegalChunk(type)
+                    }
+                }
+                else if type ==    .PLTE
+                {
+                    // PLTE must come before bKGD, hIST, and tRNS
+                    guard format.hasColor // PLTE requires non-grayscale format
+                    else
+                    {
+                        return .illegalChunk(type)
+                    }
+
+                    if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
+                    {
+                        return .misplacedChunk(type)
+                    }
                 }
 
-                if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
+                // these chunks must occur before PLTE
+                switch type
                 {
-                    return .misplacedChunk(chunk)
+                    case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
+                        if self.seen.contains(.PLTE)
+                        {
+                            return .misplacedChunk(type)
+                        }
+                        
+                        fallthrough 
+                    
+                    // these chunks (and the ones in previous cases) must occur before IDAT
+                    case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
+                        if self.seen.contains(.IDAT)
+                        {
+                            return .misplacedChunk(type)
+                        }
+                        
+                        fallthrough 
+                    
+                    // these chunks (and the ones in previous cases) cannot duplicate
+                    case    .IHDR,                                                                                     .tIME:
+                        if self.seen.contains(type)
+                        {
+                            return .duplicateChunk(type)
+                        }
+                    
+                    
+                    // IDAT blocks much be consecutive
+                    case .IDAT:
+                        if self.seen.contains(.IDAT)
+                        {
+                            guard case .public(let lastPublic) = last, 
+                                    lastPublic == .IDAT 
+                            else 
+                            {
+                                return .misplacedChunk(.IDAT)
+                            }
+                        }
+
+                        if  format.isIndexed, 
+                           !self.seen.contains(.PLTE)
+                        {
+                            return .missingPalette
+                        }
+                        
+                    default:
+                        break
                 }
-            }
-
-            // these chunks must occur before PLTE
-            switch chunk
-            {
-                case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
-                    if self.seen.contains(.PLTE)
-                    {
-                        return .misplacedChunk(chunk)
-                    }
-                    
-                    fallthrough 
                 
-                // these chunks (and the ones in previous cases) must occur before IDAT
-                case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
-                    if self.seen.contains(.IDAT)
-                    {
-                        return .misplacedChunk(chunk)
-                    }
-                    
-                    fallthrough 
-                
-                // these chunks (and the ones in previous cases) cannot duplicate
-                case    .IHDR,                                                                                     .tIME:
-                    if self.seen.contains(chunk)
-                    {
-                        return .duplicateChunk(chunk)
-                    }
-                
-                
-                // IDAT blocks much be consecutive
-                case .IDAT:
-                    if  self.lastValidChunk != .IDAT, 
-                        self.seen.contains(.IDAT)
-                    {
-                        return .misplacedChunk(chunk)
-                    }
-
-                    if  format.isIndexed, 
-                       !self.seen.contains(.PLTE)
-                    {
-                        return .missingPalette
-                    }
-                    
-                default:
-                    break
+                self.seen.insert(type)
             }
             
-            self.lastValidChunk = chunk
-            self.seen.insert(chunk)
-            
+            self.last = chunk
             return nil
         }
     }
+    
+    
 }
