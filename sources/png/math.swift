@@ -85,15 +85,22 @@ extension Double:_SwiftFloatingPoint
     }
 }
 
+public  
 enum Math<N>
 {
+    public 
     typealias V2 = (x:N, y:N)
+    public 
     typealias V3 = (x:N, y:N, z:N)
+    public 
     typealias V4 = (x:N, y:N, z:N, w:N)
     
+    public 
     typealias Mat3 = (V3, V3, V3)
+    public 
     typealias Mat4 = (V4, V4, V4, V4)
     
+    public 
     typealias Rectangle = (a:V2, b:V2)
 
     @inline(__always)

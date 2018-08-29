@@ -4,7 +4,8 @@ import zlib
 fileprivate 
 extension ArraySlice where Element == UInt8 
 {
-    func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U where T:FixedWidthInteger, U:BinaryInteger
+    func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U 
+        where T:FixedWidthInteger, U:BinaryInteger
     {
         return self.withUnsafeBufferPointer 
         {
@@ -15,8 +16,8 @@ extension ArraySlice where Element == UInt8
             {
                 $0.deinitialize(count: 1)
                 
-                guard                 buffer.count >= MemoryLayout<T>.size, 
-                        let source:UnsafeRawPointer = buffer.baseAddress.map(UnsafeRawPointer.init(_:))
+                guard buffer.count >= MemoryLayout<T>.size, 
+                  let source:UnsafeRawPointer = buffer.baseAddress.map(UnsafeRawPointer.init(_:))
                 else 
                 {
                     fatalError("attempt to load \(T.self) from buffer of size \(buffer.count)")
@@ -33,77 +34,21 @@ extension ArraySlice where Element == UInt8
     }
 }
 
+public 
 protocol DataSource
 {
+    // output array `.count` must equal `bytes`
     mutating 
     func read(bytes:Int) -> [UInt8]?
 }
-extension DataSource 
-{
-    mutating  
-    func next() throws -> (type:PNG.Chunk, data:[UInt8])
-    {
-        guard let header:[UInt8] = self.read(bytes: 8)
-        else 
-        {
-            throw PNG.ReadError.incompleteChunk
-        }
-        
-        let length:Int  = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self), 
-            name:String = .init(decoding: header.suffix(4), as: Unicode.UTF8.self)
-        
-        let type:PNG.Chunk 
-        
-        if let `public`:PNG.Chunk.Public = PNG.Chunk.Public.init(rawValue: name)
-        {
-            type = .public(`public`)
-        }
-        else 
-        {
-            guard header[4    ] & (1 << 5) != 0
-            else 
-            {
-                throw PNG.ReadError.unrecognizedCriticalChunk(name)
-            }
-            
-            guard header[4 + 2] & (1 << 5) != 0
-            else 
-            {
-                throw PNG.ReadError.syntaxError(message: "third byte of chunk '\(name)' must have bit 5 clear")
-            }
-            
-            type = .private(name)
-        }
-        
-        guard var data:[UInt8] = self.read(bytes: length + MemoryLayout<UInt32>.size)
-        else 
-        {
-            throw PNG.ReadError.incompleteChunk
-        }
-        
-        let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
-        
-        data.removeLast(4)
-        
-        let testsum:UInt  = header.suffix(4).withUnsafeBufferPointer
-        {
-            return crc32(crc32(0, $0.baseAddress, 4), data, UInt32(length))
-        } 
-        guard testsum == checksum
-        else 
-        {
-            throw PNG.ReadError.corruptedChunk
-        }
-        
-        return (type, data)
-    }
-}
 
+public 
 enum PNG
 {
     private static 
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
     
+    public 
     struct FileInterface:DataSource 
     {
         typealias FilePointer = UnsafeMutablePointer<FILE>
@@ -111,8 +56,8 @@ enum PNG
         private 
         let descriptor:FilePointer
         
-        static 
-        func open(path:String) -> FileInterface? 
+        public static 
+        func open<Result>(path:String, body:(inout FileInterface) throws -> Result) rethrows -> Result? 
         {
             guard let descriptor:FilePointer = fopen(path, "rb")
             else
@@ -120,22 +65,74 @@ enum PNG
                 return nil
             }
             
-            return .init(descriptor: descriptor)
+            var file:FileInterface = .init(descriptor: descriptor)
+            defer 
+            {
+                fclose(file.descriptor)
+            }
+            
+            return try body(&file)
         }
         
-        func close()
-        {
-            fclose(self.descriptor)
-        }
-        
+        public 
         func read(bytes:Int) -> [UInt8]?
         {
-            return .init(_unsafeUninitializedCapacity: bytes) 
+            let buffer:[UInt8] = .init(_unsafeUninitializedCapacity: bytes) 
             {
                 (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
                 
                 count = fread(buffer.baseAddress, 1, bytes, self.descriptor)
             }
+            
+            guard buffer.count == bytes 
+            else 
+            {
+                return nil
+            }
+            
+            return buffer
+        }
+    }
+    
+    public static   
+    func forEachChunk<Source>(in source:inout Source, body:(Math<UInt8>.V4, [UInt8]?) throws -> ()) throws
+        where Source:DataSource
+    {
+        guard let signature:[UInt8] = source.read(bytes: PNG.signature.count), 
+                  signature == PNG.signature
+        else 
+        {
+            throw ReadError.missingSignature
+        }
+        
+        while let header:[UInt8] = source.read(bytes: 8)
+        {
+            let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self)
+            let name:Math<UInt8>.V4 = (header[4], header[5], header[6], header[7]) 
+            
+            guard var data:[UInt8] = source.read(bytes: length + MemoryLayout<UInt32>.size)
+            else 
+            {
+                try body(name, nil)
+                continue 
+            }
+            
+            let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
+            
+            data.removeLast(4)
+            
+            let testsum:UInt  = header.suffix(4).withUnsafeBufferPointer
+            {
+                return crc32(crc32(0, $0.baseAddress, 4), data, UInt32(length))
+            } 
+            guard testsum == checksum
+            else 
+            {
+                try body(name, nil)
+                continue
+            }
+            
+            try body(name, data)
         }
     }
     
@@ -477,77 +474,134 @@ enum PNG
         }
     }
     
-    enum Chunk
+    public 
+    struct Chunk:Hashable, Equatable, CustomStringConvertible
     {
-        enum Public:String 
+        let name:Math<UInt8>.V4
+        
+        public
+        var description:String 
         {
-            case IHDR,
-                 PLTE,
-                 IDAT,
-                 IEND,
-
-                 cHRM,
-                 gAMA,
-                 iCCP,
-                 sBIT,
-                 sRGB,
-                 bKGD,
-                 hIST,
-                 tRNS,
-                 pHYs,
-                 sPLT,
-                 tIME,
-                 iTXt,
-                 tEXt,
-                 zTXt
-            
-            static 
-            func decodeIHDR(_ data:[UInt8]) throws -> Properties
+            return .init( decoding: [self.name.0, self.name.1, self.name.2, self.name.3], 
+                                as: Unicode.ASCII.self)
+        }
+        
+        private 
+        init(_ a:UInt8, _ p:UInt8, _ r:UInt8, _ c:UInt8)
+        {
+            self.name = (a, p, r, c)
+        }
+        
+        public  
+        init?(_ name:Math<UInt8>.V4)
+        {
+            self.name = name
+            switch self 
             {
-                guard data.count == 13 
-                else 
-                {
-                    throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
-                }
-                
-                let colorcode:UInt16 = data[8 ..< 10].load(bigEndian: UInt16.self, as: UInt16.self)
-                guard let format:Properties.Format = Properties.Format.init(rawValue: colorcode)
-                else 
-                {
-                    throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
-                }
-                
-                // validate other fields 
-                guard data[10] == 0 
-                else 
-                {
-                    throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
-                }
-                guard data[11] == 0 
-                else 
-                {
-                    throw ReadError.syntaxError(message: "filter byte has value \(data[10]), expected 0")
-                }
-                
-                let interlaced:Bool 
-                switch data[12]
-                {
-                    case 0:
-                        interlaced = false 
-                    case 1: 
-                        interlaced = true 
-                    default:
-                        throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
-                }
-                
-                let width:Int  = data[0 ..< 4].load(bigEndian: UInt32.self, as: Int.self), 
-                    height:Int = data[4 ..< 8].load(bigEndian: UInt32.self, as: Int.self)
-                
-                return .init(size: (width, height), format: format, interlaced: interlaced)
+                // legal public chunks 
+                case .IHDR, .PLTE, .IDAT, .IEND, 
+                     .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, 
+                     .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXt:
+                    break 
+
+                default:
+                    guard name.0 & 0x20 != 0 
+                    else 
+                    {
+                        return nil
+                    }
+
+                    guard name.2 & 0x20 == 0 
+                    else 
+                    {
+                        return nil
+                    }
             }
         }
-
-        case `public`(Public), `private`(String)
+        
+        public static 
+        func == (a:Chunk, b:Chunk) -> Bool 
+        {
+            return a.name == b.name
+        }
+        
+        public 
+        func hash(into hasher:inout Hasher) 
+        {
+            hasher.combine( self.name.0 << 24 | 
+                            self.name.1 << 16 | 
+                            self.name.2 <<  8 | 
+                            self.name.3)
+        }
+        
+        static 
+        let IHDR:Chunk = .init(73, 72, 68, 82), 
+            PLTE:Chunk = .init(80, 76, 84, 69), 
+            IDAT:Chunk = .init(73, 68, 65, 84), 
+            IEND:Chunk = .init(73, 69, 78, 68), 
+            
+            cHRM:Chunk = .init(99, 72, 82, 77), 
+            gAMA:Chunk = .init(103, 65, 77, 65), 
+            iCCP:Chunk = .init(105, 67, 67, 80), 
+            sBIT:Chunk = .init(115, 66, 73, 84), 
+            sRGB:Chunk = .init(115, 82, 71, 66), 
+            bKGD:Chunk = .init(98, 75, 71, 68), 
+            hIST:Chunk = .init(104, 73, 83, 84), 
+            tRNS:Chunk = .init(116, 82, 78, 83), 
+            
+            pHYs:Chunk = .init(112, 72, 89, 115), 
+            
+            sPLT:Chunk = .init(115, 80, 76, 84), 
+            tIME:Chunk = .init(116, 73, 77, 69), 
+            
+            iTXt:Chunk = .init(105, 84, 88, 116), 
+            tEXt:Chunk = .init(116, 69, 88, 116), 
+            zTXt:Chunk = .init(122, 84, 88, 116)
+        
+        static 
+        func decodeIHDR(_ data:[UInt8]) throws -> Properties
+        {
+            guard data.count == 13 
+            else 
+            {
+                throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
+            }
+            
+            let colorcode:UInt16 = data[8 ..< 10].load(bigEndian: UInt16.self, as: UInt16.self)
+            guard let format:Properties.Format = Properties.Format.init(rawValue: colorcode)
+            else 
+            {
+                throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+            }
+            
+            // validate other fields 
+            guard data[10] == 0 
+            else 
+            {
+                throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
+            }
+            guard data[11] == 0 
+            else 
+            {
+                throw ReadError.syntaxError(message: "filter byte has value \(data[10]), expected 0")
+            }
+            
+            let interlaced:Bool 
+            switch data[12]
+            {
+                case 0:
+                    interlaced = false 
+                case 1: 
+                    interlaced = true 
+                default:
+                    throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
+            }
+            
+            let width:Int  = data[0 ..< 4].load(bigEndian: UInt32.self, as: Int.self), 
+                height:Int = data[4 ..< 8].load(bigEndian: UInt32.self, as: Int.self)
+            
+            return .init(size: (width, height), format: format, interlaced: interlaced)
+        }
     }
     
     enum ReadError:Error
@@ -555,14 +609,14 @@ enum PNG
         case incompleteChunk,  
             
              syntaxError(message: String), 
-        
+             
+             missingSignature, 
              missingHeader, 
              prematureIEND, 
              corruptedChunk, 
-             illegalChunk(Chunk.Public), 
-             misplacedChunk(Chunk.Public), 
-             unrecognizedCriticalChunk(String), 
-             duplicateChunk(Chunk.Public), 
+             illegalChunk(Chunk), 
+             misplacedChunk(Chunk), 
+             duplicateChunk(Chunk), 
              missingPalette
     }
 
@@ -572,7 +626,7 @@ enum PNG
         private 
         var format:Properties.Format?, 
             last:Chunk?, 
-            seen:Set<Chunk.Public> = []
+            seen:Set<Chunk> = []
         
         mutating 
         func push(_ chunk:Chunk) -> ReadError? 
@@ -580,16 +634,21 @@ enum PNG
             guard let last:Chunk = self.last
             else 
             {
-                guard case .public(let type) = chunk, 
-                    type == .IHDR
+                guard chunk == .IHDR
                 else 
                 {
                     return .missingHeader 
                 }
                 
-                self.last = .public(.IHDR)
+                self.last = .IHDR
                 self.seen.insert(.IHDR)
                 return nil 
+            }
+            
+            guard last != .IEND
+            else 
+            {
+                return .prematureIEND
             }
             
             guard let format:Properties.Format = self.format
@@ -597,94 +656,77 @@ enum PNG
             {
                 return .missingHeader
             }
-            
-            if case .public(let lastPublic) = last 
+        
+            if      chunk ==                                                                  .tRNS
             {
-                guard lastPublic != .IEND
-                else 
+                guard !format.hasAlpha // tRNS forbidden in alpha’d formats
+                else
                 {
-                    return .prematureIEND
+                    return .illegalChunk(chunk)
                 }
             }
-            
-            if case .public(let type) = chunk 
+            else if chunk ==   .PLTE
             {
-                if      type ==                                                                   .tRNS
+                // PLTE must come before bKGD, hIST, and tRNS
+                guard format.hasColor // PLTE requires non-grayscale format
+                else
                 {
-                    guard !format.hasAlpha // tRNS forbidden in alpha’d formats
-                    else
-                    {
-                        return .illegalChunk(type)
-                    }
-                }
-                else if type ==    .PLTE
-                {
-                    // PLTE must come before bKGD, hIST, and tRNS
-                    guard format.hasColor // PLTE requires non-grayscale format
-                    else
-                    {
-                        return .illegalChunk(type)
-                    }
-
-                    if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
-                    {
-                        return .misplacedChunk(type)
-                    }
+                    return .illegalChunk(chunk)
                 }
 
-                // these chunks must occur before PLTE
-                switch type
+                if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
                 {
-                    case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
-                        if self.seen.contains(.PLTE)
-                        {
-                            return .misplacedChunk(type)
-                        }
-                        
-                        fallthrough 
-                    
-                    // these chunks (and the ones in previous cases) must occur before IDAT
-                    case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
-                        if self.seen.contains(.IDAT)
-                        {
-                            return .misplacedChunk(type)
-                        }
-                        
-                        fallthrough 
-                    
-                    // these chunks (and the ones in previous cases) cannot duplicate
-                    case    .IHDR,                                                                                     .tIME:
-                        if self.seen.contains(type)
-                        {
-                            return .duplicateChunk(type)
-                        }
-                    
-                    
-                    // IDAT blocks much be consecutive
-                    case .IDAT:
-                        if self.seen.contains(.IDAT)
-                        {
-                            guard case .public(let lastPublic) = last, 
-                                    lastPublic == .IDAT 
-                            else 
-                            {
-                                return .misplacedChunk(.IDAT)
-                            }
-                        }
-
-                        if  format.isIndexed, 
-                           !self.seen.contains(.PLTE)
-                        {
-                            return .missingPalette
-                        }
-                        
-                    default:
-                        break
+                    return .misplacedChunk(chunk)
                 }
+            }
+
+            // these chunks must occur before PLTE
+            switch chunk
+            {
+                case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
+                    if self.seen.contains(.PLTE)
+                    {
+                        return .misplacedChunk(chunk)
+                    }
+                    
+                    fallthrough 
                 
-                self.seen.insert(type)
+                // these chunks (and the ones in previous cases) must occur before IDAT
+                case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
+                    if self.seen.contains(.IDAT)
+                    {
+                        return .misplacedChunk(chunk)
+                    }
+                    
+                    fallthrough 
+                
+                // these chunks (and the ones in previous cases) cannot duplicate
+                case    .IHDR,                                                                                     .tIME:
+                    if self.seen.contains(chunk)
+                    {
+                        return .duplicateChunk(chunk)
+                    }
+                
+                
+                // IDAT blocks much be consecutive
+                case .IDAT:
+                    if  last != .IDAT, 
+                        self.seen.contains(.IDAT)
+                    {
+                        return .misplacedChunk(.IDAT)
+                    }
+
+                    if  format.isIndexed, 
+                       !self.seen.contains(.PLTE)
+                    {
+                        return .missingPalette
+                    }
+                    
+                default:
+                    break
             }
             
+            self.seen.insert(chunk)
             self.last = chunk
             return nil
         }
