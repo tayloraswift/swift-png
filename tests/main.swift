@@ -11,6 +11,7 @@ do
     {
         (file:inout PNG.FileInterface) in 
         
+        var decoder:PNG.Properties.Decoder?
         try PNG.forEachChunk(in: &file) 
         {
             (name:Math<UInt8>.V4, data:[UInt8]?) in 
@@ -33,7 +34,10 @@ do
             switch chunk 
             {
                 case .IHDR:
-                    print(try PNG.Chunk.decodeIHDR(data))
+                    decoder = (try PNG.Chunk.decodeIHDR(data)).decoder()
+                
+                case .IDAT:
+                    try decoder?.add(data: data)
                 
                 default:
                     break
