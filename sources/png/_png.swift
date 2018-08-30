@@ -2,6 +2,16 @@ import Glibc
 import zlib
 
 fileprivate 
+extension Array where Element == UInt8 
+{    
+    func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U 
+        where T:FixedWidthInteger, U:BinaryInteger
+    {
+        return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
+    }
+}
+
+fileprivate 
 extension ArraySlice where Element == UInt8 
 {
     func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U 
@@ -11,19 +21,17 @@ extension ArraySlice where Element == UInt8
         {
             (buffer:UnsafeBufferPointer<UInt8>) in
             
+            assert(buffer.count >= MemoryLayout<T>.size, 
+                "attempt to load \(T.self) from slice of size \(buffer.count)")
+            
             var storage:T = .init()
             let value:T   = withUnsafeMutablePointer(to: &storage) 
             {
                 $0.deinitialize(count: 1)
                 
-                guard buffer.count >= MemoryLayout<T>.size, 
-                  let source:UnsafeRawPointer = buffer.baseAddress.map(UnsafeRawPointer.init(_:))
-                else 
-                {
-                    fatalError("attempt to load \(T.self) from buffer of size \(buffer.count)")
-                }
+                let source:UnsafeRawPointer     = .init(buffer.baseAddress!), 
+                    raw:UnsafeMutableRawPointer = .init($0)
                 
-                let raw:UnsafeMutableRawPointer = .init($0)
                 raw.copyMemory(from: source, byteCount: MemoryLayout<T>.size)
                 
                 return raw.load(as: T.self)
@@ -194,6 +202,11 @@ enum PNG
                 case .rgba8, .rgba16:
                     return 4
                 }
+            }
+            
+            var volume:Int 
+            {
+                return self.depth * self.channels 
             }
             
             // difference between this and channels is indexed pngs have 3 components 
@@ -385,11 +398,13 @@ enum PNG
             }
         }
         
+        
         func decoder() -> Decoder?
         {
             return ZDecompressor().map
             {
-                .init(pitches: self.pitches, decompressor: $0)
+                let stride:Int = max(1, self.format.volume >> 3)
+                return .init(stride: stride, pitches: self.pitches, decompressor: $0)
             }
         }
         
@@ -397,23 +412,24 @@ enum PNG
         {
             private 
             var reference:[UInt8]?, 
-                scanline:[UInt8], 
-                decompressor:ZDecompressor, 
-                pitches:Pitches
+                scanline:[UInt8] = []
             
-            init(pitches:Pitches, decompressor:ZDecompressor)
+            private 
+            let stride:Int
+            
+            private   
+            var pitches:Pitches, 
+                decompressor:ZDecompressor
+            
+            init(stride:Int, pitches:Pitches, decompressor:ZDecompressor)
             {
-                self.pitches   = pitches
-                self.scanline  = []
-                
-                
-                
+                self.stride       = stride 
+                self.pitches      = pitches
                 self.decompressor = decompressor
                 
                 guard let pitch:Int = self.pitches.next() ?? nil
                 else 
                 {
-                    self.reference = nil 
                     return 
                 }
                 
@@ -421,7 +437,7 @@ enum PNG
             }
             
             mutating 
-            func add(data:[UInt8]) throws
+            func forEachScanline(decodedFrom data:[UInt8], body:(ArraySlice<UInt8>) throws -> ()) throws
             {
                 self.decompressor.push(data)
                 
@@ -436,8 +452,11 @@ enum PNG
                         break 
                     }
                     
+                    self.defilter(scanline: &self.scanline, reference: reference)
                     
+                    try body(self.scanline.dropFirst())
                     
+                    // transfer scanline to reference line 
                     if let pitch:Int? = self.pitches.next() 
                     {
                         if let pitch:Int = pitch 
@@ -446,9 +465,7 @@ enum PNG
                         }
                         else 
                         {
-                            // reuse the filter byte
-                            self.scanline[0] = 0
-                            self.reference   = self.scanline 
+                            self.reference = self.scanline 
                         }
                     }
                     else 
@@ -457,6 +474,58 @@ enum PNG
                     }
                     
                     self.scanline = []
+                }
+            }
+            
+            private  
+            func defilter(scanline:inout [UInt8], reference:[UInt8])
+            {
+                let filter:UInt8              = scanline[scanline.startIndex] 
+                scanline[scanline.startIndex] = 0
+                switch filter
+                {
+                    case 0:
+                        break 
+                    
+                    case 1: // sub 
+                        for i:Int in scanline.indices.dropFirst(self.stride)
+                        {
+                            scanline[i] = scanline[i] &+ scanline[i - self.stride]
+                        }
+                    
+                    case 2: // up 
+                        for i:Int in scanline.indices
+                        {
+                            scanline[i] = scanline[i] &+ reference[i]
+                        }
+                    
+                    case 3: // average 
+                        for i:Int in scanline.indices.prefix(self.stride)
+                        {
+                            scanline[i] = scanline[i] &+ reference[i] >> 1
+                        }
+                        for i:Int in scanline.indices.dropFirst(self.stride) 
+                        {
+                            let total:UInt16  = UInt16(scanline[i - self.stride]) + 
+                                                UInt16(reference[i])
+                            scanline[i] = scanline[i] &+ UInt8(truncatingIfNeeded: total >> 1)
+                        }
+                    
+                    case 4: // paeth 
+                        for i:Int in scanline.indices.prefix(self.stride)
+                        {
+                            scanline[i] = scanline[i] &+ paeth(0, reference[i], 0)
+                        }
+                        for i:Int in scanline.indices.dropFirst(self.stride) 
+                        {
+                            let p:UInt8 =  paeth(scanline[i - self.stride], 
+                                                reference[i              ], 
+                                                reference[i - self.stride])
+                            scanline[i] = scanline[i] &+ p
+                        }
+                    
+                    default:
+                        break // invalid
                 }
             }
         }
@@ -512,8 +581,8 @@ enum PNG
                 {
                     (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
                     
-                    let depth:Int = properties.format.depth
-                    if depth < 8 
+                    let volume:Int = properties.format.volume
+                    if volume < 8 
                     {
                         var base:Int = self.data.startIndex 
                         for subImage:Properties.Interlacing.SubImage in subImages 
@@ -523,14 +592,14 @@ enum PNG
                                 for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
                                 {
                                     // image only has 1 channel 
-                                    let si:Int = (sx * depth) >> 3 + subImage.shape.pitch   * sy, 
-                                        di:Int = (dx * depth) >> 3 + properties.shape.pitch * dy
-                                    let sb:Int = (sx * depth) & 7, 
-                                        db:Int = (dx * depth) & 7
+                                    let si:Int = (sx * volume) >> 3 + subImage.shape.pitch   * sy, 
+                                        di:Int = (dx * volume) >> 3 + properties.shape.pitch * dy
+                                    let sb:Int = (sx * volume) & 7, 
+                                        db:Int = (dx * volume) & 7
                                     
                                     // isolate relevant bits and store them into the destination
-                                    let bits:UInt8 = (self.data[base + si] &<< sb) &>> (8 - depth)
-                                    buffer[di]    |= bits &<< (8 - db - depth) 
+                                    let bits:UInt8 = (self.data[base + si] &<< sb) &>> (8 - volume)
+                                    buffer[di]    |= bits &<< (8 - db - volume) 
                                 }
                             }
                             
@@ -539,7 +608,7 @@ enum PNG
                     }
                     else 
                     {
-                        let bpp:Int = (properties.format.channels * depth) >> 3
+                        let stride:Int = volume >> 3
                         
                         var base:Int = self.data.startIndex 
                         for subImage:Properties.Interlacing.SubImage in subImages 
@@ -548,10 +617,10 @@ enum PNG
                             {                            
                                 for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
                                 {
-                                    let si:Int = sx * bpp + subImage.shape.pitch   * sy, 
-                                        di:Int = dx * bpp + properties.shape.pitch * dy
+                                    let si:Int = sx * stride + subImage.shape.pitch   * sy, 
+                                        di:Int = dx * stride + properties.shape.pitch * dy
                                     
-                                    for b:Int in 0 ..< bpp 
+                                    for b:Int in 0 ..< stride 
                                     {
                                         buffer[di + b] = self.data[base + si + b]
                                     }
@@ -573,6 +642,160 @@ enum PNG
         {
             let properties:Properties, 
                 data:[UInt8]
+            
+            func expand8() -> [UInt8]
+            {
+                return []
+            }
+            
+            func expand16() -> [UInt16]
+            {
+                return []
+            }
+            
+            func grayscale8() -> [UInt8] 
+            {
+                return []
+            }
+            
+            func grayscale16() -> [UInt16]
+            {
+                return []
+            }
+            
+            func rgba8() -> [RGBA<UInt8>]
+            {
+                return []
+            }
+            
+            func rgba16() -> [RGBA<UInt16>]
+            {
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4:
+                        return self.mapBits 
+                        {
+                            return .init($0, $0, $0, UInt16.max)
+                        }
+                    
+                    case .grayscale8:
+                        return self.map(from: UInt8.self) 
+                        {
+                            return .init($0, $0, $0, UInt16.max)
+                        }
+                    
+                    case .grayscale16:
+                        return self.map(from: UInt16.self) 
+                        {
+                            return .init($0, $0, $0, UInt16.max)
+                        }
+                        
+                    default:
+                        return []
+                }
+            }
+            
+            private 
+            func quantum<Sample>() -> Sample where Sample:FixedWidthInteger
+            {
+                return Sample.max / (Sample.max &>> (Sample.bitWidth - self.properties.format.depth))
+            }
+            
+            // in general, Sample.bitWidth > bits
+            private 
+            func extract<Sample>(bits:Int, at bitIndex:Int, as:Sample.Type) -> Sample 
+                where Sample:FixedWidthInteger
+            {
+                let byte:Int      = bitIndex >> 3, 
+                    offset:Int    = UInt8.bitWidth - bitIndex & 7 - bits
+                let scalar:Sample = .init(truncatingIfNeeded: self.data[byte] &>> offset) 
+                return scalar * self.quantum()
+            }
+            
+            private 
+            func extract<T, Sample>(bigEndian:T.Type, at index:Int, as:Sample.Type) -> Sample 
+                where T:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(T.bitWidth <= Sample.bitWidth)
+                
+                let scalar:Sample = self.data.withUnsafeBufferPointer 
+                {
+                    return ($0.baseAddress! + index).withMemoryRebound(to: T.self, capacity: 1)
+                    {
+                        return Sample(truncatingIfNeeded: T(bigEndian: $0.pointee))
+                    }
+                }
+                
+                return scalar * self.quantum()
+            }
+            
+            private 
+            func narrow<T, Sample>(bigEndian:T.Type, at index:Int, as:Sample.Type) -> Sample 
+                where T:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(T.bitWidth >= Sample.bitWidth)
+                
+                return self.data.withUnsafeBufferPointer 
+                {
+                    return ($0.baseAddress! + index).withMemoryRebound(to: T.self, capacity: 1)
+                    {
+                        let shift:Int = T.bitWidth - Sample.bitWidth
+                        return Sample(truncatingIfNeeded: T(bigEndian: $0.pointee) &>> shift)
+                    }
+                }
+            }
+            
+            private 
+            func mapBits<Sample, Result>(body:(Sample) -> Result) -> [Result] 
+                 where Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth < UInt8.bitWidth)
+                
+                return withoutActuallyEscaping(body)
+                {
+                    (body:@escaping (Sample) -> Result) in
+                    
+                    let depth:Int = self.properties.format.depth, 
+                        count:Int = self.properties.format.volume * self.properties.shape.size.x
+                    return stride(from: 0, to: self.data.count, by: self.properties.shape.pitch).flatMap 
+                    {
+                        (i:Int) -> LazyMapSequence<StrideTo<Int>, Result> in
+                        
+                        let base:Int = i << 3
+                        return stride(from: base, to: base + count, by: depth).lazy.map 
+                        {
+                            body(self.extract(bits: depth, at: $0, as: Sample.self))
+                        }
+                    }
+                }
+            }
+            
+            private 
+            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(self.extract(bigEndian: Atom.self, at: $0, as: Sample.self))
+                }
+            }
+            
+            private 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(self.narrow(bigEndian: Atom.self, at: $0, as: Sample.self))
+                }
+            }
         }
     }
     
@@ -669,7 +892,7 @@ enum PNG
                 throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
             }
             
-            let colorcode:UInt16 = data[8 ..< 10].load(bigEndian: UInt16.self, as: UInt16.self)
+            let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
             guard let format:Properties.Format = Properties.Format.init(rawValue: colorcode)
             else 
             {
@@ -685,7 +908,7 @@ enum PNG
             guard data[11] == 0 
             else 
             {
-                throw ReadError.syntaxError(message: "filter byte has value \(data[10]), expected 0")
+                throw ReadError.syntaxError(message: "filter byte has value \(data[11]), expected 0")
             }
             
             let interlaced:Bool 
@@ -699,8 +922,8 @@ enum PNG
                     throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
             }
             
-            let width:Int  = data[0 ..< 4].load(bigEndian: UInt32.self, as: Int.self), 
-                height:Int = data[4 ..< 8].load(bigEndian: UInt32.self, as: Int.self)
+            let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
+                height:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
             
             return .init(size: (width, height), format: format, interlaced: interlaced)
         }
