@@ -77,7 +77,7 @@ enum PNG
         public 
         func read(bytes:Int) -> [UInt8]?
         {
-            let buffer:[UInt8] = .init(_unsafeUninitializedCapacity: bytes) 
+            let buffer:[UInt8] = .init(unsafeUninitializedCapacity: bytes) 
             {
                 (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
                 
@@ -261,9 +261,23 @@ enum PNG
             var f:Int         = 0, 
                 scanlines:Int = 0
             
-            mutating 
-            func next() -> Int? 
+            init(subImages:[Interlacing.SubImage]) 
             {
+                self.footprints = subImages.map 
+                {
+                    ($0.shape.pitch, $0.shape.size.y)
+                }
+            }
+            
+            init(shape:Shape)
+            {
+                self.footprints = [(shape.pitch, shape.size.y)]
+            }
+            
+            mutating 
+            func next() -> Int?? 
+            {
+                let f:Int = self.f
                 while self.scanlines == 0  
                 {
                     guard self.f < self.footprints.count
@@ -277,7 +291,7 @@ enum PNG
                 }
                 
                 self.scanlines -= 1 
-                return self.footprints[self.f - 1].pitch
+                return self.f != f ? self.footprints[self.f - 1].pitch : .some(nil)
             }
         }
         
@@ -305,7 +319,19 @@ enum PNG
                 return false
             }
         }
-        
+   
+        var pitches:Pitches 
+        {
+            switch self.interlacing 
+            {
+                case .none:
+                    return .init(shape: self.shape)
+                
+                case .adam7(let subImages):
+                    return .init(subImages: subImages)
+            }
+        }
+            
         public 
         init(size:Math<Int>.V2, format:Format, interlaced:Bool)
         {
@@ -358,6 +384,82 @@ enum PNG
                 self.interlacing = .none
             }
         }
+        
+        func decoder() -> Decoder?
+        {
+            return ZDecompressor().map
+            {
+                .init(pitches: self.pitches, decompressor: $0)
+            }
+        }
+        
+        struct Decoder 
+        {
+            private 
+            var reference:[UInt8]?, 
+                scanline:[UInt8], 
+                decompressor:ZDecompressor, 
+                pitches:Pitches
+            
+            init(pitches:Pitches, decompressor:ZDecompressor)
+            {
+                self.pitches   = pitches
+                self.scanline  = []
+                
+                
+                
+                self.decompressor = decompressor
+                
+                guard let pitch:Int = self.pitches.next() ?? nil
+                else 
+                {
+                    self.reference = nil 
+                    return 
+                }
+                
+                self.reference = .init(repeating: 0, count: pitch + 1)
+            }
+            
+            mutating 
+            func add(data:[UInt8]) throws
+            {
+                self.decompressor.push(data)
+                
+                while let reference:[UInt8] = self.reference  
+                {
+                    try self.decompressor.pull(extending: &self.scanline, 
+                                                capacity: reference.count) 
+                    
+                    guard self.scanline.count == reference.count
+                    else 
+                    {
+                        break 
+                    }
+                    
+                    
+                    
+                    if let pitch:Int? = self.pitches.next() 
+                    {
+                        if let pitch:Int = pitch 
+                        {
+                            self.reference = .init(repeating: 0, count: pitch + 1)
+                        }
+                        else 
+                        {
+                            // reuse the filter byte
+                            self.scanline[0] = 0
+                            self.reference   = self.scanline 
+                        }
+                    }
+                    else 
+                    {
+                        self.reference = nil 
+                    }
+                    
+                    self.scanline = []
+                }
+            }
+        }
     }
     
     enum Data 
@@ -406,7 +508,7 @@ enum PNG
                                                 format: self.properties.format, 
                                             interlaced: false)
                 let count:Int = properties.shape.byteCount
-                let deinterlaced:[UInt8] = .init(_unsafeUninitializedCapacity: count)
+                let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: count)
                 {
                     (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
                     
