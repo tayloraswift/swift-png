@@ -683,15 +683,56 @@ enum PNG
                         {
                             return .init($0, $0, $0, UInt16.max)
                         }
-                    
                     case .grayscale16:
                         return self.map(from: UInt16.self) 
                         {
                             return .init($0, $0, $0, UInt16.max)
                         }
+                    
+                    case .grayscale_a8:
+                        return self.map(from: UInt8.self) 
+                        {
+                            return .init($0, $0, $0, $1)
+                        }
+                    case .grayscale_a16:
+                        return self.map(from: UInt16.self) 
+                        {
+                            return .init($0, $0, $0, $1)
+                        }
+                    
+                    case .rgb8:
+                        return self.map(from: UInt8.self) 
+                        {
+                            return .init($0, $1, $2, UInt16.max)
+                        }
+                    case .rgb16:
+                        return self.map(from: UInt16.self) 
+                        {
+                            return .init($0, $1, $2, UInt16.max)
+                        }
+                    
+                    case .rgba8:
+                        return self.map(from: UInt8.self) 
+                        {
+                            return .init($0, $1, $2, $3)
+                        }
+                    case .rgba16:
+                        return self.map(from: UInt16.self) 
+                        {
+                            return .init($0, $1, $2, $3)
+                        }
                         
-                    default:
-                        return []
+                    case .indexed1, .indexed2, .indexed4:
+                        return self.mapBits 
+                        {
+                            return .init($0, 0, 0, 0)
+                        }
+                    
+                    case .indexed8:
+                        return self.map(from: UInt8.self) 
+                        {
+                            return .init($0, 0, 0, 0)
+                        }
                 }
             }
             
@@ -702,6 +743,7 @@ enum PNG
             }
             
             // in general, Sample.bitWidth > bits
+            @inline(__always)
             private 
             func extract<Sample>(bits:Int, at bitIndex:Int, as:Sample.Type) -> Sample 
                 where Sample:FixedWidthInteger
@@ -712,6 +754,7 @@ enum PNG
                 return scalar * self.quantum()
             }
             
+            @inline(__always)
             private 
             func extract<T, Sample>(bigEndian:T.Type, at index:Int, as:Sample.Type) -> Sample 
                 where T:FixedWidthInteger, Sample:FixedWidthInteger
@@ -729,6 +772,7 @@ enum PNG
                 return scalar * self.quantum()
             }
             
+            @inline(__always)
             private 
             func narrow<T, Sample>(bigEndian:T.Type, at index:Int, as:Sample.Type) -> Sample 
                 where T:FixedWidthInteger, Sample:FixedWidthInteger
@@ -794,6 +838,105 @@ enum PNG
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
                 {
                     return body(self.narrow(bigEndian: Atom.self, at: $0, as: Sample.self))
+                }
+            }
+            
+            
+            private 
+            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.extract(bigEndian: Atom.self, at: $0 << 1,     as: Sample.self), 
+                        self.extract(bigEndian: Atom.self, at: $0 << 1 | 1, as: Sample.self))
+                }
+            }
+            
+            private 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.narrow(bigEndian: Atom.self, at: $0 << 1,      as: Sample.self), 
+                        self.narrow(bigEndian: Atom.self, at: $0 << 1 | 1,  as: Sample.self))
+                }
+            }
+            
+            
+            private 
+            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample, Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.extract(bigEndian: Atom.self, at: $0 * 3,      as: Sample.self), 
+                        self.extract(bigEndian: Atom.self, at: $0 * 3 + 1,  as: Sample.self), 
+                        self.extract(bigEndian: Atom.self, at: $0 * 3 + 2,  as: Sample.self))
+                }
+            }
+            
+            private 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample, Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.narrow(bigEndian: Atom.self, at: $0 * 3,      as: Sample.self), 
+                        self.narrow(bigEndian: Atom.self, at: $0 * 3 + 1,  as: Sample.self), 
+                        self.narrow(bigEndian: Atom.self, at: $0 * 3 + 2,  as: Sample.self))
+                }
+            }
+            
+            
+            private 
+            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.extract(bigEndian: Atom.self, at: $0 << 2,      as: Sample.self), 
+                        self.extract(bigEndian: Atom.self, at: $0 << 2 | 1,  as: Sample.self), 
+                        self.extract(bigEndian: Atom.self, at: $0 << 2 | 2,  as: Sample.self), 
+                        self.extract(bigEndian: Atom.self, at: $0 << 2 | 3,  as: Sample.self))
+                }
+            }
+            
+            private 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.data.count == self.properties.shape.byteCount)
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.narrow(bigEndian: Atom.self, at: $0 << 2,      as: Sample.self), 
+                        self.narrow(bigEndian: Atom.self, at: $0 << 2 | 1,  as: Sample.self), 
+                        self.narrow(bigEndian: Atom.self, at: $0 << 2 | 2,  as: Sample.self), 
+                        self.narrow(bigEndian: Atom.self, at: $0 << 2 | 3,  as: Sample.self))
                 }
             }
         }
