@@ -45,9 +45,9 @@ extension ArraySlice where Element == UInt8
 public 
 protocol DataSource
 {
-    // output array `.count` must equal `bytes`
+    // output array `.count` must equal `count`
     mutating 
-    func read(bytes:Int) -> [UInt8]?
+    func read(count:Int) -> [UInt8]?
 }
 
 public 
@@ -83,16 +83,16 @@ enum PNG
         }
         
         public 
-        func read(bytes:Int) -> [UInt8]?
+        func read(count capacity:Int) -> [UInt8]?
         {
-            let buffer:[UInt8] = .init(unsafeUninitializedCapacity: bytes) 
+            let buffer:[UInt8] = .init(unsafeUninitializedCapacity: capacity) 
             {
                 (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
                 
-                count = fread(buffer.baseAddress, 1, bytes, self.descriptor)
+                count = fread(buffer.baseAddress, MemoryLayout<UInt8>.stride, capacity, self.descriptor)
             }
             
-            guard buffer.count == bytes 
+            guard buffer.count == capacity
             else 
             {
                 return nil
@@ -106,19 +106,19 @@ enum PNG
     func forEachChunk<Source>(in source:inout Source, body:(Math<UInt8>.V4, [UInt8]?) throws -> ()) throws
         where Source:DataSource
     {
-        guard let signature:[UInt8] = source.read(bytes: PNG.signature.count), 
+        guard let signature:[UInt8] = source.read(count: PNG.signature.count), 
                   signature == PNG.signature
         else 
         {
             throw ReadError.missingSignature
         }
         
-        while let header:[UInt8] = source.read(bytes: 8)
+        while let header:[UInt8] = source.read(count: 8)
         {
             let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self)
             let name:Math<UInt8>.V4 = (header[4], header[5], header[6], header[7]) 
             
-            guard var data:[UInt8] = source.read(bytes: length + MemoryLayout<UInt32>.size)
+            guard var data:[UInt8] = source.read(count: length + MemoryLayout<UInt32>.size)
             else 
             {
                 try body(name, nil)
@@ -299,7 +299,15 @@ enum PNG
                         return nil  
                     }
                     
-                    self.scanlines = self.footprints[self.f].pitch * self.footprints[self.f].height
+                    if self.footprints[self.f].pitch == 0 
+                    {
+                        self.scanlines = 0
+                    }
+                    else 
+                    {
+                        self.scanlines = self.footprints[self.f].height
+                    }
+                    
                     self.f += 1
                 }
                 
@@ -449,7 +457,7 @@ enum PNG
                     guard self.scanline.count == reference.count
                     else 
                     {
-                        break 
+                        break
                     }
                     
                     self.defilter(scanline: &self.scanline, reference: reference)
@@ -576,19 +584,23 @@ enum PNG
                 let properties:Properties = .init(size: self.properties.shape.size, 
                                                 format: self.properties.format, 
                                             interlaced: false)
-                let count:Int = properties.shape.byteCount
-                let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: count)
+                let capacity:Int = properties.shape.byteCount
+                let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: capacity)
                 {
                     (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
                     
                     let volume:Int = properties.format.volume
                     if volume < 8 
                     {
+                        // initialize the buffer to 0. this makes it so we can store 
+                        // bits into the buffer without needing to mask them out 
+                        buffer.initialize(repeating: 0)
+                        
                         var base:Int = self.data.startIndex 
                         for subImage:Properties.Interlacing.SubImage in subImages 
                         {
                             for (sy, dy):(Int, Int) in subImage.strider.y.enumerated()
-                            {                            
+                            {
                                 for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
                                 {
                                     // image only has 1 channel 
@@ -598,8 +610,9 @@ enum PNG
                                         db:Int = (dx * volume) & 7
                                     
                                     // isolate relevant bits and store them into the destination
-                                    let bits:UInt8 = (self.data[base + si] &<< sb) &>> (8 - volume)
-                                    buffer[di]    |= bits &<< (8 - db - volume) 
+                                    let empty:Int  = UInt8.bitWidth - volume, 
+                                        bits:UInt8 = (self.data[base + si] &<< sb) &>> empty
+                                    buffer[di]    |= bits &<< (empty - db)
                                 }
                             }
                             
@@ -630,6 +643,8 @@ enum PNG
                             base += subImage.shape.byteCount
                         }
                     }
+                    
+                    count = capacity
                 }
                 
                 return .init(properties: properties, data: deinterlaced)
@@ -749,8 +764,9 @@ enum PNG
                 where Sample:FixedWidthInteger
             {
                 let byte:Int      = bitIndex >> 3, 
-                    offset:Int    = UInt8.bitWidth - bitIndex & 7 - bits
-                let scalar:Sample = .init(truncatingIfNeeded: self.data[byte] &>> offset) 
+                    bit:Int       = bitIndex & 7, 
+                    offset:Int    = UInt8.bitWidth - bits
+                let scalar:Sample = .init(truncatingIfNeeded: (self.data[byte] &<< bit) &>> offset) 
                 return scalar * self.quantum()
             }
             
@@ -763,10 +779,10 @@ enum PNG
                 
                 let scalar:Sample = self.data.withUnsafeBufferPointer 
                 {
-                    return ($0.baseAddress! + index).withMemoryRebound(to: T.self, capacity: 1)
-                    {
-                        return Sample(truncatingIfNeeded: T(bigEndian: $0.pointee))
-                    }
+                    let offset:Int               = index * MemoryLayout<T>.stride, 
+                        raw:UnsafeRawPointer     = .init($0.baseAddress! + offset), 
+                        pointer:UnsafePointer<T> = raw.bindMemory(to: T.self, capacity: 1)
+                    return Sample(truncatingIfNeeded: T(bigEndian: pointer.pointee))
                 }
                 
                 return scalar * self.quantum()
@@ -781,11 +797,11 @@ enum PNG
                 
                 return self.data.withUnsafeBufferPointer 
                 {
-                    return ($0.baseAddress! + index).withMemoryRebound(to: T.self, capacity: 1)
-                    {
-                        let shift:Int = T.bitWidth - Sample.bitWidth
-                        return Sample(truncatingIfNeeded: T(bigEndian: $0.pointee) &>> shift)
-                    }
+                    let offset:Int               = index * MemoryLayout<T>.stride, 
+                        raw:UnsafeRawPointer     = .init($0.baseAddress! + offset), 
+                        pointer:UnsafePointer<T> = raw.bindMemory(to: T.self, capacity: 1)
+                    let shift:Int = T.bitWidth - Sample.bitWidth
+                    return Sample(truncatingIfNeeded: T(bigEndian: pointer.pointee) &>> shift)
                 }
             }
             
