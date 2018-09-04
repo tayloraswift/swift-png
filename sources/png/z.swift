@@ -110,6 +110,9 @@ struct ZDecompressor
                          Z_OK:
                         break 
                     
+                    case Z_BUF_ERROR:
+                        break
+                    
                     case Z_NEED_DICT:
                         throw PNG.DecompressionError.missingDictionary
                     case Z_DATA_ERROR:
@@ -120,7 +123,7 @@ struct ZDecompressor
                     case Z_STREAM_ERROR:
                         fallthrough
                     default:
-                        fatalError("unreachable")
+                        fatalError("unreachable error \(status)")
                 }
             }
         }
