@@ -40,9 +40,9 @@ extension ArraySlice where Element == UInt8
     }
 }
 
-func decode(_ path:String) -> (PNG.Properties, [RGBA<UInt16>]) 
+func decode(_ path:String) -> (PNG.Properties, [PNG.RGBA<UInt16>]) 
 {
-    guard let (properties, image):(PNG.Properties, [RGBA<UInt16>]) = PNG.FileInterface.open(path: path, body: 
+    guard let (properties, image):(PNG.Properties, [PNG.RGBA<UInt16>]) = PNG.FileInterface.open(path: path, body: 
     {
         (file:inout PNG.FileInterface) in 
         
@@ -73,7 +73,7 @@ func decode(_ path:String) -> (PNG.Properties, [RGBA<UInt16>])
                 switch chunk 
                 {
                     case .IHDR:
-                        let _properties:PNG.Properties = try PNG.Chunk.decodeIHDR(data)
+                        let _properties:PNG.Properties = try .decodeIHDR(data)
                         decoder    = _properties.decoder()
                         properties = _properties
                     
@@ -82,6 +82,12 @@ func decode(_ path:String) -> (PNG.Properties, [RGBA<UInt16>])
                         {
                             rawData.append(contentsOf: $0)
                         }
+                    
+                    case .PLTE:
+                        try properties?.decodePLTE(data)
+                    
+                    case .tRNS:
+                        try properties?.decodetRNS(data)
                     
                     default:
                         break
@@ -94,7 +100,7 @@ func decode(_ path:String) -> (PNG.Properties, [RGBA<UInt16>])
         }
         
         let uncompressed:PNG.Data.Uncompressed = .init(properties: properties!, data: rawData)
-        return (uncompressed.properties, uncompressed.deinterlace().rgba16())
+        return (uncompressed.properties, uncompressed.deinterlace().rgba16()!)
     })
     else 
     {
@@ -108,10 +114,10 @@ func testDecode(_ name:String) -> String?
 {
     let pngPath:String  = "tests/unit/png/\(name).png", 
         rgbaPath:String = "tests/unit/rgba/\(name).png.rgba"
-    let (properties, image):(PNG.Properties, [RGBA<UInt16>]) = decode(pngPath)
-    let reference:[RGBA<UInt16>] = PNG.FileInterface.open(path: rgbaPath) 
+    let (properties, image):(PNG.Properties, [PNG.RGBA<UInt16>]) = decode(pngPath)
+    let reference:[PNG.RGBA<UInt16>] = PNG.FileInterface.open(path: rgbaPath) 
         {
-            let bytes:Int    = Math.vol(properties.shape.size) * MemoryLayout<RGBA<UInt16>>.stride, 
+            let bytes:Int    = Math.vol(properties.shape.size) * MemoryLayout<PNG.RGBA<UInt16>>.stride, 
                 data:[UInt8] = $0.read(count: bytes)!
             return (0 ..< Math.vol(properties.shape.size)).map 
             {
