@@ -56,6 +56,77 @@ enum PNG
     private static 
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
     
+    @_fixed_layout
+    public
+    struct RGBA<Sample>:Equatable, CustomStringConvertible 
+        where Sample:FixedWidthInteger
+    {
+        public
+        let r:Sample,
+            g:Sample,
+            b:Sample,
+            a:Sample
+
+        public
+        var description:String
+        {
+            return "(\(self.r), \(self.g), \(self.b), \(self.a))"
+        }
+
+        public
+        init(_ r:Sample, _ g:Sample, _ b:Sample, _ a:Sample)
+        {
+            self.r = r
+            self.g = g
+            self.b = b
+            self.a = a
+        }
+        
+        public
+        init(_ r:Sample, _ g:Sample, _ b:Sample)
+        {
+            self.init(r, g, b, Sample.max)
+        }
+        
+        public
+        init(_ v:Sample, _ a:Sample)
+        {
+            self.init(v, v, v, a)
+        }
+        
+        public
+        init(_ v:Sample)
+        {
+            self.init(v, v, v, Sample.max)
+        }
+
+        func withAlpha(_ a:Sample) -> RGBA<Sample>
+        {
+            return .init(self.r, self.g, self.b, a)
+        }
+
+        func equals(opaque:RGBA<Sample>) -> Bool
+        {
+            return self.r == opaque.r && self.g == opaque.g && self.b == opaque.b
+        }
+        
+        func widen<T>(to: T.Type) -> RGBA<T> where T:FixedWidthInteger 
+        {
+            let quantum:T = RGBA<T>.quantum(depth: Sample.bitWidth), 
+                r:T = .init(truncatingIfNeeded: self.r) * quantum, 
+                g:T = .init(truncatingIfNeeded: self.g) * quantum, 
+                b:T = .init(truncatingIfNeeded: self.b) * quantum, 
+                a:T = .init(truncatingIfNeeded: self.a) * quantum
+            return .init(r, g, b, a)
+        }
+        
+        static 
+        func quantum(depth:Int) -> Sample 
+        {
+            return Sample.max / (Sample.max &>> (Sample.bitWidth - depth))
+        }
+    }
+    
     public 
     struct FileInterface:DataSource 
     {
@@ -340,7 +411,7 @@ enum PNG
                 return false
             }
         }
-   
+        
         var pitches:Pitches 
         {
             switch self.interlacing 
@@ -354,7 +425,8 @@ enum PNG
         }
             
         public 
-        init(size:Math<Int>.V2, format:Format, interlaced:Bool)
+        init(size:Math<Int>.V2, format:Format, interlaced:Bool, 
+            palette:[RGBA<UInt8>]? = nil, chromaKey:RGBA<UInt16>? = nil)
         {
             self.format = format
             self.shape  = format.shape(from: size)
@@ -404,6 +476,9 @@ enum PNG
             {
                 self.interlacing = .none
             }
+            
+            self.palette   = palette 
+            self.chromaKey = chromaKey
         }
         
         
@@ -537,6 +612,131 @@ enum PNG
                 }
             }
         }
+        
+        static 
+        func decodeIHDR(_ data:[UInt8]) throws -> Properties
+        {
+            guard data.count == 13 
+            else 
+            {
+                throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
+            }
+            
+            let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
+            guard let format:Format = Format.init(rawValue: colorcode)
+            else 
+            {
+                throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+            }
+            
+            // validate other fields 
+            guard data[10] == 0 
+            else 
+            {
+                throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
+            }
+            guard data[11] == 0 
+            else 
+            {
+                throw ReadError.syntaxError(message: "filter byte has value \(data[11]), expected 0")
+            }
+            
+            let interlaced:Bool 
+            switch data[12]
+            {
+                case 0:
+                    interlaced = false 
+                case 1: 
+                    interlaced = true 
+                default:
+                    throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
+            }
+            
+            let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
+                height:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
+            
+            return .init(size: (width, height), format: format, interlaced: interlaced)
+        }
+        
+        mutating 
+        func decodePLTE(_ data:[UInt8]) throws
+        {
+            guard data.count.isMultiple(of: 3)
+            else
+            {
+                throw ReadError.syntaxError(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
+            }
+            
+            // check number of palette entries 
+            let maxEntries:Int = 1 << self.format.depth
+            guard data.count <= maxEntries * 3
+            else 
+            {
+                throw ReadError.syntaxError(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
+            }
+
+            self.palette = stride(from: data.startIndex, to: data.endIndex, by: 3).map
+            {
+                let r:UInt8 = data[$0    ],
+                    g:UInt8 = data[$0 + 1],
+                    b:UInt8 = data[$0 + 2]
+                return .init(r, g, b)
+            }
+        }
+        
+        mutating 
+        func decodetRNS(_ data:[UInt8]) throws
+        {
+            switch self.format
+            {
+                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
+                    guard data.count == 2
+                    else
+                    {
+                        throw ReadError.syntaxError(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
+                    }
+                    
+                    let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
+                        v:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+                    self.chromaKey = .init(v)
+                
+                case .rgb8, .rgb16:
+                    guard data.count == 6
+                    else
+                    {
+                        throw ReadError.syntaxError(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
+                    }
+                    
+                    let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
+                        r:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0), 
+                        g:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2), 
+                        b:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+                    self.chromaKey = .init(r, g, b)
+                
+                case .indexed1, .indexed2, .indexed4, .indexed8:
+                    guard let palette:[RGBA<UInt8>] = self.palette
+                    else
+                    {
+                        throw PNGReadError.MissingPalatteError
+                    }
+
+                    guard data.count <= palette.count
+                    else
+                    {
+                        throw ReadError.syntaxError(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
+                    }
+
+                    for (i, alpha):(Int, UInt8) in zip(palette.indices, data)
+                    {
+                        self.palette?[i] = palette[i].withAlpha(alpha)
+                    }
+                    
+                    self.chromaKey = nil
+                
+                default:
+                    break // this is an error, but it should have already been caught by PNGConditions
+            }
+        }
     }
     
     enum Data 
@@ -583,7 +783,10 @@ enum PNG
                 
                 let properties:Properties = .init(size: self.properties.shape.size, 
                                                 format: self.properties.format, 
-                                            interlaced: false)
+                                            interlaced: false, 
+                                               palette: self.properties.palette, 
+                                             chromaKey: self.properties.chromaKey)
+                
                 let capacity:Int = properties.shape.byteCount
                 let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: capacity)
                 {
@@ -658,6 +861,12 @@ enum PNG
             let properties:Properties, 
                 data:[UInt8]
             
+            static 
+            func index(_ pixels:[RGBA<UInt8>], size:Math<Int>.V2) -> Rectangular 
+            {
+                fatalError("unimplemented")
+            }
+            
             func expand8() -> [UInt8]
             {
                 return []
@@ -683,91 +892,98 @@ enum PNG
                 return []
             }
             
-            func rgba16() -> [RGBA<UInt16>]
+            func rgba16() -> [RGBA<UInt16>]?
             {
+                @inline(__always) 
+                func _greenscreen(_ color:RGBA<UInt16>) -> RGBA<UInt16> 
+                {
+                    guard let key:RGBA<UInt16> = self.properties.chromaKey 
+                    else 
+                    {
+                        return color
+                    }
+                    
+                    return color.equals(opaque: key) ? color.withAlpha(0) : color
+                }
+                @inline(__always) 
+                func _greenscreen(v:UInt16) -> RGBA<UInt16> 
+                {
+                    return _greenscreen(.init(v))
+                }
+                @inline(__always) 
+                func _greenscreen(r:UInt16, g:UInt16, b:UInt16) -> RGBA<UInt16> 
+                {
+                    return _greenscreen(.init(r, g, b))
+                }
+                
                 switch self.properties.format 
                 {
                     case .grayscale1, .grayscale2, .grayscale4:
-                        return self.mapBits 
-                        {
-                            return .init($0, $0, $0, UInt16.max)
-                        }
+                        return self.mapBits(_greenscreen(v:)) 
                     
                     case .grayscale8:
-                        return self.map(from: UInt8.self) 
-                        {
-                            return .init($0, $0, $0, UInt16.max)
-                        }
+                        return self.map(from: UInt8.self, _greenscreen(v:)) 
+                    
                     case .grayscale16:
-                        return self.map(from: UInt16.self) 
-                        {
-                            return .init($0, $0, $0, UInt16.max)
-                        }
+                        return self.map(from: UInt16.self, _greenscreen(v:)) 
                     
                     case .grayscale_a8:
-                        return self.map(from: UInt8.self) 
-                        {
-                            return .init($0, $0, $0, $1)
-                        }
+                        return self.map(from: UInt8.self, RGBA.init(_:_:)) 
+                    
                     case .grayscale_a16:
-                        return self.map(from: UInt16.self) 
-                        {
-                            return .init($0, $0, $0, $1)
-                        }
+                        return self.map(from: UInt16.self, RGBA.init(_:_:)) 
                     
                     case .rgb8:
-                        return self.map(from: UInt8.self) 
-                        {
-                            return .init($0, $1, $2, UInt16.max)
-                        }
+                        return self.map(from: UInt8.self, _greenscreen(r:g:b:)) 
+                    
                     case .rgb16:
-                        return self.map(from: UInt16.self) 
-                        {
-                            return .init($0, $1, $2, UInt16.max)
-                        }
+                        return self.map(from: UInt16.self, _greenscreen(r:g:b:)) 
                     
                     case .rgba8:
-                        return self.map(from: UInt8.self) 
-                        {
-                            return .init($0, $1, $2, $3)
-                        }
+                        return self.map(from: UInt8.self, RGBA.init(_:_:_:_:)) 
+                    
                     case .rgba16:
-                        return self.map(from: UInt16.self) 
-                        {
-                            return .init($0, $1, $2, $3)
-                        }
+                        return self.map(from: UInt16.self, RGBA.init(_:_:_:_:)) 
                         
                     case .indexed1, .indexed2, .indexed4:
-                        return self.mapBits 
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
                         {
-                            return .init($0, 0, 0, 0)
+                            // missing palette, should never occur in normal circumstances
+                            return nil
+                        }
+                        
+                        return self.mapScalarBits 
+                        {
+                            return palette[Int($0)].widen(to: UInt16.self)
                         }
                     
                     case .indexed8:
-                        return self.map(from: UInt8.self) 
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
                         {
-                            return .init($0, 0, 0, 0)
+                            // missing palette, should never occur in normal circumstances
+                            return nil
+                        }
+                        
+                        // we want raw scalars 
+                        return self.map(narrowing: UInt8.self)
+                        {
+                            (scalar:UInt8) in 
+                            
+                            return palette[Int(scalar)].widen(to: UInt16.self)
                         }
                 }
             }
             
-            private 
-            func quantum<Sample>() -> Sample where Sample:FixedWidthInteger
-            {
-                return Sample.max / (Sample.max &>> (Sample.bitWidth - self.properties.format.depth))
-            }
-            
-            // in general, Sample.bitWidth > bits
             @inline(__always)
             private 
-            func extract<Sample>(bits:Int, at bitIndex:Int, as:Sample.Type) -> Sample 
-                where Sample:FixedWidthInteger
+            func extract(bits:Int, at bitIndex:Int) -> UInt8 
             {
                 let byte:Int      = bitIndex >> 3, 
                     bit:Int       = bitIndex & 7, 
                     offset:Int    = UInt8.bitWidth - bits
-                let scalar:Sample = .init(truncatingIfNeeded: (self.data[byte] &<< bit) &>> offset) 
-                return scalar * self.quantum()
+                return (self.data[byte] &<< bit) &>> offset
             }
             
             @inline(__always)
@@ -785,7 +1001,7 @@ enum PNG
                     return Sample(truncatingIfNeeded: T(bigEndian: pointer.pointee))
                 }
                 
-                return scalar * self.quantum()
+                return scalar * RGBA<Sample>.quantum(depth: self.properties.format.depth)
             }
             
             @inline(__always)
@@ -806,15 +1022,14 @@ enum PNG
             }
             
             private 
-            func mapBits<Sample, Result>(body:(Sample) -> Result) -> [Result] 
-                 where Sample:FixedWidthInteger
+            func mapScalarBits<Result>(_ body:(UInt8) -> Result) -> [Result] 
             {
                 assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth < UInt8.bitWidth)
                 
                 return withoutActuallyEscaping(body)
                 {
-                    (body:@escaping (Sample) -> Result) in
+                    (body:@escaping (UInt8) -> Result) in
                     
                     let depth:Int = self.properties.format.depth, 
                         count:Int = self.properties.format.volume * self.properties.shape.size.x
@@ -825,14 +1040,24 @@ enum PNG
                         let base:Int = i << 3
                         return stride(from: base, to: base + count, by: depth).lazy.map 
                         {
-                            body(self.extract(bits: depth, at: $0, as: Sample.self))
+                            body(self.extract(bits: depth, at: $0))
                         }
                     }
                 }
             }
+            private 
+            func mapBits<Sample, Result>(_ body:(Sample) -> Result) -> [Result] 
+                 where Sample:FixedWidthInteger
+            {
+                return self.mapScalarBits 
+                {
+                    let scalar:Sample = .init(truncatingIfNeeded: $0) 
+                    return body(scalar * RGBA<Sample>.quantum(depth: self.properties.format.depth))
+                }
+            }
             
             private 
-            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -845,7 +1070,7 @@ enum PNG
             }
             
             private 
-            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -859,7 +1084,7 @@ enum PNG
             
             
             private 
-            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample, Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -874,7 +1099,7 @@ enum PNG
             }
             
             private 
-            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample, Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -890,7 +1115,7 @@ enum PNG
             
             
             private 
-            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample, Sample, Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -906,7 +1131,7 @@ enum PNG
             }
             
             private 
-            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample, Sample, Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -923,7 +1148,7 @@ enum PNG
             
             
             private 
-            func map<Atom, Sample, Result>(from _:Atom.Type, body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -940,7 +1165,7 @@ enum PNG
             }
             
             private 
-            func map<Atom, Sample, Result>(narrowing _:Atom.Type, body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
+            func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
                 assert(self.data.count == self.properties.shape.byteCount)
@@ -1041,51 +1266,6 @@ enum PNG
             iTXt:Chunk = .init(105, 84, 88, 116), 
             tEXt:Chunk = .init(116, 69, 88, 116), 
             zTXt:Chunk = .init(122, 84, 88, 116)
-        
-        static 
-        func decodeIHDR(_ data:[UInt8]) throws -> Properties
-        {
-            guard data.count == 13 
-            else 
-            {
-                throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
-            }
-            
-            let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
-            guard let format:Properties.Format = Properties.Format.init(rawValue: colorcode)
-            else 
-            {
-                throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
-            }
-            
-            // validate other fields 
-            guard data[10] == 0 
-            else 
-            {
-                throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
-            }
-            guard data[11] == 0 
-            else 
-            {
-                throw ReadError.syntaxError(message: "filter byte has value \(data[11]), expected 0")
-            }
-            
-            let interlaced:Bool 
-            switch data[12]
-            {
-                case 0:
-                    interlaced = false 
-                case 1: 
-                    interlaced = true 
-                default:
-                    throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
-            }
-            
-            let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
-                height:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
-            
-            return .init(size: (width, height), format: format, interlaced: interlaced)
-        }
     }
     
     enum ReadError:Error
