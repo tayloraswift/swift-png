@@ -316,6 +316,8 @@ enum PNG
                     strider:Math<StrideTo<Int>>.V2
             }
             
+            // don’t store whole-image shape in .none case since we still need 
+            // it in the .adam7 case
             case none, 
                  adam7([SubImage])
             
@@ -412,6 +414,13 @@ enum PNG
             }
         }
         
+        // don’t use this within the library, use `.shape.size` directly
+        public 
+        var size:Math<Int>.V2 
+        {
+            return self.shape.size
+        }
+        
         var pitches:Pitches 
         {
             switch self.interlacing 
@@ -423,7 +432,22 @@ enum PNG
                     return .init(subImages: subImages)
             }
         }
-            
+        
+        var byteCount:Int 
+        {
+            switch self.interlacing
+            {
+                case .none:
+                    return self.shape.byteCount 
+                
+                case .adam7(let subImages):
+                    return subImages.reduce(0) 
+                    {
+                        $0 + $1.shape.byteCount
+                    }
+            }
+        }
+        
         public 
         init(size:Math<Int>.V2, format:Format, interlaced:Bool, 
             palette:[RGBA<UInt8>]? = nil, chromaKey:RGBA<UInt16>? = nil)
@@ -482,6 +506,7 @@ enum PNG
         }
         
         
+        public 
         func decoder() -> Decoder?
         {
             return ZDecompressor().map
@@ -491,6 +516,7 @@ enum PNG
             }
         }
         
+        public 
         struct Decoder 
         {
             private 
@@ -519,7 +545,7 @@ enum PNG
                 self.reference = .init(repeating: 0, count: pitch + 1)
             }
             
-            mutating 
+            public mutating 
             func forEachScanline(decodedFrom data:[UInt8], body:(ArraySlice<UInt8>) throws -> ()) throws
             {
                 self.decompressor.push(data)
@@ -613,7 +639,7 @@ enum PNG
             }
         }
         
-        static 
+        public static 
         func decodeIHDR(_ data:[UInt8]) throws -> Properties
         {
             guard data.count == 13 
@@ -658,7 +684,7 @@ enum PNG
             return .init(size: (width, height), format: format, interlaced: interlaced)
         }
         
-        mutating 
+        public mutating 
         func decodePLTE(_ data:[UInt8]) throws
         {
             guard data.count.isMultiple(of: 3)
@@ -684,7 +710,7 @@ enum PNG
             }
         }
         
-        mutating 
+        public mutating 
         func decodetRNS(_ data:[UInt8]) throws
         {
             switch self.format
@@ -739,14 +765,31 @@ enum PNG
         }
     }
     
+    public 
     enum Data 
     {
         // PNG data that has been decompressed, but not necessarily deinterlaced 
+        public 
         struct Uncompressed 
         {
+            public 
             let properties:Properties, 
                 data:[UInt8]
             
+            public 
+            init?(_ data:[UInt8], properties:Properties) 
+            {
+                guard data.count == properties.byteCount 
+                else 
+                {
+                    return nil 
+                }
+                
+                self.properties = properties
+                self.data       = data 
+            }
+            
+            public 
             func decompose() -> [Rectangular]?
             {
                 guard case .adam7(let subImages) = self.properties.interlacing 
@@ -757,8 +800,6 @@ enum PNG
                 
                 let ranges:[Range<Int>] = Properties.Interlacing.computeAdam7Ranges(subImages)
                 
-                assert(self.data.count == ranges[6].upperBound)
-                
                 return zip(ranges, subImages).map 
                 {
                     (range:Range<Int>, subImage:Properties.Interlacing.SubImage) in 
@@ -767,18 +808,18 @@ enum PNG
                                                     format: self.properties.format, 
                                                 interlaced: false)
                     
-                    return .init(properties: properties, data: .init(self.data[range]))
+                    return .init(.init(self.data[range]), properties: properties)
                 }
             }
             
+            public 
             func deinterlace() -> Rectangular 
             {
                 guard case .adam7(let subImages) = self.properties.interlacing 
                 else 
                 {
                     // image is not interlaced at all, return it transparently 
-                    assert(self.data.count == self.properties.shape.byteCount)
-                    return .init(properties: self.properties, data: self.data)
+                    return .init(self.data, properties: self.properties)
                 }
                 
                 let properties:Properties = .init(size: self.properties.shape.size, 
@@ -787,8 +828,7 @@ enum PNG
                                                palette: self.properties.palette, 
                                              chromaKey: self.properties.chromaKey)
                 
-                let capacity:Int = properties.shape.byteCount
-                let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: capacity)
+                let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: properties.byteCount)
                 {
                     (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
                     
@@ -847,19 +887,30 @@ enum PNG
                         }
                     }
                     
-                    count = capacity
+                    count = properties.byteCount
                 }
                 
-                return .init(properties: properties, data: deinterlaced)
+                return .init(deinterlaced, properties: properties)
             }
         }
         
         // PNG data that has been deinterlaced, but may still have multiple pixels 
         // packed per byte, or indirect (indexed) pixels
+        public 
         struct Rectangular 
         {
             let properties:Properties, 
                 data:[UInt8]
+            
+            // only called directly from within the library 
+            init(_ data:[UInt8], properties:Properties) 
+            {
+                assert(!properties.interlaced)
+                assert(data.count == properties.byteCount)
+                
+                self.properties = properties
+                self.data       = data 
+            }
             
             static 
             func index(_ pixels:[RGBA<UInt8>], size:Math<Int>.V2) -> Rectangular 
@@ -867,31 +918,37 @@ enum PNG
                 fatalError("unimplemented")
             }
             
+            public 
             func expand8() -> [UInt8]
             {
                 return []
             }
             
+            public 
             func expand16() -> [UInt16]
             {
                 return []
             }
             
+            public 
             func grayscale8() -> [UInt8] 
             {
                 return []
             }
             
+            public 
             func grayscale16() -> [UInt16]
             {
                 return []
             }
             
+            public 
             func rgba8() -> [RGBA<UInt8>]
             {
                 return []
             }
             
+            public 
             func rgba16() -> [RGBA<UInt16>]?
             {
                 @inline(__always) 
@@ -1024,7 +1081,6 @@ enum PNG
             private 
             func mapScalarBits<Result>(_ body:(UInt8) -> Result) -> [Result] 
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth < UInt8.bitWidth)
                 
                 return withoutActuallyEscaping(body)
@@ -1060,7 +1116,6 @@ enum PNG
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1073,7 +1128,6 @@ enum PNG
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1087,7 +1141,6 @@ enum PNG
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1102,7 +1155,6 @@ enum PNG
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1118,7 +1170,6 @@ enum PNG
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1134,7 +1185,6 @@ enum PNG
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1151,7 +1201,6 @@ enum PNG
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1168,7 +1217,6 @@ enum PNG
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.data.count == self.properties.shape.byteCount)
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
@@ -1243,7 +1291,7 @@ enum PNG
                             self.name.3)
         }
         
-        static 
+        public static 
         let IHDR:Chunk = .init(73, 72, 68, 82), 
             PLTE:Chunk = .init(80, 76, 84, 69), 
             IDAT:Chunk = .init(73, 68, 65, 84), 
@@ -1268,6 +1316,7 @@ enum PNG
             zTXt:Chunk = .init(122, 84, 88, 116)
     }
     
+    public 
     enum ReadError:Error
     {
         case incompleteChunk,  
