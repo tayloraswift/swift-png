@@ -1,4 +1,4 @@
-@testable import PNG
+import PNG
 
 fileprivate 
 extension Array where Element == UInt8 
@@ -99,7 +99,7 @@ func decode(_ path:String) -> (PNG.Properties, [PNG.RGBA<UInt16>])
             fatalError(String(describing: error))
         }
         
-        let uncompressed:PNG.Data.Uncompressed = .init(properties: properties!, data: rawData)
+        let uncompressed:PNG.Data.Uncompressed = PNG.Data.Uncompressed.init(rawData, properties: properties!)!
         return (uncompressed.properties, uncompressed.deinterlace().rgba16()!)
     })
     else 
@@ -117,9 +117,9 @@ func testDecode(_ name:String) -> String?
     let (properties, image):(PNG.Properties, [PNG.RGBA<UInt16>]) = decode(pngPath)
     let reference:[PNG.RGBA<UInt16>] = PNG.FileInterface.open(path: rgbaPath) 
         {
-            let bytes:Int    = Math.vol(properties.shape.size) * MemoryLayout<PNG.RGBA<UInt16>>.stride, 
+            let bytes:Int    = Math.vol(properties.size) * MemoryLayout<PNG.RGBA<UInt16>>.stride, 
                 data:[UInt8] = $0.read(count: bytes)!
-            return (0 ..< Math.vol(properties.shape.size)).map 
+            return (0 ..< Math.vol(properties.size)).map 
             {
                 let r:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3), 
                     g:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 2), 
