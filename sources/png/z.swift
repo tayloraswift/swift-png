@@ -1,129 +1,185 @@
 import zlib
 
-extension PNG 
+protocol LZ77Stream
 {
-    enum DecompressionError:Error 
+    var stream:UnsafeMutablePointer<z_stream> 
     {
-        case initialization, missingDictionary, data, memory
+        get 
+        set 
+    }
+    
+    var input:[UInt8] 
+    {
+        get 
+        set 
     }
 }
-
-struct ZDecompressor 
+extension LZ77Stream 
 {
-    class Stream 
+    static 
+    func createStream(initializingWith initializer:(UnsafeMutablePointer<z_stream>) -> Int32) 
+        throws -> UnsafeMutablePointer<z_stream>
     {
-        var stream:z_stream = .init()
-        
-        init?() 
-        {
-            let status:Int32 = withUnsafeMutablePointer(to: &self.stream) 
-            {
-                $0.pointee  = .init(next_in: nil, 
-                                    avail_in: 0, 
-                                    total_in: 0, 
-                                    next_out: nil, 
-                                    avail_out: 0, 
-                                    total_out: 0,
-                                    msg: nil, 
-                                    state: nil, 
-                            
-                                    zalloc: nil, 
-                                    zfree: nil, 
-                                    opaque: nil, 
-                                    
-                                    data_type: 0, 
-                                    adler: 0, 
-                                    reserved: 0)
-                
-                return inflateInit_($0, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
-            } 
-            
-            guard status == Z_OK 
-            else  
-            {
-                return nil 
-            }
-        }
-        
-        deinit
-        {
-            withUnsafeMutablePointer(to: &self.stream) 
-            {
-                inflateEnd($0)
-                return 
-            }
-        }
-    }
-    
-    private 
-    var stream:Stream, 
-        input:[UInt8] = []
-    
-    init() throws 
-    {
-        guard let stream:Stream = Stream.init() 
+        let stream:UnsafeMutablePointer<z_stream> = .allocate(capacity: 1)
+            stream.initialize(to:  .init(next_in: nil, 
+                                        avail_in: 0, 
+                                        total_in: 0, 
+                                        next_out: nil, 
+                                       avail_out: 0, 
+                                       total_out: 0,
+                                             msg: nil, 
+                                           state: nil, 
+                                
+                                          zalloc: nil, 
+                                           zfree: nil, 
+                                          opaque: nil, 
+                                        
+                                       data_type: 0, 
+                                           adler: 0, 
+                                        reserved: 0))
+        guard initializer(stream) == Z_OK 
         else 
         {
-            throw PNG.DecompressionError.initialization
+            stream.deinitialize(count: 1)
+            stream.deallocate()
+            
+            throw PNG.LZ77.Error.initialization
         }
         
-        self.stream = stream
+        return stream 
+    }
+    
+    func destroyStream(deinitializingWith deinitializer:(UnsafeMutablePointer<z_stream>) -> Int32) 
+    {
+        guard deinitializer(self.stream) == Z_OK 
+        else 
+        {
+            fatalError("failed to deinitialize `z_stream` structure")
+        }
+        
+        self.stream.deinitialize(count: 1)
+        self.stream.deallocate()
     }
     
     mutating 
     func push(_ input:[UInt8]) 
     {
-        self.input           = input
-        withUnsafeMutablePointer(to: &self.stream.stream) 
-        {
-            $0.pointee.avail_in = UInt32(input.count)
-        }
+        self.input                   = input
+        self.stream.pointee.avail_in = UInt32(input.count)
     }
-    
-    mutating 
-    func pull(extending destination:inout [UInt8], capacity:Int) throws
+     
+    func pull(extending destination:inout [UInt8], capacity:Int, 
+        from body:(UnsafeMutablePointer<z_stream>) -> Int32) throws
     {
         try destination.withUnsafeMutableBufferPointerToStorage(capacity: capacity)
         {
             (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
             
-            try withUnsafeMutablePointer(to: &self.stream.stream) 
+            self.stream.pointee.next_out  = buffer.baseAddress.map{ $0 + count }
+            self.stream.pointee.avail_out = UInt32(capacity - count)
+            
+            let status:Int32 = self.input.withUnsafeBufferPointer 
             {
-                (storage:UnsafeMutablePointer<z_stream>) in 
+                let offset:Int = self.input.count - Int(self.stream.pointee.avail_in)
+                self.stream.pointee.next_in = $0.baseAddress.map{ .init(mutating: $0 + offset) }
                 
-                storage.pointee.next_out  = buffer.baseAddress.map{ $0 + count }
-                storage.pointee.avail_out = UInt32(capacity - count)
+                return body(self.stream)
+            }
+            
+            count = capacity - Int(self.stream.pointee.avail_out)
+            
+            switch status 
+            {
+                case Z_STREAM_END, 
+                     Z_OK:
+                    break 
                 
-                let status:Int32 = self.input.withUnsafeBufferPointer 
-                {
-                    let offset:Int = self.input.count - Int(storage.pointee.avail_in)
-                    storage.pointee.next_in = $0.baseAddress.map{ .init(mutating: $0 + offset) }
+                case Z_BUF_ERROR:
+                    break
+                
+                case Z_NEED_DICT:
+                    throw PNG.LZ77.Error.missingDictionary
+                case Z_DATA_ERROR:
+                    throw PNG.LZ77.Error.data
+                case Z_MEM_ERROR:
+                    throw PNG.LZ77.Error.memory
                     
-                    return inflate(storage, Z_NO_FLUSH)
+                case Z_STREAM_ERROR:
+                    fallthrough
+                default:
+                    fatalError("unreachable error \(status)")
+            }
+        }
+    }
+}
+
+extension PNG 
+{
+    enum LZ77 
+    {
+        enum Error:Swift.Error 
+        {
+            case initialization, missingDictionary, data, memory
+        }
+        
+        class UnsafeInflator:LZ77Stream 
+        {
+            var stream:UnsafeMutablePointer<z_stream>, 
+                input:[UInt8] = []
+            
+            init() throws
+            {
+                self.stream = try UnsafeInflator.createStream 
+                {
+                    inflateInit_($0, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
                 }
-                
-                count = capacity - Int(storage.pointee.avail_out)
-                
-                switch status 
+            }
+            
+            deinit
+            {
+                self.destroyStream(deinitializingWith: inflateEnd(_:))
+            }
+            
+            func pull(extending destination:inout [UInt8], capacity:Int) throws
+            {
+                try self.pull(extending: &destination, capacity: capacity)
                 {
-                    case Z_STREAM_END, 
-                         Z_OK:
-                        break 
-                    
-                    case Z_BUF_ERROR:
-                        break
-                    
-                    case Z_NEED_DICT:
-                        throw PNG.DecompressionError.missingDictionary
-                    case Z_DATA_ERROR:
-                        throw PNG.DecompressionError.data
-                    case Z_MEM_ERROR:
-                        throw PNG.DecompressionError.memory
-                        
-                    case Z_STREAM_ERROR:
-                        fallthrough
-                    default:
-                        fatalError("unreachable error \(status)")
+                    inflate($0, Z_NO_FLUSH)
+                }
+            }
+        }
+        
+        class UnsafeDeflator:LZ77Stream 
+        {
+            var stream:UnsafeMutablePointer<z_stream>, 
+                input:[UInt8] = []
+            
+            init(level:Int = 9) throws
+            {
+                assert(0 ..< 10 ~= level)
+                self.stream = try UnsafeDeflator.createStream 
+                {
+                    deflateInit_($0, Int32(level), ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+                }
+            }
+            
+            deinit
+            {
+                self.destroyStream(deinitializingWith: deflateEnd(_:))
+            }
+            
+            func pull(extending destination:inout [UInt8], capacity:Int) throws
+            {
+                try self.pull(extending: &destination, capacity: capacity)
+                {
+                    deflate($0, Z_NO_FLUSH)
+                }
+            }
+            func finish(extending destination:inout [UInt8], capacity:Int) throws
+            {
+                try self.pull(extending: &destination, capacity: capacity)
+                {
+                    deflate($0, Z_FINISH)
                 }
             }
         }

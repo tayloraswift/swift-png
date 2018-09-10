@@ -18,7 +18,7 @@ extension Array {
         ) throws -> Result
     ) rethrows -> Result {
         var buffer = UnsafeMutableBufferPointer<Element>.allocate(capacity: capacity)
-        buffer.initialize(from: self)
+        let _ = buffer.initialize(from: self)
         var initializedCount = self.count
         defer {
             buffer.baseAddress?.deinitialize(count: initializedCount)
