@@ -1,5 +1,5 @@
 import Glibc
-import zlib
+import func zlib.crc32
 
 fileprivate 
 extension Array where Element == UInt8 
@@ -467,9 +467,9 @@ enum PNG
         public 
         func decoder() throws -> Decoder
         {
-            let decompressor:ZDecompressor = try .init(), 
-                stride:Int                 = max(1, self.format.volume >> 3)
-            return .init(stride: stride, pitches: self.pitches, decompressor: decompressor)
+            let inflator:LZ77.UnsafeInflator = try .init(), 
+                stride:Int                   = max(1, self.format.volume >> 3)
+            return .init(stride: stride, pitches: self.pitches, inflator: inflator)
         }
         
         public 
@@ -484,13 +484,13 @@ enum PNG
             
             private   
             var pitches:Pitches, 
-                decompressor:ZDecompressor
+                inflator:LZ77.UnsafeInflator
             
-            init(stride:Int, pitches:Pitches, decompressor:ZDecompressor)
+            init(stride:Int, pitches:Pitches, inflator:LZ77.UnsafeInflator)
             {
                 self.stride       = stride 
                 self.pitches      = pitches
-                self.decompressor = decompressor
+                self.inflator = inflator
                 
                 guard let pitch:Int = self.pitches.next() ?? nil
                 else 
@@ -504,11 +504,11 @@ enum PNG
             public mutating 
             func forEachScanline(decodedFrom data:[UInt8], body:(ArraySlice<UInt8>) throws -> ()) throws
             {
-                self.decompressor.push(data)
+                self.inflator.push(data)
                 
                 while let reference:[UInt8] = self.reference  
                 {
-                    try self.decompressor.pull(extending: &self.scanline, 
+                    try self.inflator.pull(extending: &self.scanline, 
                                                 capacity: reference.count) 
                     
                     guard self.scanline.count == reference.count
@@ -914,9 +914,7 @@ enum PNG
                     switch chunk 
                     {
                         case .IHDR:
-                            // unreachable (cannot have two IHDRs), this is enforced 
-                            // by the `conditions` validator  
-                            fatalError("unreachable")
+                            fatalError("unreachable: validator enforces no duplicate IHDR chunks")
                         
                         case .IDAT:
                             try decoder.forEachScanline(decodedFrom: contents) 
