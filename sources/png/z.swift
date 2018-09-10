@@ -4,7 +4,7 @@ extension PNG
 {
     enum DecompressionError:Error 
     {
-        case missingDictionary, data, memory
+        case initialization, missingDictionary, data, memory
     }
 }
 
@@ -41,7 +41,7 @@ struct ZDecompressor
             guard status == Z_OK 
             else  
             {
-                return nil
+                return nil 
             }
         }
         
@@ -59,12 +59,12 @@ struct ZDecompressor
     var stream:Stream, 
         input:[UInt8] = []
     
-    init?()
+    init() throws 
     {
         guard let stream:Stream = Stream.init() 
         else 
         {
-            return nil 
+            throw PNG.DecompressionError.initialization
         }
         
         self.stream = stream

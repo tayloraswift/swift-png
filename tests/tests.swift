@@ -40,86 +40,42 @@ extension ArraySlice where Element == UInt8
     }
 }
 
-func decode(_ path:String) -> (PNG.Properties, [PNG.RGBA<UInt16>]) 
-{
-    guard let (properties, image):(PNG.Properties, [PNG.RGBA<UInt16>]) = PNG.FileInterface.open(path: path, body: 
-    {
-        (file:inout PNG.FileInterface) in 
-        
-        var decoder:PNG.Properties.Decoder?, 
-            properties:PNG.Properties?, 
-            rawData:[UInt8] = []
-        
-        do 
-        {
-            try PNG.forEachChunk(in: &file) 
-            {
-                (name:Math<UInt8>.V4, data:[UInt8]?) in 
-                
-                guard let chunk:PNG.Chunk = PNG.Chunk.init(name)
-                else 
-                {
-                    let string:String = .init(decoding: [name.0, name.1, name.2, name.3], 
-                                                    as: Unicode.ASCII.self)
-                    throw PNG.ReadError.syntaxError(message: "chunk '\(string)' has invalid name")
-                }
-                    
-                guard let data:[UInt8] = data 
-                else 
-                {
-                    throw PNG.ReadError.corruptedChunk
-                }
-                
-                switch chunk 
-                {
-                    case .IHDR:
-                        let _properties:PNG.Properties = try .decodeIHDR(data)
-                        decoder    = _properties.decoder()
-                        properties = _properties
-                    
-                    case .IDAT:
-                        try decoder?.forEachScanline(decodedFrom: data) 
-                        {
-                            rawData.append(contentsOf: $0)
-                        }
-                    
-                    case .PLTE:
-                        try properties?.decodePLTE(data)
-                    
-                    case .tRNS:
-                        try properties?.decodetRNS(data)
-                    
-                    default:
-                        break
-                }
-            }
-        }
-        catch 
-        {
-            fatalError(String(describing: error))
-        }
-        
-        let uncompressed:PNG.Data.Uncompressed = PNG.Data.Uncompressed.init(rawData, properties: properties!)!
-        return (uncompressed.properties, uncompressed.deinterlace().rgba16()!)
-    })
-    else 
-    {
-        fatalError("failed to open file")
-    }
-    
-    return (properties, image)
-}
-
 func testDecode(_ name:String) -> String? 
 {
     let pngPath:String  = "tests/unit/png/\(name).png", 
         rgbaPath:String = "tests/unit/rgba/\(name).png.rgba"
-    let (properties, image):(PNG.Properties, [PNG.RGBA<UInt16>]) = decode(pngPath)
-    let reference:[PNG.RGBA<UInt16>] = PNG.FileInterface.open(path: rgbaPath) 
+    
+    do 
+    {
+        guard let rectangular:PNG.Data.Rectangular = 
+        (try PNG.FileInterface.open(path: pngPath) 
         {
-            let bytes:Int    = Math.vol(properties.size) * MemoryLayout<PNG.RGBA<UInt16>>.stride, 
-                data:[UInt8] = $0.read(count: bytes)!
-            return (0 ..< Math.vol(properties.size)).map 
+            return try PNG.Data.Uncompressed.decode(from: &$0).deinterlace()
+        })
+        else 
+        {
+            return "failed to open file '\(pngPath)'"
+        }
+        
+        guard let image:[PNG.RGBA<UInt16>] = rectangular.rgba16()
+        else 
+        {
+            fatalError("unreachable: internal checks should have guaranteed palette validity")
+        }
+        
+        guard let result:[PNG.RGBA<UInt16>]? = 
+        (PNG.FileInterface.open(path: rgbaPath) 
+        {
+            let pixels:Int = Math.vol(rectangular.properties.size), 
+                bytes:Int  = pixels * MemoryLayout<PNG.RGBA<UInt16>>.stride
+                        
+            guard let data:[UInt8] = $0.read(count: bytes) 
+            else 
+            {
+                return nil  
+            }
+            
+            return (0 ..< pixels).map 
             {
                 let r:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3), 
                     g:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 2), 
@@ -128,6 +84,32 @@ func testDecode(_ name:String) -> String?
                 
                 return .init(r, g, b, a)
             }
-        }!
-    return image == reference ? nil : "incorrect result"
+        })
+        else 
+        {
+            return "failed to open file '\(rgbaPath)'"
+        }
+        
+        guard let reference:[PNG.RGBA<UInt16>] = result 
+        else 
+        {
+            return "failed to read file '\(rgbaPath)'"
+        }
+        
+        for (i, pair):(Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in 
+            zip(image, reference).enumerated() 
+        {
+            guard pair.0 == pair.1 
+            else 
+            {
+                return "pixel \(i) has value \(pair.0) (expected \(pair.1))"
+            }
+        }
+        
+        return nil
+    }
+    catch 
+    {
+        return "\(error)"
+    }
 }
