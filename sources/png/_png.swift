@@ -9,6 +9,24 @@ extension Array where Element == UInt8
     {
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
+    
+    static 
+    func store<U, T>(_ value:U, asBigEndian:T.Type) -> [UInt8]
+        where U:BinaryInteger, T:FixedWidthInteger 
+    {
+        return .init(unsafeUninitializedCapacity: MemoryLayout<T>.size) 
+        {
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
+            
+            let bigEndian:T = T.init(truncatingIfNeeded: value).bigEndian, 
+                destination:UnsafeMutableRawBufferPointer = .init(buffer)
+            Swift.withUnsafeBytes(of: bigEndian) 
+            {
+                destination.copyMemory(from: $0)
+                count = $0.count
+            }
+        }
+    }
 }
 
 fileprivate 
@@ -48,6 +66,12 @@ protocol DataSource
     // output array `.count` must equal `count`
     mutating 
     func read(count:Int) -> [UInt8]?
+}
+public 
+protocol DataDestination 
+{
+    mutating 
+    func write(_ buffer:[UInt8]) -> Void?
 }
 
 public 
@@ -128,7 +152,7 @@ enum PNG
     }
     
     public 
-    struct FileInterface:DataSource 
+    struct FileInterface:DataSource, DataDestination
     {
         typealias FilePointer = UnsafeMutablePointer<FILE>
         
@@ -170,6 +194,23 @@ enum PNG
             }
             
             return buffer
+        }
+        
+        public 
+        func write(_ buffer:[UInt8]) -> Void? 
+        {
+            let count:Int = buffer.withUnsafeBufferPointer 
+            {
+                fwrite($0.baseAddress, MemoryLayout<UInt8>.stride, $0.count, self.descriptor)
+            }
+            
+            guard count == buffer.count 
+            else 
+            {
+                return nil 
+            }
+            
+            return ()
         }
     }
     
@@ -467,9 +508,16 @@ enum PNG
         public 
         func decoder() throws -> Decoder
         {
-            let inflator:LZ77.UnsafeInflator = try .init(), 
-                stride:Int                   = max(1, self.format.volume >> 3)
+            let inflator:LZ77.Inflator = try .init(), 
+                stride:Int             = max(1, self.format.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, inflator: inflator)
+        }
+        public 
+        func encoder(level:Int) throws -> Encoder
+        {
+            let deflator:LZ77.Deflator = try .init(level: level), 
+                stride:Int             = max(1, self.format.volume >> 3)
+            return .init(stride: stride, pitches: self.pitches, deflator: deflator)
         }
         
         public 
@@ -484,12 +532,12 @@ enum PNG
             
             private   
             var pitches:Pitches, 
-                inflator:LZ77.UnsafeInflator
+                inflator:LZ77.Inflator
             
-            init(stride:Int, pitches:Pitches, inflator:LZ77.UnsafeInflator)
+            init(stride:Int, pitches:Pitches, inflator:LZ77.Inflator)
             {
-                self.stride       = stride 
-                self.pitches      = pitches
+                self.stride   = stride 
+                self.pitches  = pitches
                 self.inflator = inflator
                 
                 guard let pitch:Int = self.pitches.next() ?? nil
@@ -508,16 +556,16 @@ enum PNG
                 
                 while let reference:[UInt8] = self.reference  
                 {
-                    try self.inflator.pull(extending: &self.scanline, 
-                                                capacity: reference.count) 
+                    let remainder:Int = try self.inflator.pull(extending: &self.scanline, 
+                                                                capacity: reference.count)
                     
-                    guard self.scanline.count == reference.count
+                    guard self.scanline.count == reference.count 
                     else 
                     {
                         break
                     }
                     
-                    self.defilter(scanline: &self.scanline, reference: reference)
+                    self.defilter(&self.scanline, reference: reference)
                     
                     try body(self.scanline.dropFirst())
                     
@@ -539,11 +587,18 @@ enum PNG
                     }
                     
                     self.scanline = []
+                    
+                    guard remainder > 0 
+                    else 
+                    {
+                        // no input (encoded data) left
+                        break
+                    }
                 }
             }
             
             private  
-            func defilter(scanline:inout [UInt8], reference:[UInt8])
+            func defilter(_ scanline:inout [UInt8], reference:[UInt8])
             {
                 let filter:UInt8              = scanline[scanline.startIndex] 
                 scanline[scanline.startIndex] = 0
@@ -593,6 +648,189 @@ enum PNG
                         break // invalid
                 }
             }
+        }
+        
+        public 
+        struct Encoder 
+        {
+            // unlike the `Decoder`, here, it’s more efficient for `reference` to 
+            // *not* contain the filter byte prefix
+            private 
+            var reference:[UInt8]?
+            
+            private 
+            let stride:Int 
+            
+            private 
+            var pitches:Pitches, 
+                deflator:LZ77.Deflator
+            
+            init(stride:Int, pitches:Pitches, deflator:LZ77.Deflator) 
+            {
+                self.stride   = stride 
+                self.pitches  = pitches 
+                self.deflator = deflator
+                
+                guard let pitch:Int = self.pitches.next() ?? nil
+                else 
+                {
+                    return 
+                }
+                
+                self.reference = .init(repeating: 0, count: pitch)
+            }
+            
+            public mutating 
+            func consolidate(extending data:inout [UInt8], capacity:Int, 
+                scanlinesFrom generator:() -> ArraySlice<UInt8>?) throws 
+            {
+                while let reference:[UInt8] = self.reference
+                {
+                    guard try self.deflator.pull(extending: &data, capacity: capacity) == 0 
+                    else 
+                    {
+                        // some input (encoded data) left, usually this means 
+                        // the `data` buffer is full too 
+                        return
+                    }
+                    
+                    guard let row:ArraySlice<UInt8> = generator()
+                    else 
+                    {
+                        return
+                    }
+                     
+                    guard row.count == reference.count 
+                    else 
+                    {
+                        throw WriteError.bufferCount
+                    }
+                    
+                    let scanline:[UInt8] = self.filter(row, reference: reference)
+                    
+                    self.deflator.push(scanline)
+                    
+                    if let pitch:Int? = self.pitches.next() 
+                    {
+                        if let pitch:Int = pitch 
+                        {
+                            self.reference = .init(repeating: 0, count: pitch)
+                        }
+                        else 
+                        {
+                            self.reference = .init(row)
+                        }
+                    }
+                    else 
+                    {
+                        self.reference = nil 
+                    }
+                }
+            }
+            
+            // once this is called, `consolidate(extending:capacity:scanlinesFrom:)` can’t 
+            // be called again after it
+            public 
+            func consolidate(extending data:inout [UInt8], capacity:Int) throws
+            {
+                assert(data.count <= capacity)
+                try self.deflator.finish(extending: &data, capacity: capacity)
+            }
+            
+            private  
+            func filter(_ current:ArraySlice<UInt8>, reference:[UInt8]) -> [UInt8]
+            {
+                // filtering can be done in parallel 
+                let candidates:(sub:[UInt8], up:[UInt8], average:[UInt8], paeth:[UInt8])
+                candidates.sub =        [1] +
+                current.prefix(self.stride) 
+                + 
+                zip(current, current.dropFirst(self.stride)).map 
+                {
+                    $0.1   &- $0.0
+                }
+                
+                candidates.up =         [2] + 
+                zip(reference, 
+                    current).map 
+                {
+                    $0.1   &- $0.0
+                }
+                
+                candidates.average =    [3] + 
+                zip(reference, 
+                    current).prefix(self.stride).map 
+                {
+                    $0.1   &- $0.0 >> 1
+                } 
+                + 
+                zip(           reference.dropFirst(self.stride), 
+                    zip(current, current.dropFirst(self.stride))).map 
+                {
+                    $0.1.1 &- UInt8(truncatingIfNeeded: (UInt16($0.1.0) &+ UInt16($0.0)) >> 1)
+                }
+
+                candidates.paeth =      [4] + 
+                zip(reference, 
+                    current).prefix(self.stride).map 
+                {
+                    $0.1   &- paeth(0, $0.0, 0)
+                } 
+                + 
+                zip(zip(reference, reference.dropFirst(self.stride)), 
+                    zip(current,     current.dropFirst(self.stride))).map 
+                {
+                    $0.1.1 &- paeth($0.1.0, $0.0.1, $0.0.0)
+                }
+                
+                let scores:[Int] = 
+                [
+                    Encoder.score(current),
+                    Encoder.score(candidates.0.dropFirst()),
+                    Encoder.score(candidates.1.dropFirst()),
+                    Encoder.score(candidates.2.dropFirst()),
+                    Encoder.score(candidates.3.dropFirst())
+                ]
+                
+                // i don’t know why this isn’t in the standard library 
+                var filter:Int  = 0, 
+                    minimum:Int = .max
+                for (i, score) in scores.enumerated() 
+                {
+                    if score < minimum 
+                    {
+                        minimum = score 
+                        filter  = i
+                    }
+                }
+                
+                switch filter 
+                {
+                    case 0:
+                        return [0] + current 
+                        
+                    case 1:
+                        return candidates.0
+                    case 2:
+                        return candidates.1
+                    case 3:
+                        return candidates.2
+                    case 4:
+                        return candidates.3
+                    
+                    default:
+                        fatalError("unreachable: 0 <= filter < 5")
+                }
+            }
+            
+            private static 
+            func score(_ filtered:ArraySlice<UInt8>) -> Int
+            {
+                return zip(filtered, filtered.dropFirst()).count
+                {
+                    $0.0 != $0.1
+                }
+            } 
         }
         
         public static 
@@ -849,11 +1087,75 @@ enum PNG
                 return .init(deinterlaced, properties: properties)
             }
             
+            public  
+            func encode<Destination>(into destination:inout Destination, 
+                chunkSize:Int = 1 << 16) throws 
+                where Destination:DataDestination
+            {
+                precondition(chunkSize >= 1, "chunk size must be positive")
+                
+                var iterator:ChunkIterator<Destination> = 
+                    ChunkIterator.begin(destination: &destination)
+                
+                //iterator.next(.IHDR, Chunk.encodeIHDR(self.properties), 
+                //    destination: &destination)
+                
+                var pitches:Properties.Pitches = self.properties.pitches, 
+                    encoder:Properties.Encoder = try self.properties.encoder(level: 9)
+                
+                var pitch:Int?   = nil, 
+                    base:Int     = self.data.startIndex
+                var data:[UInt8] = []
+                while true 
+                {
+                    try encoder.consolidate(extending: &data, capacity: chunkSize) 
+                    {
+                        guard let pitch:Int = pitches.next() ?? pitch ?? nil
+                        else 
+                        {
+                            return nil 
+                        }
+                        defer 
+                        {
+                            base += pitch 
+                        }
+                        
+                        return self.data[base ..< base + pitch]
+                    }
+                    
+                    if data.count == chunkSize 
+                    {
+                        iterator.next(.IDAT, data, destination: &destination)
+                        data = []
+                    } 
+                    else 
+                    {
+                        break
+                    }
+                }
+                
+                while true 
+                {
+                    try encoder.consolidate(extending: &data, capacity: chunkSize)
+                    
+                    if data.count == 0 
+                    {
+                        break
+                    }
+                    
+                    iterator.next(.IDAT, data, destination: &destination)
+                    data = []
+                }
+                
+                iterator.next(.IEND, destination: &destination)
+            }
+            
             public static 
             func decode<Source>(from source:inout Source) throws -> Uncompressed 
                 where Source:DataSource
             {
-                guard var iterator:ChunkIterator = ChunkIterator.begin(source: &source)
+                guard var iterator:ChunkIterator<Source> = 
+                    ChunkIterator.begin(source: &source)
                 else 
                 {
                     throw ReadError.missingSignature 
@@ -1485,59 +1787,101 @@ enum PNG
              duplicateChunk(Chunk), 
              missingChunk(Chunk)
     }
+    
+    public 
+    enum WriteError:Error 
+    {
+        case bufferCount
+    }
 
     // empty struct to namespace our chunk iteration methods. we can’t store the 
     // data source as it may have reference semantics even though implemented as 
     // a struct 
-    struct ChunkIterator<Source> where Source:DataSource 
+    public 
+    struct ChunkIterator<DataInterface> 
     {
-        public static 
-        func begin(source:inout Source) -> ChunkIterator<Source>? 
+        
+    }    
+}
+
+extension PNG.ChunkIterator where DataInterface:DataSource 
+{
+    public static 
+    func begin(source:inout DataInterface) -> PNG.ChunkIterator<DataInterface>? 
+    {
+        guard let bytes:[UInt8] = source.read(count: PNG.signature.count), 
+                  bytes == PNG.signature
+        else 
         {
-            guard let bytes:[UInt8] = source.read(count: signature.count), 
-                      bytes == signature
-            else 
-            {
-                return nil 
-            }
-            
-            return .init()
+            return nil 
         }
         
-        public mutating 
-        func next(source:inout Source) -> (name:Math<UInt8>.V4, data:[UInt8]?)? 
-        {
-            guard let header:[UInt8] = source.read(count: 8) 
-            else 
-            {
-                return nil 
-            }
-            
-            let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self), 
-                name:Math<UInt8>.V4 = (header[4], header[5], header[6], header[7]) 
-            
-            guard var data:[UInt8] = source.read(count: length + MemoryLayout<UInt32>.size)
-            else 
-            {
-                return (name, nil)
-            }
-            
-            let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
-            
-            data.removeLast(4)
-            
-            let testsum:UInt  = header.suffix(4).withUnsafeBufferPointer
-            {
-                return crc32(crc32(0, $0.baseAddress, 4), data, UInt32(length))
-            } 
-            guard testsum == checksum
-            else 
-            {
-                return (name, nil)
-            }
-            
-            return (name, data)
-        }
+        return .init()
     }
     
+    public mutating 
+    func next(source:inout DataInterface) -> (name:Math<UInt8>.V4, data:[UInt8]?)? 
+    {
+        guard let header:[UInt8] = source.read(count: 8) 
+        else 
+        {
+            return nil 
+        }
+        
+        let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self), 
+            name:Math<UInt8>.V4 = (header[4], header[5], header[6], header[7]) 
+        
+        guard var data:[UInt8] = source.read(count: length + MemoryLayout<UInt32>.size)
+        else 
+        {
+            return (name, nil)
+        }
+        
+        let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
+        
+        data.removeLast(4)
+        
+        let testsum:UInt  = header.suffix(4).withUnsafeBufferPointer
+        {
+            return crc32(crc32(0, $0.baseAddress, 4), data, UInt32(length))
+        } 
+        guard testsum == checksum
+        else 
+        {
+            return (name, nil)
+        }
+        
+        return (name, data)
+    }
+}
+
+extension PNG.ChunkIterator where DataInterface:DataDestination 
+{
+    public static 
+    func begin(destination:inout DataInterface) -> PNG.ChunkIterator<DataInterface> 
+    {
+        destination.write(PNG.signature)
+        return .init()
+    }
+    
+    public mutating 
+    func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface) 
+    {
+        let header:[UInt8] = .store(data.count, asBigEndian: UInt32.self) 
+        + 
+        [name.name.0, name.name.1, name.name.2, name.name.3]
+        
+        destination.write(header)
+        destination.write(data)
+        
+        let partial:UInt = header.suffix(4).withUnsafeBufferPointer 
+        {
+            crc32(0, $0.baseAddress, 4)
+        }
+        
+        // crc has 32 significant bits, padded out to a UInt
+        let crc:UInt = crc32(partial, data, UInt32(data.count))
+        
+        destination.write(.store(crc, asBigEndian: UInt32.self))
+    }
 }

@@ -64,14 +64,16 @@ extension LZ77Stream
     mutating 
     func push(_ input:[UInt8]) 
     {
+        // assert(self.stream.pointee.avail_in == 0)
         self.input                   = input
         self.stream.pointee.avail_in = UInt32(input.count)
     }
-     
+    
+    @discardableResult
     func pull(extending destination:inout [UInt8], capacity:Int, 
-        from body:(UnsafeMutablePointer<z_stream>) -> Int32) throws
+        from body:(UnsafeMutablePointer<z_stream>) -> Int32) throws -> Int
     {
-        try destination.withUnsafeMutableBufferPointerToStorage(capacity: capacity)
+        return try destination.withUnsafeMutableBufferPointerToStorage(capacity: capacity)
         {
             (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
             
@@ -109,6 +111,8 @@ extension LZ77Stream
                 default:
                     fatalError("unreachable error \(status)")
             }
+            
+            return Int(self.stream.pointee.avail_in)
         }
     }
 }
@@ -122,14 +126,14 @@ extension PNG
             case initialization, missingDictionary, data, memory
         }
         
-        class UnsafeInflator:LZ77Stream 
+        class Inflator:LZ77Stream 
         {
             var stream:UnsafeMutablePointer<z_stream>, 
                 input:[UInt8] = []
             
             init() throws
             {
-                self.stream = try UnsafeInflator.createStream 
+                self.stream = try Inflator.createStream 
                 {
                     inflateInit_($0, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
                 }
@@ -140,24 +144,25 @@ extension PNG
                 self.destroyStream(deinitializingWith: inflateEnd(_:))
             }
             
-            func pull(extending destination:inout [UInt8], capacity:Int) throws
+            func pull(extending destination:inout [UInt8], capacity:Int) 
+                throws -> Int
             {
-                try self.pull(extending: &destination, capacity: capacity)
+                return try self.pull(extending: &destination, capacity: capacity)
                 {
                     inflate($0, Z_NO_FLUSH)
                 }
             }
         }
         
-        class UnsafeDeflator:LZ77Stream 
+        class Deflator:LZ77Stream 
         {
             var stream:UnsafeMutablePointer<z_stream>, 
                 input:[UInt8] = []
             
-            init(level:Int = 9) throws
+            init(level:Int) throws
             {
                 assert(0 ..< 10 ~= level)
-                self.stream = try UnsafeDeflator.createStream 
+                self.stream = try Deflator.createStream 
                 {
                     deflateInit_($0, Int32(level), ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
                 }
@@ -168,9 +173,10 @@ extension PNG
                 self.destroyStream(deinitializingWith: deflateEnd(_:))
             }
             
-            func pull(extending destination:inout [UInt8], capacity:Int) throws
+            func pull(extending destination:inout [UInt8], capacity:Int) 
+                throws -> Int
             {
-                try self.pull(extending: &destination, capacity: capacity)
+                return try self.pull(extending: &destination, capacity: capacity)
                 {
                     deflate($0, Z_NO_FLUSH)
                 }
