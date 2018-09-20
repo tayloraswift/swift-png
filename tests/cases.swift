@@ -42,9 +42,10 @@ enum Group
     }
 }
 
-let cases:[Group] = 
+let suite:[(name:String, members:[String])] = 
 [
-    .mapStrings(true, "basic", testDecode, 
+    (
+        "basic", 
         [
             "PngSuite",
 
@@ -65,7 +66,8 @@ let cases:[Group] =
             "basn6a16"
         ]
     ), 
-    .mapStrings(true, "interlacing", testDecode, 
+    (
+        "interlacing", 
         [
             "basi0g01",
             "basi0g02",
@@ -84,7 +86,8 @@ let cases:[Group] =
             "basi6a16"
         ]
     ), 
-    .mapStrings(true, "sizing", testDecode, 
+    (
+        "sizing", 
         [
             "s01i3p01",
             "s01n3p01",
@@ -124,7 +127,8 @@ let cases:[Group] =
             "s40n3p04"
         ]
     ), 
-    .mapStrings(true, "backgrounds", testDecode, 
+    (
+        "backgrounds", 
         [
             "bgai4a08",
             "bgai4a16",
@@ -136,7 +140,8 @@ let cases:[Group] =
             "bgyn6a16"
         ]
     ), 
-    .mapStrings(true, "transparency", testDecode, 
+    (
+        "transparency", 
         [
             "tbbn0g04",
             "tbbn2c16",
@@ -154,7 +159,8 @@ let cases:[Group] =
             "tp1n3p08"
         ]
     ), 
-    .mapStrings(true, "(inactive)", testDecode, 
+    (
+        "(inactive)", 
         [
             "g03n0g16",
             "g03n2c08",
@@ -176,7 +182,8 @@ let cases:[Group] =
             "g25n3p04"
         ]
     ), 
-    .mapStrings(true, "filtering", testDecode, 
+    (
+        "filtering", 
         [
             "f00n0g08",
             "f00n2c08",
@@ -191,7 +198,8 @@ let cases:[Group] =
             "f99n0g04"
         ]
     ), 
-    .mapStrings(true, "palettes", testDecode, 
+    (
+        "palettes", 
         [
             "pp0n2c16",
             "pp0n6a08",
@@ -201,7 +209,8 @@ let cases:[Group] =
             "ps2n2c16"
         ]
     ), 
-    .mapStrings(true, "ancillary chunks", testDecode, 
+    (
+        "ancillary chunks", 
         [
             "ccwn2c08",
             "ccwn3p08",
@@ -230,7 +239,8 @@ let cases:[Group] =
             "ctzn0g04"
         ]
     ), 
-    .mapStrings(true, "chunk ordering", testDecode, 
+    (
+        "chunk ordering", 
         [
             "oi1n0g16",
             "oi1n2c16",
@@ -242,7 +252,8 @@ let cases:[Group] =
             "oi9n2c16"
         ]
     ), 
-    .mapStrings(true, "zlib compression", testDecode, 
+    (
+        "zlib compression", 
         [
             "z00n2c08",
             "z03n2c08",
@@ -251,3 +262,12 @@ let cases:[Group] =
         ]
     ), 
 ]
+let cases:[Group] = suite.map 
+{
+    .mapStrings(true, $0.name + "-decode", testDecode(_:), $0.members)
+}
++
+suite.map 
+{
+    .mapStrings(true, $0.name + "-reencode", testEncode(_:), $0.members)
+}

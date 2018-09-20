@@ -89,5 +89,4 @@ func runTests(_ groups:[Group]) -> Never
     }
 }
 
-_testEncode()
 runTests(cases)
