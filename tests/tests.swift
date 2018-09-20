@@ -40,6 +40,40 @@ extension ArraySlice where Element == UInt8
     }
 }
 
+func _testEncode() 
+{
+    do 
+    {
+        guard let data:PNG.Data.Uncompressed = 
+        (
+            try PNG.File.Source.open(path: "tests/large/png/if red got the grammy.png") 
+            {
+                return try PNG.Data.Uncompressed.decode(from: &$0)
+            }
+        )
+        else 
+        {
+            fatalError("failed to open file")
+        }
+        
+        guard let _:Void = 
+        (
+            try PNG.File.Destination.open(path: "out.png") 
+            {
+                try data.compress(to: &$0)
+            }
+        )
+        else 
+        {
+            fatalError("failed to open file")
+        }
+    }
+    catch 
+    {
+        print(error)
+    }
+}
+
 func testDecode(_ name:String) -> String? 
 {
     let pngPath:String  = "tests/unit/png/\(name).png", 
@@ -48,7 +82,7 @@ func testDecode(_ name:String) -> String?
     do 
     {
         guard let rectangular:PNG.Data.Rectangular = 
-        (try PNG.FileInterface.open(path: pngPath) 
+        (try PNG.File.Source.open(path: pngPath) 
         {
             return try PNG.Data.Uncompressed.decode(from: &$0).deinterlace()
         })
@@ -64,7 +98,7 @@ func testDecode(_ name:String) -> String?
         }
         
         guard let result:[PNG.RGBA<UInt16>]? = 
-        (PNG.FileInterface.open(path: rgbaPath) 
+        (PNG.File.Source.open(path: rgbaPath) 
         {
             let pixels:Int = Math.vol(rectangular.properties.size), 
                 bytes:Int  = pixels * MemoryLayout<PNG.RGBA<UInt16>>.stride

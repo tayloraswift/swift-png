@@ -152,65 +152,98 @@ enum PNG
     }
     
     public 
-    struct FileInterface:DataSource, DataDestination
+    enum File
     {
-        typealias FilePointer = UnsafeMutablePointer<FILE>
-        
-        private 
-        let descriptor:FilePointer
-        
-        public static 
-        func open<Result>(path:String, body:(inout FileInterface) throws -> Result) rethrows -> Result? 
-        {
-            guard let descriptor:FilePointer = fopen(path, "rb")
-            else
-            {
-                return nil
-            }
-            
-            var file:FileInterface = .init(descriptor: descriptor)
-            defer 
-            {
-                fclose(file.descriptor)
-            }
-            
-            return try body(&file)
-        }
+        typealias Descriptor = UnsafeMutablePointer<FILE>
         
         public 
-        func read(count capacity:Int) -> [UInt8]?
+        struct Source:DataSource 
         {
-            let buffer:[UInt8] = .init(unsafeUninitializedCapacity: capacity) 
+            private 
+            let descriptor:Descriptor
+            
+            public static 
+            func open<Result>(path:String, body:(inout Source) throws -> Result) 
+                rethrows -> Result? 
             {
-                (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+                guard let descriptor:Descriptor = fopen(path, "rb")
+                else
+                {
+                    return nil
+                }
                 
-                count = fread(buffer.baseAddress, MemoryLayout<UInt8>.stride, capacity, self.descriptor)
+                var file:Source = .init(descriptor: descriptor)
+                defer 
+                {
+                    fclose(file.descriptor)
+                }
+                
+                return try body(&file)
             }
             
-            guard buffer.count == capacity
-            else 
+            public 
+            func read(count capacity:Int) -> [UInt8]?
             {
-                return nil
+                let buffer:[UInt8] = .init(unsafeUninitializedCapacity: capacity) 
+                {
+                    (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+                    
+                    count = fread(buffer.baseAddress, MemoryLayout<UInt8>.stride, 
+                        capacity, self.descriptor)
+                }
+                
+                guard buffer.count == capacity
+                else 
+                {
+                    return nil
+                }
+                
+                return buffer
             }
-            
-            return buffer
         }
         
         public 
-        func write(_ buffer:[UInt8]) -> Void? 
+        struct Destination:DataDestination 
         {
-            let count:Int = buffer.withUnsafeBufferPointer 
+            private 
+            let descriptor:Descriptor
+            
+            public static 
+            func open<Result>(path:String, body:(inout Destination) throws -> Result) 
+                rethrows -> Result? 
             {
-                fwrite($0.baseAddress, MemoryLayout<UInt8>.stride, $0.count, self.descriptor)
+                guard let descriptor:Descriptor = fopen(path, "wb")
+                else
+                {
+                    return nil
+                }
+                
+                var file:Destination = .init(descriptor: descriptor)
+                defer 
+                {
+                    fclose(file.descriptor)
+                }
+                
+                return try body(&file)
             }
             
-            guard count == buffer.count 
-            else 
+            public 
+            func write(_ buffer:[UInt8]) -> Void? 
             {
-                return nil 
+                let count:Int = buffer.withUnsafeBufferPointer 
+                {
+                    fwrite($0.baseAddress, MemoryLayout<UInt8>.stride, 
+                        $0.count, self.descriptor)
+                }
+                
+                guard count == buffer.count 
+                else 
+                {
+                    return nil 
+                }
+                
+                return ()
             }
-            
-            return ()
         }
     }
     
@@ -878,6 +911,18 @@ enum PNG
             return .init(size: (width, height), format: format, interlaced: interlaced)
         }
         
+        public 
+        func encodeIHDR() -> [UInt8] 
+        {
+            let header:[UInt8] = 
+            [UInt8].store(self.shape.size.x,         asBigEndian: UInt32.self) + 
+            [UInt8].store(self.shape.size.y,         asBigEndian: UInt32.self) + 
+            [UInt8].store(self.format.rawValue, asBigEndian: UInt16.self) + 
+            [0, 0, self.interlaced ? 1 : 0]
+            
+            return header
+        }
+        
         public mutating 
         func decodePLTE(_ data:[UInt8]) throws
         {
@@ -1088,7 +1133,7 @@ enum PNG
             }
             
             public  
-            func encode<Destination>(into destination:inout Destination, 
+            func compress<Destination>(to destination:inout Destination, 
                 chunkSize:Int = 1 << 16) throws 
                 where Destination:DataDestination
             {
@@ -1097,30 +1142,31 @@ enum PNG
                 var iterator:ChunkIterator<Destination> = 
                     ChunkIterator.begin(destination: &destination)
                 
-                //iterator.next(.IHDR, Chunk.encodeIHDR(self.properties), 
-                //    destination: &destination)
+                iterator.next(.IHDR, self.properties.encodeIHDR(), destination: &destination)
                 
                 var pitches:Properties.Pitches = self.properties.pitches, 
                     encoder:Properties.Encoder = try self.properties.encoder(level: 9)
                 
-                var pitch:Int?   = nil, 
+                var pitch:Int?, 
                     base:Int     = self.data.startIndex
                 var data:[UInt8] = []
                 while true 
                 {
                     try encoder.consolidate(extending: &data, capacity: chunkSize) 
                     {
-                        guard let pitch:Int = pitches.next() ?? pitch ?? nil
+                        guard let update:Int? = pitches.next(), 
+                              let count:Int   = update ?? pitch
                         else 
                         {
                             return nil 
-                        }
+                        }                        
                         defer 
                         {
-                            base += pitch 
+                            base += count
+                            pitch = count 
                         }
                         
-                        return self.data[base ..< base + pitch]
+                        return self.data[base ..< base + count]
                     }
                     
                     if data.count == chunkSize 
