@@ -949,6 +949,22 @@ enum PNG
             }
         }
         
+        public 
+        func encodePLTE() -> [UInt8]?
+        {
+            guard   self.format.hasColor, 
+                    let palette:[RGBA<UInt8>] = self.palette 
+            else 
+            {
+                return nil 
+            }
+            
+            return palette.flatMap 
+            {
+                [$0.r, $0.g, $0.b]
+            }
+        }
+        
         public mutating 
         func decodetRNS(_ data:[UInt8]) throws
         {
@@ -990,16 +1006,75 @@ enum PNG
                     {
                         throw ReadError.syntaxError(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
                     }
-
-                    for (i, alpha):(Int, UInt8) in zip(palette.indices, data)
+                    
+                    self.palette = zip(palette, data).map 
                     {
-                        self.palette?[i] = palette[i].withAlpha(alpha)
-                    }
+                        $0.0.withAlpha($0.1)
+                    } 
+                    + 
+                    palette.dropFirst(data.count)
                     
                     self.chromaKey = nil
                 
                 default:
                     break // this is an error, but it should have already been caught by PNGConditions
+            }
+        }
+        
+        public 
+        func encodetRNS() -> [UInt8]? 
+        {
+            switch self.format 
+            {
+                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
+                    guard let key:RGBA<UInt16> = self.chromaKey 
+                    else 
+                    {
+                        return nil 
+                    }
+                    let quantization:Int = UInt16.bitWidth - self.format.depth
+                    return [key.r >> quantization].flatMap
+                        {
+                            [UInt8].store($0, asBigEndian: UInt16.self)
+                        }
+                
+                case .rgb8, .rgb16:
+                    guard let key:RGBA<UInt16> = self.chromaKey 
+                    else 
+                    {
+                        return nil 
+                    }
+                    let quantization:Int = UInt16.bitWidth - self.format.depth
+                    return 
+                        [
+                            key.r >> quantization, 
+                            key.g >> quantization, 
+                            key.b >> quantization
+                        ].flatMap
+                        {
+                            [UInt8].store($0, asBigEndian: UInt16.self)
+                        }
+                
+                case .indexed1, .indexed2, .indexed4, .indexed8:
+                    guard let palette:[RGBA<UInt8>] = self.palette
+                    else
+                    {
+                        return nil
+                    }
+                    
+                    var alphas:[UInt8] = palette.map{ $0.a } 
+                    guard let last:Int = alphas.lastIndex(where: { $0 != UInt8.max })
+                    else 
+                    {
+                        // palette is empty 
+                        return nil
+                    }
+                    
+                    alphas.removeLast(alphas.count - last - 1)
+                    return alphas
+                
+                default:
+                    return nil
             }
         }
     }
@@ -1143,6 +1218,14 @@ enum PNG
                     ChunkIterator.begin(destination: &destination)
                 
                 iterator.next(.IHDR, self.properties.encodeIHDR(), destination: &destination)
+                self.properties.encodePLTE().map 
+                {
+                    iterator.next(.PLTE, $0, destination: &destination)
+                }
+                self.properties.encodetRNS().map 
+                {
+                    iterator.next(.tRNS, $0, destination: &destination)
+                }
                 
                 var pitches:Properties.Pitches = self.properties.pitches, 
                     encoder:Properties.Encoder = try self.properties.encoder(level: 9)

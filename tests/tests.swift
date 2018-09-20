@@ -40,45 +40,56 @@ extension ArraySlice where Element == UInt8
     }
 }
 
-func _testEncode() 
-{
+func testEncode(_ name:String) -> String?
+{    
+    let pngPath:String  = "tests/unit/png/\(name).png", 
+        rgbaPath:String = "tests/unit/rgba/\(name).png.rgba", 
+        outPath:String  = "tests/unit/out/\(name).png"
+    
     do 
     {
-        guard let data:PNG.Data.Uncompressed = 
+        guard let uncompressed:PNG.Data.Uncompressed = 
         (
-            try PNG.File.Source.open(path: "tests/large/png/if red got the grammy.png") 
+            try PNG.File.Source.open(path: pngPath) 
             {
                 return try PNG.Data.Uncompressed.decode(from: &$0)
             }
         )
         else 
         {
-            fatalError("failed to open file")
+            return "failed to open file '\(pngPath)'"
         }
         
+        // compress image into png
         guard let _:Void = 
         (
-            try PNG.File.Destination.open(path: "out.png") 
+            try PNG.File.Destination.open(path: outPath) 
             {
-                try data.compress(to: &$0)
+                try uncompressed.compress(to: &$0)
             }
         )
         else 
         {
-            fatalError("failed to open file")
+            fatalError("failed to open file '\(outPath)'")
         }
     }
     catch 
     {
-        print(error)
+        return "\(error)"
     }
+    
+    return testDecode(png: outPath, rgba: rgbaPath)
 }
 
 func testDecode(_ name:String) -> String? 
 {
     let pngPath:String  = "tests/unit/png/\(name).png", 
         rgbaPath:String = "tests/unit/rgba/\(name).png.rgba"
-    
+    return testDecode(png: pngPath, rgba: rgbaPath)
+}
+
+func testDecode(png pngPath:String, rgba rgbaPath:String) -> String? 
+{
     do 
     {
         guard let rectangular:PNG.Data.Rectangular = 
