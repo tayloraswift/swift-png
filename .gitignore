@@ -4,4 +4,4 @@
 Package.resolved
 /*.xcodeproj
 /tests/*.png
-/tests/maxpng/unit/out/*.png
+/tests/unit/out/*.png

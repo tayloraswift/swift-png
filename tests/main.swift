@@ -76,7 +76,7 @@ func runTests(_ groups:[Group]) -> Never
         printCentered(summary)
         printProgress(1)
         print()
-        printCentered("\(Colors.pink.1)<3\(Colors.off.0)")
+        printCentered("\(Colors.pink.1)<13\(Colors.off.0)")
         exit(0)
     }
     else 
@@ -84,7 +84,7 @@ func runTests(_ groups:[Group]) -> Never
         printCentered("\(summary) \(Colors.off.1)(\(expected - passed) unexpected)\(Colors.off.0)")
         printProgress(1)
         print()
-        printCentered("\(Colors.pink.1)</3\(Colors.off.0)")
+        printCentered("\(Colors.pink.1)</13\(Colors.off.0)")
         exit(-1)
     }
 }
