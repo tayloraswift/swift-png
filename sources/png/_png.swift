@@ -1962,7 +1962,6 @@ enum PNG
     public 
     struct ChunkIterator<DataInterface> 
     {
-        
     }    
 }
 

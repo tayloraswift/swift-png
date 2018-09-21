@@ -4,4 +4,3 @@
 Package.resolved
 /*.xcodeproj
 /tests/*.png
-/tests/unit/out/*.png
