@@ -261,6 +261,15 @@ let suite:[(name:String, members:[String])] =
             "z09n2c08"
         ]
     ), 
+    (
+        "large", 
+        [
+            "becky palette",
+            "if red got the grammy",
+            "taylor",
+            "wildest dreams adam7"
+        ]
+    ), 
 ]
 let cases:[Group] = suite.map 
 {
