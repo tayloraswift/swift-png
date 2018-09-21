@@ -102,7 +102,7 @@ func testDecode(png pngPath:String, rgba rgbaPath:String) -> String?
             return "failed to open file '\(pngPath)'"
         }
         
-        guard let image:[PNG.RGBA<UInt16>] = rectangular.rgba16()
+        guard let image:[PNG.RGBA<UInt16>] = rectangular.rgba(of: UInt16.self)
         else 
         {
             fatalError("unreachable: internal checks should have guaranteed palette validity")
