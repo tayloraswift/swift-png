@@ -134,13 +134,26 @@ enum PNG
             return self.r == opaque.r && self.g == opaque.g && self.b == opaque.b
         }
         
-        func widen<T>(to: T.Type) -> RGBA<T> where T:FixedWidthInteger 
+        @inline(__always)
+        func widen<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger 
         {
             let quantum:T = RGBA<T>.quantum(depth: Sample.bitWidth), 
                 r:T = .init(truncatingIfNeeded: self.r) * quantum, 
                 g:T = .init(truncatingIfNeeded: self.g) * quantum, 
                 b:T = .init(truncatingIfNeeded: self.b) * quantum, 
                 a:T = .init(truncatingIfNeeded: self.a) * quantum
+            return .init(r, g, b, a)
+        }
+        
+        @inline(__always)
+        func narrow<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger
+        {
+            let shift:Int = Sample.bitWidth - T.bitWidth, 
+                r:T       = .init(truncatingIfNeeded: self.r &>> shift),
+                g:T       = .init(truncatingIfNeeded: self.g &>> shift),
+                b:T       = .init(truncatingIfNeeded: self.g &>> shift),
+                a:T       = .init(truncatingIfNeeded: self.g &>> shift)
+            
             return .init(r, g, b, a)
         }
         
@@ -1404,71 +1417,91 @@ enum PNG
                 fatalError("unimplemented")
             }
             
-            public 
-            func expand8() -> [UInt8]
+            @inline(__always) 
+            private 
+            func greenscreen<Sample>(_ color:RGBA<Sample>) -> RGBA<Sample> 
             {
-                return []
-            }
-            
-            public 
-            func expand16() -> [UInt16]
-            {
-                return []
-            }
-            
-            public 
-            func grayscale8() -> [UInt8] 
-            {
-                return []
-            }
-            
-            public 
-            func grayscale16() -> [UInt16]
-            {
-                return []
-            }
-            
-            public 
-            func rgba8() -> [RGBA<UInt8>]
-            {
-                return []
-            }
-            
-            public 
-            func rgba16() -> [RGBA<UInt16>]?
-            {
-                @inline(__always) 
-                func _greenscreen(_ color:RGBA<UInt16>) -> RGBA<UInt16> 
+                guard let key:RGBA<Sample> = self.properties.chromaKey?.narrow(to: Sample.self) 
+                else 
                 {
-                    guard let key:RGBA<UInt16> = self.properties.chromaKey 
-                    else 
-                    {
-                        return color
-                    }
+                    return color
+                }
+                
+                return color.equals(opaque: key) ? color.withAlpha(0) : color
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Sample>(v:Sample) -> RGBA<Sample> 
+            {
+                return self.greenscreen(.init(v))
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Sample>(r:Sample, g:Sample, b:Sample) -> RGBA<Sample> 
+            {
+                return self.greenscreen(.init(r, g, b))
+            }
+            
+            public 
+            func expand<Sample>(as _:Sample.Type) -> [Sample]
+            {
+                fatalError("unimplemented")
+            }
+            public 
+            func expand2<Sample>(as _:Sample.Type) -> [(Sample, Sample)]
+            {
+                fatalError("unimplemented")
+            }
+            public 
+            func expand3<Sample>(as _:Sample.Type) -> [(Sample, Sample, Sample)]
+            {
+                fatalError("unimplemented")
+            }
+            
+            public 
+            func grayscale<Sample>(of _:Sample.Type) -> [Sample] 
+            {
+                fatalError("unimplemented")
+            }
+            
+            @_specialize(where Sample == UInt8) 
+            @_specialize(where Sample == UInt16) 
+            @_specialize(where Sample == UInt32) 
+            @_specialize(where Sample == UInt64) 
+            @_specialize(where Sample == UInt)
+            public 
+            func rgba<Sample>(of _:Sample.Type) -> [RGBA<Sample>]? 
+                where Sample:FixedWidthInteger 
+            {
+                switch self.properties.format 
+                {
+                    case .indexed1, .indexed2, .indexed4, .indexed8:
+                        guard Sample.bitWidth >= UInt8.bitWidth 
+                        else 
+                        {
+                            return nil 
+                        } 
                     
-                    return color.equals(opaque: key) ? color.withAlpha(0) : color
-                }
-                @inline(__always) 
-                func _greenscreen(v:UInt16) -> RGBA<UInt16> 
-                {
-                    return _greenscreen(.init(v))
-                }
-                @inline(__always) 
-                func _greenscreen(r:UInt16, g:UInt16, b:UInt16) -> RGBA<UInt16> 
-                {
-                    return _greenscreen(.init(r, g, b))
+                    default:
+                        guard Sample.bitWidth >= self.properties.format.depth
+                        else 
+                        {
+                            return nil
+                        }
                 }
                 
                 switch self.properties.format 
                 {
                     case .grayscale1, .grayscale2, .grayscale4:
-                        return self.mapBits(_greenscreen(v:)) 
+                        return self.mapBits(self.greenscreen(v:)) 
                     
                     case .grayscale8:
-                        return self.map(from: UInt8.self, _greenscreen(v:)) 
+                        return self.map(from: UInt8.self, self.greenscreen(v:)) 
                     
                     case .grayscale16:
-                        return self.map(from: UInt16.self, _greenscreen(v:)) 
+                        return self.map(from: UInt16.self, self.greenscreen(v:)) 
                     
                     case .grayscale_a8:
                         return self.map(from: UInt8.self, RGBA.init(_:_:)) 
@@ -1477,10 +1510,10 @@ enum PNG
                         return self.map(from: UInt16.self, RGBA.init(_:_:)) 
                     
                     case .rgb8:
-                        return self.map(from: UInt8.self, _greenscreen(r:g:b:)) 
+                        return self.map(from: UInt8.self, self.greenscreen(r:g:b:)) 
                     
                     case .rgb16:
-                        return self.map(from: UInt16.self, _greenscreen(r:g:b:)) 
+                        return self.map(from: UInt16.self, self.greenscreen(r:g:b:)) 
                     
                     case .rgba8:
                         return self.map(from: UInt8.self, RGBA.init(_:_:_:_:)) 
@@ -1498,7 +1531,7 @@ enum PNG
                         
                         return self.mapScalarBits 
                         {
-                            return palette[Int($0)].widen(to: UInt16.self)
+                            return palette[Int($0)].widen(to: Sample.self)
                         }
                     
                     case .indexed8:
@@ -1514,7 +1547,7 @@ enum PNG
                         {
                             (scalar:UInt8) in 
                             
-                            return palette[Int(scalar)].widen(to: UInt16.self)
+                            return palette[Int(scalar)].widen(to: Sample.self)
                         }
                 }
             }
