@@ -83,7 +83,7 @@ enum PNG
     @_fixed_layout
     public
     struct RGBA<Sample>:Equatable, CustomStringConvertible 
-        where Sample:FixedWidthInteger
+        where Sample:FixedWidthInteger & UnsignedInteger
     {
         public
         let r:Sample,
@@ -135,7 +135,7 @@ enum PNG
         }
         
         @inline(__always)
-        func widen<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger 
+        func widen<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
             let quantum:T = RGBA<T>.quantum(depth: Sample.bitWidth), 
                 r:T = .init(truncatingIfNeeded: self.r) * quantum, 
@@ -146,7 +146,7 @@ enum PNG
         }
         
         @inline(__always)
-        func narrow<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger
+        func narrow<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
             let shift:Int = Sample.bitWidth - T.bitWidth, 
                 r:T       = .init(truncatingIfNeeded: self.r &>> shift),
@@ -1417,6 +1417,140 @@ enum PNG
                 fatalError("unimplemented")
             }
             
+            @inline(__always)
+            private 
+            func checkWidth<Sample>(of _:Sample.Type) -> Bool 
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                switch self.properties.format 
+                {
+                    case .indexed1, .indexed2, .indexed4, .indexed8:
+                        return Sample.bitWidth >= UInt8.bitWidth 
+                    
+                    default:
+                        return Sample.bitWidth >= self.properties.format.depth
+                }
+            }
+            
+            @_specialize(where Sample == UInt8) 
+            @_specialize(where Sample == UInt16) 
+            @_specialize(where Sample == UInt32) 
+            @_specialize(where Sample == UInt64) 
+            @_specialize(where Sample == UInt)
+            public 
+            func map<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4, 
+                         .indexed1,   .indexed2,   .indexed4:
+                        return self.mapBits(body) 
+                    
+                    case .grayscale8, .indexed8:
+                        return self.map(from: UInt8.self, body) 
+                    
+                    case .grayscale16:
+                        return self.map(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            @_specialize(where Sample == UInt8) 
+            @_specialize(where Sample == UInt16) 
+            @_specialize(where Sample == UInt32) 
+            @_specialize(where Sample == UInt64) 
+            @_specialize(where Sample == UInt)
+            public 
+            func map<Sample, Result>(_ body:(Sample, Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale_a8:
+                        return self.map(from: UInt8.self, body) 
+                    
+                    case .grayscale_a16:
+                        return self.map(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            @_specialize(where Sample == UInt8) 
+            @_specialize(where Sample == UInt16) 
+            @_specialize(where Sample == UInt32) 
+            @_specialize(where Sample == UInt64) 
+            @_specialize(where Sample == UInt)
+            public 
+            func map<Sample, Result>(_ body:(Sample, Sample, Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .rgb8:
+                        return self.map(from: UInt8.self, body) 
+                    
+                    case .rgb16:
+                        return self.map(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            @_specialize(where Sample == UInt8) 
+            @_specialize(where Sample == UInt16) 
+            @_specialize(where Sample == UInt32) 
+            @_specialize(where Sample == UInt64) 
+            @_specialize(where Sample == UInt)
+            public 
+            func map<Sample, Result>(_ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .rgba8:
+                        return self.map(from: UInt8.self, body) 
+                    
+                    case .rgba16:
+                        return self.map(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            
+            public 
+            func grayscale<Sample>(of _:Sample.Type) -> [Sample] 
+            {
+                fatalError("unimplemented")
+            }
+            
             @inline(__always) 
             private 
             func greenscreen<Sample>(_ color:RGBA<Sample>) -> RGBA<Sample> 
@@ -1444,28 +1578,6 @@ enum PNG
                 return self.greenscreen(.init(r, g, b))
             }
             
-            public 
-            func expand<Sample>(as _:Sample.Type) -> [Sample]
-            {
-                fatalError("unimplemented")
-            }
-            public 
-            func expand2<Sample>(as _:Sample.Type) -> [(Sample, Sample)]
-            {
-                fatalError("unimplemented")
-            }
-            public 
-            func expand3<Sample>(as _:Sample.Type) -> [(Sample, Sample, Sample)]
-            {
-                fatalError("unimplemented")
-            }
-            
-            public 
-            func grayscale<Sample>(of _:Sample.Type) -> [Sample] 
-            {
-                fatalError("unimplemented")
-            }
-            
             @_specialize(where Sample == UInt8) 
             @_specialize(where Sample == UInt16) 
             @_specialize(where Sample == UInt32) 
@@ -1473,23 +1585,12 @@ enum PNG
             @_specialize(where Sample == UInt)
             public 
             func rgba<Sample>(of _:Sample.Type) -> [RGBA<Sample>]? 
-                where Sample:FixedWidthInteger 
+                where Sample:FixedWidthInteger & UnsignedInteger
             {
-                switch self.properties.format 
+                guard self.checkWidth(of: Sample.self) 
+                else 
                 {
-                    case .indexed1, .indexed2, .indexed4, .indexed8:
-                        guard Sample.bitWidth >= UInt8.bitWidth 
-                        else 
-                        {
-                            return nil 
-                        } 
-                    
-                    default:
-                        guard Sample.bitWidth >= self.properties.format.depth
-                        else 
-                        {
-                            return nil
-                        }
+                    return nil
                 }
                 
                 switch self.properties.format 
@@ -1565,7 +1666,7 @@ enum PNG
             @inline(__always)
             private 
             func extract<T, Sample>(bigEndian:T.Type, at index:Int, as:Sample.Type) -> Sample 
-                where T:FixedWidthInteger, Sample:FixedWidthInteger
+                where T:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(T.bitWidth <= Sample.bitWidth)
                 
@@ -1583,7 +1684,7 @@ enum PNG
             @inline(__always)
             private 
             func narrow<T, Sample>(bigEndian:T.Type, at index:Int, as:Sample.Type) -> Sample 
-                where T:FixedWidthInteger, Sample:FixedWidthInteger
+                where T:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(T.bitWidth >= Sample.bitWidth)
                 
@@ -1622,7 +1723,7 @@ enum PNG
             }
             private 
             func mapBits<Sample, Result>(_ body:(Sample) -> Result) -> [Result] 
-                 where Sample:FixedWidthInteger
+                 where Sample:FixedWidthInteger & UnsignedInteger
             {
                 return self.mapScalarBits 
                 {
@@ -1633,7 +1734,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1645,7 +1746,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1658,7 +1759,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1672,7 +1773,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1687,7 +1788,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1702,7 +1803,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1718,7 +1819,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
@@ -1734,7 +1835,7 @@ enum PNG
             
             private 
             func map<Atom, Sample, Result>(narrowing _:Atom.Type, _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
-                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
                 assert(self.properties.format.depth == Atom.bitWidth)
                 
