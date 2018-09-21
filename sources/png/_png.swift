@@ -1432,11 +1432,11 @@ enum PNG
                 }
             }
             
-            @_specialize(where Sample == UInt8) 
-            @_specialize(where Sample == UInt16) 
-            @_specialize(where Sample == UInt32) 
-            @_specialize(where Sample == UInt64) 
-            @_specialize(where Sample == UInt)
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
             public 
             func map<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -1463,11 +1463,11 @@ enum PNG
                         return nil
                 }
             }
-            @_specialize(where Sample == UInt8) 
-            @_specialize(where Sample == UInt16) 
-            @_specialize(where Sample == UInt32) 
-            @_specialize(where Sample == UInt64) 
-            @_specialize(where Sample == UInt)
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
             public 
             func map<Sample, Result>(_ body:(Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -1490,11 +1490,11 @@ enum PNG
                         return nil
                 }
             }
-            @_specialize(where Sample == UInt8) 
-            @_specialize(where Sample == UInt16) 
-            @_specialize(where Sample == UInt32) 
-            @_specialize(where Sample == UInt64) 
-            @_specialize(where Sample == UInt)
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
             public 
             func map<Sample, Result>(_ body:(Sample, Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -1517,11 +1517,11 @@ enum PNG
                         return nil
                 }
             }
-            @_specialize(where Sample == UInt8) 
-            @_specialize(where Sample == UInt16) 
-            @_specialize(where Sample == UInt32) 
-            @_specialize(where Sample == UInt64) 
-            @_specialize(where Sample == UInt)
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
             public 
             func map<Sample, Result>(_ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -1578,11 +1578,11 @@ enum PNG
                 return self.greenscreen(.init(r, g, b))
             }
             
-            @_specialize(where Sample == UInt8) 
-            @_specialize(where Sample == UInt16) 
-            @_specialize(where Sample == UInt32) 
-            @_specialize(where Sample == UInt64) 
-            @_specialize(where Sample == UInt)
+            @_specialize(exported: true, where Sample == UInt8) 
+            @_specialize(exported: true, where Sample == UInt16) 
+            @_specialize(exported: true, where Sample == UInt32) 
+            @_specialize(exported: true, where Sample == UInt64) 
+            @_specialize(exported: true, where Sample == UInt)
             public 
             func rgba<Sample>(of _:Sample.Type) -> [RGBA<Sample>]? 
                 where Sample:FixedWidthInteger & UnsignedInteger
