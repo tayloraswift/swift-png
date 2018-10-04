@@ -52,7 +52,7 @@ func testEncode(_ name:String) -> String?
         (
             try PNG.File.Source.open(path: pngPath) 
             {
-                return try PNG.Data.Uncompressed.decode(from: &$0)
+                return try PNG.Data.Uncompressed.decompress(from: &$0)
             }
         )
         else 
@@ -65,7 +65,7 @@ func testEncode(_ name:String) -> String?
         (
             try PNG.File.Destination.open(path: outPath) 
             {
-                try uncompressed.compress(to: &$0)
+                try uncompressed.compress(to: &$0, level: 9)
             }
         )
         else 
@@ -95,7 +95,7 @@ func testDecode(png pngPath:String, rgba rgbaPath:String) -> String?
         guard let rectangular:PNG.Data.Rectangular = 
         (try PNG.File.Source.open(path: pngPath) 
         {
-            return try PNG.Data.Uncompressed.decode(from: &$0).deinterlace()
+            return try PNG.Data.Uncompressed.decompress(from: &$0).deinterlace()
         })
         else 
         {
