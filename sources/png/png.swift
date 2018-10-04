@@ -1,2263 +1,2327 @@
-#if os(macOS)
-import Darwin
-#elseif os(Linux)
 import Glibc
-#endif
+import func zlib.crc32
 
-import zlib
-
-let PNG_SIGNATURE:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
-
-typealias FilePointer = UnsafeMutablePointer<FILE>
-
-public
-enum PNGReadError:Error
-{
-    case FileError(String),
-         FiletypeError,
-         IncompleteChunkError,
-         UnexpectedCriticalChunkError(String),
-         PNGSyntaxError(String),
-         DataCorruptionError(PNGChunk),
-
-         IllegalChunkError(PNGChunk),
-         DuplicateChunkError(PNGChunk),
-         ChunkOrderingError(PNGChunk),
-         MissingHeaderError,
-         MissingPalatteError,
-         PrematureEOSError,
-         PrematureIENDError
-}
-
-public
-enum PNGWriteError:Error
-{
-    case FileWriteError,
-         DimemsionError
-}
-
-public
-enum PNGDecompressionError:Error
-{
-    case StreamError
-    case MissingDictionaryError
-    case DataError
-    case MemoryError
-}
-
-public
-enum PNGCompressionError:Error
-{
-    case StreamError
-}
-
-@_fixed_layout
-public
-struct RGBA<Sample>:Equatable, CustomStringConvertible where Sample:UnsignedInteger
-{
-    public
-    let r:Sample,
-        g:Sample,
-        b:Sample,
-        a:Sample
-
-    public
-    var description:String
+fileprivate 
+extension Array where Element == UInt8 
+{    
+    func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U 
+        where T:FixedWidthInteger, U:BinaryInteger
     {
-        return "(\(self.r), \(self.g), \(self.b), \(self.a))"
+        return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
-
-    var grayscale:Sample?
+    
+    static 
+    func store<U, T>(_ value:U, asBigEndian:T.Type) -> [UInt8]
+        where U:BinaryInteger, T:FixedWidthInteger 
     {
-        return self.r == self.g && self.g == self.b ? self.r : nil
-    }
-
-    public
-    init(_ r:Sample, _ g:Sample, _ b:Sample, _ a:Sample)
-    {
-        self.r = r
-        self.g = g
-        self.b = b
-        self.a = a
-    }
-
-    func with_alpha(_ a:Sample) -> RGBA<Sample>
-    {
-        return RGBA(self.r, self.g, self.b, a)
-    }
-
-    func compare_opaque(_ v:Sample) -> Bool
-    {
-        return self.r == v && self.g == v && self.b == v
-    }
-
-    func compare_opaque(_ r:Sample, _ g:Sample, _ b:Sample) -> Bool
-    {
-        return self.r == r && self.g == g && self.b == b
-    }
-
-    public static
-    func == (_ lhs:RGBA<Sample>, _ rhs:RGBA<Sample>) -> Bool
-    {
-        return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b && lhs.a == rhs.a
-    }
-}
-
-extension RGBA where Sample == UInt8
-{
-    public
-    var premultiplied:RGBA<UInt8>
-    {
-        let f:UInt16 = UInt16(self.a) + 1,
-            r:UInt8  = UInt8(truncatingIfNeeded: (UInt16(self.r) &* f) >> 8),
-            g:UInt8  = UInt8(truncatingIfNeeded: (UInt16(self.g) &* f) >> 8),
-            b:UInt8  = UInt8(truncatingIfNeeded: (UInt16(self.b) &* f) >> 8)
-        return RGBA(r, g, b, self.a)
-    }
-
-    @available(*, unavailable, renamed: "argb8")
-    public
-    var argb32:UInt32 { fatalError("unreachable") }
-
-    public
-    var argb8:UInt32
-    {
-        return UInt32(self.a) &<< 24 | UInt32(self.r) &<< 16 | UInt32(self.g) &<< 8 | UInt32(self.b)
-    }
-}
-
-extension RGBA where Sample == UInt16
-{
-    public
-    var premultiplied:RGBA<UInt16>
-    {
-        let f:UInt32 = UInt32(self.a) + 1,
-            r:UInt16 = UInt16(truncatingIfNeeded: (UInt32(self.r) &* f) &>> 16),
-            g:UInt16 = UInt16(truncatingIfNeeded: (UInt32(self.g) &* f) &>> 16),
-            b:UInt16 = UInt16(truncatingIfNeeded: (UInt32(self.b) &* f) &>> 16)
-        return RGBA(r, g, b, self.a)
-    }
-
-    @available(*, unavailable, renamed: "argb16")
-    public
-    var argb64:UInt64 { fatalError("unreachable") }
-
-    public
-    var argb16:UInt64
-    {
-        return UInt64(self.a) &<< 48 | UInt64(self.r) &<< 32 | UInt64(self.g) &<< 16 | UInt64(self.b)
-    }
-
-    func compare_opaque(_ v:UInt8) -> Bool
-    {
-        return UInt8(self.r &>> 8) == v && UInt8(self.g &>> 8) == v && UInt8(self.b &>> 8) == v
-    }
-
-    func compare_opaque(_ r:UInt8, _ g:UInt8, _ b:UInt8) -> Bool
-    {
-        return UInt8(self.r &>> 8) == r && UInt8(self.g &>> 8) == g && UInt8(self.b &>> 8) == b
-    }
-}
-
-public
-enum PNGChunk:String
-{
-    case __FIRST__,
-         IHDR,
-         PLTE,
-         IDAT,
-         IEND,
-
-         cHRM,
-         gAMA,
-         iCCP,
-         sBIT,
-         sRGB,
-         bKGD,
-         hIST,
-         tRNS,
-         pHYs,
-         sPLT,
-         tIME,
-         iTXt,
-         tEXt,
-         zTXt,
-
-         PRIVATE,
-
-         __INTERRUPTOR__
-
-    init?(buffer:[UInt8])
-    {
-        self.init(rawValue: String(decoding: buffer, as: Unicode.UTF8.self))
-    }
-}
-
-func posix_path(_ path:String) -> String
-{
-    guard let first_char:Character = path.first
-    else
-    {
-        return path
-    }
-    var expanded_path:String = path
-    if first_char == "~"
-    {
-        if expanded_path.count == 1 || expanded_path[expanded_path.index(expanded_path.startIndex, offsetBy: 1)] == "/"
+        return .init(unsafeUninitializedCapacity: MemoryLayout<T>.size) 
         {
-            expanded_path = String(cString: getenv("HOME")) + String(expanded_path.dropFirst())
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
+            
+            let bigEndian:T = T.init(truncatingIfNeeded: value).bigEndian, 
+                destination:UnsafeMutableRawBufferPointer = .init(buffer)
+            Swift.withUnsafeBytes(of: bigEndian) 
+            {
+                destination.copyMemory(from: $0)
+                count = $0.count
+            }
         }
     }
-    return expanded_path
 }
 
-func quad_byte_to_uint32(_ buffer:[UInt8]) -> UInt32
+fileprivate 
+extension ArraySlice where Element == UInt8 
 {
-    return UInt32(bigEndian: buffer.withUnsafeBufferPointer
+    func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U 
+        where T:FixedWidthInteger, U:BinaryInteger
     {
-        ($0.baseAddress!.withMemoryRebound(to: UInt32.self, capacity: 1) { $0.pointee })
-    })
-}
-
-func uint32_to_quad_byte(_ integer:UInt32) -> [UInt8]
-{
-    return [UInt8(integer >> 24 & 0xFF),
-            UInt8(integer >> 16 & 0xFF),
-            UInt8(integer >> 8  & 0xFF),
-            UInt8(integer       & 0xFF)]
-}
-
-func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
-{
-    let a16 = Int16(a),
-        b16 = Int16(b),
-        c16 = Int16(c)
-    let p:Int16 = a16 + b16 - c16
-    let pa = abs(p - a16),
-        pb = abs(p - b16),
-        pc = abs(p - c16)
-
-    if pa <= pb && pa <= pc
-    {
-        return a
-    }
-    else
-    {
-        return pb <= pc ? b : c
-    }
-}
-
-public
-struct PNGProperties
-{
-    public
-    enum ColorFormat:UInt16 // bitfield contains depth in upper byte, then code in lower byte
-    {
-        case grayscale1     = 0x01_00,
-             grayscale2     = 0x02_00,
-             grayscale4     = 0x04_00,
-             grayscale8     = 0x08_00,
-             grayscale16    = 0x10_00,
-             rgb8           = 0x08_02,
-             rgb16          = 0x10_02,
-             indexed1       = 0x01_03,
-             indexed2       = 0x02_03,
-             indexed4       = 0x04_03,
-             indexed8       = 0x08_03,
-             grayscale_a8   = 0x08_04,
-             grayscale_a16  = 0x10_04,
-             rgba8          = 0x08_06,
-             rgba16         = 0x10_06
-
-        var code:UInt8
+        return self.withUnsafeBufferPointer 
         {
-            return .init(truncatingIfNeeded: self.rawValue)
+            (buffer:UnsafeBufferPointer<UInt8>) in
+            
+            assert(buffer.count >= MemoryLayout<T>.size, 
+                "attempt to load \(T.self) from slice of size \(buffer.count)")
+            
+            var storage:T = .init()
+            let value:T   = withUnsafeMutablePointer(to: &storage) 
+            {
+                $0.deinitialize(count: 1)
+                
+                let source:UnsafeRawPointer     = .init(buffer.baseAddress!), 
+                    raw:UnsafeMutableRawPointer = .init($0)
+                
+                raw.copyMemory(from: source, byteCount: MemoryLayout<T>.size)
+                
+                return raw.load(as: T.self)
+            }
+            
+            return U(T(bigEndian: value))
+        }
+    }
+}
+
+public 
+protocol DataSource
+{
+    // output array `.count` must equal `count`
+    mutating 
+    func read(count:Int) -> [UInt8]?
+}
+public 
+protocol DataDestination 
+{
+    mutating 
+    func write(_ buffer:[UInt8]) -> Void?
+}
+
+
+public 
+protocol FusedVector4Element:FixedWidthInteger & UnsignedInteger 
+{
+    associatedtype FusedVector4:FusedVector4Protocol
+}
+public 
+protocol FusedVector4Protocol:FixedWidthInteger & UnsignedInteger 
+{
+    associatedtype Element:FusedVector4Element
+}
+
+extension UInt8:FusedVector4Element 
+{
+    public 
+    typealias FusedVector4 = UInt32
+}
+extension UInt16:FusedVector4Element 
+{
+    public 
+    typealias FusedVector4 = UInt64
+}
+
+extension UInt32:FusedVector4Protocol 
+{
+    public 
+    typealias Element = UInt8
+}
+extension UInt64:FusedVector4Protocol 
+{
+    public 
+    typealias Element = UInt16
+}
+
+extension PNG.RGBA where Sample:FusedVector4Element
+{    
+    public
+    var argb:Sample.FusedVector4
+    {
+        let a:Math<Sample.FusedVector4>.V4 = 
+            Math.cast(truncatingIfNeeded: (self.a, self.r, self.g, self.b), 
+                                      as: Sample.FusedVector4.self)
+                
+        let x:Math<Sample.FusedVector4>.V4
+        
+        x.0 = a.0 << (Sample.bitWidth << 1 | Sample.bitWidth)
+        x.1 = a.1 << (Sample.bitWidth << 1)
+        x.2 = a.2 << (Sample.bitWidth)
+        x.3 = a.3
+        
+        return x.0 | x.1 | x.2 | x.3
+    }
+}
+
+public 
+enum PNG
+{
+    private static 
+    let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
+    
+    @_fixed_layout
+    public
+    struct RGBA<Sample>:Equatable, CustomStringConvertible 
+        where Sample:FixedWidthInteger & UnsignedInteger
+    {
+        public
+        let r:Sample,
+            g:Sample,
+            b:Sample,
+            a:Sample
+
+        public
+        var description:String
+        {
+            return "(\(self.r), \(self.g), \(self.b), \(self.a))"
         }
 
         public
-        var depth:Int
+        init(_ r:Sample, _ g:Sample, _ b:Sample, _ a:Sample)
         {
-            return .init(self.rawValue >> 8)
+            self.r = r
+            self.g = g
+            self.b = b
+            self.a = a
+        }
+        
+        public
+        init(_ r:Sample, _ g:Sample, _ b:Sample)
+        {
+            self.init(r, g, b, Sample.max)
+        }
+        
+        public
+        init(_ v:Sample, _ a:Sample)
+        {
+            self.init(v, v, v, a)
+        }
+        
+        public
+        init(_ v:Sample)
+        {
+            self.init(v, v, v, Sample.max)
+        }
+        
+        private static 
+        func premultiply(color:Sample, alpha:Sample) -> Sample 
+        {
+            // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
+            let (high, low):(Sample, Sample.Magnitude) = color.multipliedFullWidth(by: alpha)
+            return high + (low.addingReportingOverflow(color.magnitude).overflow ? 1 : 0)
+        }
+        
+        public
+        var premultiplied:RGBA<Sample>
+        {
+            return .init(RGBA.premultiply(color: self.r, alpha: self.a), 
+                         RGBA.premultiply(color: self.g, alpha: self.a), 
+                         RGBA.premultiply(color: self.b, alpha: self.a), 
+                         self.a)
         }
 
-        public 
-        var channels:Int
+        func withAlpha(_ a:Sample) -> RGBA<Sample>
         {
-            switch self
+            return .init(self.r, self.g, self.b, a)
+        }
+
+        func equals(opaque:RGBA<Sample>) -> Bool
+        {
+            return self.r == opaque.r && self.g == opaque.g && self.b == opaque.b
+        }
+        
+        @inline(__always)
+        func upscale<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
+        {
+            let quantum:T = RGBA<T>.quantum(depth: Sample.bitWidth), 
+                r:T = .init(truncatingIfNeeded: self.r) * quantum, 
+                g:T = .init(truncatingIfNeeded: self.g) * quantum, 
+                b:T = .init(truncatingIfNeeded: self.b) * quantum, 
+                a:T = .init(truncatingIfNeeded: self.a) * quantum
+            return .init(r, g, b, a)
+        }
+        
+        @inline(__always)
+        func downscale<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
+        {
+            let shift:Int = Sample.bitWidth - T.bitWidth, 
+                r:T       = .init(truncatingIfNeeded: self.r &>> shift),
+                g:T       = .init(truncatingIfNeeded: self.g &>> shift),
+                b:T       = .init(truncatingIfNeeded: self.g &>> shift),
+                a:T       = .init(truncatingIfNeeded: self.g &>> shift)
+            
+            return .init(r, g, b, a)
+        }
+        
+        static 
+        func quantum(depth:Int) -> Sample 
+        {
+            return Sample.max / (Sample.max &>> (Sample.bitWidth - depth))
+        }
+    }
+    
+    public 
+    enum File
+    {
+        typealias Descriptor = UnsafeMutablePointer<FILE>
+        
+        public 
+        struct Source:DataSource 
+        {
+            private 
+            let descriptor:Descriptor
+            
+            public static 
+            func open<Result>(path:String, body:(inout Source) throws -> Result) 
+                rethrows -> Result? 
             {
-            case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16,
-                .indexed1, .indexed2, .indexed4, .indexed8:
-                return 1
-            case .grayscale_a8, .grayscale_a16:
-                return 2
-            case .rgb8, .rgb16:
-                return 3
-            case .rgba8, .rgba16:
-                return 4
+                guard let descriptor:Descriptor = fopen(path, "rb")
+                else
+                {
+                    return nil
+                }
+                
+                var file:Source = .init(descriptor: descriptor)
+                defer 
+                {
+                    fclose(file.descriptor)
+                }
+                
+                return try body(&file)
+            }
+            
+            public 
+            func read(count capacity:Int) -> [UInt8]?
+            {
+                let buffer:[UInt8] = .init(unsafeUninitializedCapacity: capacity) 
+                {
+                    (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+                    
+                    count = fread(buffer.baseAddress, MemoryLayout<UInt8>.stride, 
+                        capacity, self.descriptor)
+                }
+                
+                guard buffer.count == capacity
+                else 
+                {
+                    return nil
+                }
+                
+                return buffer
             }
         }
         
-        // UNDOCUMENTED 
         public 
-        var components:Int 
+        struct Destination:DataDestination 
         {
-            //        base +     2 × colored     +    alpha
-            return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
-        }
-    }
-
-    public
-    var width:Int
-    {
-        return self.sub_dimensions[7].width
-    }
-
-    public
-    var height:Int
-    {
-        return self.sub_dimensions[7].height
-    }
-
-    @available(*, unavailable, message: "use the color.depth property instead")
-    public
-    var bit_depth:Int { fatalError("unreachable") }
-
-    public
-    let color:ColorFormat,
-        interlaced:Bool
-
-    // other chunks
-    public private(set)
-    var palette:[RGBA<UInt8>]?,
-        chroma_key:RGBA<UInt16>?
-
-    public
-    let sub_dimensions:[(width:Int, height:Int)]
-    // expose this just in case someone wants the sub_dimensions without the image data
-
-    let sub_array_bounds:[(i:Int, j:Int)],
-        bpp:Int,
-        interlaced_data_size:Int,
-        noninterlaced_data_size:Int
-
-    var data_size:Int
-    {
-        return self.interlaced ? self.interlaced_data_size : self.noninterlaced_data_size
-    }
-
-    private
-    typealias SubStrider = (u:StrideTo<Int>, v:StrideTo<Int>)
-    private
-    let sub_striders:[SubStrider]
-
-    private
-    var sub_array_ranges:[Range<Int>]
-    {
-        var accumulator:Int = 0
-        return self.sub_array_bounds.dropLast().map
-        {
-            let upper:Int = accumulator + $0.i * $0.j
-            let range:Range<Int> = accumulator ..< upper
-            accumulator = upper
-            return range
-        }
-    }
-
-    public
-    var deinterlaced_properties:PNGProperties
-    {
-        return PNGProperties(width: self.width, height: self.height, color: self.color, interlaced: false)
-    }
-
-    public
-    var quantum16:UInt16
-    {
-        return UInt16.max / (UInt16.max >> (16 - UInt16(self.color.depth)))
-    }
-
-    public
-    var quantum8:UInt8
-    {
-        return UInt8.max  / (UInt8.max  >> (8  -  UInt8(self.color.depth)))
-    }
-
-    public
-    init(width:Int, height:Int, color:ColorFormat, interlaced:Bool)
-    {
-        self.color      = color
-        self.interlaced = interlaced
-
-        let channels:Int = self.color.channels
-        self.bpp        = max(1, (channels * color.depth) >> 3)
-
-        /* calculate size of interlaced subimages, even if the image is not interlaced (to help the deinterlace() function) */
-        // 0: (w + 7) >> 3 , (h + 7) >> 3
-        // 1: (w + 3) >> 3 , (h + 7) >> 3
-        // 2: (w + 3) >> 2 , (h + 3) >> 3
-        // 3: (w + 1) >> 2 , (h + 3) >> 2
-        // 4: (w + 1) >> 1 , (h + 1) >> 2
-        // 5: (w) >> 1     , (h + 1) >> 1
-        // 6: (w)          , (h) >> 1
-        let sub_dimensions:[(width:Int, height:Int)] = [(width: (width + 7) >> 3, height: (height + 7) >> 3),
-                                                        (width: (width + 3) >> 3, height: (height + 7) >> 3),
-                                                        (width: (width + 3) >> 2, height: (height + 3) >> 3),
-                                                        (width: (width + 1) >> 2, height: (height + 3) >> 2),
-                                                        (width: (width + 1) >> 1, height: (height + 1) >> 2),
-                                                        (width:  width      >> 1, height: (height + 1) >> 1),
-                                                        (width:  width      >> 0, height:  height      >> 1),
-                                                        (width:  width          , height:  height          )]
-        self.sub_dimensions = sub_dimensions
-        self.sub_striders   = [ (u: stride(from: 0, to: width, by: 8), v: stride(from: 0, to: height, by: 8)),
-                                (u: stride(from: 4, to: width, by: 8), v: stride(from: 0, to: height, by: 8)),
-                                (u: stride(from: 0, to: width, by: 4), v: stride(from: 4, to: height, by: 8)),
-                                (u: stride(from: 2, to: width, by: 4), v: stride(from: 0, to: height, by: 4)),
-                                (u: stride(from: 0, to: width, by: 2), v: stride(from: 2, to: height, by: 4)),
-                                (u: stride(from: 1, to: width, by: 2), v: stride(from: 0, to: height, by: 2)),
-                                (u: stride(from: 0, to: width, by: 1), v: stride(from: 1, to: height, by: 2))]
-        self.sub_array_bounds = sub_dimensions.map
-        {
-            let scanline_bits_n:Int  = $0.width * channels * color.depth
-            let scanline_bytes_n:Int = (scanline_bits_n >> 3) + (scanline_bits_n & 7 == 0 ? 0 : 1)  // ceil(scanline_bits_n/8)
-            return (i: $0.height, j: scanline_bytes_n)
-        }
-
-        self.interlaced_data_size = self.sub_array_bounds.dropLast().map{ $0.i * $0.j }.reduce(0, +)
-        self.noninterlaced_data_size = self.sub_array_bounds[7].i * self.sub_array_bounds[7].j
-    }
-
-    @available(*, unavailable, message: "use the infallible init(width:height:color:interlaced:) instead")
-    public
-    init?(width:Int, height:Int, bit_depth:Int, color:ColorFormat, interlaced:Bool) 
-    { 
-        fatalError("unreachable") 
-    }
-
-    init(_ data:[UInt8]) throws
-    {
-        guard data.count == 13
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Image header chunk does not have the correct length")
-        }
-
-        guard let color = ColorFormat(rawValue: UInt16(data[8]) << 8 | UInt16(data[9]))
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Color type cannot have a value of \(data[9]) with bit depth \(data[8])")
-        }
-
-        /* validate other fields */
-        guard Int(data[10]) == 0
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Compression method does not equal 0")
-        }
-        guard Int(data[11]) == 0
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Filter method does not equal 0")
-        }
-        let interlaced:Bool
-        let interlace_i = Int(data[12]) // TODO: turn this into a switch case
-        if interlace_i == 0
-        {
-            interlaced = false
-        }
-        else if interlace_i == 1
-        {
-            interlaced = true
-        }
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Interlace method cannot equal \(interlace_i)")
-        }
-
-        // I think it unlikly to ever encounter a PNG with dimensions that overflow a signed Int32
-        self.init(  width     : Int(quad_byte_to_uint32(Array(data[0...3]))),
-                    height    : Int(quad_byte_to_uint32(Array(data[4...7]))),
-                    color     : color,
-                    interlaced: interlaced)
-    }
-
-    func serialize_header() -> [UInt8]
-    {
-        var bytes:[UInt8] = uint32_to_quad_byte(UInt32(self.width))        // [0:3]
-        bytes.reserveCapacity(12)
-        bytes.append(contentsOf: uint32_to_quad_byte(UInt32(self.height))) // [4:7]
-        bytes.append(UInt8(self.color.depth))                                // [8]
-        bytes.append(self.color.code)                           // [9]
-        bytes.append(0)                                                    // [10] = 0
-        bytes.append(0)                                                    // [11] = 0
-        bytes.append(self.interlaced ? 1 : 0)                              // [12]
-        return bytes
-    }
-
-    public mutating
-    func set_palette(_ palette:[RGBA<UInt8>])
-    {
-        self.palette = palette.count > 256 ? Array(palette[..<256]) : palette
-    }
-
-    mutating
-    func set_palette(_ bytes:[UInt8]) throws
-    {
-        guard bytes.count % 3 == 0
-        else
-        {
-            throw PNGReadError.PNGSyntaxError("Palatte is \(bytes.count) bytes long, which is not divisible by 3")
-        }
-
-        self.palette = stride(from: 0, to: min(bytes.count, 1 << self.color.depth * 3), by: 3).map
-        {
-            let r:UInt8 = bytes[$0    ],
-                g:UInt8 = bytes[$0 + 1],
-                b:UInt8 = bytes[$0 + 2]
-            return RGBA(r, g, b, UInt8.max)
-        }
-    }
-
-    func serialize_palette() -> [UInt8]?
-    {
-        guard let palette = self.palette
-        else
-        {
-            return nil
-        }
-
-        let max_entries:Int = min(palette.count, 1 << self.color.depth)
-        var bytes:[UInt8] = []
-        bytes.reserveCapacity(max_entries * 3)
-
-        for palette_entry in palette[..<max_entries]
-        {
-            bytes.append(palette_entry.r)
-            bytes.append(palette_entry.g)
-            bytes.append(palette_entry.b)
-        }
-
-        return bytes
-    }
-
-    public mutating
-    func set_chroma_key(_ key:RGBA<UInt16>)
-    {
-        self.chroma_key = key.with_alpha(UInt16.max)
-    }
-
-    mutating
-    func set_transparency(_ bytes:[UInt8]) throws
-    {
-        switch self.color
-        {
-        case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
-            guard bytes.count == 2
-            else
+            private 
+            let descriptor:Descriptor
+            
+            public static 
+            func open<Result>(path:String, body:(inout Destination) throws -> Result) 
+                rethrows -> Result? 
             {
-                throw PNGReadError.PNGSyntaxError("Grayscale chroma key is \(bytes.count) bytes long, but it should be 2 bytes long")
-            }
-
-            let quantum:UInt16 = self.quantum16
-            let v:UInt16 = quantum * (UInt16(bytes[0]) << 8 | UInt16(bytes[1]))
-            self.chroma_key = RGBA(v, v, v, UInt16.max)
-        case .rgb8, .rgb16:
-            guard bytes.count == 6
-            else
-            {
-                throw PNGReadError.PNGSyntaxError("RGB chroma key is \(bytes.count) bytes long, but it should be 6 bytes long")
-            }
-
-            let quantum:UInt16 = self.quantum16
-            let r:UInt16 = quantum * (UInt16(bytes[0]) << 8 | UInt16(bytes[1])),
-                g:UInt16 = quantum * (UInt16(bytes[2]) << 8 | UInt16(bytes[3])),
-                b:UInt16 = quantum * (UInt16(bytes[4]) << 8 | UInt16(bytes[5]))
-            self.chroma_key = RGBA(r, g, b, UInt16.max)
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette = self.palette
-            else
-            {
-                throw PNGReadError.MissingPalatteError
-            }
-
-            guard bytes.count <= palette.count
-            else
-            {
-                throw PNGReadError.PNGSyntaxError("\(bytes.count) chroma keys were provided, but we only have \(palette.count) palette entries")
-            }
-
-            for (i, alpha):(Int, UInt8) in bytes.enumerated()
-            {
-                self.palette![i] = palette[i].with_alpha(alpha)
-            }
-            self.chroma_key = nil
-        default:
-            break // this is an error, but it should have already been caught by PNGConditions
-        }
-    }
-
-    func serialize_transparency() -> [UInt8]?
-    {
-        switch self.color
-        {
-        case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
-            guard let chroma_key = self.chroma_key, let chroma_value = chroma_key.grayscale
-            else
-            {
-                return nil
-            }
-
-            let v:UInt16 = chroma_value >> (16 - UInt16(self.color.depth)) // quantize
-            return [UInt8(v >> 8), UInt8(truncatingIfNeeded: v)]
-        case .rgb8, .rgb16:
-            guard let chroma_key = self.chroma_key
-            else
-            {
-                return nil
-            }
-
-            let drop_bits:UInt16 = (16 - UInt16(self.color.depth))
-            let r:UInt16 = chroma_key.r >> drop_bits, // quantize
-                g:UInt16 = chroma_key.g >> drop_bits,
-                b:UInt16 = chroma_key.b >> drop_bits
-            return [UInt8(r >> 8), UInt8(truncatingIfNeeded: r),
-                    UInt8(g >> 8), UInt8(truncatingIfNeeded: g),
-                    UInt8(b >> 8), UInt8(truncatingIfNeeded: b)]
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette = self.palette
-            else
-            {
-                return nil
-            }
-
-            return palette.map{ $0.a }
-        default:
-            return nil
-        }
-    }
-
-    public
-    func make_interlaced_buffer(initialized_to repeated_value:UInt8) -> [UInt8]
-    {
-        return [UInt8](repeating: repeated_value, count: self.interlaced_data_size)
-    }
-
-    public
-    func make_interlaced_buffer() -> [UInt8]
-    {
-        return self.make_interlaced_buffer(initialized_to: 0)
-    }
-
-    public
-    func make_noninterlaced_buffer(initialized_to repeated_value:UInt8) -> [UInt8]
-    {
-        return [UInt8](repeating: repeated_value, count: self.noninterlaced_data_size)
-    }
-
-    public
-    func make_noninterlaced_buffer() -> [UInt8]
-    {
-        return self.make_noninterlaced_buffer(initialized_to: 0)
-    }
-
-    public
-    func decompose(raw_data:[UInt8]) -> [([UInt8], PNGProperties)]?
-    {
-        guard raw_data.count == self.interlaced_data_size
-        else
-        {
-            return nil
-        }
-
-        return zip(self.sub_array_ranges, self.sub_dimensions).map
-        {
-            (z:(range:Range<Int>, dimensions:(width:Int, height:Int))) in
-
-            let properties:PNGProperties = PNGProperties(width              : z.dimensions.width,
-                                                         height             : z.dimensions.height,
-                                                         color              : self.color,
-                                                         interlaced         : false)
-            return (Array<UInt8>(raw_data[z.range]), properties)
-        }
-    }
-
-    public
-    func deinterlace(raw_data:[UInt8]) -> [UInt8]?
-    {
-        guard raw_data.count == self.interlaced_data_size
-        else
-        {
-            return nil
-        }
-
-        var deinterlaced = [UInt8](repeating: 0, count: self.noninterlaced_data_size)
-
-        var src_byte_base:Int = 0
-        for (bounds, (stride_h, stride_v)):((i:Int, j:Int), SubStrider) in zip(self.sub_array_bounds, self.sub_striders)
-        {
-            for dest_byte_base in stride_v.map({ $0 * self.sub_array_bounds[7].j })
-            {
-                var src_pixel_offset:Int = 0
-                for dest_pixel_offset in stride_h
+                guard let descriptor:Descriptor = fopen(path, "wb")
+                else
                 {
-                    if self.color.depth < 8
+                    return nil
+                }
+                
+                var file:Destination = .init(descriptor: descriptor)
+                defer 
+                {
+                    fclose(file.descriptor)
+                }
+                
+                return try body(&file)
+            }
+            
+            public 
+            func write(_ buffer:[UInt8]) -> Void? 
+            {
+                let count:Int = buffer.withUnsafeBufferPointer 
+                {
+                    fwrite($0.baseAddress, MemoryLayout<UInt8>.stride, 
+                        $0.count, self.descriptor)
+                }
+                
+                guard count == buffer.count 
+                else 
+                {
+                    return nil 
+                }
+                
+                return ()
+            }
+        }
+    }
+    
+    public 
+    struct Properties
+    {
+        public 
+        enum Format:UInt16 
+        {
+            // bitfield contains depth in upper byte, then code in lower byte
+            case grayscale1     = 0x01_00,
+                 grayscale2     = 0x02_00,
+                 grayscale4     = 0x04_00,
+                 grayscale8     = 0x08_00,
+                 grayscale16    = 0x10_00,
+                 rgb8           = 0x08_02,
+                 rgb16          = 0x10_02,
+                 indexed1       = 0x01_03,
+                 indexed2       = 0x02_03,
+                 indexed4       = 0x04_03,
+                 indexed8       = 0x08_03,
+                 grayscale_a8   = 0x08_04,
+                 grayscale_a16  = 0x10_04,
+                 rgba8          = 0x08_06,
+                 rgba16         = 0x10_06
+            
+            var isIndexed:Bool 
+            {
+                return self.rawValue & 1 != 0
+            }
+            var hasColor:Bool 
+            {
+                return self.rawValue & 2 != 0
+            }
+            var hasAlpha:Bool 
+            {
+                return self.rawValue & 4 != 0
+            }
+            
+            
+            public 
+            var depth:Int
+            {
+                return .init(self.rawValue >> 8)
+            }
+            
+            public 
+            var channels:Int
+            {
+                switch self
+                {
+                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16,
+                    .indexed1, .indexed2, .indexed4, .indexed8:
+                    return 1
+                case .grayscale_a8, .grayscale_a16:
+                    return 2
+                case .rgb8, .rgb16:
+                    return 3
+                case .rgba8, .rgba16:
+                    return 4
+                }
+            }
+            
+            var volume:Int 
+            {
+                return self.depth * self.channels 
+            }
+            
+            // difference between this and channels is indexed pngs have 3 components 
+            public 
+            var components:Int 
+            {
+                //        base +     2 × colored     +    alpha
+                return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
+            }
+            
+            func shape(from size:Math<Int>.V2) -> Shape 
+            {
+                let scanlineBitCount:Int = size.x * self.channels * self.depth
+                                                // ceil(scanlineBitCount / 8)
+                let pitch:Int = scanlineBitCount >> 3 + (scanlineBitCount & 7 == 0 ? 0 : 1)
+                return .init(pitch: pitch, size: size)
+            }
+        }
+        
+        struct Shape 
+        {
+            let pitch:Int, 
+                size:Math<Int>.V2
+            
+            var byteCount:Int 
+            {
+                return self.pitch * self.size.y
+            }
+        }
+        
+        enum Interlacing 
+        {
+            struct SubImage 
+            {
+                let shape:Shape, 
+                    strider:Math<StrideTo<Int>>.V2
+            }
+            
+            // don’t store whole-image shape in .none case since we still need 
+            // it in the .adam7 case
+            case none, 
+                 adam7([SubImage])
+            
+            static 
+            func computeAdam7Ranges(_ subImages:[SubImage]) -> [Range<Int>]
+            {
+                var accumulator:Int = 0
+                return subImages.map
+                {
+                    let upper:Int = accumulator + $0.shape.byteCount 
+                    defer 
                     {
-                        // channels is guaranteed to equal 1
-                        let src_byte_index:Int   = src_byte_base + (src_pixel_offset * self.color.depth) >> 3,
-                            src_bit_offset:UInt8 =           UInt8((src_pixel_offset * self.color.depth) & 7)
-                        var src_byte:UInt8       = raw_data[src_byte_index]
-
-                        // mask out left
-                        src_byte <<= src_bit_offset
-                        // mask out right
-                        src_byte >>= (8 - UInt8(self.color.depth))
-
-                        let dest_byte_index:Int   = dest_byte_base + (dest_pixel_offset * self.color.depth) >> 3,
-                            dest_bit_offset:UInt8 =            UInt8((dest_pixel_offset * self.color.depth) & 7)
-                        // shift it to destination
-                        deinterlaced[dest_byte_index] |= src_byte << (8 - dest_bit_offset - UInt8(self.color.depth))
+                        accumulator = upper 
                     }
+                    
+                    return accumulator ..< upper
+                }
+            }
+        }
+        
+        struct Pitches:Sequence, IteratorProtocol 
+        {
+            private 
+            let footprints:[(pitch:Int, height:Int)]
+            
+            private 
+            var f:Int         = 0, 
+                scanlines:Int = 0
+            
+            init(subImages:[Interlacing.SubImage]) 
+            {
+                self.footprints = subImages.map 
+                {
+                    ($0.shape.pitch, $0.shape.size.y)
+                }
+            }
+            
+            init(shape:Shape)
+            {
+                self.footprints = [(shape.pitch, shape.size.y)]
+            }
+            
+            mutating 
+            func next() -> Int?? 
+            {
+                let f:Int = self.f
+                while self.scanlines == 0  
+                {
+                    guard self.f < self.footprints.count
+                    else 
+                    {
+                        return nil  
+                    }
+                    
+                    if self.footprints[self.f].pitch == 0 
+                    {
+                        self.scanlines = 0
+                    }
+                    else 
+                    {
+                        self.scanlines = self.footprints[self.f].height
+                    }
+                    
+                    self.f += 1
+                }
+                
+                self.scanlines -= 1 
+                return self.f != f ? self.footprints[self.f - 1].pitch : .some(nil)
+            }
+        }
+        
+        // stored properties 
+        public 
+        let format:Format
+        
+        public 
+        var palette:[RGBA<UInt8>]?,
+            chromaKey:RGBA<UInt16>? // the alpha sample is ignored by the library
+        
+        let shape:Shape, 
+            interlacing:Interlacing
+        
+        // computed properties 
+        public 
+        var interlaced:Bool
+        {
+            if case .adam7 = self.interlacing 
+            {
+                return true 
+            }
+            else 
+            {
+                return false
+            }
+        }
+        
+        // don’t use this within the library, use `.shape.size` directly
+        public 
+        var size:Math<Int>.V2 
+        {
+            return self.shape.size
+        }
+        
+        var pitches:Pitches 
+        {
+            switch self.interlacing 
+            {
+                case .none:
+                    return .init(shape: self.shape)
+                
+                case .adam7(let subImages):
+                    return .init(subImages: subImages)
+            }
+        }
+        
+        var byteCount:Int 
+        {
+            switch self.interlacing
+            {
+                case .none:
+                    return self.shape.byteCount 
+                
+                case .adam7(let subImages):
+                    return subImages.reduce(0) 
+                    {
+                        $0 + $1.shape.byteCount
+                    }
+            }
+        }
+        
+        public 
+        init(size:Math<Int>.V2, format:Format, interlaced:Bool, 
+            palette:[RGBA<UInt8>]? = nil, chromaKey:RGBA<UInt16>? = nil)
+        {
+            self.format = format
+            self.shape  = format.shape(from: size)
+            
+            if interlaced 
+            {
+                // calculate size of interlaced subimages
+                // 0: (w + 7) >> 3 , (h + 7) >> 3
+                // 1: (w + 3) >> 3 , (h + 7) >> 3
+                // 2: (w + 3) >> 2 , (h + 3) >> 3
+                // 3: (w + 1) >> 2 , (h + 3) >> 2
+                // 4: (w + 1) >> 1 , (h + 1) >> 2
+                // 5: (w) >> 1     , (h + 1) >> 1
+                // 6: (w)          , (h) >> 1
+                let sizes:[Math<Int>.V2] = 
+                [
+                    ((size.x + 7) >> 3, (size.y + 7) >> 3),
+                    ((size.x + 3) >> 3, (size.y + 7) >> 3),
+                    ((size.x + 3) >> 2, (size.y + 3) >> 3),
+                    ((size.x + 1) >> 2, (size.y + 3) >> 2),
+                    ((size.x + 1) >> 1, (size.y + 1) >> 2),
+                    ( size.x      >> 1, (size.y + 1) >> 1),
+                    ( size.x      >> 0,  size.y      >> 1)
+                ]
+                
+                let striders:[Math<StrideTo<Int>>.V2] = 
+                [
+                    (stride(from: 0, to: size.x, by: 8), stride(from: 0, to: size.y, by: 8)),
+                    (stride(from: 4, to: size.x, by: 8), stride(from: 0, to: size.y, by: 8)),
+                    (stride(from: 0, to: size.x, by: 4), stride(from: 4, to: size.y, by: 8)),
+                    (stride(from: 2, to: size.x, by: 4), stride(from: 0, to: size.y, by: 4)),
+                    (stride(from: 0, to: size.x, by: 2), stride(from: 2, to: size.y, by: 4)),
+                    (stride(from: 1, to: size.x, by: 2), stride(from: 0, to: size.y, by: 2)),
+                    (stride(from: 0, to: size.x, by: 1), stride(from: 1, to: size.y, by: 2))
+                ]
+                
+                let subImages:[Interlacing.SubImage] = zip(sizes, striders).map
+                {
+                    (size:Math<Int>.V2, strider:Math<StrideTo<Int>>.V2) in 
+                    
+                    return .init(shape: format.shape(from: size), strider: strider)
+                }
+                
+                self.interlacing = .adam7(subImages)
+            }
+            else 
+            {
+                self.interlacing = .none
+            }
+            
+            self.palette   = palette 
+            self.chromaKey = chromaKey
+        }
+        
+        
+        public 
+        func decoder() throws -> Decoder
+        {
+            let inflator:LZ77.Inflator = try .init(), 
+                stride:Int             = max(1, self.format.volume >> 3)
+            return .init(stride: stride, pitches: self.pitches, inflator: inflator)
+        }
+        public 
+        func encoder(level:Int) throws -> Encoder
+        {
+            let deflator:LZ77.Deflator = try .init(level: level), 
+                stride:Int             = max(1, self.format.volume >> 3)
+            return .init(stride: stride, pitches: self.pitches, deflator: deflator)
+        }
+        
+        public 
+        struct Decoder 
+        {
+            private 
+            var reference:[UInt8]?, 
+                scanline:[UInt8] = []
+            
+            private 
+            let stride:Int
+            
+            private   
+            var pitches:Pitches, 
+                inflator:LZ77.Inflator
+            
+            init(stride:Int, pitches:Pitches, inflator:LZ77.Inflator)
+            {
+                self.stride   = stride 
+                self.pitches  = pitches
+                self.inflator = inflator
+                
+                guard let pitch:Int = self.pitches.next() ?? nil
+                else 
+                {
+                    return 
+                }
+                
+                self.reference = .init(repeating: 0, count: pitch + 1)
+            }
+            
+            public mutating 
+            func forEachScanline(decodedFrom data:[UInt8], body:(ArraySlice<UInt8>) throws -> ()) throws
+            {
+                self.inflator.push(data)
+                
+                while let reference:[UInt8] = self.reference  
+                {
+                    let remainder:Int = try self.inflator.pull(extending: &self.scanline, 
+                                                                capacity: reference.count)
+                    
+                    guard self.scanline.count == reference.count 
+                    else 
+                    {
+                        break
+                    }
+                    
+                    self.defilter(&self.scanline, reference: reference)
+                    
+                    try body(self.scanline.dropFirst())
+                    
+                    // transfer scanline to reference line 
+                    if let pitch:Int? = self.pitches.next() 
+                    {
+                        if let pitch:Int = pitch 
+                        {
+                            self.reference = .init(repeating: 0, count: pitch + 1)
+                        }
+                        else 
+                        {
+                            self.reference = self.scanline 
+                        }
+                    }
+                    else 
+                    {
+                        self.reference = nil 
+                    }
+                    
+                    self.scanline = []
+                    
+                    guard remainder > 0 
+                    else 
+                    {
+                        // no input (encoded data) left
+                        break
+                    }
+                }
+            }
+            
+            private  
+            func defilter(_ scanline:inout [UInt8], reference:[UInt8])
+            {
+                let filter:UInt8              = scanline[scanline.startIndex] 
+                scanline[scanline.startIndex] = 0
+                switch filter
+                {
+                    case 0:
+                        break 
+                    
+                    case 1: // sub 
+                        for i:Int in scanline.indices.dropFirst(self.stride)
+                        {
+                            scanline[i] = scanline[i] &+ scanline[i - self.stride]
+                        }
+                    
+                    case 2: // up 
+                        for i:Int in scanline.indices
+                        {
+                            scanline[i] = scanline[i] &+ reference[i]
+                        }
+                    
+                    case 3: // average 
+                        for i:Int in scanline.indices.prefix(self.stride)
+                        {
+                            scanline[i] = scanline[i] &+ reference[i] >> 1
+                        }
+                        for i:Int in scanline.indices.dropFirst(self.stride) 
+                        {
+                            let total:UInt16  = UInt16(scanline[i - self.stride]) + 
+                                                UInt16(reference[i])
+                            scanline[i] = scanline[i] &+ UInt8(truncatingIfNeeded: total >> 1)
+                        }
+                    
+                    case 4: // paeth 
+                        for i:Int in scanline.indices.prefix(self.stride)
+                        {
+                            scanline[i] = scanline[i] &+ paeth(0, reference[i], 0)
+                        }
+                        for i:Int in scanline.indices.dropFirst(self.stride) 
+                        {
+                            let p:UInt8 =  paeth(scanline[i - self.stride], 
+                                                reference[i              ], 
+                                                reference[i - self.stride])
+                            scanline[i] = scanline[i] &+ p
+                        }
+                    
+                    default:
+                        break // invalid
+                }
+            }
+        }
+        
+        public 
+        struct Encoder 
+        {
+            // unlike the `Decoder`, here, it’s more efficient for `reference` to 
+            // *not* contain the filter byte prefix
+            private 
+            var reference:[UInt8]?
+            
+            private 
+            let stride:Int 
+            
+            private 
+            var pitches:Pitches, 
+                deflator:LZ77.Deflator
+            
+            init(stride:Int, pitches:Pitches, deflator:LZ77.Deflator) 
+            {
+                self.stride   = stride 
+                self.pitches  = pitches 
+                self.deflator = deflator
+                
+                guard let pitch:Int = self.pitches.next() ?? nil
+                else 
+                {
+                    return 
+                }
+                
+                self.reference = .init(repeating: 0, count: pitch)
+            }
+            
+            public mutating 
+            func consolidate(extending data:inout [UInt8], capacity:Int, 
+                scanlinesFrom generator:() -> ArraySlice<UInt8>?) throws 
+            {
+                while let reference:[UInt8] = self.reference
+                {
+                    guard try self.deflator.pull(extending: &data, capacity: capacity) == 0 
+                    else 
+                    {
+                        // some input (encoded data) left, usually this means 
+                        // the `data` buffer is full too 
+                        return
+                    }
+                    
+                    guard let row:ArraySlice<UInt8> = generator()
+                    else 
+                    {
+                        return
+                    }
+                     
+                    guard row.count == reference.count 
+                    else 
+                    {
+                        throw WriteError.bufferCount
+                    }
+                    
+                    let scanline:[UInt8] = self.filter(row, reference: reference)
+                    
+                    self.deflator.push(scanline)
+                    
+                    if let pitch:Int? = self.pitches.next() 
+                    {
+                        if let pitch:Int = pitch 
+                        {
+                            self.reference = .init(repeating: 0, count: pitch)
+                        }
+                        else 
+                        {
+                            self.reference = .init(row)
+                        }
+                    }
+                    else 
+                    {
+                        self.reference = nil 
+                    }
+                }
+            }
+            
+            // once this is called, `consolidate(extending:capacity:scanlinesFrom:)` can’t 
+            // be called again after it
+            public 
+            func consolidate(extending data:inout [UInt8], capacity:Int) throws
+            {
+                assert(data.count <= capacity)
+                try self.deflator.finish(extending: &data, capacity: capacity)
+            }
+            
+            private  
+            func filter(_ current:ArraySlice<UInt8>, reference:[UInt8]) -> [UInt8]
+            {
+                // filtering can be done in parallel 
+                let candidates:(sub:[UInt8], up:[UInt8], average:[UInt8], paeth:[UInt8])
+                candidates.sub =        [1] +
+                current.prefix(self.stride) 
+                + 
+                zip(current, current.dropFirst(self.stride)).map 
+                {
+                    $0.1   &- $0.0
+                }
+                
+                candidates.up =         [2] + 
+                zip(reference, 
+                    current).map 
+                {
+                    $0.1   &- $0.0
+                }
+                
+                candidates.average =    [3] + 
+                zip(reference, 
+                    current).prefix(self.stride).map 
+                {
+                    $0.1   &- $0.0 >> 1
+                } 
+                + 
+                zip(           reference.dropFirst(self.stride), 
+                    zip(current, current.dropFirst(self.stride))).map 
+                {
+                    $0.1.1 &- UInt8(truncatingIfNeeded: (UInt16($0.1.0) &+ UInt16($0.0)) >> 1)
+                }
+
+                candidates.paeth =      [4] + 
+                zip(reference, 
+                    current).prefix(self.stride).map 
+                {
+                    $0.1   &- paeth(0, $0.0, 0)
+                } 
+                + 
+                zip(zip(reference, reference.dropFirst(self.stride)), 
+                    zip(current,     current.dropFirst(self.stride))).map 
+                {
+                    $0.1.1 &- paeth($0.1.0, $0.0.1, $0.0.0)
+                }
+                
+                let scores:[Int] = 
+                [
+                    Encoder.score(current),
+                    Encoder.score(candidates.0.dropFirst()),
+                    Encoder.score(candidates.1.dropFirst()),
+                    Encoder.score(candidates.2.dropFirst()),
+                    Encoder.score(candidates.3.dropFirst())
+                ]
+                
+                // i don’t know why this isn’t in the standard library 
+                var filter:Int  = 0, 
+                    minimum:Int = .max
+                for (i, score) in scores.enumerated() 
+                {
+                    if score < minimum 
+                    {
+                        minimum = score 
+                        filter  = i
+                    }
+                }
+                
+                switch filter 
+                {
+                    case 0:
+                        return [0] + current 
+                        
+                    case 1:
+                        return candidates.0
+                    case 2:
+                        return candidates.1
+                    case 3:
+                        return candidates.2
+                    case 4:
+                        return candidates.3
+                    
+                    default:
+                        fatalError("unreachable: 0 <= filter < 5")
+                }
+            }
+            
+            private static 
+            func score(_ filtered:ArraySlice<UInt8>) -> Int
+            {
+                return zip(filtered, filtered.dropFirst()).count
+                {
+                    $0.0 != $0.1
+                }
+            } 
+        }
+        
+        public static 
+        func decodeIHDR(_ data:[UInt8]) throws -> Properties
+        {
+            guard data.count == 13 
+            else 
+            {
+                throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
+            }
+            
+            let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
+            guard let format:Format = Format.init(rawValue: colorcode)
+            else 
+            {
+                throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+            }
+            
+            // validate other fields 
+            guard data[10] == 0 
+            else 
+            {
+                throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
+            }
+            guard data[11] == 0 
+            else 
+            {
+                throw ReadError.syntaxError(message: "filter byte has value \(data[11]), expected 0")
+            }
+            
+            let interlaced:Bool 
+            switch data[12]
+            {
+                case 0:
+                    interlaced = false 
+                case 1: 
+                    interlaced = true 
+                default:
+                    throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
+            }
+            
+            let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
+                height:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
+            
+            return .init(size: (width, height), format: format, interlaced: interlaced)
+        }
+        
+        public 
+        func encodeIHDR() -> [UInt8] 
+        {
+            let header:[UInt8] = 
+            [UInt8].store(self.shape.size.x,         asBigEndian: UInt32.self) + 
+            [UInt8].store(self.shape.size.y,         asBigEndian: UInt32.self) + 
+            [UInt8].store(self.format.rawValue, asBigEndian: UInt16.self) + 
+            [0, 0, self.interlaced ? 1 : 0]
+            
+            return header
+        }
+        
+        public mutating 
+        func decodePLTE(_ data:[UInt8]) throws
+        {
+            guard data.count.isMultiple(of: 3)
+            else
+            {
+                throw ReadError.syntaxError(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
+            }
+            
+            // check number of palette entries 
+            let maxEntries:Int = 1 << self.format.depth
+            guard data.count <= maxEntries * 3
+            else 
+            {
+                throw ReadError.syntaxError(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
+            }
+
+            self.palette = stride(from: data.startIndex, to: data.endIndex, by: 3).map
+            {
+                let r:UInt8 = data[$0    ],
+                    g:UInt8 = data[$0 + 1],
+                    b:UInt8 = data[$0 + 2]
+                return .init(r, g, b)
+            }
+        }
+        
+        public 
+        func encodePLTE() -> [UInt8]?
+        {
+            guard   self.format.hasColor, 
+                    let palette:[RGBA<UInt8>] = self.palette 
+            else 
+            {
+                return nil 
+            }
+            
+            return palette.prefix(256).flatMap 
+            {
+                [$0.r, $0.g, $0.b]
+            }
+        }
+        
+        public mutating 
+        func decodetRNS(_ data:[UInt8]) throws
+        {
+            switch self.format
+            {
+                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
+                    guard data.count == 2
                     else
                     {
-                        let dest_byte_index:Int = dest_byte_base + dest_pixel_offset * self.bpp,
-                             src_byte_index:Int =  src_byte_base + src_pixel_offset  * self.bpp
-                        deinterlaced[dest_byte_index ..< dest_byte_index + self.bpp] =
-                            raw_data[src_byte_index  ..< src_byte_index  + self.bpp]
+                        throw ReadError.syntaxError(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
+                    }
+                    
+                    let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
+                        v:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+                    self.chromaKey = .init(v)
+                
+                case .rgb8, .rgb16:
+                    guard data.count == 6
+                    else
+                    {
+                        throw ReadError.syntaxError(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
+                    }
+                    
+                    let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
+                        r:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0), 
+                        g:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2), 
+                        b:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+                    self.chromaKey = .init(r, g, b)
+                
+                case .indexed1, .indexed2, .indexed4, .indexed8:
+                    guard let palette:[RGBA<UInt8>] = self.palette
+                    else
+                    {
+                        throw PNGReadError.MissingPalatteError
                     }
 
-                    src_pixel_offset += 1
-                }
-                src_byte_base += bounds.j
+                    guard data.count <= palette.count
+                    else
+                    {
+                        throw ReadError.syntaxError(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
+                    }
+                    
+                    self.palette = zip(palette, data).map 
+                    {
+                        $0.0.withAlpha($0.1)
+                    } 
+                    + 
+                    palette.dropFirst(data.count)
+                    
+                    self.chromaKey = nil
+                
+                default:
+                    break // this is an error, but it should have already been caught by PNGConditions
             }
         }
-
-        return deinterlaced
+        
+        public 
+        func encodetRNS() -> [UInt8]? 
+        {
+            switch self.format 
+            {
+                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
+                    guard let key:RGBA<UInt16> = self.chromaKey 
+                    else 
+                    {
+                        return nil 
+                    }
+                    let quantization:Int = UInt16.bitWidth - self.format.depth
+                    return [key.r >> quantization].flatMap
+                        {
+                            [UInt8].store($0, asBigEndian: UInt16.self)
+                        }
+                
+                case .rgb8, .rgb16:
+                    guard let key:RGBA<UInt16> = self.chromaKey 
+                    else 
+                    {
+                        return nil 
+                    }
+                    let quantization:Int = UInt16.bitWidth - self.format.depth
+                    return 
+                        [
+                            key.r >> quantization, 
+                            key.g >> quantization, 
+                            key.b >> quantization
+                        ].flatMap
+                        {
+                            [UInt8].store($0, asBigEndian: UInt16.self)
+                        }
+                
+                case .indexed1, .indexed2, .indexed4, .indexed8:
+                    guard let palette:[RGBA<UInt8>] = self.palette
+                    else
+                    {
+                        return nil
+                    }
+                    
+                    var alphas:[UInt8] = palette.map{ $0.a } 
+                    guard let last:Int = alphas.lastIndex(where: { $0 != UInt8.max })
+                    else 
+                    {
+                        // palette is empty 
+                        return nil
+                    }
+                    
+                    alphas.removeLast(alphas.count - last - 1)
+                    return alphas
+                
+                default:
+                    return nil
+            }
+        }
     }
-
-    private
-    var bit_strider:LazySequence<FlattenSequence<LazyMapSequence<StrideTo<Int>, LazySequence<StrideTo<Int>>>>>
+    
+    public 
+    enum Data 
     {
-        return stride(from: 0, to: self.noninterlaced_data_size, by: self.sub_array_bounds[7].j).lazy.flatMap
+        // PNG data that has been decompressed, but not necessarily deinterlaced 
+        public 
+        struct Uncompressed 
         {
-            stride(from: $0 << 3, to: $0 << 3 + self.width * self.color.depth, by: self.color.depth).lazy
+            public 
+            let properties:Properties, 
+                data:[UInt8]
+            
+            public 
+            init?(_ data:[UInt8], properties:Properties) 
+            {
+                guard data.count == properties.byteCount 
+                else 
+                {
+                    return nil 
+                }
+                
+                self.properties = properties
+                self.data       = data 
+            }
+            
+            public 
+            func decompose() -> [Rectangular]?
+            {
+                guard case .adam7(let subImages) = self.properties.interlacing 
+                else 
+                {
+                    return nil
+                }
+                
+                let ranges:[Range<Int>] = Properties.Interlacing.computeAdam7Ranges(subImages)
+                
+                return zip(ranges, subImages).map 
+                {
+                    (range:Range<Int>, subImage:Properties.Interlacing.SubImage) in 
+                    
+                    let properties:Properties = .init(size: subImage.shape.size, 
+                                                    format: self.properties.format, 
+                                                interlaced: false)
+                    
+                    return .init(.init(self.data[range]), properties: properties)
+                }
+            }
+            
+            public 
+            func deinterlace() -> Rectangular 
+            {
+                guard case .adam7(let subImages) = self.properties.interlacing 
+                else 
+                {
+                    // image is not interlaced at all, return it transparently 
+                    return .init(self.data, properties: self.properties)
+                }
+                
+                let properties:Properties = .init(size: self.properties.shape.size, 
+                                                format: self.properties.format, 
+                                            interlaced: false, 
+                                               palette: self.properties.palette, 
+                                             chromaKey: self.properties.chromaKey)
+                
+                let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: properties.byteCount)
+                {
+                    (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
+                    
+                    let volume:Int = properties.format.volume
+                    if volume < 8 
+                    {
+                        // initialize the buffer to 0. this makes it so we can store 
+                        // bits into the buffer without needing to mask them out 
+                        buffer.initialize(repeating: 0)
+                        
+                        var base:Int = self.data.startIndex 
+                        for subImage:Properties.Interlacing.SubImage in subImages 
+                        {
+                            for (sy, dy):(Int, Int) in subImage.strider.y.enumerated()
+                            {
+                                for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
+                                {
+                                    // image only has 1 channel 
+                                    let si:Int = (sx * volume) >> 3 + subImage.shape.pitch   * sy, 
+                                        di:Int = (dx * volume) >> 3 + properties.shape.pitch * dy
+                                    let sb:Int = (sx * volume) & 7, 
+                                        db:Int = (dx * volume) & 7
+                                    
+                                    // isolate relevant bits and store them into the destination
+                                    let empty:Int  = UInt8.bitWidth - volume, 
+                                        bits:UInt8 = (self.data[base + si] &<< sb) &>> empty
+                                    buffer[di]    |= bits &<< (empty - db)
+                                }
+                            }
+                            
+                            base += subImage.shape.byteCount
+                        }
+                    }
+                    else 
+                    {
+                        let stride:Int = volume >> 3
+                        
+                        var base:Int = self.data.startIndex 
+                        for subImage:Properties.Interlacing.SubImage in subImages 
+                        {
+                            for (sy, dy):(Int, Int) in subImage.strider.y.enumerated()
+                            {                            
+                                for (sx, dx):(Int, Int) in subImage.strider.x.enumerated()
+                                {
+                                    let si:Int = sx * stride + subImage.shape.pitch   * sy, 
+                                        di:Int = dx * stride + properties.shape.pitch * dy
+                                    
+                                    for b:Int in 0 ..< stride 
+                                    {
+                                        buffer[di + b] = self.data[base + si + b]
+                                    }
+                                }
+                            }
+                            
+                            base += subImage.shape.byteCount
+                        }
+                    }
+                    
+                    count = properties.byteCount
+                }
+                
+                return .init(deinterlaced, properties: properties)
+            }
+            
+            public  
+            func compress<Destination>(to destination:inout Destination, 
+                chunkSize:Int = 1 << 16, level:Int = 9) throws 
+                where Destination:DataDestination
+            {
+                precondition(chunkSize >= 1, "chunk size must be positive")
+                
+                var iterator:ChunkIterator<Destination> = 
+                    ChunkIterator.begin(destination: &destination)
+                
+                iterator.next(.IHDR, self.properties.encodeIHDR(), destination: &destination)
+                self.properties.encodePLTE().map 
+                {
+                    iterator.next(.PLTE, $0, destination: &destination)
+                }
+                self.properties.encodetRNS().map 
+                {
+                    iterator.next(.tRNS, $0, destination: &destination)
+                }
+                
+                var pitches:Properties.Pitches = self.properties.pitches, 
+                    encoder:Properties.Encoder = try self.properties.encoder(level: level)
+                
+                var pitch:Int?, 
+                    base:Int     = self.data.startIndex
+                var data:[UInt8] = []
+                while true 
+                {
+                    try encoder.consolidate(extending: &data, capacity: chunkSize) 
+                    {
+                        guard let update:Int? = pitches.next(), 
+                              let count:Int   = update ?? pitch
+                        else 
+                        {
+                            return nil 
+                        }                        
+                        defer 
+                        {
+                            base += count
+                            pitch = count 
+                        }
+                        
+                        return self.data[base ..< base + count]
+                    }
+                    
+                    if data.count == chunkSize 
+                    {
+                        iterator.next(.IDAT, data, destination: &destination)
+                        data = []
+                    } 
+                    else 
+                    {
+                        break
+                    }
+                }
+                
+                while true 
+                {
+                    try encoder.consolidate(extending: &data, capacity: chunkSize)
+                    
+                    if data.count == 0 
+                    {
+                        break
+                    }
+                    
+                    iterator.next(.IDAT, data, destination: &destination)
+                    data = []
+                }
+                
+                iterator.next(.IEND, destination: &destination)
+            }
+            
+            public static 
+            func decompress<Source>(from source:inout Source) throws -> Uncompressed 
+                where Source:DataSource
+            {
+                guard var iterator:ChunkIterator<Source> = 
+                    ChunkIterator.begin(source: &source)
+                else 
+                {
+                    throw ReadError.missingSignature 
+                }
+                                
+                @inline(__always)
+                func _next() throws -> (chunk:Chunk, contents:[UInt8])?
+                {
+                    guard let (name, data):(Math<UInt8>.V4, [UInt8]?) = 
+                        iterator.next(source: &source) 
+                    else 
+                    {
+                        return nil 
+                    }
+                    
+                    guard let chunk:Chunk = Chunk.init(name)
+                    else 
+                    {
+                        let string:String = .init(decoding: [name.0, name.1, name.2, name.3], 
+                                                        as: Unicode.ASCII.self)
+                        throw ReadError.syntaxError(message: "chunk '\(string)' has invalid name")
+                    }
+                    
+                    guard let contents:[UInt8] = data 
+                    else 
+                    {
+                        throw ReadError.corruptedChunk
+                    }
+                    
+                    return (chunk, contents)
+                }
+                
+                
+                // first chunk must be IHDR 
+                guard let (first, header):(Chunk, [UInt8]) = try _next(), 
+                           first == .IHDR
+                else 
+                {
+                    throw ReadError.missingChunk(.IHDR)
+                }
+                
+                var properties:Properties      = try .decodeIHDR(header), 
+                    decoder:Properties.Decoder = try properties.decoder()
+                
+                var validator:Chunk.OrderingValidator = .init(format: properties.format)
+                
+                var data:[UInt8] = []
+                    data.reserveCapacity(properties.byteCount)
+                
+                while let (chunk, contents):(Chunk, [UInt8]) = try _next()
+                {
+                    // validate chunk ordering 
+                    if let error:ReadError = validator.push(chunk)
+                    {
+                        throw error 
+                    }
+
+                    switch chunk 
+                    {
+                        case .IHDR:
+                            fatalError("unreachable: validator enforces no duplicate IHDR chunks")
+                        
+                        case .IDAT:
+                            try decoder.forEachScanline(decodedFrom: contents) 
+                            {
+                                data.append(contentsOf: $0)
+                            }
+                        
+                        case .PLTE:
+                            try properties.decodePLTE(contents)
+                        
+                        case .tRNS:
+                            try properties.decodetRNS(contents)
+                        
+                        case .IEND:
+                            guard let uncompressed:Uncompressed = 
+                                Uncompressed.init(data, properties: properties)
+                            else 
+                            {
+                                // not enough data 
+                                throw ReadError.missingChunk(.IDAT)
+                            }
+                            
+                            return uncompressed
+                        
+                        default:
+                            break
+                    }
+                }
+                
+                throw ReadError.missingChunk(.IEND)
+            }
+        }
+        
+        // PNG data that has been deinterlaced, but may still have multiple pixels 
+        // packed per byte, or indirect (indexed) pixels
+        public 
+        struct Rectangular 
+        {
+            public 
+            let properties:Properties, 
+                data:[UInt8]
+            
+            // only called directly from within the library 
+            init(_ data:[UInt8], properties:Properties) 
+            {
+                assert(!properties.interlaced)
+                assert(data.count == properties.byteCount)
+                
+                self.properties = properties
+                self.data       = data 
+            }
+            
+            static 
+            func index(_ pixels:[RGBA<UInt8>], size:Math<Int>.V2) -> Rectangular 
+            {
+                fatalError("unimplemented")
+            }
+            
+            // makes sure the passed type parameter (`Sample`) has enough bits to 
+            // represent the values in the image
+            @inline(__always)
+            private 
+            func checkWidth<Sample>(of _:Sample.Type) -> Bool 
+                where Sample:FixedWidthInteger
+            {
+                switch self.properties.format 
+                {
+                    case .indexed1, .indexed2, .indexed4, .indexed8:
+                        return Sample.bitWidth >= UInt8.bitWidth 
+                    
+                    default:
+                        return Sample.bitWidth >= self.properties.format.depth
+                }
+            }
+            
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            public 
+            func map<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4, 
+                         .indexed1,   .indexed2,   .indexed4:
+                        return self.mapBits(body) 
+                    
+                    case .grayscale8, .indexed8:
+                        return self.map(from: UInt8.self, body) 
+                    
+                    case .grayscale16:
+                        return self.map(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            public 
+            func mapIntensity<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4, 
+                         .indexed1,   .indexed2,   .indexed4:
+                        return self.mapBitIntensity(body) 
+                    
+                    case .grayscale8, .indexed8:
+                        return self.mapIntensity(from: UInt8.self, body) 
+                    
+                    case .grayscale16:
+                        return self.mapIntensity(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            public 
+            func mapIntensity<Sample, Result>(_ body:(Sample, Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale_a8:
+                        return self.mapIntensity(from: UInt8.self, body) 
+                    
+                    case .grayscale_a16:
+                        return self.mapIntensity(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            public 
+            func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .rgb8:
+                        return self.mapIntensity(from: UInt8.self, body) 
+                    
+                    case .rgb16:
+                        return self.mapIntensity(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            @_specialize(exported: true, kind: partial, where Sample == UInt8) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt16) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt32) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt64) 
+            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            public 
+            func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self) 
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .rgba8:
+                        return self.mapIntensity(from: UInt8.self, body) 
+                    
+                    case .rgba16:
+                        return self.mapIntensity(from: UInt16.self, body) 
+                    
+                    default: 
+                        return nil
+                }
+            }
+            
+            public 
+            func grayscale<Sample>(of _:Sample.Type) -> [Sample]?
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self)
+                else 
+                {
+                    return nil
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4:
+                        return self.mapBitIntensity{ $0 }
+                    
+                    case .grayscale8:
+                        return self.mapIntensity(from: UInt8.self){ $0 }
+                    
+                    case .grayscale16:
+                        return self.mapIntensity(from: UInt16.self){ $0 }
+                    
+                    case .grayscale_a8:
+                        return self.mapIntensity(from: UInt8.self)
+                        { 
+                            (v:Sample, _:Sample) in v
+                        }
+                    
+                    case .grayscale_a16:
+                        return self.mapIntensity(from: UInt16.self)
+                        { 
+                            (v:Sample, _:Sample) in v
+                        }
+                    
+                    case .rgb8:
+                        return self.mapIntensity(from: UInt8.self)
+                        { 
+                            (r:Sample, _:Sample, _:Sample) in r
+                        }
+                    
+                    case .rgb16:
+                        return self.mapIntensity(from: UInt16.self)
+                        { 
+                            (r:Sample, _:Sample, _:Sample) in r
+                        }
+                    
+                    case .rgba8:
+                        return self.mapIntensity(from: UInt8.self)
+                        { 
+                            (r:Sample, _:Sample, _:Sample, _:Sample) in r
+                        }
+                    
+                    case .rgba16:
+                        return self.mapIntensity(from: UInt16.self)
+                        { 
+                            (r:Sample, _:Sample, _:Sample, _:Sample) in r
+                        }
+                        
+                    case .indexed1, .indexed2, .indexed4:
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
+                        {
+                            // missing palette, should never occur in normal circumstances
+                            return nil
+                        }
+                        
+                        // map over raw sample values instead of scaled values
+                        return self.mapBits 
+                        {
+                            (index:Int) in 
+
+                            // palette sample type is always UInt8 so all Swift 
+                            // unsigned integer types can be used as an unscaling 
+                            // target
+                            return palette[index].upscale(to: Sample.self).r
+                        }
+                    
+                    case .indexed8:
+                        // same as above except loading byte-size samples
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
+                        {
+                            return nil
+                        }
+                        
+                        return self.map(from: UInt8.self)
+                        {
+                            (index:Int) in 
+                            
+                            return palette[index].upscale(to: Sample.self).r
+                        }
+                }
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Sample>(_ color:RGBA<Sample>) -> RGBA<Sample> 
+            {
+                // all functions that call this should use `checkWidth` to make 
+                // sure Sample.bitWidth <= 16
+                guard let key:RGBA<Sample> = self.properties.chromaKey?.downscale(to: Sample.self) 
+                else 
+                {
+                    return color
+                }
+                
+                return color.equals(opaque: key) ? color.withAlpha(0) : color
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Sample>(v:Sample) -> RGBA<Sample> 
+            {
+                return self.greenscreen(.init(v))
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Sample>(r:Sample, g:Sample, b:Sample) -> RGBA<Sample> 
+            {
+                return self.greenscreen(.init(r, g, b))
+            }
+            
+            @_specialize(exported: true, where Sample == UInt8) 
+            @_specialize(exported: true, where Sample == UInt16) 
+            @_specialize(exported: true, where Sample == UInt32) 
+            @_specialize(exported: true, where Sample == UInt64) 
+            @_specialize(exported: true, where Sample == UInt)
+            public 
+            func rgba<Sample>(of _:Sample.Type) -> [RGBA<Sample>]? 
+                where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                guard self.checkWidth(of: Sample.self)
+                else 
+                {
+                    return nil
+                }
+                
+                // to make sure chroma keys work 
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4, 
+                         .grayscale8, 
+                         .grayscale16, 
+                         .rgb8, 
+                         .rgb16:
+                        guard Sample.bitWidth <= UInt16.bitWidth 
+                        else 
+                        {
+                            return nil
+                        }
+                    
+                    default:
+                        break
+                }
+                
+                switch self.properties.format 
+                {
+                    case .grayscale1, .grayscale2, .grayscale4:
+                        return self.mapBitIntensity(self.greenscreen(v:)) 
+                    
+                    case .grayscale8:
+                        return self.mapIntensity(from: UInt8.self,  self.greenscreen(v:)) 
+                    
+                    case .grayscale16:
+                        return self.mapIntensity(from: UInt16.self, self.greenscreen(v:)) 
+                    
+                    case .grayscale_a8:
+                        return self.mapIntensity(from: UInt8.self,  RGBA.init(_:_:)) 
+                    
+                    case .grayscale_a16:
+                        return self.mapIntensity(from: UInt16.self, RGBA.init(_:_:)) 
+                    
+                    case .rgb8:
+                        return self.mapIntensity(from: UInt8.self,  self.greenscreen(r:g:b:)) 
+                    
+                    case .rgb16:
+                        return self.mapIntensity(from: UInt16.self, self.greenscreen(r:g:b:)) 
+                    
+                    case .rgba8:
+                        return self.mapIntensity(from: UInt8.self,  RGBA.init(_:_:_:_:)) 
+                    
+                    case .rgba16:
+                        return self.mapIntensity(from: UInt16.self, RGBA.init(_:_:_:_:)) 
+                        
+                    case .indexed1, .indexed2, .indexed4:
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
+                        {
+                            // missing palette, should never occur in normal circumstances
+                            return nil
+                        }
+                        
+                        // map over raw sample values instead of scaled values
+                        return self.mapBits 
+                        {
+                            (index:Int) in 
+
+                            // palette sample type is always UInt8 so all Swift 
+                            // unsigned integer types can be used as an unscaling 
+                            // target
+                            return palette[index].upscale(to: Sample.self)
+                        }
+                    
+                    case .indexed8:
+                        // same as above except loading byte-size samples
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
+                        {
+                            return nil
+                        }
+                        
+                        return self.map(from: UInt8.self)
+                        {
+                            (index:Int) in 
+                            
+                            return palette[index].upscale(to: Sample.self)
+                        }
+                }
+            }
+            
+            public 
+            func argb<FusedVector4>(of _:FusedVector4.Type) -> [FusedVector4.Element.FusedVector4]? 
+                where FusedVector4:FusedVector4Protocol
+            {
+                // *all* color formats can produce pixels with alpha, so we might 
+                // as well call the `rgba(of:)` function and let map fusion 
+                // optimize it
+                return self.rgba(of: FusedVector4.Element.self)?.map 
+                {
+                    $0.premultiplied.argb
+                }
+            }
+            
+            @inline(__always)
+            private 
+            func load<Sample>(bits:Range<Int>, as _:Sample.Type) -> Sample 
+                where Sample:FixedWidthInteger
+            {
+                let byte:Int      = bits.lowerBound >> 3, 
+                    bit:Int       = bits.lowerBound & 7, 
+                    offset:Int    = UInt8.bitWidth - bits.count
+                return .init(truncatingIfNeeded: (self.data[byte] &<< bit) &>> offset)
+            }
+            
+            @inline(__always)
+            private 
+            func load<T, Sample>(bigEndian:T.Type, at index:Int, as _:Sample.Type) -> Sample 
+                where T:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(T.bitWidth <= Sample.bitWidth)
+                
+                return self.data.withUnsafeBufferPointer 
+                {
+                    let offset:Int               = index * MemoryLayout<T>.stride, 
+                        raw:UnsafeRawPointer     = .init($0.baseAddress! + offset), 
+                        pointer:UnsafePointer<T> = raw.bindMemory(to: T.self, capacity: 1)
+                    return .init(truncatingIfNeeded: T(bigEndian: pointer.pointee))
+                }
+            }
+            
+            @inline(__always)
+            private 
+            func scale<T, Sample>(bigEndian:T.Type, at index:Int, to _:Sample.Type) -> Sample 
+                where T:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
+            {
+                let scalar:Sample = self.load(bigEndian: T.self, at: index, as: Sample.self)
+                return scalar * RGBA<Sample>.quantum(depth: self.properties.format.depth)
+            }
+            
+            private 
+            func mapBits<Sample, Result>(_ body:(Sample) -> Result) -> [Result] 
+                where Sample:FixedWidthInteger
+            {
+                assert(self.properties.format.depth < Sample.bitWidth)
+                
+                return withoutActuallyEscaping(body)
+                {
+                    (body:@escaping (Sample) -> Result) in
+                    
+                    let depth:Int = self.properties.format.depth, 
+                        count:Int = self.properties.format.volume * self.properties.shape.size.x
+                    return stride(from: 0, to: self.data.count, by: self.properties.shape.pitch).flatMap 
+                    {
+                        (i:Int) -> LazyMapSequence<StrideTo<Int>, Result> in
+                        
+                        let base:Int = i << 3
+                        return stride(from: base, to: base + count, by: depth).lazy.map 
+                        {
+                            body(self.load(bits: $0 ..< $0 + depth, as: Sample.self))
+                        }
+                    }
+                }
+            }
+            
+            private 
+            func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger, Sample:FixedWidthInteger
+            {
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(self.load(bigEndian: Atom.self, at: $0, as: Sample.self))
+                }
+            }
+            
+            private 
+            func mapBitIntensity<Sample, Result>(_ body:(Sample) -> Result) -> [Result] 
+                 where Sample:FixedWidthInteger & UnsignedInteger
+            {
+                return self.mapBits 
+                {
+                    return body($0 * RGBA<Sample>.quantum(depth: self.properties.format.depth))
+                }
+            }
+            
+            private 
+            func mapIntensity<Atom, Sample, Result>(from _:Atom.Type, 
+                                                    _ body:(Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
+            {
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(self.scale(bigEndian: Atom.self, at: $0, to: Sample.self))
+                }
+            }
+            
+            private 
+            func mapIntensity<Atom, Sample, Result>(from _:Atom.Type, 
+                                                    _ body:(Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
+            {
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.scale(bigEndian: Atom.self, at: $0 << 1,     to: Sample.self), 
+                        self.scale(bigEndian: Atom.self, at: $0 << 1 | 1, to: Sample.self))
+                }
+            }
+            
+            private 
+            func mapIntensity<Atom, Sample, Result>(from _:Atom.Type, 
+                                                    _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
+            {
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.scale(bigEndian: Atom.self, at: $0 * 3,      to: Sample.self), 
+                        self.scale(bigEndian: Atom.self, at: $0 * 3 + 1,  to: Sample.self), 
+                        self.scale(bigEndian: Atom.self, at: $0 * 3 + 2,  to: Sample.self))
+                }
+            }
+            
+            private 
+            func mapIntensity<Atom, Sample, Result>(from _:Atom.Type, 
+                                                    _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
+                 where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
+            {
+                assert(self.properties.format.depth == Atom.bitWidth)
+                
+                return (0 ..< Math.vol(self.properties.shape.size)).map 
+                {
+                    return body(
+                        self.scale(bigEndian: Atom.self, at: $0 << 2,      to: Sample.self), 
+                        self.scale(bigEndian: Atom.self, at: $0 << 2 | 1,  to: Sample.self), 
+                        self.scale(bigEndian: Atom.self, at: $0 << 2 | 2,  to: Sample.self), 
+                        self.scale(bigEndian: Atom.self, at: $0 << 2 | 3,  to: Sample.self))
+                }
+            }
         }
     }
-
-    @available(*, unavailable, renamed: "rgba8(raw_data:)")
-    public
-    func rgba32(raw_data:[UInt8]) -> [RGBA<UInt8>]? 
-    { 
-        fatalError("unreachable") 
-    }
-
-    public
-    func rgba8(raw_data:[UInt8]) -> [RGBA<UInt8>]?
+    
+    public 
+    struct Chunk:Hashable, Equatable, CustomStringConvertible
     {
-        guard raw_data.count == self.noninterlaced_data_size, self.color.depth <= 8
-        else
+        let name:Math<UInt8>.V4
+        
+        public
+        var description:String 
         {
-            return nil
+            return .init( decoding: [self.name.0, self.name.1, self.name.2, self.name.3], 
+                                as: Unicode.ASCII.self)
         }
-
-        let output:[RGBA<UInt8>]
-        switch self.color
+        
+        private 
+        init(_ a:UInt8, _ p:UInt8, _ r:UInt8, _ c:UInt8)
         {
-        case .grayscale1, .grayscale2, .grayscale4: // channels is guaranteed to be 1
-            let quantum:UInt8 = self.quantum8
-            output = self.bit_strider.map
+            self.name = (a, p, r, c)
+        }
+        
+        public  
+        init?(_ name:Math<UInt8>.V4)
+        {
+            self.name = name
+            switch self 
             {
-                let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data)
-                // test against chroma key
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
+                // legal public chunks 
+                case .IHDR, .PLTE, .IDAT, .IEND, 
+                     .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, 
+                     .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXt:
+                    break 
+
+                default:
+                    guard name.0 & 0x20 != 0 
+                    else 
+                    {
+                        return nil
+                    }
+
+                    guard name.2 & 0x20 == 0 
+                    else 
+                    {
+                        return nil
+                    }
+            }
+        }
+        
+        public static 
+        func == (a:Chunk, b:Chunk) -> Bool 
+        {
+            return a.name == b.name
+        }
+        
+        public 
+        func hash(into hasher:inout Hasher) 
+        {
+            hasher.combine( self.name.0 << 24 | 
+                            self.name.1 << 16 | 
+                            self.name.2 <<  8 | 
+                            self.name.3)
+        }
+        
+        public static 
+        let IHDR:Chunk = .init(73, 72, 68, 82), 
+            PLTE:Chunk = .init(80, 76, 84, 69), 
+            IDAT:Chunk = .init(73, 68, 65, 84), 
+            IEND:Chunk = .init(73, 69, 78, 68), 
+            
+            cHRM:Chunk = .init(99, 72, 82, 77), 
+            gAMA:Chunk = .init(103, 65, 77, 65), 
+            iCCP:Chunk = .init(105, 67, 67, 80), 
+            sBIT:Chunk = .init(115, 66, 73, 84), 
+            sRGB:Chunk = .init(115, 82, 71, 66), 
+            bKGD:Chunk = .init(98, 75, 71, 68), 
+            hIST:Chunk = .init(104, 73, 83, 84), 
+            tRNS:Chunk = .init(116, 82, 78, 83), 
+            
+            pHYs:Chunk = .init(112, 72, 89, 115), 
+            
+            sPLT:Chunk = .init(115, 80, 76, 84), 
+            tIME:Chunk = .init(116, 73, 77, 69), 
+            
+            iTXt:Chunk = .init(105, 84, 88, 116), 
+            tEXt:Chunk = .init(116, 69, 88, 116), 
+            zTXt:Chunk = .init(122, 84, 88, 116)
+        
+        // performs chunk ordering and presence validation
+        struct OrderingValidator 
+        {
+            private 
+            var format:Properties.Format, 
+                last:Chunk, 
+                seen:Set<Chunk>
+            
+            init(format:Properties.Format) 
+            {
+                self.format = format 
+                self.last   =  .IHDR
+                self.seen   = [.IHDR] 
+            }
+            
+            mutating 
+            func push(_ chunk:Chunk) -> ReadError? 
+            {                
+                guard self.last != .IEND
+                else 
                 {
-                    return RGBA(v, v, v, 0)
+                    return .prematureIEND
                 }
-                return RGBA(v, v, v, UInt8.max)
-            }
-        case .grayscale8:
-            output = raw_data.map
-            {
-                (v:UInt8) in
-
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
+            
+                if      chunk ==                                                                  .tRNS
                 {
-                    return RGBA(v, v, v, 0)
+                    guard !self.format.hasAlpha // tRNS forbidden in alpha’d formats
+                    else
+                    {
+                        return .illegalChunk(chunk)
+                    }
                 }
-                return RGBA(v, v, v, UInt8.max)
-            }
-        case .grayscale_a8:
-            output = stride(from: 0, to: raw_data.count, by: 2).map
-            {
-                let v:UInt8 = raw_data[$0    ],
-                    a:UInt8 = raw_data[$0 + 1]
-                return RGBA(v, v, v, a)
-            }
-        case .rgb8:
-            output = stride(from: 0, to: raw_data.count, by: 3).map
-            {
-                let r:UInt8 = raw_data[$0    ],
-                    g:UInt8 = raw_data[$0 + 1],
-                    b:UInt8 = raw_data[$0 + 2]
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
+                else if chunk ==   .PLTE
                 {
-                    return RGBA(r, g, b, 0)
+                    // PLTE must come before bKGD, hIST, and tRNS
+                    guard self.format.hasColor // PLTE requires non-grayscale format
+                    else
+                    {
+                        return .illegalChunk(chunk)
+                    }
+
+                    if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
+                    {
+                        return .misplacedChunk(chunk)
+                    }
                 }
-                return RGBA(r, g, b, UInt8.max)
-            }
-        case .rgba8:
-            output = stride(from: 0, to: raw_data.count, by: 4).map
-            {
-                let r:UInt8 = raw_data[$0    ],
-                    g:UInt8 = raw_data[$0 + 1],
-                    b:UInt8 = raw_data[$0 + 2],
-                    a:UInt8 = raw_data[$0 + 3]
-                return RGBA(r, g, b, a)
-            }
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette = self.palette
-            else
-            {
-                return nil
-            }
 
-            let indices:[Int]
-            if self.color.depth < 8
-            {
-                indices = self.bit_strider.map
-                {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
-                }
-            }
-            else
-            {
-                indices = raw_data.map(Int.init)
-            }
-
-            // check that they don’t exceed the range of the palette
-            guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
-            else
-            {
-                return nil
-            }
-
-            output = indices.map{ palette[$0] }
-        default:
-            fatalError("unreachable")
-        }
-
-        return output
-    }
-
-    @available(*, unavailable, renamed: "rgba16(raw_data:)")
-    public
-    func rgba64(raw_data:[UInt8]) -> [RGBA<UInt16>]? 
-    { 
-        fatalError("unreachable") 
-    }
-
-    public
-    func rgba16(raw_data:[UInt8]) -> [RGBA<UInt16>]?
-    {
-        guard raw_data.count == self.noninterlaced_data_size
-        else
-        {
-            return nil
-        }
-
-        let output:[RGBA<UInt16>]
-        let d:Int = self.color.depth == 8 ? 0 : 1
-        switch self.color
-        {
-        case .grayscale1, .grayscale2, .grayscale4:
-            let quantum:UInt16 = self.quantum16
-            output = self.bit_strider.map
-            {
-                let v:UInt16 = quantum * UInt16(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
-                // test against chroma key
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                {
-                    return RGBA(v, v, v, 0)
-                }
-                return RGBA(v, v, v, UInt16.max)
-            }
-        case .grayscale8, .grayscale16:
-            output = stride(from: 0, to: raw_data.count, by: 1 &<< d).map
-            {
-                let v:UInt16 = UInt16(raw_data[$0         ]) << 8 | UInt16(raw_data[$0 +           d ])
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                {
-                    return RGBA(v, v, v, 0)
-                }
-                return RGBA(v, v, v, UInt16.max)
-            }
-        case .grayscale_a8, .grayscale_a16:
-            output = stride(from: 0, to: raw_data.count, by: 2 &<< d).map
-            {
-                let v:UInt16 = UInt16(raw_data[$0          ]) << 8 | UInt16(raw_data[$0 +            d ]),
-                    a:UInt16 = UInt16(raw_data[$0 + 1 &<< d]) << 8 | UInt16(raw_data[$0 + (1 &<< d | d)])
-                return RGBA(v, v, v, a)
-            }
-        case .rgb8, .rgb16:
-            output = stride(from: 0, to: raw_data.count, by: 3 << d).map
-            {
-                let r:UInt16 = UInt16(raw_data[$0          ]) << 8 | UInt16(raw_data[$0 +            d ]),
-                    g:UInt16 = UInt16(raw_data[$0 + 1 &<< d]) << 8 | UInt16(raw_data[$0 + (1 &<< d | d)]),
-                    b:UInt16 = UInt16(raw_data[$0 + 2 &<< d]) << 8 | UInt16(raw_data[$0 + (2 &<< d | d)])
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
-                {
-                    return RGBA(r, g, b, 0)
-                }
-                return RGBA(r, g, b, UInt16.max)
-            }
-        case .rgba8, .rgba16:
-            output = stride(from: 0, to: raw_data.count, by: 4 << d).map
-            {
-                let r:UInt16 = UInt16(raw_data[$0          ]) << 8 | UInt16(raw_data[$0 +            d ]),
-                    g:UInt16 = UInt16(raw_data[$0 + 1 &<< d]) << 8 | UInt16(raw_data[$0 + (1 &<< d | d)]),
-                    b:UInt16 = UInt16(raw_data[$0 + 2 &<< d]) << 8 | UInt16(raw_data[$0 + (2 &<< d | d)]),
-                    a:UInt16 = UInt16(raw_data[$0 + 3 &<< d]) << 8 | UInt16(raw_data[$0 + (3 &<< d | d)])
-                return RGBA(r, g, b, a)
-            }
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette = self.palette
-            else
-            {
-                return nil
-            }
-
-            let indices:[Int]
-            if self.color.depth < 8
-            {
-                indices = self.bit_strider.map
-                {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
-                }
-            }
-            else
-            {
-                indices = raw_data.map(Int.init)
-            }
-
-            // check that they don’t exceed the range of the palette
-            guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
-            else
-            {
-                return nil
-            }
-
-            output = indices.map
-            {
-                let r:UInt16 = UInt16(palette[$0].r),
-                    g:UInt16 = UInt16(palette[$0].g),
-                    b:UInt16 = UInt16(palette[$0].b),
-                    a:UInt16 = UInt16(palette[$0].a)
-                return RGBA(r << 8 | r, g << 8 | g, b << 8 | b, a << 8 | a)
-            }
-        }
-
-        return output
-    }
-
-    @available(*, unavailable, renamed: "argb8_premultiplied(raw_data:)")
-    public
-    func argb32_premultiplied(raw_data:[UInt8]) -> [UInt32]? 
-    { 
-        fatalError("unreachable") 
-    }
-
-    public
-    func argb8_premultiplied(raw_data:[UInt8]) -> [UInt32]?
-    {
-        guard raw_data.count == self.noninterlaced_data_size
-        else
-        {
-            return nil
-        }
-
-        let output:[UInt32]
-        let d:Int = self.color.depth == 8 ? 0 : 1
-        switch self.color
-        {
-        case .grayscale1, .grayscale2, .grayscale4:
-            let quantum:UInt8 = self.quantum8
-            output = self.bit_strider.map
-            {
-                let v:UInt8 = quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data)
-                // test against chroma key
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                {
-                    return 0
-                }
-                return RGBA(v, v, v, UInt8.max).argb8
-            }
-        case .grayscale8, .grayscale16:
-            output = stride(from: 0, to: raw_data.count, by: 1 &<< d).map
-            {
-                let v:UInt8 = raw_data[$0]
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(v)
-                {
-                    return 0
-                }
-                return RGBA(v, v, v, UInt8.max).argb8
-            }
-        case .grayscale_a8, .grayscale_a16:
-            output = stride(from: 0, to: raw_data.count, by: 2 &<< d).map
-            {
-                let v:UInt8 = raw_data[$0          ],
-                    a:UInt8 = raw_data[$0 + 1 &<< d]
-                return RGBA(v, v, v, a).premultiplied.argb8
-            }
-        case .rgb8, .rgb16:
-            output = stride(from: 0, to: raw_data.count, by: 3 &<< d).map
-            {
-                let r:UInt8 = raw_data[$0          ],
-                    g:UInt8 = raw_data[$0 + 1 &<< d],
-                    b:UInt8 = raw_data[$0 + 2 &<< d]
-                if let chroma_key:RGBA<UInt16> = self.chroma_key, chroma_key.compare_opaque(r, g, b)
-                {
-                    return 0
-                }
-                return RGBA(r, g, b, UInt8.max).argb8
-            }
-        case .rgba8, .rgba16:
-            output = stride(from: 0, to: raw_data.count, by: 4 &<< d).map
-            {
-                let r:UInt8 = raw_data[$0          ],
-                    g:UInt8 = raw_data[$0 + 1 &<< d],
-                    b:UInt8 = raw_data[$0 + 2 &<< d],
-                    a:UInt8 = raw_data[$0 + 3 &<< d]
-                return RGBA(r, g, b, a).premultiplied.argb8
-            }
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette = self.palette
-            else
-            {
-                return nil
-            }
-
-            let indices:[Int]
-            if self.color.depth < 8
-            {
-                indices = self.bit_strider.map
-                {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
-                }
-            }
-            else
-            {
-                indices = raw_data.map(Int.init)
-            }
-
-            // check that they don’t exceed the range of the palette
-            guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
-            else
-            {
-                return nil
-            }
-
-            output = indices.map{ palette[$0].premultiplied.argb8 }
-        }
-
-        return output
-    }
-
-    // UNDOCUMENTED, ignores chroma keys
-    public
-    func expand(raw_data:[UInt8]) -> [UInt8]?
-    {
-        guard raw_data.count == self.noninterlaced_data_size
-        else
-        {
-            return nil
-        }
-
-        var reallocated_data:[UInt8]
-        switch self.color
-        {
-        case .grayscale8, .grayscale16, .rgb8, .rgb16, .grayscale_a8, .grayscale_a16, .rgba8, .rgba16:
-            // these formats always fall on byte boundaries
-            return raw_data
-
-        case .grayscale1, .grayscale2, .grayscale4:
-            let quantum:UInt8 = self.quantum8
-            reallocated_data = self.bit_strider.map
-            {
-                return quantum * PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data)
-            }
-
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette = self.palette
-            else
-            {
-                return nil
-            }
-
-            let indices:[Int]
-            if self.color.depth < 8
-            {
-                indices = self.bit_strider.map
-                {
-                    Int(PNGProperties.bitval_extract(bit_index: $0, bits: self.color.depth, src: raw_data))
-                }
-            }
-            else
-            {
-                indices = raw_data.map(Int.init)
-            }
-
-            // check that they don’t exceed the range of the palette
-            guard indices.map({ $0 < palette.count ? 0 : 1 }).reduce(0, +) == 0
-            else
-            {
-                return nil
-            }
-
-            reallocated_data = []
-            reallocated_data.reserveCapacity(self.width * self.height * 3)
-            for src_index in indices
-            {
-                reallocated_data.append(palette[src_index].r)
-                reallocated_data.append(palette[src_index].g)
-                reallocated_data.append(palette[src_index].b)
-            }
-        }
-
-        return reallocated_data
-    }
-
-    static private
-    func bitval_extract<Source:RandomAccessCollection>(bit_index:Int, bits:Int, src:Source) -> UInt8
-    where Source.Iterator.Element == UInt8, Source.Index == Int
-    {
-        let byte_offset:Int  = bit_index >> 3
-        let bit_offset:UInt8 = UInt8(bit_index & 7)
-        var src_byte:UInt8   = src[byte_offset]
-        /* mask out left */
-        src_byte <<= bit_offset
-        /* mask out right */
-        src_byte >>= (8 - UInt8(bits))
-        return src_byte
-    }
-}
-extension PNGProperties:CustomStringConvertible
-{
-    public
-    var description:String
-    {
-        return "PNG properties(width: \(self.width), height: \(self.height), color: \(self.color), interlaced: \(self.interlaced))"
-    }
-}
-
-struct PNGConditions
-{
-    private
-    var last_valid_chunk:PNGChunk = PNGChunk.__FIRST__,
-        seen:Set<PNGChunk>        = []
-
-    var color:PNGProperties.ColorFormat?
-
-    mutating
-    func update(_ chunk:PNGChunk) throws
-    {
-        if self.last_valid_chunk == .__FIRST__
-        {
-            guard chunk == .IHDR
-            else
-            {
-                throw PNGReadError.MissingHeaderError
-            }
-
-            self.last_valid_chunk = .IHDR
-            self.seen.insert(.IHDR)
-            return
-        }
-
-        guard (self.last_valid_chunk != .IEND) || (chunk == .IEND && !self.seen.contains(.IDAT))
-        else
-        {
-            throw PNGReadError.PrematureIENDError
-        }
-
-        guard let color_code:UInt8 = self.color?.code
-        else
-        {
-            throw PNGReadError.MissingHeaderError
-        }
-
-
-        if chunk ==                                                                       .tRNS
-        {
-            guard color_code & 0b100 == 0 // tRNS forbidden in alpha’d formats
-            else
-            {
-                throw PNGReadError.IllegalChunkError(chunk)
-            }
-        }
-
-        // PLTE must come before bKGD, hIST, and tRNS
-        if chunk ==        .PLTE
-        {
-            guard color_code & 0b010 != 0 // PLTE requires non-grayscale format
-            else
-            {
-                throw PNGReadError.IllegalChunkError(chunk)
-            }
-
-            if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
-            {
-                throw PNGReadError.ChunkOrderingError(chunk)
-            }
-        }
-
-        // these chunks must occur before PLTE
-        switch chunk
-        {
-        case                             .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
-            if self.seen.contains(.PLTE)
-            {
-                throw PNGReadError.ChunkOrderingError(chunk)
-            }
-        default:
-            break
-        }
-
-        // these chunks must occur before IDAT
-        switch chunk
-        {
-        case               .PLTE,        .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
-            if self.seen.contains(.IDAT)
-            {
-                throw PNGReadError.ChunkOrderingError(chunk)
-            }
-        default:
-            break
-        }
-
-        switch chunk
-        {
-        // these chunks cannot duplicate
-        case        .IHDR, .PLTE, .IEND, .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS, .pHYs, .sPLT, .tIME:
-            if self.seen.contains(chunk)
-            {
-                throw PNGReadError.DuplicateChunkError(chunk)
-            }
-
-        // IDAT blocks much be consecutive
-        case .IDAT:
-            if self.last_valid_chunk != .IDAT && self.seen.contains(.IDAT)
-            {
-                throw PNGReadError.ChunkOrderingError(chunk)
-            }
-
-            if color_code == 3 && !self.seen.contains(.PLTE)
-            {
-                throw PNGReadError.MissingPalatteError
-            }
-        default:
-            break
-        }
-        self.last_valid_chunk = chunk
-        self.seen.insert(chunk)
-    }
-}
-
-struct ScanlineIterator
-{
-    private
-    let sub_array_bounds:[(i:Int, j:Int)],
-        interlaced:Bool
-
-    private
-    var adam_i:Int = 0,
-        scanlines_remaining:Int,
-        use_zero_line:UInt8 = 0b10
-
-    private(set)
-    var bytes_per_scanline:Int
-
-    var first_scanline:Bool
-    {
-        return self.use_zero_line != 0
-    }
-
-    init(properties:PNGProperties)
-    {
-        if properties.interlaced
-        {
-            self.scanlines_remaining = properties.sub_array_bounds[0].i
-            self.bytes_per_scanline  = properties.sub_array_bounds[0].j
-            self.interlaced = true
-        }
-        else
-        {
-            self.scanlines_remaining = properties.sub_array_bounds[7].i
-            self.bytes_per_scanline  = properties.sub_array_bounds[7].j
-            self.interlaced = false
-        }
-        self.sub_array_bounds = properties.sub_array_bounds
-    }
-
-    mutating
-    func update_scanline_size() -> Bool // return false if iteration has reached the end
-    {
-        guard self.scanlines_remaining > 0
-        else
-        {
-            guard self.interlaced
-            else
-            {
-                return false
-            }
-
-            repeat
-            {
-                self.adam_i += 1
-            } while self.sub_array_bounds[self.adam_i].i == 0 || self.sub_array_bounds[self.adam_i].j == 0
-
-            guard self.adam_i < 7
-            else
-            {
-                return false
-            }
-
-            self.scanlines_remaining = self.sub_array_bounds[self.adam_i].i - 1
-            self.bytes_per_scanline  = self.sub_array_bounds[self.adam_i].j
-            self.use_zero_line       = 0b01
-            return true
-        }
-
-        self.use_zero_line >>= 1 // the first_scanline flag must be set *after* the first call to this function
-        self.scanlines_remaining -= 1
-        return true
-    }
-
-    func make_unmanaged_zero_line() -> UnsafeBufferPointer<UInt8>
-    {
-        let n:Int = self.sub_array_bounds[self.interlaced ? 6 : 7].j
-        let base_address = UnsafeMutablePointer<UInt8>.allocate(capacity: n)
-        #if swift(>=4.1)
-            base_address.initialize(repeating: 0, count: n)
-        #else
-            base_address.initialize(to: 0, count: n)
-        #endif
-        return UnsafeBufferPointer<UInt8>(start: base_address, count: n)
-    }
-}
-
-struct Decoder
-{
-    let properties:PNGProperties
-
-    private
-    var conditions:PNGConditions = PNGConditions(),
-        current_chunk:PNGChunk   = .__FIRST__,
-        stream_exhausted:Bool    = false
-
-    private
-    let z_iterator:ZInflator
-
-    public
-    init(stream:FilePointer, recognizing recognized:Set<PNGChunk>) throws
-    {
-        // check if it's, you know, actually a PNG
-        guard try Decoder.read_buffer(from: stream, length: 8) == PNG_SIGNATURE
-        else
-        {
-            throw PNGReadError.FiletypeError
-        }
-
-        // read the image header
-
-        guard let (chunk, chunk_data) = try Decoder.read_chunk(from: stream, conditions: &self.conditions, recognizing: Set([.IHDR]))
-        else
-        {
-            throw PNGReadError.MissingHeaderError
-        }
-        assert(chunk == .IHDR) // this should already be verified from the PNG conditions struct
-        self.current_chunk = .IHDR
-        var properties = try PNGProperties(chunk_data)
-
-        self.conditions.color = properties.color
-        self.z_iterator       = try ZInflator()
-
-        // read non-IDAT chunks
-        //                                     v— recognized generally contains an .IDAT enum to ensure we don’t miss the first .IDAT
-        let pre_idat_chunks:Set<PNGChunk> = recognized.union(properties.color.code == 3 ? [.PLTE, .IEND] : [.IEND])
-
-        outer_loop: while true
-        {
-            if let (chunk, chunk_data) = try Decoder.read_chunk(from: stream, conditions: &self.conditions, recognizing: pre_idat_chunks)
-            {
-                self.current_chunk = chunk
-
+                // these chunks must occur before PLTE
                 switch chunk
                 {
-                    case .PLTE:
-                        try properties.set_palette(chunk_data)
+                    case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
+                        if self.seen.contains(.PLTE)
+                        {
+                            return .misplacedChunk(chunk)
+                        }
+                        
+                        fallthrough 
+                    
+                    // these chunks (and the ones in previous cases) must occur before IDAT
+                    case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
+                        if self.seen.contains(.IDAT)
+                        {
+                            return .misplacedChunk(chunk)
+                        }
+                        
+                        fallthrough 
+                    
+                    // these chunks (and the ones in previous cases) cannot duplicate
+                    case    .IHDR,                                                                                     .tIME:
+                        if self.seen.contains(chunk)
+                        {
+                            return .duplicateChunk(chunk)
+                        }
+                    
+                    
+                    // IDAT blocks much be consecutive
                     case .IDAT:
-                        self.z_iterator.add_input(chunk_data)
-                        break outer_loop // we have a check in the conditions preventing IEND from coming early
-                    case .IEND:
-                        break outer_loop
+                        if  self.last != .IDAT, 
+                            self.seen.contains(.IDAT)
+                        {
+                            return .misplacedChunk(.IDAT)
+                        }
 
-                    case .tRNS:
-                        try properties.set_transparency(chunk_data)
+                        if  self.format.isIndexed, 
+                           !self.seen.contains(.PLTE)
+                        {
+                            return .missingChunk(.PLTE)
+                        }
+                        
                     default:
-                        fputs("Reading chunk \(chunk) is not yet supported. tragic\n", stderr)
+                        break
                 }
+                
+                self.seen.insert(chunk)
+                self.last = chunk
+                return nil
             }
         }
-
-        self.properties = properties
+    }
+    
+    public 
+    enum ReadError:Error
+    {
+        case incompleteChunk,  
+            
+             syntaxError(message: String), 
+             
+             missingSignature, 
+             prematureIEND, 
+             corruptedChunk, 
+             illegalChunk(Chunk), 
+             misplacedChunk(Chunk), 
+             duplicateChunk(Chunk), 
+             missingChunk(Chunk)
+    }
+    
+    public 
+    enum WriteError:Error 
+    {
+        case bufferCount
     }
 
-    mutating
-    func decompress_scanline(stream:FilePointer, dest:UnsafeMutableBufferPointer<UInt8>) throws -> UInt8
+    // empty struct to namespace our chunk iteration methods. we can’t store the 
+    // data source as it may have reference semantics even though implemented as 
+    // a struct 
+    public 
+    struct ChunkIterator<DataInterface> 
     {
-        var filter_byte:UInt8 = 0
-        while true
+    }    
+}
+
+extension PNG.ChunkIterator where DataInterface:DataSource 
+{
+    public static 
+    func begin(source:inout DataInterface) -> PNG.ChunkIterator<DataInterface>? 
+    {
+        guard let bytes:[UInt8] = source.read(count: PNG.signature.count), 
+                  bytes == PNG.signature
+        else 
         {
-            if let output_byte:UInt8 = try self.z_iterator.get_output_byte(sentinel: &self.stream_exhausted)
-            {
-                filter_byte = output_byte
-                break;
-            }
-
-            guard !self.stream_exhausted
-            else
-            {
-                throw PNGReadError.PrematureEOSError
-            }
-
-            // if the inflator is out of input
-            guard let (_, chunk_data) = try Decoder.read_chunk(from: stream, conditions: &self.conditions, recognizing: Set([.IDAT]))
-            else
-            {
-                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunk
-                throw PNGReadError.ChunkOrderingError(.__INTERRUPTOR__)
-            }
-            self.z_iterator.add_input(chunk_data)
+            return nil 
         }
-
-        self.z_iterator.set_output(dest: dest)
-        while try self.z_iterator.get_output_bytes(sentinel: &self.stream_exhausted) > 0
-        {
-            guard !self.stream_exhausted
-            else
-            {
-                throw PNGReadError.PrematureEOSError
-            }
-
-            // if the inflator is out of input
-            guard let (_, chunk_data) = try Decoder.read_chunk(from: stream, conditions: &self.conditions, recognizing: Set([.IDAT]))
-            else
-            {
-                // if something besides an IDAT chunk shows up, that’s an invalid PNGChunk
-                throw PNGReadError.ChunkOrderingError(.__INTERRUPTOR__)
-            }
-            self.z_iterator.add_input(chunk_data)
-        }
-
-        return filter_byte
+        
+        return .init()
     }
-
-    // make NO assumptions about the `.count` property of the reference line;
-    // it is often greater than the size of the actual data
-    func defilter_scanline(dest:UnsafeMutableBufferPointer<UInt8>, reference:UnsafeBufferPointer<UInt8>, filter:UInt8)
+    
+    public mutating 
+    func next(source:inout DataInterface) -> (name:Math<UInt8>.V4, data:[UInt8]?)? 
     {
-        switch filter
+        guard let header:[UInt8] = source.read(count: 8) 
+        else 
         {
-        case 0:
-            break
-        case 1:
-            Decoder.defilter_sub    (dest, bpp: self.properties.bpp)
-        case 2:
-            Decoder.defilter_up     (dest, previous_line: reference)
-        case 3:
-            Decoder.defilter_average(dest, previous_line: reference, bpp: self.properties.bpp)
-        case 4:
-            Decoder.defilter_paeth  (dest, previous_line: reference, bpp: self.properties.bpp)
-        default:
-            break // won’t happen
+            return nil 
         }
-    }
-
-    private static
-    func defilter_sub(_ buffer:UnsafeMutableBufferPointer<UInt8>, bpp:Int)
-    {
-        for i in bpp..<buffer.count
+        
+        let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self), 
+            name:Math<UInt8>.V4 = (header[4], header[5], header[6], header[7]) 
+        
+        guard var data:[UInt8] = source.read(count: length + MemoryLayout<UInt32>.size)
+        else 
         {
-            buffer[i] = buffer[i] &+ buffer[i - bpp]
+            return (name, nil)
         }
-    }
-
-    private static
-    func defilter_up(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:UnsafeBufferPointer<UInt8>)
-    {
-        for i in 0..<buffer.count
+        
+        let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
+        
+        data.removeLast(4)
+        
+        let testsum:UInt  = header.suffix(4).withUnsafeBufferPointer
         {
-            buffer[i] = buffer[i] &+ previous_line[i]
-        }
-    }
-
-    private static
-    func defilter_average(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
-    {
-        for i in 0..<bpp
+            return crc32(crc32(0, $0.baseAddress, 4), data, UInt32(length))
+        } 
+        guard testsum == checksum
+        else 
         {
-            buffer[i] = buffer[i] &+ previous_line[i] >> 1
+            return (name, nil)
         }
-        for i in bpp..<buffer.count
-        {
-            buffer[i] = buffer[i] &+ UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i])) >> 1)
-            // the second part will never overflow because of the right shift
-        }
-    }
-
-    private static
-    func defilter_paeth(_ buffer:UnsafeMutableBufferPointer<UInt8>, previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
-    {
-        for i in 0..<bpp
-        {
-            buffer[i] = buffer[i] &+ paeth(0, previous_line[i], 0)
-        }
-        for i in bpp..<buffer.count
-        {
-            buffer[i] = buffer[i] &+ paeth(buffer[i - bpp], previous_line[i], previous_line[i - bpp])
-        }
-    }
-
-    private static
-    func read_buffer(from stream:FilePointer, length:Int) throws -> [UInt8]
-    {
-        var buffer = [UInt8](repeating: 0, count: length)
-        guard fread(&buffer, 1, length, stream) == length
-        else
-        {
-            throw PNGReadError.IncompleteChunkError
-        }
-        return buffer
-    }
-
-    private static
-    func skip_buffer(from stream:FilePointer, length:Int) throws
-    {
-        if length <= 128 // most regulated-length png chunks are shorter than 128 bytes
-        {
-            let _ = try Decoder.read_buffer(from: stream, length: length + 4) // 4 bytes for CRC32
-        }
-        else
-        {
-            fseek(stream, length, SEEK_CUR)
-            let _ = try Decoder.read_buffer(from: stream, length: 4) // read a throwaway buffer, also corresponds to CRC32
-        }
-    }
-
-    // this function only used for error messages
-    private static
-    func buffer_to_string(_ buffer:[UInt8]) -> String
-    {
-        #if swift(>=4.1)
-            return String(buffer.compactMap(Unicode.Scalar.init).map(Character.init))
-        #else
-            return String(buffer.flatMap(Unicode.Scalar.init).map(Character.init))
-        #endif
-    }
-
-    private static
-    func read_chunk(from stream:FilePointer, conditions:inout PNGConditions, recognizing recognized:Set<PNGChunk>)
-    throws -> (chunk:PNGChunk, chunk_data:[UInt8])?
-    {
-        // if any of our chunks are greater than 2**31 bytes long, we are fucked
-        let ulength:UInt32 = quad_byte_to_uint32(try Decoder.read_buffer(from: stream, length: 4))
-        let length:Int     = Int(ulength)
-
-        /* — CHUNK TYPE READ AND VALIDATION — */
-        let chunk_name_buffer = try Decoder.read_buffer(from: stream, length: 4)
-        guard let chunk = PNGChunk(buffer: chunk_name_buffer)
-        else
-        {
-            guard (chunk_name_buffer[0] & (1 << 5)) != 0
-            else
-            {
-                throw PNGReadError.UnexpectedCriticalChunkError(Decoder.buffer_to_string(chunk_name_buffer))
-            }
-            guard (chunk_name_buffer[2] & (1 << 5)) == 0
-            else
-            {
-                throw PNGReadError.PNGSyntaxError("Third byte of chunk type \(Decoder.buffer_to_string(chunk_name_buffer)) must have bit 5 set to 0.")
-            }
-
-            try Decoder.skip_buffer(from: stream, length: length)
-            // ignore unrecognized chunk
-            fputs("unrecognized: \(Decoder.buffer_to_string(chunk_name_buffer))", stderr)
-            return nil
-        }
-        // all the recognized chunks have valid names so there’s no need to check them
-
-        // check ordering conditions
-        try conditions.update(chunk)
-        if recognized.contains(chunk)
-        {
-            let chunk_data = try Decoder.read_buffer(from: stream, length: length)
-
-            let stored_chunk_crc:UInt = UInt(quad_byte_to_uint32(try Decoder.read_buffer(from: stream, length: 4)))
-            var calculated_crc:UInt   = crc32(0, chunk_name_buffer, 4)
-                calculated_crc        = crc32(calculated_crc, chunk_data, ulength)
-            guard stored_chunk_crc == calculated_crc
-            else
-            {
-                throw PNGReadError.DataCorruptionError(chunk)
-            }
-            return (chunk, chunk_data)
-        }
-        else
-        {
-            try Decoder.skip_buffer(from: stream, length: length)
-            return nil
-        }
+        
+        return (name, data)
     }
 }
 
-public final
-class PNGDecoder
+extension PNG.ChunkIterator where DataInterface:DataDestination 
 {
-    private
-    var decoder:Decoder,
-        scanline_iter:ScanlineIterator,
-        stream:FilePointer,
-
-        reference_line:[UInt8] = []
-
-    private
-    let zero_line:UnsafeBufferPointer<UInt8>
-
-    public
-    var properties:PNGProperties { return self.decoder.properties }
-
-    public
-    init(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws
+    public static 
+    func begin(destination:inout DataInterface) -> PNG.ChunkIterator<DataInterface> 
     {
-        if let stream:FilePointer = fopen(posix_path(path), "rb")
+        destination.write(PNG.signature)
+        return .init()
+    }
+    
+    public mutating 
+    func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface) 
+    {
+        let header:[UInt8] = .store(data.count, asBigEndian: UInt32.self) 
+        + 
+        [name.name.0, name.name.1, name.name.2, name.name.3]
+        
+        destination.write(header)
+        destination.write(data)
+        
+        let partial:UInt = header.suffix(4).withUnsafeBufferPointer 
         {
-            self.stream = stream
+            crc32(0, $0.baseAddress, 4)
         }
-        else
-        {
-            throw PNGReadError.FileError(posix_path(path))
-        }
-
-        self.decoder        = try Decoder(stream: stream, recognizing: recognized)
-        self.scanline_iter  = ScanlineIterator(properties: self.decoder.properties)
-        self.zero_line      = self.scanline_iter.make_unmanaged_zero_line()
+        
+        // crc has 32 significant bits, padded out to a UInt
+        let crc:UInt = crc32(partial, data, UInt32(data.count))
+        
+        destination.write(.store(crc, asBigEndian: UInt32.self))
     }
-
-    deinit
-    {
-        #if swift(>=4.1)
-                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
-        #else
-                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
-        #endif
-        fclose(self.stream)
-    }
-
-    public
-    func next_scanline() throws -> [UInt8]?
-    {
-        guard self.scanline_iter.update_scanline_size()
-        else
-        {
-            return nil
-        }
-
-        var buffer:[UInt8] = [UInt8](repeating: 0, count: self.scanline_iter.bytes_per_scanline)
-        try buffer.withUnsafeMutableBufferPointer
-        {
-            (bp) in
-
-            let filter:UInt8 = try self.decoder.decompress_scanline(stream: self.stream, dest: bp)
-            if self.scanline_iter.first_scanline
-            {
-                self.decoder.defilter_scanline(dest: bp, reference: self.zero_line, filter: filter)
-            }
-            else
-            {
-                self.reference_line.withUnsafeBufferPointer
-                {
-                    self.decoder.defilter_scanline(dest: bp, reference: $0, filter: filter)
-                }
-            }
-        }
-
-        self.reference_line = buffer
-        return buffer
-    }
-}
-
-struct Encoder
-{
-    private
-    var chunk_data:[UInt8],
-        chunk_capacity_remaining:Int
-
-    private
-    let bpp:Int,
-        z_iterator:ZDeflator
-
-    init(stream:FilePointer, properties:PNGProperties, chunk_size:Int) throws
-    {
-        self.bpp            = properties.bpp
-        self.z_iterator     = try ZDeflator()
-        self.chunk_data     = [UInt8](repeating: 0, count: chunk_size)
-        self.chunk_capacity_remaining = chunk_size
-
-        try Encoder.write_buffer(to: stream, buffer: PNG_SIGNATURE)
-        try Encoder.write_chunk(to: stream, chunk_data: properties.serialize_header(), chunk: .IHDR)
-
-        if let bytes:[UInt8] = properties.serialize_palette()
-        {
-            try Encoder.write_chunk(to: stream, chunk_data: bytes, chunk: .PLTE)
-        }
-
-        if let bytes:[UInt8] = properties.serialize_transparency()
-        {
-            try Encoder.write_chunk(to: stream, chunk_data: bytes, chunk: .tRNS)
-        }
-    }
-
-    // make NO assumptions about the `.count` property of the reference line;
-    // it is often greater than the size of the actual data
-    func filter_scanline(src:UnsafeBufferPointer<UInt8>, reference:UnsafeBufferPointer<UInt8>)
-    {
-        var filter_data = [[UInt8]](repeating: [0] + src, count: 5)
-
-        Encoder.filter_sub    (&filter_data[1], bpp: self.bpp)
-        Encoder.filter_up     (&filter_data[2], previous_line: reference)
-        Encoder.filter_average(&filter_data[3], previous_line: reference, bpp: self.bpp)
-        Encoder.filter_paeth  (&filter_data[4], previous_line: reference, bpp: self.bpp)
-
-        /* pick the most effective filter */
-        let scores:[Int] = filter_data.map(Encoder.score)
-        var min_filter:Int = 0
-        var min_score:Int = Int.max
-        for (i, score) in scores.enumerated()
-        {
-            if score < min_score
-            {
-                min_score = score
-                min_filter = i
-            }
-        }
-
-        filter_data[min_filter][0] = UInt8(min_filter)
-        self.z_iterator.add_input(filter_data[min_filter])
-    }
-
-    mutating
-    func compress_scanline(stream:FilePointer, finish:Bool) throws
-    {
-        var stream_exhausted:Bool = false
-        let s = self
-        repeat
-        {
-            try self.chunk_data.withUnsafeMutableBufferPointer
-            {
-                let dest_base:UnsafeMutablePointer<UInt8> = $0.baseAddress! + ($0.count - self.chunk_capacity_remaining)
-                let dest = UnsafeMutableBufferPointer<UInt8>(start: dest_base, count: self.chunk_capacity_remaining)
-                s.z_iterator.set_output(dest: dest)
-                // like with the Inflator, the above is tracked internally by the zstream, but we can’t guarantee
-                // the stability of the underlying `chunk_data` buffer so we recalculate the destination each cycle.
-
-                self.chunk_capacity_remaining = Int(try s.z_iterator.get_output(sentinel: &stream_exhausted, finish: finish))
-                assert(!stream_exhausted || finish) // the_end cannot come yet
-            }
-        } while try self.attempt_emit_idat_chunk(stream: stream)
-        assert(stream_exhausted || !finish)
-    }
-
-    mutating
-    func finish(stream:FilePointer) throws
-    {
-        try self.compress_scanline(stream: stream, finish: true)
-
-        if self.chunk_capacity_remaining != self.chunk_data.count // meaning, there is still data in the buffer
-        {
-            let remnant:[UInt8] = [UInt8](self.chunk_data.dropLast(self.chunk_capacity_remaining))
-            try Encoder.write_chunk(to: stream, chunk_data: remnant, chunk: .IDAT)
-        }
-        try Encoder.write_chunk(to: stream, chunk_data: [], chunk: .IEND)
-    }
-
-    private mutating
-    func attempt_emit_idat_chunk(stream:FilePointer) throws -> Bool
-    {
-        if self.chunk_capacity_remaining == 0
-        {
-            /* emit chunk */
-            try Encoder.write_chunk(to: stream, chunk_data: self.chunk_data, chunk: .IDAT)
-            self.chunk_capacity_remaining = self.chunk_data.count
-            return true
-        }
-        else
-        {
-            return false
-        }
-    }
-
-    /* these are literally exactly the same as the defilter functions except backwards */
-    private static
-    func filter_sub(_ buffer:inout [UInt8], bpp:Int)
-    {
-        for i in ((1 + bpp)..<buffer.count).reversed()
-        {
-            buffer[i] = buffer[i] &- buffer[i - bpp]
-        }
-    }
-
-    private static
-    func filter_up(_ buffer:inout [UInt8], previous_line:UnsafeBufferPointer<UInt8>)
-    {
-        for i in 1..<buffer.count // we do not need to reverse here
-        {
-            buffer[i] = buffer[i] &- previous_line[i - 1]
-        }
-    }
-
-    private static
-    func filter_average(_ buffer:inout [UInt8], previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
-    {
-        for i in ((1 + bpp)..<buffer.count).reversed()
-        {
-            buffer[i] = buffer[i] &- UInt8((UInt16(buffer[i - bpp]) + UInt16(previous_line[i - 1])) >> 1) // the second part will never overflow because of the right shift
-        }
-        for i in 1..<(1 + bpp) // we do not need to reverse here
-        {
-            buffer[i] = buffer[i] &- previous_line[i - 1] >> 1
-        }
-    }
-
-    private static
-    func filter_paeth(_ buffer:inout [UInt8], previous_line:UnsafeBufferPointer<UInt8>, bpp:Int)
-    {
-
-        for i in ((1 + bpp)..<buffer.count).reversed()
-        {
-            buffer[i] = buffer[i] &- paeth(buffer[i - bpp], previous_line[i - 1], previous_line[i - 1 - bpp])
-        }
-        for i in 1..<(1 + bpp)
-        {
-            buffer[i] = buffer[i] &- paeth(0, previous_line[i - 1], 0)
-        }
-    }
-
-    private static
-    func score(_ filtered:[UInt8]) -> Int
-    {
-        guard filtered.count > 0
-        else
-        {
-            return 0
-        }
-        var changes:Int = 0
-        var last:UInt8 = filtered[0]
-        for byte in filtered.dropFirst()
-        {
-            changes += byte == last ? 0 : 1
-            last = byte
-        }
-        return changes
-    }
-
-    private static
-    func write_buffer(to stream:FilePointer, buffer:[UInt8]) throws
-    {
-        guard fwrite(buffer, 1, buffer.count, stream) == buffer.count
-        else
-        {
-            throw PNGWriteError.FileWriteError
-        }
-    }
-
-    private static
-    func write_chunk(to stream:FilePointer, chunk_data:[UInt8], chunk:PNGChunk) throws
-    {
-        try Encoder.write_buffer(to: stream, buffer: uint32_to_quad_byte(UInt32(chunk_data.count))) // length section
-        let chunk_name_buffer:[UInt8] = [UInt8](chunk.rawValue.utf8)
-        assert(chunk_name_buffer.count == 4)
-        try Encoder.write_buffer(to: stream, buffer: chunk_name_buffer) // chunk type section
-        try Encoder.write_buffer(to: stream, buffer: chunk_data) // chunk data section
-        var calculated_crc:UInt = crc32(0, chunk_name_buffer, 4)
-            calculated_crc      = crc32(calculated_crc, chunk_data, UInt32(chunk_data.count))
-        try Encoder.write_buffer(to: stream, buffer: uint32_to_quad_byte(UInt32(calculated_crc))) // crc section
-        // this Int() cast only works because crc is a 32 bit value padded to 64 bits
-    }
-}
-
-public final
-class PNGEncoder
-{
-    private
-    var encoder:Encoder,
-        scanline_iter:ScanlineIterator,
-        stream:FilePointer,
-
-        reference_line:[UInt8] = []
-
-    private
-    let zero_line:UnsafeBufferPointer<UInt8>
-
-    public
-    init(path:String, properties:PNGProperties, chunk_size:Int = 1 << 16) throws
-    {
-        if let stream = fopen(posix_path(path), "wb")
-        {
-            self.stream = stream
-        }
-        else
-        {
-            throw PNGReadError.FileError(posix_path(path))
-        }
-
-        self.encoder       = try Encoder(stream: self.stream, properties: properties, chunk_size: chunk_size)
-        self.scanline_iter = ScanlineIterator(properties: properties)
-        self.zero_line     = self.scanline_iter.make_unmanaged_zero_line()
-    }
-
-    deinit
-    {
-        #if swift(>=4.1)
-                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate()
-        #else
-                UnsafeMutablePointer(mutating: self.zero_line.baseAddress!).deallocate(capacity: self.zero_line.count)
-        #endif 
-        fclose(self.stream)
-    }
-
-    public
-    func add_scanline(_ src:[UInt8]) throws
-    {
-        guard self.scanline_iter.update_scanline_size(), src.count == self.scanline_iter.bytes_per_scanline
-        else
-        {
-            throw PNGWriteError.DimemsionError
-        }
-
-        src.withUnsafeBufferPointer
-        {
-            bp in
-
-            if self.scanline_iter.first_scanline
-            {
-                self.encoder.filter_scanline(src: bp, reference: self.zero_line)
-            }
-            else
-            {
-                self.reference_line.withUnsafeBufferPointer
-                {
-                    self.encoder.filter_scanline(src: bp, reference: $0)
-                }
-            }
-        }
-
-        self.reference_line = src
-        try self.encoder.compress_scanline(stream: self.stream, finish: false)
-    }
-
-    public
-    func finish() throws
-    {
-        try self.encoder.finish(stream: self.stream)
-    }
-}
-
-// UNDOCUMENTED
-public
-func rgba_from_argb8(_ argb8:[UInt32]) -> [UInt8]
-{
-    var rgba:[UInt8] = []
-    rgba.reserveCapacity(argb8.count * 4)
-    for argb:UInt32 in argb8
-    {
-        rgba.append(UInt8(truncatingIfNeeded: argb >> 16))
-        rgba.append(UInt8(truncatingIfNeeded: argb >> 8 ))
-        rgba.append(UInt8(truncatingIfNeeded: argb      ))
-        rgba.append(UInt8(truncatingIfNeeded: argb >> 24))
-    }
-    return rgba
-}
-
-public
-func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) throws -> ([UInt8], PNGProperties)
-{
-    guard let stream:FilePointer = fopen(posix_path(path), "rb")
-    else
-    {
-        throw PNGReadError.FileError(posix_path(path))
-    }
-    defer { fclose(stream) }
-
-    var decoder:Decoder = try Decoder(stream: stream, recognizing: recognized)
-    var buffer:[UInt8]  = [UInt8](repeating: 0, count: decoder.properties.data_size)
-    try buffer.withUnsafeMutableBufferPointer
-    {
-        bp in
-
-        var scanline_iter:ScanlineIterator = ScanlineIterator(properties: decoder.properties),
-            offset:Int = 0
-        let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
-        defer
-        {
-            #if swift(>=4.1)
-                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
-            #else
-                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
-            #endif
-        }
-
-        var reference_line:UnsafeBufferPointer<UInt8> = zero_line
-        while scanline_iter.update_scanline_size()
-        {
-            let dest = UnsafeMutableBufferPointer<UInt8>(start: bp.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
-            //print("allocated: \(bp.baseAddress!  ) – \(bp.baseAddress! + bp.count) , offset = \(offset)/\(buffer_size)")
-            //print("write to : \(dest.baseAddress!) – \(dest.baseAddress! + dest.count) (\(_count))")
-            let filter:UInt8 = try decoder.decompress_scanline(stream: stream, dest: dest)
-            if scanline_iter.first_scanline
-            {
-                reference_line = zero_line
-            }
-
-            decoder.defilter_scanline(dest: dest, reference: reference_line, filter: filter)
-
-            reference_line = UnsafeBufferPointer(start: dest.baseAddress, count: dest.count)
-            offset += scanline_iter.bytes_per_scanline
-        }
-    }
-
-    return (buffer, decoder.properties)
-}
-
-public
-func png_encode(path:String, raw_data:UnsafeBufferPointer<UInt8>, properties:PNGProperties, chunk_size:Int = 1 << 16) throws
-{
-    guard raw_data.count == properties.data_size
-    else
-    {
-        throw PNGWriteError.DimemsionError
-    }
-
-    guard let stream:FilePointer = fopen(posix_path(path), "wb")
-    else
-    {
-        throw PNGReadError.FileError(posix_path(path))
-    }
-    defer { fclose(stream) }
-
-    var encoder:Encoder                = try Encoder(stream: stream, properties: properties, chunk_size: chunk_size),
-        scanline_iter:ScanlineIterator = ScanlineIterator(properties: properties)
-
-    var offset:Int = 0
-    let zero_line:UnsafeBufferPointer<UInt8> = scanline_iter.make_unmanaged_zero_line()
-    defer
-    {
-            #if swift(>=4.1)
-                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate()
-            #else
-                UnsafeMutablePointer(mutating: zero_line.baseAddress!).deallocate(capacity: zero_line.count)
-            #endif
-    }
-
-    var reference_line:UnsafeBufferPointer<UInt8> = zero_line
-    while scanline_iter.update_scanline_size()
-    {
-        let src = UnsafeBufferPointer<UInt8>(start: raw_data.baseAddress! + offset, count: scanline_iter.bytes_per_scanline)
-        if scanline_iter.first_scanline
-        {
-            reference_line = zero_line
-        }
-
-        encoder.filter_scanline(src: src, reference: reference_line)
-
-        reference_line = src
-        offset += scanline_iter.bytes_per_scanline
-
-        try encoder.compress_scanline(stream: stream, finish: false)
-    }
-
-    try encoder.finish(stream: stream)
-}
-
-public
-func png_encode(path:String, raw_data:[UInt8], properties:PNGProperties, chunk_size:Int = 1 << 16) throws
-{
-    try raw_data.withUnsafeBufferPointer
-    {
-        try png_encode(path: path, raw_data: $0, properties: properties, chunk_size: chunk_size)
-    }
-}
-
-class ZIterator
-{
-    var stream:z_stream_s
-    // strongref the input buffer to prevent it from being deallocated prematurely
-    var input_buffer:[UInt8] = []
-
-    init() throws
-    {
-        self.stream          = z_stream()
-        self.stream.zalloc   = nil
-        self.stream.zfree    = nil
-        self.stream.opaque   = nil
-        self.stream.avail_in = 0
-        self.stream.next_in  = nil
-    }
-
-    final
-    func add_input(_ input:[UInt8])
-    {
-        self.input_buffer    = input
-        self.stream.avail_in = CUnsignedInt(input.count)
-        //self.stream.next_in  = UnsafeMutablePointer<UInt8>(mutating: self.input_ref) // this is memory-unsafe since it could still get deallocated
-    }
-
-    final
-    func set_output(dest:UnsafeMutableBufferPointer<UInt8>)
-    {
-        self.stream.avail_out = CUnsignedInt(dest.count)
-        self.stream.next_out  = dest.baseAddress
-    }
-}
-
-final
-class ZInflator : ZIterator
-// we cannot lower this to a struct because otherwise Swift clobbers Zlib’s internal state with its value semantics
-{
-    override
-    init() throws
-    {
-        try super.init()
-        guard inflateInit(&self.stream) == Z_OK
-        else
-        {
-            throw PNGDecompressionError.StreamError
-        }
-    }
-
-    deinit
-    {
-        inflateEnd(&self.stream)
-    }
-
-    func get_output_byte(sentinel:inout Bool) throws -> UInt8?
-    {
-        let _byte = UnsafeMutablePointer<UInt8>.allocate(capacity: 1)
-        #if swift(>=4.1)
-            defer { _byte.deallocate() }
-        #else
-            defer { _byte.deallocate(capacity: 1) }
-        #endif
-
-        self.stream.avail_out = 1
-        self.stream.next_out = _byte
-
-        var inflate_status:CInt = 0
-        self.input_buffer.withUnsafeMutableBufferPointer
-        {
-            self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
-            inflate_status       = inflate(&self.stream, Z_NO_FLUSH)
-        }
-
-        assert(inflate_status != Z_STREAM_ERROR) // this should never happen
-        switch inflate_status
-        {
-            case Z_NEED_DICT:
-                throw PNGDecompressionError.MissingDictionaryError
-            case Z_DATA_ERROR:
-                throw PNGDecompressionError.DataError
-            case Z_MEM_ERROR:
-                throw PNGDecompressionError.MemoryError
-            default:
-                break
-        }
-
-        sentinel = inflate_status == Z_STREAM_END
-
-        guard self.stream.avail_out == 0
-        else
-        {
-            return nil
-        }
-
-        return _byte.pointee
-    }
-
-    func get_output_bytes(sentinel:inout Bool) throws -> CUnsignedInt
-    {
-        var inflate_status:CInt = 0
-        self.input_buffer.withUnsafeMutableBufferPointer
-        {
-            self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
-            inflate_status       = inflate(&self.stream, Z_NO_FLUSH)
-        }
-
-        assert(inflate_status != Z_STREAM_ERROR) // this should never happen
-        switch inflate_status
-        {
-            case Z_NEED_DICT:
-                throw PNGDecompressionError.MissingDictionaryError
-            case Z_DATA_ERROR:
-                throw PNGDecompressionError.DataError
-            case Z_MEM_ERROR:
-                throw PNGDecompressionError.MemoryError
-            default:
-                break
-        }
-
-        sentinel = inflate_status == Z_STREAM_END
-        return self.stream.avail_out
-    }
-}
-
-final
-class ZDeflator : ZIterator
-{
-    override
-    init() throws
-    {
-        try super.init()
-        guard deflateInit(&self.stream, 9) == Z_OK
-        else
-        {
-            throw PNGCompressionError.StreamError
-        }
-    }
-
-    deinit
-    {
-        deflateEnd(&self.stream)
-    }
-
-    func get_output(sentinel:inout Bool, finish:Bool) throws -> CUnsignedInt
-    {
-        var deflate_status:CInt = 0
-        self.input_buffer.withUnsafeMutableBufferPointer
-        {
-            self.stream.next_in  = $0.baseAddress! + ($0.count - Int(self.stream.avail_in))
-            deflate_status       = deflate(&self.stream, finish ? Z_FINISH : Z_NO_FLUSH)
-        }
-
-        assert(deflate_status != Z_STREAM_ERROR) // this should never happen
-
-        sentinel = deflate_status == Z_STREAM_END
-        return self.stream.avail_out
-    }
-}
-
-// If you are wondering why these functions exist, it’s because Swift doesn’t know how to import C function macros yet.
-func inflateInit(_ strm:inout z_stream_s) -> CInt
-{
-    return inflateInit_(&strm, ZLIB_VERSION, CInt(MemoryLayout<z_stream>.size))
-}
-
-func deflateInit(_ strm:inout z_stream_s, _ level:CInt) -> CInt
-{
-    return deflateInit_(&strm, level, ZLIB_VERSION, CInt(MemoryLayout<z_stream>.size))
 }

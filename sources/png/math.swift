@@ -511,6 +511,26 @@ extension Math where N:BinaryInteger
     {
         return (I(v.x), I(v.y), I(v.z))
     }
+    
+    @inline(__always)
+    static
+    func cast<I>(truncatingIfNeeded v:V2, as _:I.Type) -> Math<I>.V2 where I:BinaryInteger
+    {
+        return (I(truncatingIfNeeded: v.x), I(truncatingIfNeeded: v.y))
+    }
+    @inline(__always)
+    static
+    func cast<I>(truncatingIfNeeded v:V3, as _:I.Type) -> Math<I>.V3 where I:BinaryInteger
+    {
+        return (I(truncatingIfNeeded: v.x), I(truncatingIfNeeded: v.y), I(truncatingIfNeeded: v.z))
+    }
+    @inline(__always)
+    static
+    func cast<I>(truncatingIfNeeded v:V4, as _:I.Type) -> Math<I>.V4 where I:BinaryInteger
+    {
+        return (I(truncatingIfNeeded: v.x), I(truncatingIfNeeded: v.y), I(truncatingIfNeeded: v.z), I(truncatingIfNeeded: v.w))
+    }
+    
     @inline(__always)
     static
     func cast<F>(_ v:V2, as _:F.Type) -> Math<F>.V2 where F:FloatingPoint
