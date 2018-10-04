@@ -1222,7 +1222,7 @@ enum PNG
             
             public  
             func compress<Destination>(to destination:inout Destination, 
-                chunkSize:Int = 1 << 16) throws 
+                chunkSize:Int = 1 << 16, level:Int = 9) throws 
                 where Destination:DataDestination
             {
                 precondition(chunkSize >= 1, "chunk size must be positive")
@@ -1241,7 +1241,7 @@ enum PNG
                 }
                 
                 var pitches:Properties.Pitches = self.properties.pitches, 
-                    encoder:Properties.Encoder = try self.properties.encoder(level: 9)
+                    encoder:Properties.Encoder = try self.properties.encoder(level: level)
                 
                 var pitch:Int?, 
                     base:Int     = self.data.startIndex
@@ -1293,7 +1293,7 @@ enum PNG
             }
             
             public static 
-            func decode<Source>(from source:inout Source) throws -> Uncompressed 
+            func decompress<Source>(from source:inout Source) throws -> Uncompressed 
                 where Source:DataSource
             {
                 guard var iterator:ChunkIterator<Source> = 
