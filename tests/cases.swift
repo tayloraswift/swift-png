@@ -1,6 +1,9 @@
+import PNG
+
 enum Group 
 {
-    case mapStrings(_ expectation:Bool, _ name:String, _ function:(String) -> String?, [String])
+    case mapStrings(_ expectation:Bool, _ name:String, _ function:(String) -> String?, [String]), 
+         functions(_ expectation:Bool, _ name:String, _ functions:[(name:String, function:() -> String?)])
     
     var count:Int 
     {
@@ -8,6 +11,9 @@ enum Group
         {
             case .mapStrings(_, _, _, let cases):
                 return cases.count
+            
+            case .functions(_, _, let functions):
+                return functions.count 
         }
     }
     
@@ -17,6 +23,8 @@ enum Group
         {
             case .mapStrings(_, let name, _, _):
                 return name
+            case .functions(_, let name, _):
+                return name
         }
     }
     
@@ -25,18 +33,33 @@ enum Group
         switch self 
         {
             case .mapStrings(let expectation, _, let function, let cases):
-                cases.forEach 
+                for string:String in cases
                 {
                     if let filter:Set<String> = filter
                     {
-                        guard filter.contains("\(self.name):\($0)")
+                        guard filter.contains("\(self.name):\(string)")
                         else 
                         {
                             return 
                         }
                     }
                     
-                    body($0, expectation, function($0))
+                    body(string, expectation, function(string))
+                }
+            
+            case .functions(let expectation, _, let functions):
+                for (string, function):(String, () -> String?) in functions 
+                {
+                    if let filter:Set<String> = filter
+                    {
+                        guard filter.contains("\(self.name):\(string)")
+                        else 
+                        {
+                            return 
+                        }
+                    }
+                    
+                    body(string, expectation, function())
                 }
         }
     }
@@ -271,11 +294,32 @@ let suite:[(name:String, members:[String])] =
         ]
     ), 
 ]
-let cases:[Group] = suite.map 
+let cases:[Group] = 
+[
+    .functions(true, "rgba operations", 
+        [
+            (
+                "premultiply8", 
+                {
+                    testPremultiplication(for: UInt8.self)
+                }
+            ), 
+            // this takes way too long to run
+            /* (
+                "premultiply16", 
+                {
+                    testPremultiplication(for: UInt16.self)
+                }
+            ) */
+        ]
+    )
+]
++ 
+suite.map 
 {
     .mapStrings(true, $0.name + "-decode", testDecode(_:), $0.members)
 }
-+
++ 
 suite.map 
 {
     .mapStrings(true, $0.name + "-reencode", testEncode(_:), $0.members)

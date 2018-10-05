@@ -183,7 +183,13 @@ enum PNG
         {
             // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
             let (high, low):(Sample, Sample.Magnitude) = color.multipliedFullWidth(by: alpha)
-            return high + (low.addingReportingOverflow(color.magnitude).overflow ? 1 : 0)
+            // divide by 255 using this one neat trick!1!!! 
+            // value /. 255 == (value + 128 + (value >> 8)) >> 8
+            let carries:(Bool, Bool), 
+                partialValue:Sample.Magnitude
+            (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
+                           carries.1  = partialValue.addingReportingOverflow(Sample.Magnitude.max >> 1 + 1).overflow
+            return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
         }
         
         public
