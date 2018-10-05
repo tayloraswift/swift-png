@@ -158,3 +158,29 @@ func testDecode(png pngPath:String, rgba rgbaPath:String) -> String?
         return "\(error)"
     }
 }
+
+func testPremultiplication<Sample>(for _:Sample.Type) -> String?
+    where Sample:FixedWidthInteger & UnsignedInteger
+{
+    for alpha:Sample in Sample.min ... Sample.max 
+    {
+        for color:Sample in Sample.min ... Sample.max
+        {
+            let direct:PNG.RGBA<Sample>        = .init(color, alpha), 
+                premultiplied:PNG.RGBA<Sample> = direct.premultiplied
+            
+            let unquantized:Double = (Double(alpha) * Double(color) / Double(Sample.max)), 
+                quantized:Sample   = .init(unquantized)
+            
+            // the order is important here,, the short circuiting protects us from 
+            // overflow when `quantized` == 255
+            guard premultiplied.r == quantized || premultiplied.r == quantized + 1 
+            else 
+            {
+                return "premultiplication of rgba\(Sample.bitWidth)(\(direct.r), \(direct.g), \(direct.b), \(direct.a)) returned (\(premultiplied.r), \(premultiplied.g), \(premultiplied.b), \(premultiplied.a)), expected (\(unquantized), \(unquantized), \(unquantized), \(alpha))"
+            }
+        }
+    }
+    
+    return nil
+}
