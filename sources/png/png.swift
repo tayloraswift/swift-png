@@ -331,6 +331,27 @@ enum PNG
         }
     }
     
+    private static 
+    func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
+    {
+        let v:Math<Int16>.V3 = Math.cast(truncatingIfNeeded: (a, b, c), as: Int16.self), 
+            p:Int16          = v.x + v.y - v.z
+        let d:Math<Int16>.V3 = Math.abs(Math.sub((p, p, p), v))
+
+        if d.x <= d.y && d.x <= d.z
+        {
+            return a
+        }
+        else if d.y <= d.z
+        {
+            return b
+        }
+        else 
+        {
+            return c
+        }
+    }
+    
     public 
     struct Properties
     {
@@ -1082,7 +1103,7 @@ enum PNG
                     guard let palette:[RGBA<UInt8>] = self.palette
                     else
                     {
-                        throw PNGReadError.MissingPalatteError
+                        throw ReadError.missingChunk(.PLTE)
                     }
 
                     guard data.count <= palette.count
