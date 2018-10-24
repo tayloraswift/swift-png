@@ -1,0 +1,14 @@
+module: PNG
+author: Kelvin Ma (“taylorswift”)
+github_url: https://github.com/kelvin13
+exclude:
+  - "tests/*"
+
+swift_version: 4.2
+
+theme: apple
+
+custom_categories:
+  - name: Encoding
+    children:
+    - Properties

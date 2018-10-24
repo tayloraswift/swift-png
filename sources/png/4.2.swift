@@ -1,5 +1,5 @@
 extension Array {
-    public init(
+    init(
         unsafeUninitializedCapacity: Int,
         initializingWith initializer: (
             _ buffer: inout UnsafeMutableBufferPointer<Element>,
@@ -10,7 +10,7 @@ extension Array {
         try self.withUnsafeMutableBufferPointerToStorage(capacity: unsafeUninitializedCapacity, initializer)
     }
 
-    public mutating func withUnsafeMutableBufferPointerToStorage<Result>(
+    mutating func withUnsafeMutableBufferPointerToStorage<Result>(
         capacity: Int,
         _ body: (
             _ buffer: inout UnsafeMutableBufferPointer<Element>,
@@ -83,7 +83,7 @@ extension Sequence {
   /// - Returns: The number of elements in the sequence that satisfy the given
   ///   predicate.
   @inlinable
-  public func count(
+  func count(
     where predicate: (Element) throws -> Bool
   ) rethrows -> Int {
     var count = 0

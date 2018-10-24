@@ -4,3 +4,6 @@
 Package.resolved
 /*.xcodeproj
 /tests/*.png
+/docs
+doc.json 
+typemanifest.txt

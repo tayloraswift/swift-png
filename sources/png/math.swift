@@ -85,23 +85,17 @@ extension Double:_SwiftFloatingPoint
     }
 }
 
-public  
+@usableFromInline
 enum Math<N>
 {
-    public 
-    typealias V2 = (x:N, y:N)
-    public 
-    typealias V3 = (x:N, y:N, z:N)
-    public 
-    typealias V4 = (x:N, y:N, z:N, w:N)
+    @usableFromInline typealias V2 = (x:N, y:N)
+    @usableFromInline typealias V3 = (x:N, y:N, z:N)
+    @usableFromInline typealias V4 = (x:N, y:N, z:N, w:N)
     
-    public 
-    typealias Mat3 = (V3, V3, V3)
-    public 
-    typealias Mat4 = (V4, V4, V4, V4)
+    @usableFromInline typealias Mat3 = (V3, V3, V3)
+    @usableFromInline typealias Mat4 = (V4, V4, V4, V4)
     
-    public 
-    typealias Rectangle = (a:V2, b:V2)
+    @usableFromInline typealias Rectangle = (a:V2, b:V2)
 
     @inline(__always)
     static
@@ -499,32 +493,32 @@ extension Math where N:BinaryFloatingPoint
 }
 extension Math where N:BinaryInteger
 {
-    @inline(__always)
+    @usableFromInline @inline(__always)
     static
     func cast<I>(_ v:V2, as _:I.Type) -> Math<I>.V2 where I:BinaryInteger
     {
         return (I(v.x), I(v.y))
     }
-    @inline(__always)
+    @usableFromInline @inline(__always)
     static
     func cast<I>(_ v:V3, as _:I.Type) -> Math<I>.V3 where I:BinaryInteger
     {
         return (I(v.x), I(v.y), I(v.z))
     }
     
-    @inline(__always)
+    @usableFromInline @inline(__always)
     static
     func cast<I>(truncatingIfNeeded v:V2, as _:I.Type) -> Math<I>.V2 where I:BinaryInteger
     {
         return (I(truncatingIfNeeded: v.x), I(truncatingIfNeeded: v.y))
     }
-    @inline(__always)
+    @usableFromInline @inline(__always)
     static
     func cast<I>(truncatingIfNeeded v:V3, as _:I.Type) -> Math<I>.V3 where I:BinaryInteger
     {
         return (I(truncatingIfNeeded: v.x), I(truncatingIfNeeded: v.y), I(truncatingIfNeeded: v.z))
     }
-    @inline(__always)
+    @usableFromInline @inline(__always)
     static
     func cast<I>(truncatingIfNeeded v:V4, as _:I.Type) -> Math<I>.V4 where I:BinaryInteger
     {
