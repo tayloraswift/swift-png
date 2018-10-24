@@ -103,8 +103,8 @@ protocol DataSource
     func read(count:Int) -> [UInt8]?
 }
 /**
-    An abstract data destination. To specify a custom data destination for the library, conform 
-    your type to this protocol by implementing the `write(_:)` method.
+    An abstract data destination. To specify a custom data destination for the library, 
+    conform your type to this protocol by implementing the `write(_:)` method.
 */
 public 
 protocol DataDestination 
@@ -398,7 +398,10 @@ enum PNG
             this color’s `Component` type. 
             - Parameters:
                 - depth: A bit depth less than or equal to `Component.bitWidth`.
-            - Returns: The size of one unit in a component of the given bit depth, in units of `Component`. Multiplying this value with the scalar integer value of a component of bit depth `depth` will renormalize it to the range of `Component`.
+            - Returns: The size of one unit in a component of the given bit depth, 
+                in units of `Component`. Multiplying this value with the scalar 
+                integer value of a component of bit depth `depth` will renormalize 
+                it to the range of `Component`.
         */
         @inline(__always)
         static 
@@ -408,19 +411,43 @@ enum PNG
         }
     }
     
+    /** 
+        A namespace for file IO functionality.
+    */
     public 
     enum File
     {
+        private 
         typealias Descriptor = UnsafeMutablePointer<FILE>
         
+        /** 
+            Read data from files on disk.
+        */
         public 
         struct Source:DataSource 
         {
             private 
             let descriptor:Descriptor
             
+            /** 
+                Calls a closure with an interface for reading from the specified file.
+                
+                This method automatically closes the file when its function argument returns. 
+                - Parameters:
+                    - path: A path to the file to open.
+                    - body: A closure with a `Source` parameter from which data in 
+                        the specified file can be read. This interface is only valid 
+                        for the duration of the method’s execution. The closure is 
+                        only executed if the specified file could be successfully 
+                        opened, otherwise `nil` is returned. If `body` has a return 
+                        value and the specified file could be opened, its return 
+                        value is returned as the return value of the `open(path:body:)` 
+                        method. 
+                - Returns: `nil` if the specified file could not be opened, or the 
+                    return value of the function argument otherwise.
+            */
             public static 
-            func open<Result>(path:String, body:(inout Source) throws -> Result) 
+            func open<Result>(path:String, _ body:(inout Source) throws -> Result) 
                 rethrows -> Result? 
             {
                 guard let descriptor:Descriptor = fopen(path, "rb")
@@ -438,6 +465,17 @@ enum PNG
                 return try body(&file)
             }
             
+            /** 
+                Read the specified number of bytes from this file interface.
+                
+                This method only returns an array if the exact number of bytes 
+                specified could be read. This method advances the file pointer.
+                
+                - Parameters:
+                    - capacity: The number of bytes to read.
+                - Returns: An array containing the read data, or `nil` if the specified 
+                    number of bytes could not be read.
+            */
             public 
             func read(count capacity:Int) -> [UInt8]?
             {
@@ -459,12 +497,32 @@ enum PNG
             }
         }
         
+        /** 
+            Write data to files on disk.
+        */
         public 
         struct Destination:DataDestination 
         {
             private 
             let descriptor:Descriptor
             
+            /** 
+                Calls a closure with an interface for writing to the specified file.
+                
+                This method automatically closes the file when its function argument returns. 
+                - Parameters:
+                    - path: A path to the file to open.
+                    - body: A closure with a `Destination` parameter representing 
+                        the specified file to which data can be written to. This 
+                        interface is only valid for the duration of the method’s 
+                        execution. The closure is only executed if the specified 
+                        file could be successfully opened, otherwise `nil` is returned. 
+                        If `body` has a return value and the specified file could 
+                        be opened, its return value is returned as the return value 
+                        of the `open(path:body:)` method. 
+                - Returns: `nil` if the specified file could not be opened, or the 
+                    return value of the function argument otherwise.
+            */
             public static 
             func open<Result>(path:String, body:(inout Destination) throws -> Result) 
                 rethrows -> Result? 
@@ -484,6 +542,17 @@ enum PNG
                 return try body(&file)
             }
             
+            /** 
+                Write the bytes in the given array to this file interface.
+                
+                This method only returns `()` if the entire array argument could 
+                be written. This method advances the file pointer.
+                
+                - Parameters:
+                    - buffer: The data to write.
+                - Returns: `()` if the entire array argument could be written, or 
+                    `nil` otherwise.
+            */
             public 
             func write(_ buffer:[UInt8]) -> Void? 
             {
@@ -504,6 +573,9 @@ enum PNG
         }
     }
     
+    /** 
+        Returns the value of the paeth filter function with the given parameters.
+    */
     private static 
     func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     {
@@ -525,9 +597,42 @@ enum PNG
         }
     }
     
+    /**
+        The global properties of a PNG image.
+    */
     public 
     struct Properties
     {
+        /** 
+            A pixel format used to encode the color values of a PNG. 
+            
+            Pixel formats consist of a color format, and a color depth. 
+            
+            Color formats can have multiple components, one for each independent 
+            dimension pixel values encoded in this format have. A grayscale format, 
+            for example, has one component (value), while an RGBA format has four 
+            (red, green, blue, alpha).
+            
+            Components are separate from channels, which are the independent values 
+            needed to *encode*a pixel value in a PNG image. An indexed pixel format, 
+            for example, has only one channel — a scalar index into a palette table — 
+            but has three components, as the entries in the palette table encode 
+            red, green, and blue components.
+            
+            Color depth refers to the number of bits of precision used to encode 
+            each channel. 
+            
+            Not all combinations of color formats and color depths are allowed. 
+            
+            | *depth* |  indexed   |   grayscale   | grayscale-alpha |   RGB   |   RGBA   |
+            | ------- | ---------- | ------------- | --------------- | ------- | -------- |
+            |    1    | `indexed1` | `grayscale1`  | 
+            |    2    | `indexed2` | `grayscale2`  | 
+            |    4    | `indexed4` | `grayscale4`  | 
+            |    8    | `indexed8` | `grayscale8`  | `grayscale_a8`  | `rgb8`  | `rgba8`  |
+            |    16   |            | `grayscale16` | `grayscale_a16` | `rgb16` | `rgba16` |
+            
+        */
         public 
         enum Format:UInt16 
         {
@@ -548,29 +653,55 @@ enum PNG
                  rgba8          = 0x08_06,
                  rgba16         = 0x10_06
             
+            /**
+                A boolean value indicating if this pixel format has indexed color.
+                
+                `true` if `self` is `indexed1`, `indexed2`, `indexed4`, or `indexed8`. 
+                `false` otherwise.
+            */
             public 
             var isIndexed:Bool 
             {
                 return self.rawValue & 1 != 0
             }
+            
+            /**
+                A boolean value indicating if this pixel format has at least three 
+                color components.
+                
+                `true` if `self` is `indexed1`, `indexed2`, `indexed4`, `indexed8`, 
+                `rgb8`, `rgb16`, `rgba8`, or `rgba16`. `false` otherwise.
+            */
             public 
             var hasColor:Bool 
             {
                 return self.rawValue & 2 != 0
             }
+            
+            /**
+                A boolean value indicating if this pixel format has an alpha channel.
+                
+                `true` if `self` is `grayscale_a8`, `grayscale_a16`, `rgba8`, or 
+                `rgba16`. `false` otherwise.
+            */
             public 
             var hasAlpha:Bool 
             {
                 return self.rawValue & 4 != 0
             }
             
-            
+            /**
+                The bit depth of each channel of this pixel format.
+            */
             public 
             var depth:Int
             {
                 return .init(self.rawValue >> 8)
             }
             
+            /** 
+                The number of channels encoded by this pixel format.
+            */
             public 
             var channels:Int
             {
@@ -588,12 +719,18 @@ enum PNG
                 }
             }
             
+            /** 
+                The total number of bits needed to encode all channels of this pixel 
+                format.
+            */
             var volume:Int 
             {
                 return self.depth * self.channels 
             }
             
-            // difference between this and channels is indexed pngs have 3 components 
+            /** 
+                The number of components represented by this pixel format.
+            */
             public 
             var components:Int 
             {
@@ -601,6 +738,10 @@ enum PNG
                 return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
             }
             
+            /** 
+                Returns the shape of a buffer just large enough to contain an image 
+                of the given size, stored in this color format.
+            */
             func shape(from size:Math<Int>.V2) -> Shape 
             {
                 let scanlineBitCount:Int = size.x * self.channels * self.depth
