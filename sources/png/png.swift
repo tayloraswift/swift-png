@@ -1,17 +1,34 @@
 import Glibc
 import func zlib.crc32
 
-fileprivate 
 extension Array where Element == UInt8 
-{    
+{
+    /** 
+        Loads a misaligned big-endian integer value from the given byte offset 
+        and casts it to a desired format.
+        - Parameters:
+            - bigEndian: The size and type to interpret the data to load as.
+            - type: The type to cast the read integer value to.
+            - byte: The byte offset to load the big-endian integer from.
+        - Returns: The read integer value, cast to `U`.
+    */
+    fileprivate 
     func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U 
         where T:FixedWidthInteger, U:BinaryInteger
     {
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
     
-    static 
-    func store<U, T>(_ value:U, asBigEndian:T.Type) -> [UInt8]
+    /**
+        Decomposes the given integer value into its constituent bytes, in big-endian order.
+        - Parameters:
+            - value: The integer value to decompose.
+            - type: The big-endian format `T` to store the given `value` as. The given 
+                    `value` is truncated to fit in a `T`.
+        - Returns: An array containing the bytes of the given `value`, in big-endian order.
+    */
+    fileprivate static 
+    func store<U, T>(_ value:U, asBigEndian type:T.Type) -> [UInt8]
         where U:BinaryInteger, T:FixedWidthInteger 
     {
         return .init(unsafeUninitializedCapacity: MemoryLayout<T>.size) 
@@ -29,9 +46,17 @@ extension Array where Element == UInt8
     }
 }
 
-fileprivate 
 extension ArraySlice where Element == UInt8 
 {
+    /** 
+        Loads this array slice as a misaligned big-endian integer value, 
+        and casts it to a desired format.
+        - Parameters:
+            - bigEndian: The size and type to interpret this array slice as.
+            - type: The type to cast the read integer value to.
+        - Returns: The read integer value, cast to `U`.
+    */
+    fileprivate
     func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U 
         where T:FixedWidthInteger, U:BinaryInteger
     {
@@ -60,32 +85,52 @@ extension ArraySlice where Element == UInt8
     }
 }
 
+/**
+    An abstract data source. To provide a custom data source to the library, conform 
+    your type to this protocol by implementing the `read(count:)` method.
+*/
 public 
 protocol DataSource
 {
-    // output array `.count` must equal `count`
+    /** 
+        Read the specified number of bytes from this data source.
+        - Parameters:
+            - count: The number of bytes to read.
+        - Returns: An array of size `count`, if `count` bytes could be read, and 
+            `nil` otherwise.
+    */
     mutating 
     func read(count:Int) -> [UInt8]?
 }
+/**
+    An abstract data destination. To specify a custom data destination for the library, conform 
+    your type to this protocol by implementing the `write(_:)` method.
+*/
 public 
 protocol DataDestination 
 {
+    /** 
+        Write the given data buffer to this data destination.
+        - Parameters:
+            - buffer: The data to write.
+        - Returns: `()` on success, and `nil` otherwise.
+    */
     mutating 
     func write(_ buffer:[UInt8]) -> Void?
 }
 
-
+/**
+    A fixed-width integer type which can be packed in groups of four within another 
+    integer type. For example, four `UInt8`s may be packed into a single `UInt32`.
+*/
 public 
 protocol FusedVector4Element:FixedWidthInteger & UnsignedInteger 
 {
-    associatedtype FusedVector4:FusedVector4Protocol
+    /**
+        A fixed-width integer type which can hold four instances of `Self`.
+    */
+    associatedtype FusedVector4:FixedWidthInteger & UnsignedInteger 
 }
-public 
-protocol FusedVector4Protocol:FixedWidthInteger & UnsignedInteger 
-{
-    associatedtype Element:FusedVector4Element
-}
-
 extension UInt8:FusedVector4Element 
 {
     public 
@@ -97,124 +142,227 @@ extension UInt16:FusedVector4Element
     typealias FusedVector4 = UInt64
 }
 
-extension UInt32:FusedVector4Protocol 
+extension PNG.RGBA where Component:FusedVector4Element
 {
-    public 
-    typealias Element = UInt8
-}
-extension UInt64:FusedVector4Protocol 
-{
-    public 
-    typealias Element = UInt16
-}
-
-extension PNG.RGBA where Sample:FusedVector4Element
-{    
+    /** 
+        The components of this pixel value packed into a single unsigned integer in 
+        ARGB order, with the alpha component in the high bits.
+    */
+    @inlinable
     public
-    var argb:Sample.FusedVector4
+    var argb:Component.FusedVector4
     {
-        let a:Math<Sample.FusedVector4>.V4 = 
+        let a:Math<Component.FusedVector4>.V4 = 
             Math.cast(truncatingIfNeeded: (self.a, self.r, self.g, self.b), 
-                                      as: Sample.FusedVector4.self)
+                                      as: Component.FusedVector4.self)
                 
-        let x:Math<Sample.FusedVector4>.V4
+        let x:Math<Component.FusedVector4>.V4
         
-        x.0 = a.0 << (Sample.bitWidth << 1 | Sample.bitWidth)
-        x.1 = a.1 << (Sample.bitWidth << 1)
-        x.2 = a.2 << (Sample.bitWidth)
+        x.0 = a.0 << (Component.bitWidth << 1 | Component.bitWidth)
+        x.1 = a.1 << (Component.bitWidth << 1)
+        x.2 = a.2 << (Component.bitWidth)
         x.3 = a.3
         
         return x.0 | x.1 | x.2 | x.3
     }
 }
 
+/**
+    Encode and decode image data in the PNG format.
+*/
 public 
 enum PNG
 {
     private static 
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
     
+    /** 
+        A four-component color value, with components stored in the RGBA color model. 
+        This structure has fixed layout, with the red component first, then green, 
+        then blue, then alpha. Buffers containing instances of this type may be 
+        safely reinterpreted as flat buffers containing interleaved color components.
+    */
     @_fixed_layout
     public
-    struct RGBA<Sample>:Equatable, CustomStringConvertible 
-        where Sample:FixedWidthInteger & UnsignedInteger
+    struct RGBA<Component>:Equatable, CustomStringConvertible 
+        where Component:FixedWidthInteger & UnsignedInteger
     {
+        /// The red component of this color. 
         public
-        let r:Sample,
-            g:Sample,
-            b:Sample,
-            a:Sample
-
+        let r:Component
+        /// The green component of this color. 
+        public 
+        let g:Component
+        /// The blue component of this color. 
+        public 
+        let b:Component
+        /// The alpha component of this color. 
+        public 
+        let a:Component
+        
+        /// A textual representation of this color.
         public
         var description:String
         {
             return "(\(self.r), \(self.g), \(self.b), \(self.a))"
         }
-
+        
+        /** 
+            Creates an opaque grayscale color with all color components set to the given 
+            value sample, and the alpha component set to `Component.max`. 
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            - Parameters:
+                - value: The value to initialize all color components to.
+        */
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
         public
-        init(_ r:Sample, _ g:Sample, _ b:Sample, _ a:Sample)
+        init(_ value:Component)
         {
-            self.r = r
-            self.g = g
-            self.b = b
-            self.a = a
+            self.init(value, value, value, Component.max)
         }
         
+        /** 
+            Creates a grayscale color with all color components set to the given 
+            value sample, and the alpha component set to the given alpha sample. 
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            - Parameters:
+                - value: The value to initialize all color components to.
+                - alpha: The value to initialize the alpha component to.
+        */
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
         public
-        init(_ r:Sample, _ g:Sample, _ b:Sample)
+        init(_ value:Component, _ alpha:Component)
         {
-            self.init(r, g, b, Sample.max)
+            self.init(value, value, value, alpha)
         }
         
+        /** 
+            Creates an opaque color with the given color samples, and the alpha 
+            component set to `Component.max`. 
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            - Parameters:
+                - red: The value to initialize the red component to.
+                - green: The value to initialize the green component to.
+                - blue: The value to initialize the blue component to.
+        */
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
         public
-        init(_ v:Sample, _ a:Sample)
+        init(_ red:Component, _ green:Component, _ blue:Component)
         {
-            self.init(v, v, v, a)
+            self.init(red, green, blue, Component.max)
         }
         
+        /** 
+            Creates an opaque color with the given color and alpha samples. 
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            - Parameters:
+                - red: The value to initialize the red component to.
+                - green: The value to initialize the green component to.
+                - blue: The value to initialize the blue component to.
+                - alpha: The value to initialize the alpha component to.
+        */
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
         public
-        init(_ v:Sample)
+        init(_ red:Component, _ green:Component, _ blue:Component, _ alpha:Component)
         {
-            self.init(v, v, v, Sample.max)
+            self.r = red
+            self.g = green
+            self.b = blue
+            self.a = alpha
         }
         
-        private static 
-        func premultiply(color:Sample, alpha:Sample) -> Sample 
-        {
-            // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
-            let (high, low):(Sample, Sample.Magnitude) = color.multipliedFullWidth(by: alpha)
-            // divide by 255 using this one neat trick!1!!! 
-            // value /. 255 == (value + 128 + (value >> 8)) >> 8
-            let carries:(Bool, Bool), 
-                partialValue:Sample.Magnitude
-            (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
-                           carries.1  = partialValue.addingReportingOverflow(Sample.Magnitude.max >> 1 + 1).overflow
-            return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
-        }
-        
+        /** 
+            The color obtained by premultiplying the red, green, and blue components 
+            of this color with its alpha component. The resulting component values 
+            are accurate to within 1 `Component` unit.
+            
+            *Inlineable*.
+        */
+        @inlinable
         public
-        var premultiplied:RGBA<Sample>
+        var premultiplied:RGBA<Component>
         {
             return .init(RGBA.premultiply(color: self.r, alpha: self.a), 
                          RGBA.premultiply(color: self.g, alpha: self.a), 
                          RGBA.premultiply(color: self.b, alpha: self.a), 
                          self.a)
         }
-
-        func withAlpha(_ a:Sample) -> RGBA<Sample>
+        
+        /**
+            Returns the given color sample premultiplied with the given alpha sample.
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            - Parameters:
+                - color: A color sample.
+                - alpha: An alpha sample.
+            - Returns: The product of the given color sample and the given alpha 
+                sample. The resulting value is accurate to within 1 `Component` unit.
+        */
+        @usableFromInline 
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        static 
+        func premultiply(color:Component, alpha:Component) -> Component 
+        {
+            // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
+            let (high, low):(Component, Component.Magnitude) = color.multipliedFullWidth(by: alpha)
+            // divide by 255 using this one neat trick!1!!! 
+            // value /. 255 == (value + 128 + (value >> 8)) >> 8
+            let carries:(Bool, Bool), 
+                partialValue:Component.Magnitude
+            (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
+                           carries.1  = partialValue.addingReportingOverflow(Component.Magnitude.max >> 1 + 1).overflow
+            return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
+        }
+        
+        /**
+            Returns a copy of this color with the alpha component set to the given sample.
+            - Parameters:
+                - a: An alpha sample.
+            - Returns: This color with the alpha component set to the given sample.
+        */
+        func withAlpha(_ a:Component) -> RGBA<Component>
         {
             return .init(self.r, self.g, self.b, a)
         }
 
-        func equals(opaque:RGBA<Sample>) -> Bool
+        /**
+            Returns a boolean value indicating whether the color components of this 
+            color are equal to the color components of the given color, ignoring 
+            the alpha components.
+            - Parameters:
+                - other: Another color.
+            - Returns: `true` if the red, green, and blue channels of this color and 
+                `other` are equal, `false` otherwise.
+        */
+        func equals(opaque other:RGBA<Component>) -> Bool
         {
-            return self.r == opaque.r && self.g == opaque.g && self.b == opaque.b
+            return self.r == other.r && self.g == other.g && self.b == other.b
         }
         
+        /**
+            Returns this color with its components widened to the given type, preserving 
+            their normalized values. 
+            
+            `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+            - Parameters:
+                - type: The type of the components of the new color.
+            - Returns: A new color, with the values of its components taken from 
+                this color, and normalized to the range of `T`. 
+        */
         @inline(__always)
-        func upscale<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
+        func upscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
-            let quantum:T = RGBA<T>.quantum(depth: Sample.bitWidth), 
+            assert(T.bitWidth >= Component.bitWidth)
+            let quantum:T = RGBA<T>.quantum(depth: Component.bitWidth), 
                 r:T = .init(truncatingIfNeeded: self.r) * quantum, 
                 g:T = .init(truncatingIfNeeded: self.g) * quantum, 
                 b:T = .init(truncatingIfNeeded: self.b) * quantum, 
@@ -222,10 +370,21 @@ enum PNG
             return .init(r, g, b, a)
         }
         
+        /**
+            Returns this color with its components narrowed to the given type, preserving 
+            their normalized values. 
+            
+            `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+            - Parameters:
+                - type: The type of the components of the new color.
+            - Returns: A new color, with the values of its components taken from 
+                this color, and normalized to the range of `T`. 
+        */
         @inline(__always)
-        func downscale<T>(to _:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
+        func downscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
-            let shift:Int = Sample.bitWidth - T.bitWidth, 
+            assert(T.bitWidth <= Component.bitWidth)
+            let shift:Int = Component.bitWidth - T.bitWidth, 
                 r:T       = .init(truncatingIfNeeded: self.r &>> shift),
                 g:T       = .init(truncatingIfNeeded: self.g &>> shift),
                 b:T       = .init(truncatingIfNeeded: self.g &>> shift),
@@ -234,10 +393,18 @@ enum PNG
             return .init(r, g, b, a)
         }
         
+        /** 
+            Returns the size of one unit in a component of the given depth, in units of 
+            this color’s `Component` type. 
+            - Parameters:
+                - depth: A bit depth less than or equal to `Component.bitWidth`.
+            - Returns: The size of one unit in a component of the given bit depth, in units of `Component`. Multiplying this value with the scalar integer value of a component of bit depth `depth` will renormalize it to the range of `Component`.
+        */
+        @inline(__always)
         static 
-        func quantum(depth:Int) -> Sample 
+        func quantum(depth:Int) -> Component 
         {
-            return Sample.max / (Sample.max &>> (Sample.bitWidth - depth))
+            return Component.max / (Component.max &>> (Component.bitWidth - depth))
         }
     }
     
@@ -381,14 +548,17 @@ enum PNG
                  rgba8          = 0x08_06,
                  rgba16         = 0x10_06
             
+            public 
             var isIndexed:Bool 
             {
                 return self.rawValue & 1 != 0
             }
+            public 
             var hasColor:Bool 
             {
                 return self.rawValue & 2 != 0
             }
+            public 
             var hasAlpha:Bool 
             {
                 return self.rawValue & 4 != 0
@@ -559,7 +729,7 @@ enum PNG
         
         // don’t use this within the library, use `.shape.size` directly
         public 
-        var size:Math<Int>.V2 
+        var size:(x:Int, y:Int)
         {
             return self.shape.size
         }
@@ -592,7 +762,7 @@ enum PNG
         }
         
         public 
-        init(size:Math<Int>.V2, format:Format, interlaced:Bool, 
+        init(size:(x:Int, y:Int), format:Format, interlaced:Bool, 
             palette:[RGBA<UInt8>]? = nil, chromaKey:RGBA<UInt16>? = nil)
         {
             self.format = format
@@ -1404,7 +1574,7 @@ enum PNG
                 @inline(__always)
                 func _next() throws -> (chunk:Chunk, contents:[UInt8])?
                 {
-                    guard let (name, data):(Math<UInt8>.V4, [UInt8]?) = 
+                    guard let (name, data):((UInt8, UInt8, UInt8, UInt8), [UInt8]?) = 
                         iterator.next(source: &source) 
                     else 
                     {
@@ -1898,13 +2068,13 @@ enum PNG
             }
             
             public 
-            func argb<FusedVector4>(of _:FusedVector4.Type) -> [FusedVector4.Element.FusedVector4]? 
-                where FusedVector4:FusedVector4Protocol
+            func argbPremultiplied<Sample>(of _:Sample.Type) -> [Sample.FusedVector4]? 
+                where Sample:FusedVector4Element
             {
                 // *all* color formats can produce pixels with alpha, so we might 
                 // as well call the `rgba(of:)` function and let map fusion 
                 // optimize it
-                return self.rgba(of: FusedVector4.Element.self)?.map 
+                return self.rgba(of: Sample.self)?.map 
                 {
                     $0.premultiplied.argb
                 }
@@ -2075,7 +2245,7 @@ enum PNG
         }
         
         public  
-        init?(_ name:Math<UInt8>.V4)
+        init?(_ name:(UInt8, UInt8, UInt8, UInt8))
         {
             self.name = name
             switch self 
@@ -2287,7 +2457,7 @@ extension PNG.ChunkIterator where DataInterface:DataSource
     }
     
     public mutating 
-    func next(source:inout DataInterface) -> (name:Math<UInt8>.V4, data:[UInt8]?)? 
+    func next(source:inout DataInterface) -> (name:(UInt8, UInt8, UInt8, UInt8), data:[UInt8]?)? 
     {
         guard let header:[UInt8] = source.read(count: 8) 
         else 
