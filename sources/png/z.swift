@@ -181,12 +181,20 @@ extension PNG
                     deflate($0, Z_NO_FLUSH)
                 }
             }
-            func finish(extending destination:inout [UInt8], capacity:Int) throws
+            func finish(extending destination:inout [UInt8], capacity:Int) throws -> Bool
             {
+                var continued:Bool = true 
                 try self.pull(extending: &destination, capacity: capacity)
                 {
-                    deflate($0, Z_FINISH)
+                    let status:Int32 = deflate($0, Z_FINISH)
+                    if status == Z_STREAM_END 
+                    {
+                        continued = false 
+                    }
+                    return status 
                 }
+                
+                return continued
             }
         }
     }

@@ -3,8 +3,7 @@ import func zlib.crc32
 
 extension Array where Element == UInt8 
 {
-    /** 
-        Loads a misaligned big-endian integer value from the given byte offset 
+    /** Loads a misaligned big-endian integer value from the given byte offset 
         and casts it to a desired format.
         - Parameters:
             - bigEndian: The size and type to interpret the data to load as.
@@ -19,8 +18,7 @@ extension Array where Element == UInt8
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
     
-    /**
-        Decomposes the given integer value into its constituent bytes, in big-endian order.
+    /** Decomposes the given integer value into its constituent bytes, in big-endian order.
         - Parameters:
             - value: The integer value to decompose.
             - type: The big-endian format `T` to store the given `value` as. The given 
@@ -48,8 +46,7 @@ extension Array where Element == UInt8
 
 extension ArraySlice where Element == UInt8 
 {
-    /** 
-        Loads this array slice as a misaligned big-endian integer value, 
+    /** Loads this array slice as a misaligned big-endian integer value, 
         and casts it to a desired format.
         - Parameters:
             - bigEndian: The size and type to interpret this array slice as.
@@ -85,15 +82,12 @@ extension ArraySlice where Element == UInt8
     }
 }
 
-/**
-    An abstract data source. To provide a custom data source to the library, conform 
-    your type to this protocol by implementing the `read(count:)` method.
-*/
+/** An abstract data source. To provide a custom data source to the library, conform 
+    your type to this protocol by implementing the `read(count:)` method. */
 public 
 protocol DataSource
 {
-    /** 
-        Read the specified number of bytes from this data source.
+    /** Read the specified number of bytes from this data source.
         - Parameters:
             - count: The number of bytes to read.
         - Returns: An array of size `count`, if `count` bytes could be read, and 
@@ -102,15 +96,12 @@ protocol DataSource
     mutating 
     func read(count:Int) -> [UInt8]?
 }
-/**
-    An abstract data destination. To specify a custom data destination for the library, 
-    conform your type to this protocol by implementing the `write(_:)` method.
-*/
+/** An abstract data destination. To specify a custom data destination for the library, 
+    conform your type to this protocol by implementing the `write(_:)` method. */
 public 
 protocol DataDestination 
 {
-    /** 
-        Write the given data buffer to this data destination.
+    /** Write the given data buffer to this data destination.
         - Parameters:
             - buffer: The data to write.
         - Returns: `()` on success, and `nil` otherwise.
@@ -119,16 +110,12 @@ protocol DataDestination
     func write(_ buffer:[UInt8]) -> Void?
 }
 
-/**
-    A fixed-width integer type which can be packed in groups of four within another 
-    integer type. For example, four `UInt8`s may be packed into a single `UInt32`.
-*/
+/** A fixed-width integer type which can be packed in groups of four within another 
+    integer type. For example, four `UInt8`s may be packed into a single `UInt32`. */
 public 
 protocol FusedVector4Element:FixedWidthInteger & UnsignedInteger 
 {
-    /**
-        A fixed-width integer type which can hold four instances of `Self`.
-    */
+    /// A fixed-width integer type which can hold four instances of `Self`.
     associatedtype FusedVector4:FixedWidthInteger & UnsignedInteger 
 }
 extension UInt8:FusedVector4Element 
@@ -144,10 +131,8 @@ extension UInt16:FusedVector4Element
 
 extension PNG.RGBA where Component:FusedVector4Element
 {
-    /** 
-        The components of this pixel value packed into a single unsigned integer in 
-        ARGB order, with the alpha component in the high bits.
-    */
+    /** The components of this pixel value packed into a single unsigned integer in 
+        ARGB order, with the alpha component in the high bits. */
     @inlinable
     public
     var argb:Component.FusedVector4
@@ -167,21 +152,17 @@ extension PNG.RGBA where Component:FusedVector4Element
     }
 }
 
-/**
-    Encode and decode image data in the PNG format.
-*/
+/// Encode and decode image data in the PNG format.
 public 
 enum PNG
 {
     private static 
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
     
-    /** 
-        A four-component color value, with components stored in the RGBA color model. 
+    /** A four-component color value, with components stored in the RGBA color model. 
         This structure has fixed layout, with the red component first, then green, 
         then blue, then alpha. Buffers containing instances of this type may be 
-        safely reinterpreted as flat buffers containing interleaved color components.
-    */
+        safely reinterpreted as flat buffers containing interleaved color components. */
     @_fixed_layout
     public
     struct RGBA<Component>:Equatable, CustomStringConvertible 
@@ -207,8 +188,7 @@ enum PNG
             return "(\(self.r), \(self.g), \(self.b), \(self.a))"
         }
         
-        /** 
-            Creates an opaque grayscale color with all color components set to the given 
+        /** Creates an opaque grayscale color with all color components set to the given 
             value sample, and the alpha component set to `Component.max`. 
             
             *Specialized* for `Component` types `UInt8`, `UInt16`. 
@@ -223,8 +203,7 @@ enum PNG
             self.init(value, value, value, Component.max)
         }
         
-        /** 
-            Creates a grayscale color with all color components set to the given 
+        /** Creates a grayscale color with all color components set to the given 
             value sample, and the alpha component set to the given alpha sample. 
             
             *Specialized* for `Component` types `UInt8`, `UInt16`. 
@@ -240,8 +219,7 @@ enum PNG
             self.init(value, value, value, alpha)
         }
         
-        /** 
-            Creates an opaque color with the given color samples, and the alpha 
+        /** Creates an opaque color with the given color samples, and the alpha 
             component set to `Component.max`. 
             
             *Specialized* for `Component` types `UInt8`, `UInt16`. 
@@ -258,8 +236,7 @@ enum PNG
             self.init(red, green, blue, Component.max)
         }
         
-        /** 
-            Creates an opaque color with the given color and alpha samples. 
+        /** Creates an opaque color with the given color and alpha samples. 
             
             *Specialized* for `Component` types `UInt8`, `UInt16`. 
             - Parameters:
@@ -279,8 +256,7 @@ enum PNG
             self.a = alpha
         }
         
-        /** 
-            The color obtained by premultiplying the red, green, and blue components 
+        /** The color obtained by premultiplying the red, green, and blue components 
             of this color with its alpha component. The resulting component values 
             are accurate to within 1 `Component` unit.
             
@@ -296,8 +272,7 @@ enum PNG
                          self.a)
         }
         
-        /**
-            Returns the given color sample premultiplied with the given alpha sample.
+        /** Returns the given color sample premultiplied with the given alpha sample.
             
             *Specialized* for `Component` types `UInt8`, `UInt16`. 
             - Parameters:
@@ -323,8 +298,7 @@ enum PNG
             return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
         }
         
-        /**
-            Returns a copy of this color with the alpha component set to the given sample.
+        /** Returns a copy of this color with the alpha component set to the given sample.
             - Parameters:
                 - a: An alpha sample.
             - Returns: This color with the alpha component set to the given sample.
@@ -334,8 +308,7 @@ enum PNG
             return .init(self.r, self.g, self.b, a)
         }
 
-        /**
-            Returns a boolean value indicating whether the color components of this 
+        /** Returns a boolean value indicating whether the color components of this 
             color are equal to the color components of the given color, ignoring 
             the alpha components.
             - Parameters:
@@ -348,8 +321,7 @@ enum PNG
             return self.r == other.r && self.g == other.g && self.b == other.b
         }
         
-        /**
-            Returns this color with its components widened to the given type, preserving 
+        /** Returns this color with its components widened to the given type, preserving 
             their normalized values. 
             
             `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
@@ -370,8 +342,7 @@ enum PNG
             return .init(r, g, b, a)
         }
         
-        /**
-            Returns this color with its components narrowed to the given type, preserving 
+        /** Returns this color with its components narrowed to the given type, preserving 
             their normalized values. 
             
             `T.bitWidth` must be less than or equal to `Component.bitWidth`.
@@ -393,8 +364,7 @@ enum PNG
             return .init(r, g, b, a)
         }
         
-        /** 
-            Returns the size of one unit in a component of the given depth, in units of 
+        /** Returns the size of one unit in a component of the given depth, in units of 
             this color’s `Component` type. 
             - Parameters:
                 - depth: A bit depth less than or equal to `Component.bitWidth`.
@@ -411,26 +381,21 @@ enum PNG
         }
     }
     
-    /** 
-        A namespace for file IO functionality.
-    */
+    /// A namespace for file IO functionality.
     public 
     enum File
     {
         private 
         typealias Descriptor = UnsafeMutablePointer<FILE>
         
-        /** 
-            Read data from files on disk.
-        */
+        /// Read data from files on disk.
         public 
         struct Source:DataSource 
         {
             private 
             let descriptor:Descriptor
             
-            /** 
-                Calls a closure with an interface for reading from the specified file.
+            /** Calls a closure with an interface for reading from the specified file.
                 
                 This method automatically closes the file when its function argument returns. 
                 - Parameters:
@@ -465,8 +430,7 @@ enum PNG
                 return try body(&file)
             }
             
-            /** 
-                Read the specified number of bytes from this file interface.
+            /** Read the specified number of bytes from this file interface.
                 
                 This method only returns an array if the exact number of bytes 
                 specified could be read. This method advances the file pointer.
@@ -497,17 +461,14 @@ enum PNG
             }
         }
         
-        /** 
-            Write data to files on disk.
-        */
+        /// Write data to files on disk.
         public 
         struct Destination:DataDestination 
         {
             private 
             let descriptor:Descriptor
             
-            /** 
-                Calls a closure with an interface for writing to the specified file.
+            /** Calls a closure with an interface for writing to the specified file.
                 
                 This method automatically closes the file when its function argument returns. 
                 - Parameters:
@@ -542,8 +503,7 @@ enum PNG
                 return try body(&file)
             }
             
-            /** 
-                Write the bytes in the given array to this file interface.
+            /** Write the bytes in the given array to this file interface.
                 
                 This method only returns `()` if the entire array argument could 
                 be written. This method advances the file pointer.
@@ -573,9 +533,7 @@ enum PNG
         }
     }
     
-    /** 
-        Returns the value of the paeth filter function with the given parameters.
-    */
+    /// Returns the value of the paeth filter function with the given parameters.
     private static 
     func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     {
@@ -597,14 +555,11 @@ enum PNG
         }
     }
     
-    /**
-        The global properties of a PNG image.
-    */
+    /// The global properties of a PNG image.
     public 
     struct Properties
     {
-        /** 
-            A pixel format used to encode the color values of a PNG. 
+        /** A pixel format used to encode the color values of a PNG. 
             
             Pixel formats consist of a color format, and a color depth. 
             
@@ -653,8 +608,7 @@ enum PNG
                  rgba8          = 0x08_06,
                  rgba16         = 0x10_06
             
-            /**
-                A boolean value indicating if this pixel format has indexed color.
+            /** A boolean value indicating if this pixel format has indexed color.
                 
                 `true` if `self` is `indexed1`, `indexed2`, `indexed4`, or `indexed8`. 
                 `false` otherwise.
@@ -665,8 +619,7 @@ enum PNG
                 return self.rawValue & 1 != 0
             }
             
-            /**
-                A boolean value indicating if this pixel format has at least three 
+            /** A boolean value indicating if this pixel format has at least three 
                 color components.
                 
                 `true` if `self` is `indexed1`, `indexed2`, `indexed4`, `indexed8`, 
@@ -678,11 +631,10 @@ enum PNG
                 return self.rawValue & 2 != 0
             }
             
-            /**
-                A boolean value indicating if this pixel format has an alpha channel.
+            /** A boolean value indicating if this pixel format has an alpha channel.
                 
                 `true` if `self` is `grayscale_a8`, `grayscale_a16`, `rgba8`, or 
-                `rgba16`. `false` otherwise.
+                `rgba16`. `false` otherwise. 
             */
             public 
             var hasAlpha:Bool 
@@ -690,18 +642,14 @@ enum PNG
                 return self.rawValue & 4 != 0
             }
             
-            /**
-                The bit depth of each channel of this pixel format.
-            */
+            /// The bit depth of each channel of this pixel format.
             public 
             var depth:Int
             {
                 return .init(self.rawValue >> 8)
             }
             
-            /** 
-                The number of channels encoded by this pixel format.
-            */
+            /// The number of channels encoded by this pixel format.
             public 
             var channels:Int
             {
@@ -719,18 +667,14 @@ enum PNG
                 }
             }
             
-            /** 
-                The total number of bits needed to encode all channels of this pixel 
-                format.
-            */
+            /** The total number of bits needed to encode all channels of this pixel 
+                format. */
             var volume:Int 
             {
                 return self.depth * self.channels 
             }
             
-            /** 
-                The number of components represented by this pixel format.
-            */
+            /// The number of components represented by this pixel format.
             public 
             var components:Int 
             {
@@ -738,10 +682,8 @@ enum PNG
                 return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
             }
             
-            /** 
-                Returns the shape of a buffer just large enough to contain an image 
-                of the given size, stored in this color format.
-            */
+            /** Returns the shape of a buffer just large enough to contain an image 
+                of the given size, stored in this color format. */
             func shape(from size:Math<Int>.V2) -> Shape 
             {
                 let scanlineBitCount:Int = size.x * self.channels * self.depth
@@ -751,6 +693,7 @@ enum PNG
             }
         }
         
+        /// The shape of an image stored in a two-dimensional padded array.
         struct Shape 
         {
             let pitch:Int, 
@@ -762,19 +705,28 @@ enum PNG
             }
         }
         
+        /// An interlacing algorithm used to arrange the stored pixels in a PNG image.
         enum Interlacing 
         {
+            /// A sub-image of a PNG image using the Adam7 interlacing algorithm. 
             struct SubImage 
             {
-                let shape:Shape, 
-                    strider:Math<StrideTo<Int>>.V2
+                /// The shape of a two-dimensional array containing this sub-image.
+                let shape:Shape
+                /** Two sequences of two-dimensional coordinates representing the 
+                    logical positions of each pixel in this sub-image, when deinterlaced 
+                    with its other sub-images. */
+                let strider:Math<StrideTo<Int>>.V2
             }
             
-            // don’t store whole-image shape in .none case since we still need 
-            // it in the .adam7 case
-            case none, 
-                 adam7([SubImage])
+            /// No interlacing.
+            case none 
+            /// [Adam7](https://en.wikipedia.org/wiki/Adam7_algorithm) interlacing.
+            case adam7([SubImage])
             
+            /** Returns the index ranges containing each Adam7 sub-image when all 
+                sub-images are packed back-to-back in a single buffer, starting 
+                with the smallest sub-image. */
             static 
             func computeAdam7Ranges(_ subImages:[SubImage]) -> [Range<Int>]
             {
@@ -792,6 +744,7 @@ enum PNG
             }
         }
         
+        /// The sequence of scanline pitches forming the data buffer of a PNG image.
         struct Pitches:Sequence, IteratorProtocol 
         {
             private 
@@ -801,6 +754,12 @@ enum PNG
             var f:Int         = 0, 
                 scanlines:Int = 0
             
+            /** Creates the pitch sequence for an Adam7 interlaced PNG with the 
+                given sub-images. 
+                
+                - Parameters:
+                    - subImages: The sub-images of an interlaced image.
+            */
             init(subImages:[Interlacing.SubImage]) 
             {
                 self.footprints = subImages.map 
@@ -809,11 +768,26 @@ enum PNG
                 }
             }
             
+            /** Creates the pitch sequence for a non-interlaced PNG with the given 
+                shape. 
+                
+                - Parameters:
+                    - shape: The shape of a non-interlaced image.
+            */
             init(shape:Shape)
             {
                 self.footprints = [(shape.pitch, shape.size.y)]
             }
             
+            /** Returns the pitch of the next scanline, if it is different from 
+                the pitch of the previous scanline.
+                
+                - Returns: The pitch of the next scanline, if it is different from 
+                    that of the previous scanline, `nil` in the inner optional if 
+                    it is the same as that of the previous scanline, and `nil` in 
+                    the outer optional if there should be no more scanlines left 
+                    in the image.
+            */
             mutating 
             func next() -> Int?? 
             {
@@ -843,18 +817,27 @@ enum PNG
             }
         }
         
-        // stored properties 
+        /// The pixel format of this PNG image.
         public 
         let format:Format
         
+        /// The color palette of this PNG image, if it has one.
         public 
-        var palette:[RGBA<UInt8>]?,
-            chromaKey:RGBA<UInt16>? // the alpha sample is ignored by the library
+        var palette:[RGBA<UInt8>]?
         
-        let shape:Shape, 
-            interlacing:Interlacing
+        /** The chroma key of this PNG image, if it has one. 
+            
+            The alpha component of this property is ignored by the library.
+        */
+        public 
+        var chromaKey:RGBA<UInt16>? // the alpha sample is ignored by the library
         
-        // computed properties 
+        /// The shape of a two-dimensional array containing this PNG image.
+        let shape:Shape
+        /// The interlacing algorithm used by this PNG image.
+        let interlacing:Interlacing
+        
+        /// A boolean value indicating if this PNG image uses an interlacing algorithm.
         public 
         var interlaced:Bool
         {
@@ -869,12 +852,15 @@ enum PNG
         }
         
         // don’t use this within the library, use `.shape.size` directly
+        
+        /// The pixel dimensions of this PNG image.
         public 
         var size:(x:Int, y:Int)
         {
             return self.shape.size
         }
         
+        /// The scanline iterator for this PNG image.
         var pitches:Pitches 
         {
             switch self.interlacing 
@@ -887,6 +873,8 @@ enum PNG
             }
         }
         
+        /** The number of bytes needed to store the encoded image data of this PNG 
+            image. */
         var byteCount:Int 
         {
             switch self.interlacing
@@ -902,6 +890,16 @@ enum PNG
             }
         }
         
+        /** Creates a PNG metadata record with the given properties.
+            
+            - Parameters:
+                - size: A pair of pixel dimensions.
+                - format: A pixel format.
+                - interlaced: A boolean value indicating if an interlacing algorithm 
+                    will be used.
+                - palette: A color palette, or `nil`. The default is `nil`.
+                - chromaKey: A chroma key, or `nil`. The default is `nil`.
+        */
         public 
         init(size:(x:Int, y:Int), format:Format, interlaced:Bool, 
             palette:[RGBA<UInt8>]? = nil, chromaKey:RGBA<UInt16>? = nil)
@@ -959,7 +957,9 @@ enum PNG
             self.chromaKey = chromaKey
         }
         
-        
+        /** Initializes and returns a PNG `Decoder`. 
+            - Returns: An image `Decoder` in its initial state.
+        */
         public 
         func decoder() throws -> Decoder
         {
@@ -967,6 +967,14 @@ enum PNG
                 stride:Int             = max(1, self.format.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, inflator: inflator)
         }
+        
+        /** Initializes and returns a PNG `Encoder`. 
+            - Parameters:
+                - level: The compression level the returned `Encoder` will use.
+                    Must be in the range `0 ... 9`, where 0 is no compression, and 
+                    9 is the highest possible amount of compression.
+            - Returns: An image `Encoder` in its initial state.
+        */
         public 
         func encoder(level:Int) throws -> Encoder
         {
@@ -975,13 +983,23 @@ enum PNG
             return .init(stride: stride, pitches: self.pitches, deflator: deflator)
         }
         
+        /** A low level API for receiving and processing decompressed and decoded 
+            PNG image data at the scanline level. */
         public 
         struct Decoder 
         {
+            /** The decoded pixels of the previous scanline decoded. Initialized 
+                to all zeroes before decoding the first scanline of a (sub-)image. */
             private 
-            var reference:[UInt8]?, 
-                scanline:[UInt8] = []
+            var reference:[UInt8]?
+            /** The decoded pixels of the current scanline. Can be partially filled 
+                if individual image data blocks do not contain a whole number of 
+                scanlines. */
+            private 
+            var scanline:[UInt8] = []
             
+            /** The filter delay used by this image `Decoder`. This value is computed 
+                from the volume of a PNG pixel format, but has no meaning itself. */
             private 
             let stride:Int
             
@@ -1004,8 +1022,20 @@ enum PNG
                 self.reference = .init(repeating: 0, count: pitch + 1)
             }
             
+            /** Calls the given closure for each complete scanline decoded from 
+                the given compressed image data, passing the decoded contents of 
+                the scanline to the closure.
+                
+                Individual data blocks can produce incomplete scanlines. These 
+                scanlines are stored and will be completed by subsequent data blocks, 
+                when they will be passed as full scanlines to the closures given 
+                in the later `forEachScanline(decodedFrom:_:)` calls.
+                - Parameters:
+                    - data: Compressed image data.
+                    - body: A closure which takes as an argument a decoded scanline.
+            */
             public mutating 
-            func forEachScanline(decodedFrom data:[UInt8], body:(ArraySlice<UInt8>) throws -> ()) throws
+            func forEachScanline(decodedFrom data:[UInt8], _ body:(ArraySlice<UInt8>) throws -> ()) throws
             {
                 self.inflator.push(data)
                 
@@ -1052,9 +1082,26 @@ enum PNG
                 }
             }
             
+            /** Defilters the given filtered scanline in-place, using the given 
+                reference scanline.
+                
+                - Parameters:
+                    - scanline: The scanline to defilter in-place. The first byte 
+                        of the scanline is interpreted as the filter byte, and this 
+                        byte is set to 0 upon defiltering.
+                    - reference: The defiltered scanline assumed to be immediately 
+                        above the given filtered scanline. This scanline should 
+                        contain all zeroes if the filtered scanline is logically 
+                        the first scanline in its (sub-)image. The first byte of 
+                        this scanline should always be a bogus padding byte corresponding 
+                        to the filter byte of a filtered scanline, such that 
+                        `reference.count == scanline.count`.
+            */
             private  
             func defilter(_ scanline:inout [UInt8], reference:[UInt8])
             {
+                assert(scanline.count == reference.count)
+                
                 let filter:UInt8              = scanline[scanline.startIndex] 
                 scanline[scanline.startIndex] = 0
                 switch filter
@@ -1105,14 +1152,21 @@ enum PNG
             }
         }
         
+        /** A low level API for filtering and compressing PNG image data at the 
+            scanline level. */
         public 
         struct Encoder 
         {
             // unlike the `Decoder`, here, it’s more efficient for `reference` to 
             // *not* contain the filter byte prefix
+            
+            /** The unfiltered pixels of the previous scanline encoded. Initialized 
+                to all zeroes before encoding the first scanline of a (sub-)image. */
             private 
             var reference:[UInt8]?
             
+            /** The filter delay used by this image `Encoder`. This value is computed 
+                from the volume of a PNG pixel format, but has no meaning itself. */
             private 
             let stride:Int 
             
@@ -1135,9 +1189,25 @@ enum PNG
                 self.reference = .init(repeating: 0, count: pitch)
             }
             
+            /** Filters and compresses scanlines returned by the given closure,  
+                appending the compressed data to the given data buffer. 
+                
+                - Parameters:
+                    - data: A data buffer to append compressed scanline data to.
+                    - capacity: The maximum size `data` is allowed to reach before 
+                        this method will stop outputting data to it.
+                    - generator: A closure which, when called repeatedly, returns 
+                        scanlines to filter and compress, and `nil` when there 
+                        are no more scanlines to encode.
+                
+                - Returns: `true` if `data.count` was filled to the specified capacity, 
+                    or if `generator` returned `nil`. `false` if this `Encoder` 
+                    is finished encoding data. Once this method returns `false`, 
+                    it should not be called again on the same instance.
+            */
             public mutating 
             func consolidate(extending data:inout [UInt8], capacity:Int, 
-                scanlinesFrom generator:() -> ArraySlice<UInt8>?) throws 
+                scanlinesFrom generator:() -> ArraySlice<UInt8>?) throws -> Bool
             {
                 while let reference:[UInt8] = self.reference
                 {
@@ -1146,13 +1216,13 @@ enum PNG
                     {
                         // some input (encoded data) left, usually this means 
                         // the `data` buffer is full too 
-                        return
+                        return true
                     }
                     
                     guard let row:ArraySlice<UInt8> = generator()
                     else 
                     {
-                        return
+                        return true
                     }
                      
                     guard row.count == reference.count 
@@ -1181,17 +1251,26 @@ enum PNG
                         self.reference = nil 
                     }
                 }
-            }
-            
-            // once this is called, `consolidate(extending:capacity:scanlinesFrom:)` can’t 
-            // be called again after it
-            public 
-            func consolidate(extending data:inout [UInt8], capacity:Int) throws
-            {
+                
                 assert(data.count <= capacity)
-                try self.deflator.finish(extending: &data, capacity: capacity)
+                return try self.deflator.finish(extending: &data, capacity: capacity)
             }
             
+            /** Returns the given scanline filtered based on the given reference 
+                scanline, with a filter chosen by heuristic to optimize compressibility.
+                
+                - Parameters:
+                    - current: A scanline to filter. This scanline is *not* prefixed 
+                        by a bogus filter byte.
+                    - reference: The unfiltered scanline assumed to be immediately 
+                        above the given filtered scanline. This scanline should 
+                        contain all zeroes if the scanline to be filtered is logically 
+                        the first scanline in its (sub-)image. This scanline is 
+                        *not* prefixed by a bogus filter byte. `reference.count` 
+                        must be equal to `scanline.count`.
+                - Returns: The filtered scanline, prefixed by a filter byte indicating 
+                    the filter chosen by the library.
+            */
             private  
             func filter(_ current:ArraySlice<UInt8>, reference:[UInt8]) -> [UInt8]
             {
@@ -1278,6 +1357,13 @@ enum PNG
                 }
             }
             
+            /** Scores the compressibility of the given filtered scanline candidate.
+                
+                - Parameters:
+                    - filtered: A filtered scanline to score.
+                - Returns: A score rating the compressibility of the given filtered 
+                    scanline candidate. A higher score indicates less compressibility.
+            */
             private static 
             func score(_ filtered:ArraySlice<UInt8>) -> Int
             {
@@ -1288,6 +1374,16 @@ enum PNG
             } 
         }
         
+        /** Decodes the data of an IHDR chunk as a `Properties` record.
+            
+            - Parameters:
+                - data: IHDR chunk data.
+            - Returns: A `Properties` object containing the information encoded by 
+                the given IHDR chunk.
+            - Throws:
+                - ReadError.syntaxError: If any of the IHDR chunk fields contain 
+                    an invalid value. 
+        */
         public static 
         func decodeIHDR(_ data:[UInt8]) throws -> Properties
         {
@@ -1333,6 +1429,12 @@ enum PNG
             return .init(size: (width, height), format: format, interlaced: interlaced)
         }
         
+        /** Encodes the information in this PNG metadata record as the chunk data 
+            of an IHDR chunk.
+            
+            - Returns: An array containing IHDR chunk data. The chunk header, length, 
+                and crc32 tail are not included.
+        */
         public 
         func encodeIHDR() -> [UInt8] 
         {
@@ -1345,6 +1447,17 @@ enum PNG
             return header
         }
         
+        /** Decodes the data of a PLTE chunk, validates, and stores it in this PNG 
+            metadata record.
+            
+            - Parameters: 
+                - data: PLTE chunk data. Must not contain more entries than this 
+                    PNG’s color depth can uniquely encode.
+            - Throws: 
+                - ReadError.syntaxError: If the given palette data does not contain 
+                    a whole number of palette entries, or if it contains more than 
+                    `1 << format.depth` entries.
+        */
         public mutating 
         func decodePLTE(_ data:[UInt8]) throws
         {
@@ -1371,6 +1484,18 @@ enum PNG
             }
         }
         
+        /** Encodes this PNG’s palette as the chunk data of a PLTE chunk, if it 
+            has one.
+            
+            This method always returns valid PLTE chunk data. If this metadata 
+            record has more palette entries than can be encoded with its color depth, 
+            only the first `1 << format.depth` entries are encoded. This method 
+            does not remove palette entries from this metatada record itself.
+            
+            - Returns: An array containing PLTE chunk data, or `nil` if this PNG 
+                does not have a palette. The chunk header, length, 
+                and crc32 tail are not included.
+        */
         public 
         func encodePLTE() -> [UInt8]?
         {
@@ -1381,12 +1506,41 @@ enum PNG
                 return nil 
             }
             
-            return palette.prefix(256).flatMap 
+            return palette.prefix(1 << self.format.depth).flatMap 
             {
                 [$0.r, $0.g, $0.b]
             }
         }
         
+        /** Decodes the data of a tRNS chunk, validates, and modifies this PNG 
+            metadata record’s palette entries, or chroma key, as appropriate.
+            
+            This method should only be called if this PNG has an opaque pixel format, 
+            and only after `decodePLTE(_:)` has been called on this metadata record. 
+            If this PNG has a transparent pixel format, this method returns immediately 
+            with no effects.
+            
+            This method sets the `chromaKey` property if this PNG has an opaque 
+            grayscale or RGB pixel format. It instead modifies the color palette 
+            if this PNG has an indexed pixel format.
+            
+            - Parameters: 
+                - data: tRNS chunk data. If this PNG has a grayscale pixel format, 
+                    it must contain one value sample. If this PNG has an RGB pixel 
+                    format, it must contain three samples, red, green, and blue. 
+                    If this PNG has an indexed pixel format, it must not contain 
+                    more transparency values than this PNG’s color depth can uniquely 
+                    encode.
+            - Throws: 
+                - ReadError.syntaxError: If the given transparency data does not 
+                    contain the correct number of samples, or, in the case of indexed 
+                    color, if it contains more than `1 << format.depth` trasparency 
+                    values.
+                - ReadError.missingChunk: If this PNG has an indexed color format, 
+                    and this metadata record has not been assigned a palette, either 
+                    through a `decodePLTE(_:)` call, or by manual assignment to 
+                    the `palette` property.
+        */
         public mutating 
         func decodetRNS(_ data:[UInt8]) throws
         {
@@ -1443,6 +1597,27 @@ enum PNG
             }
         }
         
+        /** Encodes this PNG’s transparency information as the chunk data of a tRNS 
+            chunk, if it has any.
+            
+            This method always returns valid tRNS chunk data. If this PNG has an 
+            indexed pixel format, and this metadata record has more palette entries 
+            than can be encoded with its color depth, then only the first `1 << format.depth` 
+            transparency values are encoded. This method does not remove palette 
+            entries from this metatada record itself.
+            
+            - Returns: An array containing tRNS chunk data, or `nil` if this PNG 
+                does not have an transparency information. The chunk header, length, 
+                and crc32 tail are not included. The chunk data consists of a single 
+                grayscale chroma key value, narrowed to this PNG’s color depth, 
+                if it has an opaque grayscale pixel format, an RGB chroma key triple, 
+                narrowed to this PNG’s color depth, if it has an opaque RGB pixel 
+                format, and the transparency values in this PNG’s color palette, 
+                if it has an indexed color format. In the indexed color case, trailing 
+                opaque palette entries are trimmed from the outputted sequence of 
+                transparency values. If all palette entries are opaque, or this 
+                metadata record has not been assigned a palette, `nil` is returned.
+        */
         public 
         func encodetRNS() -> [UInt8]? 
         {
@@ -1484,7 +1659,7 @@ enum PNG
                         return nil
                     }
                     
-                    var alphas:[UInt8] = palette.map{ $0.a } 
+                    var alphas:[UInt8] = palette.prefix(1 << self.format.depth).map{ $0.a } 
                     guard let last:Int = alphas.lastIndex(where: { $0 != UInt8.max })
                     else 
                     {
@@ -1493,7 +1668,7 @@ enum PNG
                     }
                     
                     alphas.removeLast(alphas.count - last - 1)
-                    return alphas
+                    return alphas.isEmpty ? nil : alphas
                 
                 default:
                     return nil
@@ -1654,10 +1829,10 @@ enum PNG
                 
                 var pitch:Int?, 
                     base:Int     = self.data.startIndex
-                var data:[UInt8] = []
-                while true 
+                while true  
                 {
-                    try encoder.consolidate(extending: &data, capacity: chunkSize) 
+                    var data:[UInt8] = []
+                    let more:Bool = try encoder.consolidate(extending: &data, capacity: chunkSize) 
                     {
                         guard let update:Int? = pitches.next(), 
                               let count:Int   = update ?? pitch
@@ -1674,29 +1849,14 @@ enum PNG
                         return self.data[base ..< base + count]
                     }
                     
-                    if data.count == chunkSize 
-                    {
-                        iterator.next(.IDAT, data, destination: &destination)
-                        data = []
-                    } 
-                    else 
-                    {
-                        break
-                    }
-                }
-                
-                while true 
-                {
-                    try encoder.consolidate(extending: &data, capacity: chunkSize)
-                    
-                    if data.count == 0 
-                    {
-                        break
-                    }
-                    
                     iterator.next(.IDAT, data, destination: &destination)
-                    data = []
-                }
+                    
+                    guard more 
+                    else  
+                    {
+                        break
+                    }
+                } 
                 
                 iterator.next(.IEND, destination: &destination)
             }
