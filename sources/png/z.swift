@@ -119,8 +119,10 @@ extension LZ77Stream
 
 extension PNG 
 {
+    public 
     enum LZ77 
     {
+        public  
         enum Error:Swift.Error 
         {
             case initialization, missingDictionary, data, memory

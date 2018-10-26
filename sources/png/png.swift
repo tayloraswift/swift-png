@@ -2753,11 +2753,14 @@ enum PNG
         }
     }
     
+    /// A four-byte PNG chunk type identifier.
     public 
     struct Chunk:Hashable, Equatable, CustomStringConvertible
     {
+        /// The four-byte name of this PNG chunk type.
         let name:Math<UInt8>.V4
         
+        /// A string displaying the ASCII representation of this PNG chunk type’s name.
         public
         var description:String 
         {
@@ -2771,6 +2774,15 @@ enum PNG
             self.name = (a, p, r, c)
         }
         
+        /** Creates the chunk type with the given name bytes, if they are valid. 
+            Returns `nil` if the ancillary bit (in byte 0) is set or the reserved 
+            bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`, 
+            `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`, 
+            `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
+            
+            - Parameters:
+                - name: The four bytes of this PNG chunk type’s name.
+        */
         public  
         init?(_ name:(UInt8, UInt8, UInt8, UInt8))
         {
@@ -2798,12 +2810,28 @@ enum PNG
             }
         }
         
+        /** Returns a Boolean value indicating whether two PNG chunk types are equal. 
+            
+            Equality is the inverse of inequality. For any values `a` and `b`, `a == b` 
+            implies that `a != b` is `false`.
+            
+            - Parameters: 
+                - lhs: A value to compare.
+                - rhs: Another value to compare.
+        */
         public static 
         func == (a:Chunk, b:Chunk) -> Bool 
         {
             return a.name == b.name
         }
         
+        /** Hashes the name of this PNG chunk type by feeding it into the given 
+            hasher. 
+            
+            - Parameters:
+                - hasher: The hasher to use when combining the components of this 
+                    instance.
+        */
         public 
         func hash(into hasher:inout Hasher) 
         {
@@ -2813,31 +2841,66 @@ enum PNG
                             self.name.3)
         }
         
+        /// The PNG header chunk type.
         public static 
-        let IHDR:Chunk = .init(73, 72, 68, 82), 
-            PLTE:Chunk = .init(80, 76, 84, 69), 
-            IDAT:Chunk = .init(73, 68, 65, 84), 
-            IEND:Chunk = .init(73, 69, 78, 68), 
+        let IHDR:Chunk = .init(73, 72, 68, 82)
+        /// The PNG palette chunk type.
+        public static 
+        let PLTE:Chunk = .init(80, 76, 84, 69)
+        /// The PNG image data chunk type.
+        public static     
+        let IDAT:Chunk = .init(73, 68, 65, 84)
+        /// The PNG image end chunk type.
+        public static     
+        let IEND:Chunk = .init(73, 69, 78, 68)
+    
+        /// The PNG chromaticity chunk type.
+        public static 
+        let cHRM:Chunk = .init(99, 72, 82, 77)
+        /// The PNG gamma chunk type.
+        public static     
+        let gAMA:Chunk = .init(103, 65, 77, 65)
+        /// The PNG embedded ICC chunk type.
+        public static     
+        let iCCP:Chunk = .init(105, 67, 67, 80)
+        /// The PNG significant bits chunk type.
+        public static     
+        let sBIT:Chunk = .init(115, 66, 73, 84)
+        /// The PNG *s*RGB chunk type.
+        public static     
+        let sRGB:Chunk = .init(115, 82, 71, 66)
+        /// The PNG background chunk type.
+        public static     
+        let bKGD:Chunk = .init(98, 75, 71, 68)
+        /// The PNG histogram chunk type.
+        public static     
+        let hIST:Chunk = .init(104, 73, 83, 84)
+        /// The PNG transparency chunk type., 
+        public static     
+        let tRNS:Chunk = .init(116, 82, 78, 83)
             
-            cHRM:Chunk = .init(99, 72, 82, 77), 
-            gAMA:Chunk = .init(103, 65, 77, 65), 
-            iCCP:Chunk = .init(105, 67, 67, 80), 
-            sBIT:Chunk = .init(115, 66, 73, 84), 
-            sRGB:Chunk = .init(115, 82, 71, 66), 
-            bKGD:Chunk = .init(98, 75, 71, 68), 
-            hIST:Chunk = .init(104, 73, 83, 84), 
-            tRNS:Chunk = .init(116, 82, 78, 83), 
+        /// The PNG physical dimensions chunk type. 
+        public static     
+        let pHYs:Chunk = .init(112, 72, 89, 115)
             
-            pHYs:Chunk = .init(112, 72, 89, 115), 
+        /// The PNG suggested palette chunk type.
+        public static     
+        let sPLT:Chunk = .init(115, 80, 76, 84)
+        /// The PNG time chunk type.
+        public static     
+        let tIME:Chunk = .init(116, 73, 77, 69)
             
-            sPLT:Chunk = .init(115, 80, 76, 84), 
-            tIME:Chunk = .init(116, 73, 77, 69), 
-            
-            iTXt:Chunk = .init(105, 84, 88, 116), 
-            tEXt:Chunk = .init(116, 69, 88, 116), 
-            zTXt:Chunk = .init(122, 84, 88, 116)
+        /// The PNG UTF-8 text chunk type.
+        public static     
+        let iTXt:Chunk = .init(105, 84, 88, 116)
+        /// The PNG Latin-1 text chunk type.
+        public static     
+        let tEXt:Chunk = .init(116, 69, 88, 116)
+        /// The PNG compressed Latin-1 text chunk type.
+        public static     
+        let zTXt:Chunk = .init(122, 84, 88, 116)
         
-        // performs chunk ordering and presence validation
+        /// A validator that checks for chunk ordering and presence.
         struct OrderingValidator 
         {
             private 
@@ -2845,6 +2908,12 @@ enum PNG
                 last:Chunk, 
                 seen:Set<Chunk>
             
+            /** Initialize this validator to the state of just having seen an IHDR 
+                chunk. 
+                
+                - Parameters:
+                    - format: The pixel format from a PNG image header.
+            */
             init(format:Properties.Format) 
             {
                 self.format = format 
@@ -2852,6 +2921,14 @@ enum PNG
                 self.seen   = [.IHDR] 
             }
             
+            /** Registers the given chunk type as having been seen, returning an 
+                error if the recorded chunk sequence has become invalid.
+                
+                - Parameters:
+                    chunk: A PNG chunk type.
+                - Returns: A `ReadError` case, if the given chunk type was out of place 
+                    or a necessary prerequisite chunk was missing, `nil` otherwise.
+            */
             mutating 
             func push(_ chunk:Chunk) -> ReadError? 
             {                
@@ -2937,20 +3014,36 @@ enum PNG
         }
     }
     
+    /// Errors that can occur while reading, decompressing, or decoding PNG files.
     public 
     enum ReadError:Error
     {
-        case incompleteChunk,  
-            
-             syntaxError(message: String), 
-             
-             missingSignature, 
-             prematureIEND, 
-             corruptedChunk, 
-             illegalChunk(Chunk), 
-             misplacedChunk(Chunk), 
-             duplicateChunk(Chunk), 
-             missingChunk(Chunk)
+        /// A PNG chunk has incomplete structure.
+        case incompleteChunk  
+        
+        /// A PNG chunk has a type-specific validity error.
+        case syntaxError(message: String)
+        
+        /// A PNG file is missing its magic signature.
+        case missingSignature
+        
+        /// An unexpected IEND chunk has been encountered.
+        case prematureIEND
+        /// A PNG chunk’s crc32 value indicates it has been corrupted.
+        case corruptedChunk
+        /// A PNG chunk has been encountered which cannot appear assuming a particular 
+        /// sequence of preceeding chunks have been encountered.
+        case illegalChunk(Chunk)
+        
+        /// A PNG chunk has been encountered that is out of correct order assuming 
+        /// a particular sequence of preceeding chunks have been encountered.
+        case misplacedChunk(Chunk)
+        /// A PNG chunk has been encountered that is of the same type as a previously 
+        /// encountered chunk, and is of a type which cannot appear multiple times 
+        /// in the same PNG file.
+        case duplicateChunk(Chunk)
+        /// A prerequisite PNG chunk is missing.
+        case missingChunk(Chunk)
     }
     
     public 
