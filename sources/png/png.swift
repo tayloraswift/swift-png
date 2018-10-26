@@ -1676,17 +1676,32 @@ enum PNG
         }
     }
     
+    /// A namespace for PNG image data container types. 
     public 
     enum Data 
     {
-        // PNG data that has been decompressed, but not necessarily deinterlaced 
+        /// A PNG image that has been decompressed, but not necessarily deinterlaced.
         public 
         struct Uncompressed 
         {
+            /// The global image metadata of this PNG image.
             public 
-            let properties:Properties, 
-                data:[UInt8]
+            let properties:Properties
+            /** The buffer containing this PNG’s decoded, but not necessarily 
+                deinterlaced, image data. */
+            public 
+            let data:[UInt8]
             
+            /** Creates an uncompressed PNG image with the given pixel buffer and 
+                metadata record.
+                
+                - Parameters: 
+                    - data: A pixel buffer. 
+                    - properties: A metadata record.
+                - Returns: An uncompressed PNG image, if the size of the given 
+                    pixel buffer is consistent with the size and format information 
+                    in the given `properties`, and `nil` otherwise.
+            */
             public 
             init?(_ data:[UInt8], properties:Properties) 
             {
@@ -1700,6 +1715,12 @@ enum PNG
                 self.data       = data 
             }
             
+            /** Decomposes this uncompressed image into its constituent sub-images, 
+                if this image is interlaced. 
+                
+                - Returns: The seven sub-images making up this image, if it uses 
+                    the Adam7 interlacing algorithm, and `nil` otherwise.
+            */
             public 
             func decompose() -> [Rectangular]?
             {
@@ -1723,6 +1744,15 @@ enum PNG
                 }
             }
             
+            /** Returns the pixels of this uncompressed image, organized into a 
+                rectangular row-major pixel matrix.
+                
+                This method deinterlaces the pixel data from this uncompressed image, 
+                if it uses an interlacing algorithm. Otherwise, it simply repackages 
+                this image’s already-rectangular `data`.
+                
+                - Returns: A rectangular row-major pixel matrix.
+            */
             public 
             func deinterlace() -> Rectangular 
             {
@@ -1804,6 +1834,22 @@ enum PNG
                 return .init(deinterlaced, properties: properties)
             }
             
+            /** Compresses this image, and outputs the compressed PNG file to the given 
+                data destination.
+                
+                Excessively small chunk sizes may harm image compression. Higher 
+                compression levels produce smaller PNG files, but take longer to 
+                run.
+                
+                - Parameters:
+                    - destination: A data destination to write the contents of the 
+                        compressed file to.
+                    - chunkSize: The maximum IDAT chunk size to use. The default 
+                        is 65536 bytes.
+                    - level: The level of LZ77 compression to use. Must be in the 
+                        range `0 ... 9`, where 0 is no compression, and 9 is maximal 
+                        compression.
+            */
             public  
             func compress<Destination>(to destination:inout Destination, 
                 chunkSize:Int = 1 << 16, level:Int = 9) throws 
@@ -1861,6 +1907,13 @@ enum PNG
                 iterator.next(.IEND, destination: &destination)
             }
             
+            /** Decompresses a PNG file from the given data source, and returns 
+                it as an `Uncompressed` PNG image.
+                
+                - Parameters:
+                    - source: A data source yielding a PNG file.
+                - Returns: An uncompressed PNG image.
+            */
             public static 
             func decompress<Source>(from source:inout Source) throws -> Uncompressed 
                 where Source:DataSource
@@ -1961,16 +2014,32 @@ enum PNG
             }
         }
         
-        // PNG data that has been deinterlaced, but may still have multiple pixels 
-        // packed per byte, or indirect (indexed) pixels
+        /** A PNG image that has been deinterlaced, but may still have multiple 
+            pixels packed per byte, or indirect (indexed) pixels. */
         public 
         struct Rectangular 
         {
+            /// The global image metadata of this PNG image.
             public 
-            let properties:Properties, 
-                data:[UInt8]
+            let properties:Properties
+            /** A rectangular row-major matrix containing this PNG’s pixel data.
+                This buffer is untyped, and each byte may contain multiple, or 
+                fractional, pixels. Logical image scanlines are padded to a whole 
+                number of bytes. */
+            public 
+            let data:[UInt8]
             
-            // only called directly from within the library 
+            /** Creates a fully decoded PNG image with the given pixel matrix and 
+                metadata record.
+                
+                - Parameters: 
+                    - data: An untyped, padded data buffer containing a row-major 
+                        pixel matrix. 
+                    - properties: A metadata record.
+                - Returns: A fully decoded PNG image. The size of the given pixel 
+                    matrix must be consistent with the size and format information 
+                    in the given image `properties`.
+            */
             init(_ data:[UInt8], properties:Properties) 
             {
                 assert(!properties.interlaced)
@@ -1980,17 +2049,17 @@ enum PNG
                 self.data       = data 
             }
             
-            static 
-            func index(_ pixels:[RGBA<UInt8>], size:Math<Int>.V2) -> Rectangular 
-            {
-                fatalError("unimplemented")
-            }
-            
-            // makes sure the passed type parameter (`Sample`) has enough bits to 
-            // represent the values in the image
+            /** Checks if the given integer type has enough bits to represent the 
+                components of this image.
+                
+                - Parameters:
+                    - type: An integer type.
+                - Returns: `true` if `Sample` has enough bits to represent the components 
+                    of this image, `false` otherwise.
+            */
             @inline(__always)
             private 
-            func checkWidth<Sample>(of _:Sample.Type) -> Bool 
+            func checkWidth<Sample>(of type:Sample.Type) -> Bool 
                 where Sample:FixedWidthInteger
             {
                 switch self.properties.format 
@@ -2003,6 +2072,23 @@ enum PNG
                 }
             }
             
+            /** Calls the given closure on each single-channel pixel in this 
+                PNG image.
+                
+                The given closure is not called if this image does not have 
+                exactly one channel, or `Sample` does not have enough bits to represent 
+                its channel. The samples passed to the closure are raw, unnormalized 
+                scalars, cast to the inferred integer type.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - body: A closure that takes one channel of one pixel.
+                
+                - Returns: An array of the return values of the given closure, or 
+                    `nil`, if this PNG image has more than one channel, or `Sample` 
+                    does not have enough bits to represent its channel.
+            */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
             @_specialize(exported: true, kind: partial, where Sample == UInt32) 
@@ -2035,6 +2121,23 @@ enum PNG
                 }
             }
             
+            /** Calls the given closure on the normalized intensity of each 
+                single-channel pixel in this PNG image.
+                
+                The given closure is not called if this image does not have 
+                exactly one channel, or `Sample` does not have enough bits to represent 
+                its channel. The samples passed to the closure are normalized values 
+                in the range `0 ... Sample.max`.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - body: A closure that takes one normalized channel of one pixel.
+                
+                - Returns: An array of the return values of the given closure, or 
+                    `nil`, if this PNG image has more than one channel, or `Sample` 
+                    does not have enough bits to represent its channel.
+            */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
             @_specialize(exported: true, kind: partial, where Sample == UInt32) 
@@ -2066,6 +2169,24 @@ enum PNG
                         return nil
                 }
             }
+            
+            /** Calls the given closure on the normalized intensity of each 
+                two-channel pixel in this PNG image.
+                
+                The given closure is not called if this image does not have 
+                exactly two channels, or `Sample` does not have enough bits to represent 
+                its channels. The samples passed to the closure are normalized values 
+                in the range `0 ... Sample.max`.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - body: A closure that takes two normalized channels of one pixel.
+                
+                - Returns: An array of the return values of the given closure, or 
+                    `nil`, if this PNG image does not have exactly two channels, 
+                    or `Sample` does not have enough bits to represent its channels.
+            */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
             @_specialize(exported: true, kind: partial, where Sample == UInt32) 
@@ -2093,6 +2214,25 @@ enum PNG
                         return nil
                 }
             }
+            
+            /** Calls the given closure on the normalized intensity of each 
+                three-channel pixel in this PNG image.
+                
+                The given closure is not called if this PNG image does not have 
+                exactly three channels, or `Sample` does not have enough bits to 
+                represent its channels. The samples passed to the closure are normalized 
+                values in the range `0 ... Sample.max`.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - body: A closure that takes three normalized channels of one 
+                        pixel.
+                
+                - Returns: An array of the return values of the given closure, or 
+                    `nil`, if this PNG image does not have exactly three channels, 
+                    or `Sample` does not have enough bits to represent its channels.
+            */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
             @_specialize(exported: true, kind: partial, where Sample == UInt32) 
@@ -2120,6 +2260,25 @@ enum PNG
                         return nil
                 }
             }
+            
+            /** Calls the given closure on the normalized intensity of each 
+                four-channel pixel in this PNG image.
+                
+                The given closure is not called if this image does not have 
+                exactly four channels, or `Sample` does not have enough bits to 
+                represent its channels. The samples passed to the closure are normalized 
+                values in the range `0 ... Sample.max`.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - body: A closure that takes four normalized channels of one 
+                        pixel.
+                
+                - Returns: An array of the return values of the given closure, or 
+                    `nil`, if this PNG image does not have exactly four channels, 
+                    or `Sample` does not have enough bits to represent its channels.
+            */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
             @_specialize(exported: true, kind: partial, where Sample == UInt32) 
@@ -2148,8 +2307,30 @@ enum PNG
                 }
             }
             
+            /** Returns a row-major matrix of the first components of all the pixels 
+                in this PNG image, normalized to the range of the given sample type.
+                
+                If this image has more than one component per pixel, the first 
+                component of each pixel is returned. If this image has indexed color, 
+                the components returned are the first components of the RGB palette 
+                colors of those pixels. This method ignores the transparency and 
+                chroma keys of this image.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - type: An integer type.
+                - Returns: A row-major matrix of pixel samples, normalized to its 
+                    `Sample` type, or `nil` is `Sample` does not have enough bits 
+                    to represent this PNG image’s components.
+            */
+            @_specialize(exported: true, where Sample == UInt8) 
+            @_specialize(exported: true, where Sample == UInt16) 
+            @_specialize(exported: true, where Sample == UInt32) 
+            @_specialize(exported: true, where Sample == UInt64) 
+            @_specialize(exported: true, where Sample == UInt)
             public 
-            func grayscale<Sample>(of _:Sample.Type) -> [Sample]?
+            func grayscale<Sample>(of type:Sample.Type) -> [Sample]?
                 where Sample:FixedWidthInteger & UnsignedInteger
             {
                 guard self.checkWidth(of: Sample.self)
@@ -2241,13 +2422,23 @@ enum PNG
                 }
             }
             
+            /** Returns the given color with its alpha component set to 0 if its 
+                color value matches this PNG image’s chroma key, and the given color 
+                unchanged otherwise.
+                
+                - Parameters:
+                    - color: An RGBA color to test.
+                - Returns: The given color, with its alpha component set to 0 if its 
+                        color value matches this PNG image’s chroma key.
+            */
             @inline(__always) 
             private 
             func greenscreen<Sample>(_ color:RGBA<Sample>) -> RGBA<Sample> 
             {
-                // all functions that call this should use `checkWidth` to make 
-                // sure Sample.bitWidth <= 16
-                guard let key:RGBA<Sample> = self.properties.chromaKey?.downscale(to: Sample.self) 
+                // hope this gets inlined
+                guard let key:RGBA<Sample> = Sample.bitWidth > 16 ? 
+                    self.properties.chromaKey?.upscale(  to: Sample.self) :  
+                    self.properties.chromaKey?.downscale(to: Sample.self) 
                 else 
                 {
                     return color
@@ -2270,37 +2461,38 @@ enum PNG
                 return self.greenscreen(.init(r, g, b))
             }
             
+            /** Returns a row-major matrix of the RGBA color values represented 
+                by all the pixels in this PNG image, normalized to the range of 
+                the given sample type.
+                
+                If this image has grayscale color, the RGBA colors returned have 
+                the value component in the red, green, and blue components, and 
+                `Sample.max` in the alpha component. If this image has grayscale-alpha 
+                color, the RGBA colors returned share the alpha component in addition.
+                If this image has RGB color, the RGBA colors share the red, green, 
+                and blue components, and have `Sample.max` in the alpha component.
+                
+                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - type: An integer type.
+                - Returns: A row-major matrix of RGBA pixel colors, normalized to 
+                    the given `Sample` type, or `nil` is `Sample` does not have 
+                    enough bits to represent this PNG image’s components.
+            */
             @_specialize(exported: true, where Sample == UInt8) 
             @_specialize(exported: true, where Sample == UInt16) 
             @_specialize(exported: true, where Sample == UInt32) 
             @_specialize(exported: true, where Sample == UInt64) 
             @_specialize(exported: true, where Sample == UInt)
             public 
-            func rgba<Sample>(of _:Sample.Type) -> [RGBA<Sample>]? 
+            func rgba<Sample>(of type:Sample.Type) -> [RGBA<Sample>]? 
                 where Sample:FixedWidthInteger & UnsignedInteger
             {
                 guard self.checkWidth(of: Sample.self)
                 else 
                 {
                     return nil
-                }
-                
-                // to make sure chroma keys work 
-                switch self.properties.format 
-                {
-                    case .grayscale1, .grayscale2, .grayscale4, 
-                         .grayscale8, 
-                         .grayscale16, 
-                         .rgb8, 
-                         .rgb16:
-                        guard Sample.bitWidth <= UInt16.bitWidth 
-                        else 
-                        {
-                            return nil
-                        }
-                    
-                    default:
-                        break
                 }
                 
                 switch self.properties.format 
@@ -2368,8 +2560,42 @@ enum PNG
                 }
             }
             
+            /** Returns a row-major matrix of the RGBA color values represented 
+                by all the pixels in this PNG image, normalized to the range of 
+                the given sample type and encoded as integer slugs containing 
+                four components in ARGB order. The alpha components are premultiplied 
+                into the colors.
+                
+                If this image has grayscale color, the RGBA colors returned have 
+                the value component in the red, green, and blue components, and 
+                `Sample.max` in the alpha component. If this image has grayscale-alpha 
+                color, the RGBA colors returned share the alpha component in addition.
+                If this image has RGB color, the RGBA colors share the red, green, 
+                and blue components, and have `Sample.max` in the alpha component. 
+                The RGBA colors are packed into four-component integer slugs of a 
+                type large enough to hold four instances of the given type, if one 
+                exists. The color components are packed in ARGB order, with alpha 
+                in the high bits.
+                
+                Allowed `Sample` types by default are `UInt8`, and `UInt16`. Custom 
+                `Sample` types can be used by conforming them to the `FusedVector4Element` 
+                protocol and supplying the `FusedVector4` associatedtype. This type 
+                must satisfy `Self.bitWidth == Sample.bitWidth << 2`.
+                
+                *Specialized* for `Sample` types `UInt8` and `UInt16`. (`Sample.FusedVector4` types `UInt32` and `UInt64`.)
+                
+                - Parameters:
+                    - type: An integer type.
+                - Returns: A row-major matrix of RGBA pixel colors, normalized to 
+                    the given `Sample` type, and encoded as four-component integer 
+                    slugs, or `nil` is `Sample` does not have enough bits to represent 
+                    this PNG image’s components, or if no integer type exists that 
+                    can hold four instances of the given sample type.
+            */
+            @_specialize(exported: true, where Sample == UInt8) 
+            @_specialize(exported: true, where Sample == UInt16) 
             public 
-            func argbPremultiplied<Sample>(of _:Sample.Type) -> [Sample.FusedVector4]? 
+            func argbPremultiplied<Sample>(of type:Sample.Type) -> [Sample.FusedVector4]? 
                 where Sample:FusedVector4Element
             {
                 // *all* color formats can produce pixels with alpha, so we might 
