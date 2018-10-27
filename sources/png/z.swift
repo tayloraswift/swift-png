@@ -119,13 +119,22 @@ extension LZ77Stream
 
 extension PNG 
 {
+    /// A namespace for LZ77 utilities. Not for public use.
     public 
     enum LZ77 
     {
+        /// Errors that can occur in the LZ77 compression or decompression process.
         public  
         enum Error:Swift.Error 
         {
-            case initialization, missingDictionary, data, memory
+            /// A zlib stream object failed to initialize properly.
+            case initialization 
+            /// The `Z_NEED_DICT` error occured.
+            case missingDictionary 
+            /// The `Z_DATA_ERROR` error occured.
+            case data 
+            /// The `Z_MEM_ERROR` error occured.
+            case memory
         }
         
         class Inflator:LZ77Stream 
