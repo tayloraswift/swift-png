@@ -1724,7 +1724,7 @@ enum PNG
                     the Adam7 interlacing algorithm, and `nil` otherwise.
             */
             public 
-            func decompose() -> [Rectangular]?
+            func decomposed() -> [Rectangular]?
             {
                 guard case .adam7(let subImages) = self.properties.interlacing 
                 else 
@@ -1756,7 +1756,7 @@ enum PNG
                 - Returns: A rectangular row-major pixel matrix.
             */
             public 
-            func deinterlace() -> Rectangular 
+            func deinterlaced() -> Rectangular 
             {
                 guard case .adam7(let subImages) = self.properties.interlacing 
                 else 
@@ -2111,6 +2111,22 @@ enum PNG
                 
                 self.properties = properties
                 self.data       = data 
+            }
+            
+            /** Decompresses and deinterlaces a PNG file at the given file path, 
+                and returns it as a `Rectangular` row-major pixel matrix.
+                
+                If the PNG file is not interlaced, no deinterlacing is performed.
+                
+                - Parameters:
+                    - inputPath: A path to a PNG file.
+                - Returns: A rectangular row-major pixel matrix, or `nil` if the 
+                    given file could not be opened.
+            */
+            public static 
+            func decompress(path inputPath:String) throws -> Rectangular?
+            {
+                return try Uncompressed.decompress(path: inputPath)?.deinterlaced()
             }
             
             /** Checks if the given integer type has enough bits to represent the 
