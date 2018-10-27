@@ -1383,7 +1383,7 @@ enum PNG
             - Returns: A `Properties` object containing the information encoded by 
                 the given IHDR chunk.
             - Throws:
-                - ReadError.syntaxError: If any of the IHDR chunk fields contain 
+                - ReadError.syntax: If any of the IHDR chunk fields contain 
                     an invalid value. 
         */
         public static 
@@ -1392,26 +1392,26 @@ enum PNG
             guard data.count == 13 
             else 
             {
-                throw ReadError.syntaxError(message: "png header length is \(data.count), expected 13")
+                throw ReadError.syntax(message: "png header length is \(data.count), expected 13")
             }
             
             let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
             guard let format:Format = Format.init(rawValue: colorcode)
             else 
             {
-                throw ReadError.syntaxError(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+                throw ReadError.syntax(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
             }
             
             // validate other fields 
             guard data[10] == 0 
             else 
             {
-                throw ReadError.syntaxError(message: "compression byte has value \(data[10]), expected 0")
+                throw ReadError.syntax(message: "compression byte has value \(data[10]), expected 0")
             }
             guard data[11] == 0 
             else 
             {
-                throw ReadError.syntaxError(message: "filter byte has value \(data[11]), expected 0")
+                throw ReadError.syntax(message: "filter byte has value \(data[11]), expected 0")
             }
             
             let interlaced:Bool 
@@ -1422,7 +1422,7 @@ enum PNG
                 case 1: 
                     interlaced = true 
                 default:
-                    throw ReadError.syntaxError(message: "interlacing byte has invalid value \(data[12])")
+                    throw ReadError.syntax(message: "interlacing byte has invalid value \(data[12])")
             }
             
             let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
@@ -1456,7 +1456,7 @@ enum PNG
                 - data: PLTE chunk data. Must not contain more entries than this 
                     PNG’s color depth can uniquely encode.
             - Throws: 
-                - ReadError.syntaxError: If the given palette data does not contain 
+                - ReadError.syntax: If the given palette data does not contain 
                     a whole number of palette entries, or if it contains more than 
                     `1 << format.depth` entries.
         */
@@ -1466,7 +1466,7 @@ enum PNG
             guard data.count.isMultiple(of: 3)
             else
             {
-                throw ReadError.syntaxError(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
+                throw ReadError.syntax(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
             }
             
             // check number of palette entries 
@@ -1474,7 +1474,7 @@ enum PNG
             guard data.count <= maxEntries * 3
             else 
             {
-                throw ReadError.syntaxError(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
+                throw ReadError.syntax(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
             }
 
             self.palette = stride(from: data.startIndex, to: data.endIndex, by: 3).map
@@ -1534,7 +1534,7 @@ enum PNG
                     more transparency values than this PNG’s color depth can uniquely 
                     encode.
             - Throws: 
-                - ReadError.syntaxError: If the given transparency data does not 
+                - ReadError.syntax: If the given transparency data does not 
                     contain the correct number of samples, or, in the case of indexed 
                     color, if it contains more than `1 << format.depth` trasparency 
                     values.
@@ -1552,7 +1552,7 @@ enum PNG
                     guard data.count == 2
                     else
                     {
-                        throw ReadError.syntaxError(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
+                        throw ReadError.syntax(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
                     }
                     
                     let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
@@ -1563,7 +1563,7 @@ enum PNG
                     guard data.count == 6
                     else
                     {
-                        throw ReadError.syntaxError(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
+                        throw ReadError.syntax(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
                     }
                     
                     let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
@@ -1582,7 +1582,7 @@ enum PNG
                     guard data.count <= palette.count
                     else
                     {
-                        throw ReadError.syntaxError(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
+                        throw ReadError.syntax(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
                     }
                     
                     self.palette = zip(palette, data).map 
@@ -1859,17 +1859,31 @@ enum PNG
             {
                 precondition(chunkSize >= 1, "chunk size must be positive")
                 
-                var iterator:ChunkIterator<Destination> = 
+                guard var iterator:ChunkIterator<Destination> = 
                     ChunkIterator.begin(destination: &destination)
-                
-                iterator.next(.IHDR, self.properties.encodeIHDR(), destination: &destination)
-                self.properties.encodePLTE().map 
+                else 
                 {
-                    iterator.next(.PLTE, $0, destination: &destination)
+                    throw WriteError.signature
                 }
-                self.properties.encodetRNS().map 
+                
+                @inline(__always)
+                func _next(_ chunk:Chunk, _ contents:[UInt8] = []) throws 
                 {
-                    iterator.next(.tRNS, $0, destination: &destination)
+                    guard let _:Void = iterator.next(chunk, contents, destination: &destination) 
+                    else 
+                    {
+                        throw WriteError.chunk
+                    }
+                }
+                
+                try _next(.IHDR, self.properties.encodeIHDR())
+                try self.properties.encodePLTE().map 
+                {
+                    try _next(.PLTE, $0)
+                }
+                try self.properties.encodetRNS().map 
+                {
+                    try _next(.tRNS, $0)
                 }
                 
                 var pitches:Properties.Pitches = self.properties.pitches, 
@@ -1897,7 +1911,7 @@ enum PNG
                         return self.data[base ..< base + count]
                     }
                     
-                    iterator.next(.IDAT, data, destination: &destination)
+                    try _next(.IDAT, data)
                     
                     guard more 
                     else  
@@ -1906,11 +1920,11 @@ enum PNG
                     }
                 } 
                 
-                iterator.next(.IEND, destination: &destination)
+                try _next(.IEND)
             }
             
             /** Decompresses a PNG file from the given data source, and returns 
-                it as an `Uncompressed` PNG image.
+                it as an `Uncompressed` image.
                 
                 - Parameters:
                     - source: A data source yielding a PNG file.
@@ -1924,7 +1938,7 @@ enum PNG
                     ChunkIterator.begin(source: &source)
                 else 
                 {
-                    throw ReadError.missingSignature 
+                    throw ReadError.signature 
                 }
                                 
                 @inline(__always)
@@ -1942,7 +1956,7 @@ enum PNG
                     {
                         let string:String = .init(decoding: [name.0, name.1, name.2, name.3], 
                                                         as: Unicode.ASCII.self)
-                        throw ReadError.syntaxError(message: "chunk '\(string)' has invalid name")
+                        throw ReadError.syntax(message: "chunk '\(string)' has invalid name")
                     }
                     
                     guard let contents:[UInt8] = data 
@@ -2013,6 +2027,54 @@ enum PNG
                 }
                 
                 throw ReadError.missingChunk(.IEND)
+            }
+            
+            /** Compresses and saves this PNG image at the given file path.
+                
+                Excessively small chunk sizes may harm image compression. Higher 
+                compression levels produce smaller PNG files, but take longer to 
+                run.
+                
+                - Parameters:
+                    - outputPath: A file path.
+                    - chunkSize: The maximum IDAT chunk size to use. The default 
+                        is 65536 bytes.
+                    - level: The level of LZ77 compression to use. Must be in the 
+                        range `0 ... 9`, where 0 is no compression, and 9 is maximal 
+                        compression.
+                - Returns: `nil` if the given file could not be opened.
+            */
+            public  
+            func compress(path outputPath:String, chunkSize:Int = 1 << 16, level:Int = 9) throws -> Void?
+            {
+                do 
+                {
+                    return try File.Destination.open(path: outputPath) 
+                    {
+                        try self.compress(to: &$0, chunkSize: chunkSize, level: level)
+                    }
+                }
+                catch WriteError.bufferCount 
+                {
+                    fatalError("unreachable: `Uncompressed` initializer should have validated data length.")
+                }
+            }
+            
+            /** Decompresses a PNG file at the given file path, and returns 
+                it as an `Uncompressed` image.
+                
+                - Parameters:
+                    - inputPath: A path to a PNG file.
+                - Returns: An uncompressed PNG image, or `nil` if the given file 
+                    could not be opened.
+            */
+            public static 
+            func decompress(path inputPath:String) throws -> Uncompressed?
+            {
+                return try File.Source.open(path: inputPath) 
+                {
+                    try self.decompress(from: &$0)
+                }
             }
         }
         
@@ -3025,10 +3087,10 @@ enum PNG
     enum ReadError:Error
     {
         /// A PNG chunk has a type-specific validity error.
-        case syntaxError(message: String)
+        case syntax(message: String)
         
         /// A PNG file is missing its magic signature.
-        case missingSignature
+        case signature
         
         /// An unexpected IEND chunk has been encountered.
         case prematureIEND
@@ -3055,11 +3117,17 @@ enum PNG
     {
         /// An input scanline or image buffer has the wrong size.
         case bufferCount
+        /// The PNG magic file signature could not be written. 
+        case signature 
+        /// A serialized PNG chunk could not be written.
+        case chunk
     }
 
     // empty struct to namespace our chunk iteration methods. we can’t store the 
     // data source as it may have reference semantics even though implemented as 
     // a struct 
+    /** A low-level API for deconstructing a PNG file into its constituent untyped 
+        chunks, or constructing a PNG file out of a sequence of typed chunks. */
     public 
     struct ChunkIterator<DataInterface> 
     {
@@ -3160,12 +3228,17 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
         - Parameters: 
             - source: A data destination to write a PNG file to. The destination 
                 is assumed to pointing to the very beginning of the file.
-        - Returns: A chunk iterator.
+        - Returns: A chunk iterator, or `nil` if the signature could not be written.
     */
     public static 
-    func begin(destination:inout DataInterface) -> PNG.ChunkIterator<DataInterface> 
+    func begin(destination:inout DataInterface) -> PNG.ChunkIterator<DataInterface>?
     {
-        destination.write(PNG.signature)
+        guard let _:Void = destination.write(PNG.signature) 
+        else 
+        {
+            return nil
+        }
+        
         return .init()
     }
     
@@ -3183,16 +3256,15 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
             - name: A chunk type.
             - data: An array containing chunk data. The default is `[]`.
             - source: A data destination to write a PNG file to.
+        - Returns: `nil` if the chunk could not be written.
     */
     public mutating 
     func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface) 
+        -> Void?
     {
         let header:[UInt8] = .store(data.count, asBigEndian: UInt32.self) 
         + 
         [name.name.0, name.name.1, name.name.2, name.name.3]
-        
-        destination.write(header)
-        destination.write(data)
         
         let partial:UInt = header.suffix(4).withUnsafeBufferPointer 
         {
@@ -3202,6 +3274,13 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
         // crc has 32 significant bits, padded out to a UInt
         let crc:UInt = crc32(partial, data, UInt32(data.count))
         
-        destination.write(.store(crc, asBigEndian: UInt32.self))
+        guard   let _:Void = destination.write(header), 
+                let _:Void = destination.write(data), 
+                let _:Void = destination.write(.store(crc, asBigEndian: UInt32.self))
+        else 
+        {
+            return nil
+        }
+        return ()
     }
 }
