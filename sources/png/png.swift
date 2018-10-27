@@ -1204,6 +1204,8 @@ enum PNG
                     or if `generator` returned `nil`. `false` if this `Encoder` 
                     is finished encoding data. Once this method returns `false`, 
                     it should not be called again on the same instance.
+                - Throws: `WriteError.bufferCount`, if `generator` returns a scanline 
+                    that does not have the expected size.
             */
             public mutating 
             func consolidate(extending data:inout [UInt8], capacity:Int, 
@@ -2928,6 +2930,10 @@ enum PNG
                     chunk: A PNG chunk type.
                 - Returns: A `ReadError` case, if the given chunk type was out of place 
                     or a necessary prerequisite chunk was missing, `nil` otherwise.
+                
+                - Throws: `prematureIEND` if an `IEND` chunk has already been registered.
+                    `illegalChunk`, `misplacedChunk`, and `duplicateChunk` can also 
+                    be thrown, with their standard meanings.
             */
             mutating 
             func push(_ chunk:Chunk) -> ReadError? 
@@ -3018,9 +3024,6 @@ enum PNG
     public 
     enum ReadError:Error
     {
-        /// A PNG chunk has incomplete structure.
-        case incompleteChunk  
-        
         /// A PNG chunk has a type-specific validity error.
         case syntaxError(message: String)
         
@@ -3046,9 +3049,11 @@ enum PNG
         case missingChunk(Chunk)
     }
     
+    /// Errors that can occur while writing, compressing, or encoding PNG files.
     public 
     enum WriteError:Error 
     {
+        /// An input scanline or image buffer has the wrong size.
         case bufferCount
     }
 
@@ -3063,6 +3068,17 @@ enum PNG
 
 extension PNG.ChunkIterator where DataInterface:DataSource 
 {
+    /** Begins the process of loading untyped PNG chunks from the given data source.
+        
+        The main operation performed this method is checking for the PNG magic file 
+        signature. This method will pull 8 bytes of data from the given data source.
+        
+        - Parameters: 
+            - source: A data source yielding a PNG file. The source is assumed to 
+                pointing to the very beginning of the PNG file.
+        - Returns: A chunk iterator, if the PNG magic signature was read from the 
+            given data source, and `nil` otherwise.
+    */
     public static 
     func begin(source:inout DataInterface) -> PNG.ChunkIterator<DataInterface>? 
     {
@@ -3076,6 +3092,28 @@ extension PNG.ChunkIterator where DataInterface:DataSource
         return .init()
     }
     
+    /** Loads the an untyped PNG chunk from the given data source. 
+        
+        This method performs no chunk name validation, nor does it interpret the chunk. 
+        This method does, however, perform crc32 validation on the chunk, as this 
+        is universal to all PNG chunks.
+        
+        To aid diagnostics, the name bytes of the chunk are returned even if the 
+        chunk’s data is corrupted.
+        
+        This method pulls 12 bytes from the given data source, plus the length encoded 
+        in the chunk header.
+        
+        - Parameters: 
+            - source: A data source yielding a PNG file. 
+        - Returns: A tuple containing the name bytes of the read chunk and its data, 
+            or `nil` if enough data could not be pulled from the given data source. 
+            The chunk `data` field of the tuple is `nil` if the chunk’s data could 
+            be successfully read, but failed to match the chunk’s crc32 checksum.
+        
+        - Note: Some chunks may have a length of 0, and such produce an empty `data` 
+            array. This is not an error.
+    */
     public mutating 
     func next(source:inout DataInterface) -> (name:(UInt8, UInt8, UInt8, UInt8), data:[UInt8]?)? 
     {
@@ -3091,7 +3129,7 @@ extension PNG.ChunkIterator where DataInterface:DataSource
         guard var data:[UInt8] = source.read(count: length + MemoryLayout<UInt32>.size)
         else 
         {
-            return (name, nil)
+            return nil
         }
         
         let checksum:UInt = data.suffix(4).load(bigEndian: UInt32.self, as: UInt.self)
@@ -3114,6 +3152,16 @@ extension PNG.ChunkIterator where DataInterface:DataSource
 
 extension PNG.ChunkIterator where DataInterface:DataDestination 
 {
+    /** Begins the process of storing untyped PNG chunks into the given data destination.
+        
+        The main operation performed this method is writing the PNG magic file signature. 
+        This method will push 8 bytes of data to the given data destination.
+        
+        - Parameters: 
+            - source: A data destination to write a PNG file to. The destination 
+                is assumed to pointing to the very beginning of the file.
+        - Returns: A chunk iterator.
+    */
     public static 
     func begin(destination:inout DataInterface) -> PNG.ChunkIterator<DataInterface> 
     {
@@ -3121,6 +3169,21 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
         return .init()
     }
     
+    /** Serializes a PNG chunk of the given type and with the given raw data, and 
+        stores it into the given data destination. 
+        
+        This method does not interpret the given chunk data. This method automatically 
+        computes its crc32 checksum, and chunk length, and stores them in its serialized 
+        in-file representation.
+        
+        This method pushes 12 bytes to the given data destination, plus the given 
+        `data` array.
+        
+        - Parameters: 
+            - name: A chunk type.
+            - data: An array containing chunk data. The default is `[]`.
+            - source: A data destination to write a PNG file to.
+    */
     public mutating 
     func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface) 
     {
