@@ -4,6 +4,9 @@ import Darwin
 import Glibc
 #endif
 
+// global 
+var backspaceEnabled:Bool = true
+
 func runTests(_ groups:[Group]) -> Never
 {
     //var verbose:Bool        = false
@@ -13,8 +16,8 @@ func runTests(_ groups:[Group]) -> Never
     {
         switch argument 
         {
-            //case "-v", "-verbose", "--verbose":
-            //    verbose = true 
+            case "-l", "--nobackspace":
+                backspaceEnabled = false
             
             default:
                 testSet.insert(argument)
@@ -49,7 +52,10 @@ func runTests(_ groups:[Group]) -> Never
                 failed += 1
                 output  = "\(Colors.red.1)\(label) failed\(Colors.off.0)"
                 
-                upline(3) 
+                if backspaceEnabled 
+                {
+                    upline(3) 
+                }
                 print(output)
                 print("\(Colors.red.0)\(indent(message, by: 4))\(Colors.off.0)\n")
             }
@@ -58,7 +64,10 @@ func runTests(_ groups:[Group]) -> Never
                 passed += 1
                 output  = "\(Colors.green.1)\(label) passed\(Colors.off.0)"
                 
-                upline(3) 
+                if backspaceEnabled 
+                {
+                    upline(3) 
+                }
             }
             
             printTestHeader(number, of: count)
@@ -67,8 +76,10 @@ func runTests(_ groups:[Group]) -> Never
         }
     }
 
-    upline()
-    upline()
+    if backspaceEnabled 
+    {
+        upline(2) 
+    }
     
     let summary:String = "\(Colors.lightCyan.1)\(passed) passed, \(failed) failed\(Colors.off.0)"
     if expected <= passed 

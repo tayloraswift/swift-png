@@ -33,18 +33,20 @@ enum Group
         switch self 
         {
             case .mapStrings(let expectation, _, let function, let cases):
-                for string:String in cases
-                {
-                    if let filter:Set<String> = filter
+                (
+                    filter.map 
                     {
-                        guard filter.contains("\(self.name):\(string)")
-                        else 
+                        (filter:Set<String>) in 
+                        cases.filter 
                         {
-                            return 
+                            filter.contains("\(self.name):\($0)")
                         }
-                    }
-                    
-                    body(string, expectation, function(string))
+                    } 
+                    ?? 
+                    cases 
+                ).forEach 
+                {
+                    body($0, expectation, function($0))
                 }
             
             case .functions(let expectation, _, let functions):
@@ -263,7 +265,7 @@ let suite:[(name:String, members:[String])] =
         ]
     ), 
     (
-        "chunk ordering", 
+        "ordering", 
         [
             "oi1n0g16",
             "oi1n2c16",

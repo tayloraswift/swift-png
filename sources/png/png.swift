@@ -1,4 +1,9 @@
+#if os(macOS)
+import Darwin
+#elseif os(Linux)
 import Glibc
+#endif
+
 import func zlib.crc32
 
 extension Array where Element == UInt8 
@@ -41,6 +46,155 @@ extension Array where Element == UInt8
                 count = $0.count
             }
         }
+    }
+}
+
+public 
+protocol _VAColor
+{
+    associatedtype Component:FixedWidthInteger & UnsignedInteger
+    var v:Component 
+    {
+        get 
+    }
+    var a:Component 
+    {
+        get 
+    }
+}
+public 
+protocol _RGBAColor 
+{
+    associatedtype Component:FixedWidthInteger & UnsignedInteger
+    var r:Component 
+    {
+        get 
+    }
+    var g:Component 
+    {
+        get 
+    }
+    var b:Component 
+    {
+        get 
+    }
+    var a:Component 
+    {
+        get 
+    }
+}
+
+extension Array where Element:_VAColor
+{
+    /** Converts this matrix of grayscale-alpha colors into a planar representation.
+        
+        *Inlinable*.
+        
+        - Returns: An array of the value components of this matrix, in row-major 
+            order, followed by the components samples of this matrix, also in row-major 
+            order.
+    */
+    @inlinable
+    public 
+    func planar() -> [Element.Component] 
+    {
+        var planar:[Element.Component] = []
+            planar.reserveCapacity(self.count << 1)
+        for pixel:Element in self 
+        {
+            planar.append(pixel.v)
+        }
+        for pixel:Element in self 
+        {
+            planar.append(pixel.a)
+        }
+        return planar
+    }
+    
+    /** Flattens this matrix of grayscale-alpha colors into an unstructured array 
+        of its interleaved components.
+        
+        *Inlinable*.
+        
+        - Returns: An unstructured array containing interleaved color components 
+            in value, alpha order.
+        
+        - Note: In most cases, it is better to temporarily rebind a structured pixel 
+            matrix to a flattened array type than to convert it to interleaved form.
+    */
+    @inlinable
+    public 
+    func interleaved() -> [Element.Component] 
+    {
+        // flatMap is too slow sadly 
+        var flattened:[Element.Component] = []
+            flattened.reserveCapacity(self.count << 1)
+        for pixel:Element in self 
+        {
+            flattened.append(pixel.v)
+            flattened.append(pixel.a)
+        }
+        return flattened
+    }
+}
+extension Array where Element:_RGBAColor
+{
+    /** Converts this matrix of RGBA colors into a planar representation.
+        
+        - Returns: An array of the red components of this matrix, followed by the 
+            green, blue, and alpha components of this matrix, all in row-major order.
+    */
+    @inlinable
+    public 
+    func planar() -> [Element.Component] 
+    {
+        var planar:[Element.Component] = []
+            planar.reserveCapacity(self.count << 2)
+        for pixel:Element in self 
+        {
+            planar.append(pixel.r)
+        }
+        for pixel:Element in self 
+        {
+            planar.append(pixel.g)
+        }
+        for pixel:Element in self 
+        {
+            planar.append(pixel.b)
+        }
+        for pixel:Element in self 
+        {
+            planar.append(pixel.a)
+        }
+        return planar
+    }
+    
+    /** Flattens this matrix of grayscale-alpha colors into an unstructured array 
+        of its interleaved components.
+        
+        *Inlinable*.
+        
+        - Returns: An unstructured array containing interleaved color components 
+            in red, green, blue, alpha order.
+        
+        - Note: In most cases, it is better to temporarily rebind a structured pixel 
+            matrix to a flattened array type than to convert it to interleaved form.
+    */
+    @inlinable
+    public 
+    func interleaved() -> [Element.Component] 
+    {
+        // flatMap is too slow sadly 
+        var flattened:[Element.Component] = []
+            flattened.reserveCapacity(self.count << 2)
+        for pixel:Element in self 
+        {
+            flattened.append(pixel.r)
+            flattened.append(pixel.g)
+            flattened.append(pixel.b)
+            flattened.append(pixel.a)
+        }
+        return flattened
     }
 }
 
@@ -132,7 +286,9 @@ extension UInt16:FusedVector4Element
 extension PNG.RGBA where Component:FusedVector4Element
 {
     /** The components of this pixel value packed into a single unsigned integer in 
-        ARGB order, with the alpha component in the high bits. */
+        ARGB order, with the alpha component in the high bits. 
+        
+        *Inlinable*. */
     @inlinable
     public
     var argb:Component.FusedVector4
@@ -159,13 +315,188 @@ enum PNG
     private static 
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
     
+    /** A two-component color value, with components stored in the grayscale-alpha 
+        color model. This structure has fixed layout, with the value component first, 
+        then alpha. Buffers containing instances of this type may be safely reinterpreted 
+        as flat buffers containing interleaved components. */
+    @_fixed_layout 
+    public 
+    struct VA<Component>:Equatable, CustomStringConvertible, _VAColor
+        where Component:FixedWidthInteger & UnsignedInteger 
+    {
+        /// The value component of this color.
+        public 
+        let v:Component 
+        /// The alpha component of this color.
+        public 
+        let a:Component
+        
+        /// A textual representation of this color.
+        public
+        var description:String
+        {
+            return "(\(self.v), \(self.a))"
+        }
+        
+        /** Creates an opaque grayscale color with the value component set to the 
+            given value sample, and the alpha component set to `Component.max`. 
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
+            - Parameters:
+                - value: The value to initialize the value component to.
+        */
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
+        public
+        init(_ value:Component)
+        {
+            self.init(value, Component.max)
+        }
+        
+        /** Creates a grayscale color with the value component set to the given 
+            value sample, and the alpha component set to the given alpha sample. 
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
+            - Parameters:
+                - value: The value to initialize the value component to.
+                - alpha: The value to initialize the alpha component to.
+        */
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
+        public
+        init(_ value:Component, _ alpha:Component)
+        {
+            self.v = value 
+            self.a = alpha
+        }
+        
+        /** Returns a copy of this color with the alpha component set to the given sample.
+            - Parameters:
+                - a: An alpha sample.
+            - Returns: This color with the alpha component set to the given sample.
+        */
+        func withAlpha(_ a:Component) -> VA<Component>
+        {
+            return .init(self.v, a)
+        }
+        
+        /** The color obtained by premultiplying the value component of this color 
+            with its alpha component. The resulting component values are accurate 
+            to within 1 `Component` unit.
+            
+            *Inlinable*.
+        */
+        @inlinable
+        public
+        var premultiplied:VA<Component>
+        {
+            return .init(VA.premultiply(color: self.v, alpha: self.a), self.a)
+        }
+        
+        
+        /** Returns the given color sample premultiplied with the given alpha sample.
+            
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
+            - Parameters:
+                - color: A color sample.
+                - alpha: An alpha sample.
+            - Returns: The product of the given color sample and the given alpha 
+                sample. The resulting value is accurate to within 1 `Component` unit.
+        */
+        @usableFromInline 
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
+        static 
+        func premultiply(color:Component, alpha:Component) -> Component 
+        {
+            // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
+            let (high, low):(Component, Component.Magnitude) = color.multipliedFullWidth(by: alpha)
+            // divide by 255 using this one neat trick!1!!! 
+            // value /. 255 == (value + 128 + (value >> 8)) >> 8
+            let carries:(Bool, Bool), 
+                partialValue:Component.Magnitude
+            (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
+                           carries.1  = partialValue.addingReportingOverflow(Component.Magnitude.max >> 1 + 1).overflow
+            return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
+        }
+        
+        
+        /** Returns the size of one unit in a component of the given depth, in units of 
+            this color’s `Component` type. 
+            - Parameters:
+                - depth: A bit depth less than or equal to `Component.bitWidth`.
+            - Returns: The size of one unit in a component of the given bit depth, 
+                in units of `Component`. Multiplying this value with the scalar 
+                integer value of a component of bit depth `depth` will renormalize 
+                it to the range of `Component`.
+        */
+        @inline(__always)
+        static 
+        func quantum(depth:Int) -> Component 
+        {
+            return Component.max / (Component.max &>> (Component.bitWidth - depth))
+        }
+        
+        
+        /** Returns this color with its components widened to the given type, preserving 
+            their normalized values. 
+            
+            `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+            - Parameters:
+                - type: The type of the components of the new color.
+            - Returns: A new color, with the values of its components taken from 
+                this color, and normalized to the range of `T`. 
+        */
+        @inline(__always)
+        func upscale<T>(to type:T.Type) -> VA<T> where T:FixedWidthInteger & UnsignedInteger
+        {
+            assert(T.bitWidth >= Component.bitWidth)
+            let quantum:T = VA<T>.quantum(depth: Component.bitWidth), 
+                v:T = .init(truncatingIfNeeded: self.v) * quantum, 
+                a:T = .init(truncatingIfNeeded: self.a) * quantum
+            return .init(v, a)
+        }
+        
+        /** Returns this color with its components narrowed to the given type, preserving 
+            their normalized values. 
+            
+            `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+            - Parameters:
+                - type: The type of the components of the new color.
+            - Returns: A new color, with the values of its components taken from 
+                this color, and normalized to the range of `T`. 
+        */
+        @inline(__always)
+        func downscale<T>(to type:T.Type) -> VA<T> where T:FixedWidthInteger & UnsignedInteger
+        {
+            assert(T.bitWidth <= Component.bitWidth)
+            let shift:Int = Component.bitWidth - T.bitWidth, 
+                v:T       = .init(truncatingIfNeeded: self.v &>> shift),
+                a:T       = .init(truncatingIfNeeded: self.a &>> shift)
+            
+            return .init(v, a)
+        }
+    }
+    
     /** A four-component color value, with components stored in the RGBA color model. 
         This structure has fixed layout, with the red component first, then green, 
         then blue, then alpha. Buffers containing instances of this type may be 
-        safely reinterpreted as flat buffers containing interleaved color components. */
+        safely reinterpreted as flat buffers containing interleaved components. */
     @_fixed_layout
     public
-    struct RGBA<Component>:Equatable, CustomStringConvertible 
+    struct RGBA<Component>:Equatable, CustomStringConvertible, _RGBAColor
         where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color. 
@@ -191,12 +522,16 @@ enum PNG
         /** Creates an opaque grayscale color with all color components set to the given 
             value sample, and the alpha component set to `Component.max`. 
             
-            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
             - Parameters:
                 - value: The value to initialize all color components to.
         */
-        @_specialize(where Component == UInt8)
-        @_specialize(where Component == UInt16)
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
         public
         init(_ value:Component)
         {
@@ -206,13 +541,17 @@ enum PNG
         /** Creates a grayscale color with all color components set to the given 
             value sample, and the alpha component set to the given alpha sample. 
             
-            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
             - Parameters:
                 - value: The value to initialize all color components to.
                 - alpha: The value to initialize the alpha component to.
         */
-        @_specialize(where Component == UInt8)
-        @_specialize(where Component == UInt16)
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
         public
         init(_ value:Component, _ alpha:Component)
         {
@@ -222,14 +561,18 @@ enum PNG
         /** Creates an opaque color with the given color samples, and the alpha 
             component set to `Component.max`. 
             
-            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
             - Parameters:
                 - red: The value to initialize the red component to.
                 - green: The value to initialize the green component to.
                 - blue: The value to initialize the blue component to.
         */
-        @_specialize(where Component == UInt8)
-        @_specialize(where Component == UInt16)
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
         public
         init(_ red:Component, _ green:Component, _ blue:Component)
         {
@@ -238,15 +581,19 @@ enum PNG
         
         /** Creates an opaque color with the given color and alpha samples. 
             
-            *Specialized* for `Component` types `UInt8`, `UInt16`. 
+            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64, 
+                and `UInt`. 
             - Parameters:
                 - red: The value to initialize the red component to.
                 - green: The value to initialize the green component to.
                 - blue: The value to initialize the blue component to.
                 - alpha: The value to initialize the alpha component to.
         */
-        @_specialize(where Component == UInt8)
-        @_specialize(where Component == UInt16)
+        @_specialize(exported: true, where Component == UInt8) 
+        @_specialize(exported: true, where Component == UInt16) 
+        @_specialize(exported: true, where Component == UInt32) 
+        @_specialize(exported: true, where Component == UInt64) 
+        @_specialize(exported: true, where Component == UInt)
         public
         init(_ red:Component, _ green:Component, _ blue:Component, _ alpha:Component)
         {
@@ -260,42 +607,28 @@ enum PNG
             of this color with its alpha component. The resulting component values 
             are accurate to within 1 `Component` unit.
             
-            *Inlineable*.
+            *Inlinable*.
         */
         @inlinable
         public
         var premultiplied:RGBA<Component>
         {
-            return .init(RGBA.premultiply(color: self.r, alpha: self.a), 
-                         RGBA.premultiply(color: self.g, alpha: self.a), 
-                         RGBA.premultiply(color: self.b, alpha: self.a), 
+            return .init(VA.premultiply(color: self.r, alpha: self.a), 
+                         VA.premultiply(color: self.g, alpha: self.a), 
+                         VA.premultiply(color: self.b, alpha: self.a), 
                          self.a)
         }
         
-        /** Returns the given color sample premultiplied with the given alpha sample.
+        /** The red, and alpha components of this color, stored as a grayscale-alpha 
+            color.
             
-            *Specialized* for `Component` types `UInt8`, `UInt16`. 
-            - Parameters:
-                - color: A color sample.
-                - alpha: An alpha sample.
-            - Returns: The product of the given color sample and the given alpha 
-                sample. The resulting value is accurate to within 1 `Component` unit.
+            *Inlinable*.
         */
-        @usableFromInline 
-        @_specialize(where Component == UInt8)
-        @_specialize(where Component == UInt16)
-        static 
-        func premultiply(color:Component, alpha:Component) -> Component 
+        @inlinable
+        public
+        var va:VA<Component>
         {
-            // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
-            let (high, low):(Component, Component.Magnitude) = color.multipliedFullWidth(by: alpha)
-            // divide by 255 using this one neat trick!1!!! 
-            // value /. 255 == (value + 128 + (value >> 8)) >> 8
-            let carries:(Bool, Bool), 
-                partialValue:Component.Magnitude
-            (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
-                           carries.1  = partialValue.addingReportingOverflow(Component.Magnitude.max >> 1 + 1).overflow
-            return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
+            return .init(self.r, self.a)
         }
         
         /** Returns a copy of this color with the alpha component set to the given sample.
@@ -313,8 +646,8 @@ enum PNG
             the alpha components.
             - Parameters:
                 - other: Another color.
-            - Returns: `true` if the red, green, and blue channels of this color and 
-                `other` are equal, `false` otherwise.
+            - Returns: `true` if the red, green, and blue components of this color 
+                and `other` are equal, `false` otherwise.
         */
         func equals(opaque other:RGBA<Component>) -> Bool
         {
@@ -334,7 +667,7 @@ enum PNG
         func upscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
             assert(T.bitWidth >= Component.bitWidth)
-            let quantum:T = RGBA<T>.quantum(depth: Component.bitWidth), 
+            let quantum:T = VA<T>.quantum(depth: Component.bitWidth), 
                 r:T = .init(truncatingIfNeeded: self.r) * quantum, 
                 g:T = .init(truncatingIfNeeded: self.g) * quantum, 
                 b:T = .init(truncatingIfNeeded: self.b) * quantum, 
@@ -358,26 +691,10 @@ enum PNG
             let shift:Int = Component.bitWidth - T.bitWidth, 
                 r:T       = .init(truncatingIfNeeded: self.r &>> shift),
                 g:T       = .init(truncatingIfNeeded: self.g &>> shift),
-                b:T       = .init(truncatingIfNeeded: self.g &>> shift),
-                a:T       = .init(truncatingIfNeeded: self.g &>> shift)
+                b:T       = .init(truncatingIfNeeded: self.b &>> shift),
+                a:T       = .init(truncatingIfNeeded: self.a &>> shift)
             
             return .init(r, g, b, a)
-        }
-        
-        /** Returns the size of one unit in a component of the given depth, in units of 
-            this color’s `Component` type. 
-            - Parameters:
-                - depth: A bit depth less than or equal to `Component.bitWidth`.
-            - Returns: The size of one unit in a component of the given bit depth, 
-                in units of `Component`. Multiplying this value with the scalar 
-                integer value of a component of bit depth `depth` will renormalize 
-                it to the range of `Component`.
-        */
-        @inline(__always)
-        static 
-        func quantum(depth:Int) -> Component 
-        {
-            return Component.max / (Component.max &>> (Component.bitWidth - depth))
         }
     }
     
@@ -387,6 +704,16 @@ enum PNG
     {
         private 
         typealias Descriptor = UnsafeMutablePointer<FILE>
+        
+        public 
+        enum Error:Swift.Error 
+        {
+            /// A file could not be opened. 
+            ///
+            /// This error is not thrown by any `File` methods, but is used by users 
+            /// of these APIs.
+            case couldNotOpen
+        }
         
         /// Read data from files on disk.
         public 
@@ -581,32 +908,32 @@ enum PNG
             
             | *depth* |  indexed   |   grayscale   | grayscale-alpha |   RGB   |   RGBA   |
             | ------- | ---------- | ------------- | --------------- | ------- | -------- |
-            |    1    | `indexed1` | `grayscale1`  | 
-            |    2    | `indexed2` | `grayscale2`  | 
-            |    4    | `indexed4` | `grayscale4`  | 
-            |    8    | `indexed8` | `grayscale8`  | `grayscale_a8`  | `rgb8`  | `rgba8`  |
-            |    16   |            | `grayscale16` | `grayscale_a16` | `rgb16` | `rgba16` |
+            |    1    | `indexed1` | `v1`          | 
+            |    2    | `indexed2` | `v2`          | 
+            |    4    | `indexed4` | `v4`          | 
+            |    8    | `indexed8` | `v8`          | `va8`           | `rgb8`  | `rgba8`  |
+            |    16   |            | `v16`         | `va16`          | `rgb16` | `rgba16` |
             
         */
         public 
         enum Format:UInt16 
         {
             // bitfield contains depth in upper byte, then code in lower byte
-            case grayscale1     = 0x01_00,
-                 grayscale2     = 0x02_00,
-                 grayscale4     = 0x04_00,
-                 grayscale8     = 0x08_00,
-                 grayscale16    = 0x10_00,
-                 rgb8           = 0x08_02,
-                 rgb16          = 0x10_02,
-                 indexed1       = 0x01_03,
-                 indexed2       = 0x02_03,
-                 indexed4       = 0x04_03,
-                 indexed8       = 0x08_03,
-                 grayscale_a8   = 0x08_04,
-                 grayscale_a16  = 0x10_04,
-                 rgba8          = 0x08_06,
-                 rgba16         = 0x10_06
+            case v1         = 0x01_00,
+                 v2         = 0x02_00,
+                 v4         = 0x04_00,
+                 v8         = 0x08_00,
+                 v16        = 0x10_00,
+                 rgb8       = 0x08_02,
+                 rgb16      = 0x10_02,
+                 indexed1   = 0x01_03,
+                 indexed2   = 0x02_03,
+                 indexed4   = 0x04_03,
+                 indexed8   = 0x08_03,
+                 va8        = 0x08_04,
+                 va16       = 0x10_04,
+                 rgba8      = 0x08_06,
+                 rgba16     = 0x10_06
             
             /** A boolean value indicating if this pixel format has indexed color.
                 
@@ -633,7 +960,7 @@ enum PNG
             
             /** A boolean value indicating if this pixel format has an alpha channel.
                 
-                `true` if `self` is `grayscale_a8`, `grayscale_a16`, `rgba8`, or 
+                `true` if `self` is `va8`, `va16`, `rgba8`, or 
                 `rgba16`. `false` otherwise. 
             */
             public 
@@ -655,10 +982,10 @@ enum PNG
             {
                 switch self
                 {
-                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16,
+                case .v1, .v2, .v4, .v8, .v16,
                     .indexed1, .indexed2, .indexed4, .indexed8:
                     return 1
-                case .grayscale_a8, .grayscale_a16:
+                case .va8, .va16:
                     return 2
                 case .rgb8, .rgb16:
                     return 3
@@ -684,24 +1011,12 @@ enum PNG
             
             /** Returns the shape of a buffer just large enough to contain an image 
                 of the given size, stored in this color format. */
-            func shape(from size:Math<Int>.V2) -> Shape 
+            func shape(from size:Math<Int>.V2) -> Data.Shape 
             {
                 let scanlineBitCount:Int = size.x * self.channels * self.depth
                                                 // ceil(scanlineBitCount / 8)
                 let pitch:Int = scanlineBitCount >> 3 + (scanlineBitCount & 7 == 0 ? 0 : 1)
                 return .init(pitch: pitch, size: size)
-            }
-        }
-        
-        /// The shape of an image stored in a two-dimensional padded array.
-        struct Shape 
-        {
-            let pitch:Int, 
-                size:Math<Int>.V2
-            
-            var byteCount:Int 
-            {
-                return self.pitch * self.size.y
             }
         }
         
@@ -712,7 +1027,7 @@ enum PNG
             struct SubImage 
             {
                 /// The shape of a two-dimensional array containing this sub-image.
-                let shape:Shape
+                let shape:Data.Shape
                 /** Two sequences of two-dimensional coordinates representing the 
                     logical positions of each pixel in this sub-image, when deinterlaced 
                     with its other sub-images. */
@@ -774,7 +1089,7 @@ enum PNG
                 - Parameters:
                     - shape: The shape of a non-interlaced image.
             */
-            init(shape:Shape)
+            init(shape:Data.Shape)
             {
                 self.footprints = [(shape.pitch, shape.size.y)]
             }
@@ -833,7 +1148,7 @@ enum PNG
         var chromaKey:RGBA<UInt16>? // the alpha sample is ignored by the library
         
         /// The shape of a two-dimensional array containing this PNG image.
-        let shape:Shape
+        let shape:Data.Shape
         /// The interlacing algorithm used by this PNG image.
         let interlacing:Interlacing
         
@@ -1033,53 +1348,65 @@ enum PNG
                 - Parameters:
                     - data: Compressed image data.
                     - body: A closure which takes as an argument a decoded scanline.
+                - Returns: `true` if this `Decoder`’s LZ77 stream expects more input 
+                    data, and `false` otherwise.
+                
+                - Warning: Do not call this method again on the same instance after 
+                    it has returned `false`. Doing so will result in undefined behavior.
             */
+            
             public mutating 
-            func forEachScanline(decodedFrom data:[UInt8], _ body:(ArraySlice<UInt8>) throws -> ()) throws
+            func forEachScanline(decodedFrom data:[UInt8], _ body:(ArraySlice<UInt8>) throws -> ()) 
+                throws -> Bool
             {
                 self.inflator.push(data)
                 
                 while let reference:[UInt8] = self.reference  
                 {
-                    let remainder:Int = try self.inflator.pull(extending: &self.scanline, 
-                                                                capacity: reference.count)
+                    let streamContinue:Bool = try self.inflator.pull(  extending: &self.scanline, 
+                                                                        capacity: reference.count)
                     
-                    guard self.scanline.count == reference.count 
-                    else 
+                    if self.scanline.count == reference.count 
                     {
-                        break
-                    }
-                    
-                    self.defilter(&self.scanline, reference: reference)
-                    
-                    try body(self.scanline.dropFirst())
-                    
-                    // transfer scanline to reference line 
-                    if let pitch:Int? = self.pitches.next() 
-                    {
-                        if let pitch:Int = pitch 
+                        self.defilter(&self.scanline, reference: reference)
+                        
+                        try body(self.scanline.dropFirst())
+                        
+                        // transfer scanline to reference line 
+                        if let pitch:Int? = self.pitches.next() 
                         {
-                            self.reference = .init(repeating: 0, count: pitch + 1)
+                            if let pitch:Int = pitch 
+                            {
+                                self.reference = .init(repeating: 0, count: pitch + 1)
+                            }
+                            else 
+                            {
+                                self.reference = self.scanline 
+                            }
                         }
                         else 
                         {
-                            self.reference = self.scanline 
+                            self.reference = nil 
                         }
+                        
+                        self.scanline = [] 
                     }
+                    
+                    guard streamContinue 
                     else 
                     {
-                        self.reference = nil 
+                        return false 
                     }
                     
-                    self.scanline = []
-                    
-                    guard remainder > 0 
+                    guard self.inflator.unprocessedCount > 0 
                     else 
                     {
                         // no input (encoded data) left
-                        break
+                        return true
                     }
                 }
+                
+                return try self.inflator.test()
             }
             
             /** Defilters the given filtered scanline in-place, using the given 
@@ -1204,7 +1531,7 @@ enum PNG
                     or if `generator` returned `nil`. `false` if this `Encoder` 
                     is finished encoding data. Once this method returns `false`, 
                     it should not be called again on the same instance.
-                - Throws: `WriteError.bufferCount`, if `generator` returns a scanline 
+                - Throws: `EncodingError.bufferCount`, if `generator` returns a scanline 
                     that does not have the expected size.
             */
             public mutating 
@@ -1213,12 +1540,13 @@ enum PNG
             {
                 while let reference:[UInt8] = self.reference
                 {
-                    guard try self.deflator.pull(extending: &data, capacity: capacity) == 0 
+                    try self.deflator.pull(extending: &data, capacity: capacity)
+                    guard self.deflator.unprocessedCount == 0 
                     else 
                     {
-                        // some input (encoded data) left, usually this means 
-                        // the `data` buffer is full too 
-                        return true
+                        // some input (encoded data) left
+                        assert(data.count == capacity)
+                        return true 
                     }
                     
                     guard let row:ArraySlice<UInt8> = generator()
@@ -1230,7 +1558,7 @@ enum PNG
                     guard row.count == reference.count 
                     else 
                     {
-                        throw WriteError.bufferCount
+                        throw EncodingError.bufferCount
                     }
                     
                     let scanline:[UInt8] = self.filter(row, reference: reference)
@@ -1383,7 +1711,7 @@ enum PNG
             - Returns: A `Properties` object containing the information encoded by 
                 the given IHDR chunk.
             - Throws:
-                - ReadError.syntax: If any of the IHDR chunk fields contain 
+                - DecodingError.invalidChunk: If any of the IHDR chunk fields contain 
                     an invalid value. 
         */
         public static 
@@ -1392,26 +1720,26 @@ enum PNG
             guard data.count == 13 
             else 
             {
-                throw ReadError.syntax(message: "png header length is \(data.count), expected 13")
+                throw DecodingError.invalidChunk(message: "png header length is \(data.count), expected 13")
             }
             
             let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
             guard let format:Format = Format.init(rawValue: colorcode)
             else 
             {
-                throw ReadError.syntax(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+                throw DecodingError.invalidChunk(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
             }
             
             // validate other fields 
             guard data[10] == 0 
             else 
             {
-                throw ReadError.syntax(message: "compression byte has value \(data[10]), expected 0")
+                throw DecodingError.invalidChunk(message: "compression byte has value \(data[10]), expected 0")
             }
             guard data[11] == 0 
             else 
             {
-                throw ReadError.syntax(message: "filter byte has value \(data[11]), expected 0")
+                throw DecodingError.invalidChunk(message: "filter byte has value \(data[11]), expected 0")
             }
             
             let interlaced:Bool 
@@ -1422,7 +1750,7 @@ enum PNG
                 case 1: 
                     interlaced = true 
                 default:
-                    throw ReadError.syntax(message: "interlacing byte has invalid value \(data[12])")
+                    throw DecodingError.invalidChunk(message: "interlacing byte has invalid value \(data[12])")
             }
             
             let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
@@ -1456,7 +1784,7 @@ enum PNG
                 - data: PLTE chunk data. Must not contain more entries than this 
                     PNG’s color depth can uniquely encode.
             - Throws: 
-                - ReadError.syntax: If the given palette data does not contain 
+                - DecodingError.invalidChunk: If the given palette data does not contain 
                     a whole number of palette entries, or if it contains more than 
                     `1 << format.depth` entries.
         */
@@ -1466,7 +1794,7 @@ enum PNG
             guard data.count.isMultiple(of: 3)
             else
             {
-                throw ReadError.syntax(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
+                throw DecodingError.invalidChunk(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
             }
             
             // check number of palette entries 
@@ -1474,7 +1802,7 @@ enum PNG
             guard data.count <= maxEntries * 3
             else 
             {
-                throw ReadError.syntax(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
+                throw DecodingError.invalidChunk(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
             }
 
             self.palette = stride(from: data.startIndex, to: data.endIndex, by: 3).map
@@ -1534,11 +1862,11 @@ enum PNG
                     more transparency values than this PNG’s color depth can uniquely 
                     encode.
             - Throws: 
-                - ReadError.syntax: If the given transparency data does not 
+                - DecodingError.invalidChunk: If the given transparency data does not 
                     contain the correct number of samples, or, in the case of indexed 
                     color, if it contains more than `1 << format.depth` trasparency 
                     values.
-                - ReadError.missingChunk: If this PNG has an indexed color format, 
+                - DecodingError.missingPalette: If this PNG has an indexed color format, 
                     and this metadata record has not been assigned a palette, either 
                     through a `decodePLTE(_:)` call, or by manual assignment to 
                     the `palette` property.
@@ -1548,14 +1876,14 @@ enum PNG
         {
             switch self.format
             {
-                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
+                case .v1, .v2, .v4, .v8, .v16:
                     guard data.count == 2
                     else
                     {
-                        throw ReadError.syntax(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
+                        throw DecodingError.invalidChunk(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
                     }
                     
-                    let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
+                    let quantum:UInt16 = VA<UInt16>.quantum(depth: self.format.depth), 
                         v:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
                     self.chromaKey = .init(v)
                 
@@ -1563,10 +1891,10 @@ enum PNG
                     guard data.count == 6
                     else
                     {
-                        throw ReadError.syntax(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
+                        throw DecodingError.invalidChunk(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
                     }
                     
-                    let quantum:UInt16 = RGBA<UInt16>.quantum(depth: self.format.depth), 
+                    let quantum:UInt16 = VA<UInt16>.quantum(depth: self.format.depth), 
                         r:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0), 
                         g:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2), 
                         b:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
@@ -1576,13 +1904,13 @@ enum PNG
                     guard let palette:[RGBA<UInt8>] = self.palette
                     else
                     {
-                        throw ReadError.missingChunk(.PLTE)
+                        throw DecodingError.missingPalette
                     }
 
                     guard data.count <= palette.count
                     else
                     {
-                        throw ReadError.syntax(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
+                        throw DecodingError.invalidChunk(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
                     }
                     
                     self.palette = zip(palette, data).map 
@@ -1625,7 +1953,7 @@ enum PNG
         {
             switch self.format 
             {
-                case .grayscale1, .grayscale2, .grayscale4, .grayscale8, .grayscale16:
+                case .v1, .v2, .v4, .v8, .v16:
                     guard let key:RGBA<UInt16> = self.chromaKey 
                     else 
                     {
@@ -1863,7 +2191,7 @@ enum PNG
                     ChunkIterator.begin(destination: &destination)
                 else 
                 {
-                    throw WriteError.signature
+                    throw EncodingError.notAcceptingData
                 }
                 
                 @inline(__always)
@@ -1872,7 +2200,7 @@ enum PNG
                     guard let _:Void = iterator.next(chunk, contents, destination: &destination) 
                     else 
                     {
-                        throw WriteError.chunk
+                        throw EncodingError.notAcceptingData
                     }
                 }
                 
@@ -1938,31 +2266,29 @@ enum PNG
                     ChunkIterator.begin(source: &source)
                 else 
                 {
-                    throw ReadError.signature 
+                    throw DecodingError.missingSignature 
                 }
                                 
                 @inline(__always)
-                func _next() throws -> (chunk:Chunk, contents:[UInt8])?
+                func _next() throws -> (chunk:Chunk, contents:[UInt8])
                 {
                     guard let (name, data):((UInt8, UInt8, UInt8, UInt8), [UInt8]?) = 
                         iterator.next(source: &source) 
                     else 
                     {
-                        return nil 
+                        throw DecodingError.dataUnavailable
                     }
                     
                     guard let chunk:Chunk = Chunk.init(name)
                     else 
                     {
-                        let string:String = .init(decoding: [name.0, name.1, name.2, name.3], 
-                                                        as: Unicode.ASCII.self)
-                        throw ReadError.syntax(message: "chunk '\(string)' has invalid name")
+                        throw DecodingError.invalidName(name)
                     }
                     
                     guard let contents:[UInt8] = data 
                     else 
                     {
-                        throw ReadError.corruptedChunk
+                        throw DecodingError.corruptedChunk(chunk)
                     }
                     
                     return (chunk, contents)
@@ -1970,11 +2296,11 @@ enum PNG
                 
                 
                 // first chunk must be IHDR 
-                guard let (first, header):(Chunk, [UInt8]) = try _next(), 
-                           first == .IHDR
+                let (first, header):(Chunk, [UInt8]) = try _next()
+                guard first == .IHDR
                 else 
                 {
-                    throw ReadError.missingChunk(.IHDR)
+                    throw DecodingError.missingChunk(.IHDR)
                 }
                 
                 var properties:Properties      = try .decodeIHDR(header), 
@@ -1985,10 +2311,14 @@ enum PNG
                 var data:[UInt8] = []
                     data.reserveCapacity(properties.byteCount)
                 
-                while let (chunk, contents):(Chunk, [UInt8]) = try _next()
+                var streamContinue:Bool = true
+                
+                while true 
                 {
+                    let (chunk, contents):(Chunk, [UInt8]) = try _next()
+                    
                     // validate chunk ordering 
-                    if let error:ReadError = validator.push(chunk)
+                    if let error:DecodingError = validator.push(chunk)
                     {
                         throw error 
                     }
@@ -1999,7 +2329,13 @@ enum PNG
                             fatalError("unreachable: validator enforces no duplicate IHDR chunks")
                         
                         case .IDAT:
-                            try decoder.forEachScanline(decodedFrom: contents) 
+                            guard streamContinue 
+                            else 
+                            {
+                                throw DecodingError.unexpectedChunk(.IDAT)
+                            }
+                            
+                            streamContinue = try decoder.forEachScanline(decodedFrom: contents) 
                             {
                                 data.append(contentsOf: $0)
                             }
@@ -2011,12 +2347,18 @@ enum PNG
                             try properties.decodetRNS(contents)
                         
                         case .IEND:
+                            guard !streamContinue 
+                            else 
+                            {
+                                throw DecodingError.unexpectedChunk(.IEND)
+                            }
+                            
                             guard let uncompressed:Uncompressed = 
                                 Uncompressed.init(data, properties: properties)
                             else 
                             {
                                 // not enough data 
-                                throw ReadError.missingChunk(.IDAT)
+                                throw DecodingError.inconsistentMetadata
                             }
                             
                             return uncompressed
@@ -2025,8 +2367,6 @@ enum PNG
                             break
                     }
                 }
-                
-                throw ReadError.missingChunk(.IEND)
             }
             
             /** Compresses and saves this PNG image at the given file path.
@@ -2045,18 +2385,18 @@ enum PNG
                 - Returns: `nil` if the given file could not be opened.
             */
             public  
-            func compress(path outputPath:String, chunkSize:Int = 1 << 16, level:Int = 9) throws -> Void?
+            func compress(path outputPath:String, chunkSize:Int = 1 << 16, level:Int = 9) throws
             {
-                do 
-                {
-                    return try File.Destination.open(path: outputPath) 
+                guard let _:Void = 
+                (
+                    try File.Destination.open(path: outputPath) 
                     {
                         try self.compress(to: &$0, chunkSize: chunkSize, level: level)
                     }
-                }
-                catch WriteError.bufferCount 
+                )
+                else 
                 {
-                    fatalError("unreachable: `Uncompressed` initializer should have validated data length.")
+                    throw File.Error.couldNotOpen
                 }
             }
             
@@ -2069,12 +2409,21 @@ enum PNG
                     could not be opened.
             */
             public static 
-            func decompress(path inputPath:String) throws -> Uncompressed?
+            func decompress(path inputPath:String) throws -> Uncompressed
             {
-                return try File.Source.open(path: inputPath) 
+                guard let uncompressed:Uncompressed = 
+                (
+                    try File.Source.open(path: inputPath) 
+                    {
+                        try self.decompress(from: &$0)
+                    }
+                )
+                else 
                 {
-                    try self.decompress(from: &$0)
+                    throw File.Error.couldNotOpen
                 }
+                
+                return uncompressed
             }
         }
         
@@ -2124,17 +2473,17 @@ enum PNG
                     given file could not be opened.
             */
             public static 
-            func decompress(path inputPath:String) throws -> Rectangular?
+            func decompress(path inputPath:String) throws -> Rectangular
             {
-                return try Uncompressed.decompress(path: inputPath)?.deinterlaced()
+                return try Uncompressed.decompress(path: inputPath).deinterlaced()
             }
             
             /** Checks if the given integer type has enough bits to represent the 
-                components of this image.
+                channels of this image.
                 
                 - Parameters:
                     - type: An integer type.
-                - Returns: `true` if `Sample` has enough bits to represent the components 
+                - Returns: `true` if `Sample` has enough bits to represent the channels 
                     of this image, `false` otherwise.
             */
             @inline(__always)
@@ -2142,14 +2491,7 @@ enum PNG
             func checkWidth<Sample>(of type:Sample.Type) -> Bool 
                 where Sample:FixedWidthInteger
             {
-                switch self.properties.format 
-                {
-                    case .indexed1, .indexed2, .indexed4, .indexed8:
-                        return Sample.bitWidth >= UInt8.bitWidth 
-                    
-                    default:
-                        return Sample.bitWidth >= self.properties.format.depth
-                }
+                return Sample.bitWidth >= self.properties.format.depth
             }
             
             /** Calls the given closure on each single-channel pixel in this 
@@ -2186,14 +2528,14 @@ enum PNG
                 
                 switch self.properties.format 
                 {
-                    case .grayscale1, .grayscale2, .grayscale4, 
+                    case .v1, .v2, .v4, 
                          .indexed1,   .indexed2,   .indexed4:
                         return self.mapBits(body) 
                     
-                    case .grayscale8, .indexed8:
+                    case .v8, .indexed8:
                         return self.map(from: UInt8.self, body) 
                     
-                    case .grayscale16:
+                    case .v16:
                         return self.map(from: UInt16.self, body) 
                     
                     default: 
@@ -2205,9 +2547,13 @@ enum PNG
                 single-channel pixel in this PNG image.
                 
                 The given closure is not called if this image does not have 
-                exactly one channel, or `Sample` does not have enough bits to represent 
-                its channel. The samples passed to the closure are normalized values 
-                in the range `0 ... Sample.max`.
+                exactly one channel. The samples passed to the closure are normalized 
+                values in the range `0 ... Sample.max`.
+                
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
                 
                 *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
                 
@@ -2215,8 +2561,7 @@ enum PNG
                     - body: A closure that takes one normalized channel of one pixel.
                 
                 - Returns: An array of the return values of the given closure, or 
-                    `nil`, if this PNG image has more than one channel, or `Sample` 
-                    does not have enough bits to represent its channel.
+                    `nil`, if this PNG image has more than one channel.
             */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
@@ -2226,23 +2571,17 @@ enum PNG
             public 
             func mapIntensity<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
-            {
-                guard self.checkWidth(of: Sample.self) 
-                else 
-                {
-                    return nil
-                }
-                
+            {                
                 switch self.properties.format 
                 {
-                    case .grayscale1, .grayscale2, .grayscale4, 
+                    case .v1, .v2, .v4, 
                          .indexed1,   .indexed2,   .indexed4:
                         return self.mapBitIntensity(body) 
                     
-                    case .grayscale8, .indexed8:
+                    case .v8, .indexed8:
                         return self.mapIntensity(from: UInt8.self, body) 
                     
-                    case .grayscale16:
+                    case .v16:
                         return self.mapIntensity(from: UInt16.self, body) 
                     
                     default: 
@@ -2254,9 +2593,13 @@ enum PNG
                 two-channel pixel in this PNG image.
                 
                 The given closure is not called if this image does not have 
-                exactly two channels, or `Sample` does not have enough bits to represent 
-                its channels. The samples passed to the closure are normalized values 
-                in the range `0 ... Sample.max`.
+                exactly two channels. The samples passed to the closure are normalized 
+                values in the range `0 ... Sample.max`.
+                
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
                 
                 *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
                 
@@ -2264,8 +2607,7 @@ enum PNG
                     - body: A closure that takes two normalized channels of one pixel.
                 
                 - Returns: An array of the return values of the given closure, or 
-                    `nil`, if this PNG image does not have exactly two channels, 
-                    or `Sample` does not have enough bits to represent its channels.
+                    `nil`, if this PNG image does not have exactly two channels.
             */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
@@ -2275,19 +2617,13 @@ enum PNG
             public 
             func mapIntensity<Sample, Result>(_ body:(Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
-            {
-                guard self.checkWidth(of: Sample.self) 
-                else 
-                {
-                    return nil
-                }
-                
+            {                
                 switch self.properties.format 
                 {
-                    case .grayscale_a8:
+                    case .va8:
                         return self.mapIntensity(from: UInt8.self, body) 
                     
-                    case .grayscale_a16:
+                    case .va16:
                         return self.mapIntensity(from: UInt16.self, body) 
                     
                     default: 
@@ -2299,9 +2635,13 @@ enum PNG
                 three-channel pixel in this PNG image.
                 
                 The given closure is not called if this PNG image does not have 
-                exactly three channels, or `Sample` does not have enough bits to 
-                represent its channels. The samples passed to the closure are normalized 
+                exactly three channels. The samples passed to the closure are normalized 
                 values in the range `0 ... Sample.max`.
+                
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
                 
                 *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
                 
@@ -2310,8 +2650,7 @@ enum PNG
                         pixel.
                 
                 - Returns: An array of the return values of the given closure, or 
-                    `nil`, if this PNG image does not have exactly three channels, 
-                    or `Sample` does not have enough bits to represent its channels.
+                    `nil`, if this PNG image does not have exactly three channels.
             */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
@@ -2322,12 +2661,6 @@ enum PNG
             func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
             {
-                guard self.checkWidth(of: Sample.self) 
-                else 
-                {
-                    return nil
-                }
-                
                 switch self.properties.format 
                 {
                     case .rgb8:
@@ -2345,9 +2678,13 @@ enum PNG
                 four-channel pixel in this PNG image.
                 
                 The given closure is not called if this image does not have 
-                exactly four channels, or `Sample` does not have enough bits to 
-                represent its channels. The samples passed to the closure are normalized 
+                exactly four channels. The samples passed to the closure are normalized 
                 values in the range `0 ... Sample.max`.
+                
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
                 
                 *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
                 
@@ -2356,8 +2693,7 @@ enum PNG
                         pixel.
                 
                 - Returns: An array of the return values of the given closure, or 
-                    `nil`, if this PNG image does not have exactly four channels, 
-                    or `Sample` does not have enough bits to represent its channels.
+                    `nil`, if this PNG image does not have exactly four channels.
             */
             @_specialize(exported: true, kind: partial, where Sample == UInt8) 
             @_specialize(exported: true, kind: partial, where Sample == UInt16) 
@@ -2368,12 +2704,6 @@ enum PNG
             func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
             {
-                guard self.checkWidth(of: Sample.self) 
-                else 
-                {
-                    return nil
-                }
-                
                 switch self.properties.format 
                 {
                     case .rgba8:
@@ -2388,7 +2718,7 @@ enum PNG
             }
             
             /** Returns a row-major matrix of the first components of all the pixels 
-                in this PNG image, normalized to the range of the given sample type.
+                in this PNG image, normalized to the range of the given component type.
                 
                 If this image has more than one component per pixel, the first 
                 component of each pixel is returned. If this image has indexed color, 
@@ -2396,74 +2726,74 @@ enum PNG
                 colors of those pixels. This method ignores the transparency and 
                 chroma keys of this image.
                 
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
+                
+                *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, 
+                `UInt64`, and `UInt`.
                 
                 - Parameters:
                     - type: An integer type.
-                - Returns: A row-major matrix of pixel samples, normalized to its 
-                    `Sample` type, or `nil` is `Sample` does not have enough bits 
-                    to represent this PNG image’s components.
+                - Returns: A row-major matrix of pixel values, normalized to its 
+                    `Component` type, or `nil` if this image requires a palette, and 
+                    it does not have one.
             */
-            @_specialize(exported: true, where Sample == UInt8) 
-            @_specialize(exported: true, where Sample == UInt16) 
-            @_specialize(exported: true, where Sample == UInt32) 
-            @_specialize(exported: true, where Sample == UInt64) 
-            @_specialize(exported: true, where Sample == UInt)
+            @_specialize(exported: true, where Component == UInt8) 
+            @_specialize(exported: true, where Component == UInt16) 
+            @_specialize(exported: true, where Component == UInt32) 
+            @_specialize(exported: true, where Component == UInt64) 
+            @_specialize(exported: true, where Component == UInt)
             public 
-            func grayscale<Sample>(of type:Sample.Type) -> [Sample]?
-                where Sample:FixedWidthInteger & UnsignedInteger
+            func v<Component>(of type:Component.Type) -> [Component]?
+                where Component:FixedWidthInteger & UnsignedInteger
             {
-                guard self.checkWidth(of: Sample.self)
-                else 
-                {
-                    return nil
-                }
-                
                 switch self.properties.format 
                 {
-                    case .grayscale1, .grayscale2, .grayscale4:
+                    case .v1, .v2, .v4:
                         return self.mapBitIntensity{ $0 }
                     
-                    case .grayscale8:
+                    case .v8:
                         return self.mapIntensity(from: UInt8.self){ $0 }
                     
-                    case .grayscale16:
+                    case .v16:
                         return self.mapIntensity(from: UInt16.self){ $0 }
                     
-                    case .grayscale_a8:
+                    case .va8:
                         return self.mapIntensity(from: UInt8.self)
                         { 
-                            (v:Sample, _:Sample) in v
+                            (v:Component, _:Component) in v
                         }
                     
-                    case .grayscale_a16:
+                    case .va16:
                         return self.mapIntensity(from: UInt16.self)
                         { 
-                            (v:Sample, _:Sample) in v
+                            (v:Component, _:Component) in v
                         }
                     
                     case .rgb8:
                         return self.mapIntensity(from: UInt8.self)
                         { 
-                            (r:Sample, _:Sample, _:Sample) in r
+                            (r:Component, _:Component, _:Component) in r
                         }
                     
                     case .rgb16:
                         return self.mapIntensity(from: UInt16.self)
                         { 
-                            (r:Sample, _:Sample, _:Sample) in r
+                            (r:Component, _:Component, _:Component) in r
                         }
                     
                     case .rgba8:
                         return self.mapIntensity(from: UInt8.self)
                         { 
-                            (r:Sample, _:Sample, _:Sample, _:Sample) in r
+                            (r:Component, _:Component, _:Component, _:Component) in r
                         }
                     
                     case .rgba16:
                         return self.mapIntensity(from: UInt16.self)
                         { 
-                            (r:Sample, _:Sample, _:Sample, _:Sample) in r
+                            (r:Component, _:Component, _:Component, _:Component) in r
                         }
                         
                     case .indexed1, .indexed2, .indexed4:
@@ -2479,10 +2809,10 @@ enum PNG
                         {
                             (index:Int) in 
 
-                            // palette sample type is always UInt8 so all Swift 
+                            // palette component type is always UInt8 so all Swift 
                             // unsigned integer types can be used as an unscaling 
                             // target
-                            return palette[index].upscale(to: Sample.self).r
+                            return palette[index].upscale(to: Component.self).r
                         }
                     
                     case .indexed8:
@@ -2497,7 +2827,7 @@ enum PNG
                         {
                             (index:Int) in 
                             
-                            return palette[index].upscale(to: Sample.self).r
+                            return palette[index].upscale(to: Component.self).r
                         }
                 }
             }
@@ -2513,12 +2843,12 @@ enum PNG
             */
             @inline(__always) 
             private 
-            func greenscreen<Sample>(_ color:RGBA<Sample>) -> RGBA<Sample> 
+            func greenscreen<Component>(_ color:RGBA<Component>) -> RGBA<Component> 
             {
                 // hope this gets inlined
-                guard let key:RGBA<Sample> = Sample.bitWidth > 16 ? 
-                    self.properties.chromaKey?.upscale(  to: Sample.self) :  
-                    self.properties.chromaKey?.downscale(to: Sample.self) 
+                guard let key:RGBA<Component> = Component.bitWidth > 16 ? 
+                    self.properties.chromaKey?.upscale(  to: Component.self) :  
+                    self.properties.chromaKey?.downscale(to: Component.self) 
                 else 
                 {
                     return color
@@ -2529,67 +2859,209 @@ enum PNG
             
             @inline(__always) 
             private 
-            func greenscreen<Sample>(v:Sample) -> RGBA<Sample> 
+            func greenscreen<Component>(v:Component) -> RGBA<Component> 
             {
                 return self.greenscreen(.init(v))
             }
             
             @inline(__always) 
             private 
-            func greenscreen<Sample>(r:Sample, g:Sample, b:Sample) -> RGBA<Sample> 
+            func greenscreen<Component>(r:Component, g:Component, b:Component) 
+                -> RGBA<Component> 
             {
                 return self.greenscreen(.init(r, g, b))
             }
             
+            /** Returns the given color as a grayscale-alpha color with its alpha 
+                component set to 0 if its RGB color value matches this PNG image’s 
+                chroma key, and `Component.max` otherwise.
+                
+                - Parameters:
+                    - color: A grayscale-alpha color to test.
+                - Returns: The given color, with its alpha component set to 0 if its 
+                        color value matches this PNG image’s chroma key.
+            */
+            @inline(__always) 
+            private 
+            func greenscreen<Component>(_ color:RGBA<Component>) -> VA<Component> 
+            {
+                // hope this gets inlined
+                guard let key:RGBA<Component> = Component.bitWidth > 16 ? 
+                    self.properties.chromaKey?.upscale(  to: Component.self) :  
+                    self.properties.chromaKey?.downscale(to: Component.self) 
+                else 
+                {
+                    return color.va
+                }
+                
+                return color.equals(opaque: key) ? color.va.withAlpha(0) : color.va
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Component>(v:Component) -> VA<Component> 
+            {
+                return self.greenscreen(.init(v))
+            }
+            
+            @inline(__always) 
+            private 
+            func greenscreen<Component>(r:Component, g:Component, b:Component) 
+                -> VA<Component> 
+            {
+                return self.greenscreen(.init(r, g, b))
+            }
+            
+            /** Returns a row-major matrix of the grayscale-alpha color values represented 
+                by all the pixels in this PNG image, normalized to the range of 
+                the given component type.
+                
+                If this image has grayscale color, the grayscale-alpha colors returned 
+                share the value component, and have `Component.max` in the alpha 
+                component. If this image has RGB color, the grayscale-alpha colors 
+                have the red component in the value component, and have `Component.max` 
+                in the alpha component. If this image has RGBA color, the grayscale-alpha 
+                colors share the alpha component in addition.
+                
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
+                
+                *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, 
+                `UInt64`, and `UInt`.
+                
+                - Parameters:
+                    - type: An integer type.
+                - Returns: A row-major matrix of grayscale-alpha pixel colors, normalized 
+                    to the given `Component` type, or `nil` if this image requires 
+                    a palette, and it does not have one.
+            */
+            @_specialize(exported: true, where Component == UInt8) 
+            @_specialize(exported: true, where Component == UInt16) 
+            @_specialize(exported: true, where Component == UInt32) 
+            @_specialize(exported: true, where Component == UInt64) 
+            @_specialize(exported: true, where Component == UInt)
+            public 
+            func va<Component>(of type:Component.Type) -> [VA<Component>]? 
+                where Component:FixedWidthInteger & UnsignedInteger
+            {
+                switch self.properties.format 
+                {
+                    case .v1, .v2, .v4:
+                        return self.mapBitIntensity(self.greenscreen(v:)) 
+                    
+                    case .v8:
+                        return self.mapIntensity(from: UInt8.self,  self.greenscreen(v:)) 
+                    
+                    case .v16:
+                        return self.mapIntensity(from: UInt16.self, self.greenscreen(v:)) 
+                    
+                    case .va8:
+                        return self.mapIntensity(from: UInt8.self,  VA.init(_:_:)) 
+                    
+                    case .va16:
+                        return self.mapIntensity(from: UInt16.self, VA.init(_:_:)) 
+                    
+                    case .rgb8:
+                        return self.mapIntensity(from: UInt8.self,  self.greenscreen(r:g:b:)) 
+                    
+                    case .rgb16:
+                        return self.mapIntensity(from: UInt16.self, self.greenscreen(r:g:b:)) 
+                    
+                    case .rgba8:
+                        return self.mapIntensity(from: UInt8.self) 
+                        {
+                            .init($0, $3)
+                        }
+                    
+                    case .rgba16:
+                        return self.mapIntensity(from: UInt16.self)
+                        {
+                            .init($0, $3)
+                        }
+                        
+                    case .indexed1, .indexed2, .indexed4:
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
+                        {
+                            // missing palette, should never occur in normal circumstances
+                            return nil
+                        }
+                        
+                        // map over raw sample values instead of scaled values
+                        return self.mapBits 
+                        {
+                            (index:Int) in 
+                            return palette[index].va.upscale(to: Component.self)
+                        }
+                    
+                    case .indexed8:
+                        // same as above except loading byte-size samples
+                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
+                        else 
+                        {
+                            return nil
+                        }
+                        
+                        return self.map(from: UInt8.self)
+                        {
+                            (index:Int) in 
+                            
+                            return palette[index].va.upscale(to: Component.self)
+                        }
+                }
+            }
+            
             /** Returns a row-major matrix of the RGBA color values represented 
                 by all the pixels in this PNG image, normalized to the range of 
-                the given sample type.
+                the given component type.
                 
                 If this image has grayscale color, the RGBA colors returned have 
                 the value component in the red, green, and blue components, and 
-                `Sample.max` in the alpha component. If this image has grayscale-alpha 
+                `Component.max` in the alpha component. If this image has grayscale-alpha 
                 color, the RGBA colors returned share the alpha component in addition.
                 If this image has RGB color, the RGBA colors share the red, green, 
-                and blue components, and have `Sample.max` in the alpha component.
+                and blue components, and have `Component.max` in the alpha component.
                 
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
+                
+                *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, 
+                `UInt64`, and `UInt`.
                 
                 - Parameters:
                     - type: An integer type.
                 - Returns: A row-major matrix of RGBA pixel colors, normalized to 
-                    the given `Sample` type, or `nil` is `Sample` does not have 
-                    enough bits to represent this PNG image’s components.
+                    the given `Component` type, or `nil` if this image requires 
+                    a palette, and it does not have one.
             */
-            @_specialize(exported: true, where Sample == UInt8) 
-            @_specialize(exported: true, where Sample == UInt16) 
-            @_specialize(exported: true, where Sample == UInt32) 
-            @_specialize(exported: true, where Sample == UInt64) 
-            @_specialize(exported: true, where Sample == UInt)
+            @_specialize(exported: true, where Component == UInt8) 
+            @_specialize(exported: true, where Component == UInt16) 
+            @_specialize(exported: true, where Component == UInt32) 
+            @_specialize(exported: true, where Component == UInt64) 
+            @_specialize(exported: true, where Component == UInt)
             public 
-            func rgba<Sample>(of type:Sample.Type) -> [RGBA<Sample>]? 
-                where Sample:FixedWidthInteger & UnsignedInteger
+            func rgba<Component>(of type:Component.Type) -> [RGBA<Component>]? 
+                where Component:FixedWidthInteger & UnsignedInteger
             {
-                guard self.checkWidth(of: Sample.self)
-                else 
-                {
-                    return nil
-                }
-                
                 switch self.properties.format 
                 {
-                    case .grayscale1, .grayscale2, .grayscale4:
+                    case .v1, .v2, .v4:
                         return self.mapBitIntensity(self.greenscreen(v:)) 
                     
-                    case .grayscale8:
+                    case .v8:
                         return self.mapIntensity(from: UInt8.self,  self.greenscreen(v:)) 
                     
-                    case .grayscale16:
+                    case .v16:
                         return self.mapIntensity(from: UInt16.self, self.greenscreen(v:)) 
                     
-                    case .grayscale_a8:
+                    case .va8:
                         return self.mapIntensity(from: UInt8.self,  RGBA.init(_:_:)) 
                     
-                    case .grayscale_a16:
+                    case .va16:
                         return self.mapIntensity(from: UInt16.self, RGBA.init(_:_:)) 
                     
                     case .rgb8:
@@ -2617,10 +3089,10 @@ enum PNG
                         {
                             (index:Int) in 
 
-                            // palette sample type is always UInt8 so all Swift 
+                            // palette component type is always UInt8 so all Swift 
                             // unsigned integer types can be used as an unscaling 
                             // target
-                            return palette[index].upscale(to: Sample.self)
+                            return palette[index].upscale(to: Component.self)
                         }
                     
                     case .indexed8:
@@ -2635,53 +3107,58 @@ enum PNG
                         {
                             (index:Int) in 
                             
-                            return palette[index].upscale(to: Sample.self)
+                            return palette[index].upscale(to: Component.self)
                         }
                 }
             }
             
             /** Returns a row-major matrix of the RGBA color values represented 
                 by all the pixels in this PNG image, normalized to the range of 
-                the given sample type and encoded as integer slugs containing 
+                the given component type and encoded as integer slugs containing 
                 four components in ARGB order. The alpha components are premultiplied 
                 into the colors.
                 
                 If this image has grayscale color, the RGBA colors returned have 
                 the value component in the red, green, and blue components, and 
-                `Sample.max` in the alpha component. If this image has grayscale-alpha 
+                `Component.max` in the alpha component. If this image has grayscale-alpha 
                 color, the RGBA colors returned share the alpha component in addition.
                 If this image has RGB color, the RGBA colors share the red, green, 
-                and blue components, and have `Sample.max` in the alpha component. 
+                and blue components, and have `Component.max` in the alpha component. 
                 The RGBA colors are packed into four-component integer slugs of a 
                 type large enough to hold four instances of the given type, if one 
                 exists. The color components are packed in ARGB order, with alpha 
                 in the high bits.
                 
-                Allowed `Sample` types by default are `UInt8`, and `UInt16`. Custom 
-                `Sample` types can be used by conforming them to the `FusedVector4Element` 
-                protocol and supplying the `FusedVector4` associatedtype. This type 
-                must satisfy `Self.bitWidth == Sample.bitWidth << 2`.
+                Allowed `Component` types by default are `UInt8`, and `UInt16`. 
+                Custom `Component` types can be used by conforming them to the 
+                `FusedVector4Element` protocol and supplying the `FusedVector4` 
+                associatedtype. This type must satisfy `Self.bitWidth == Component.bitWidth << 2`.
                 
-                *Specialized* for `Sample` types `UInt8` and `UInt16`. (`Sample.FusedVector4` types `UInt32` and `UInt64`.)
+                To avoid information loss, you may want to check if this image’s 
+                component type has too many bits to be represented by the destination 
+                component type. This method should not be called using an integer 
+                type less than 8 bits wide.
+                
+                *Specialized* for `Component` types `UInt8` and `UInt16`. 
+                (`Component.FusedVector4` types `UInt32` and `UInt64`.)
                 
                 - Parameters:
                     - type: An integer type.
                 - Returns: A row-major matrix of RGBA pixel colors, normalized to 
-                    the given `Sample` type, and encoded as four-component integer 
-                    slugs, or `nil` is `Sample` does not have enough bits to represent 
-                    this PNG image’s components, or if no integer type exists that 
-                    can hold four instances of the given sample type.
+                    the given `Component` type, and encoded as four-component integer 
+                    slugs, or `nil` if this image requires a palette, and 
+                    it does not have one.
             */
-            @_specialize(exported: true, where Sample == UInt8) 
-            @_specialize(exported: true, where Sample == UInt16) 
+            @_specialize(exported: true, where Component == UInt8) 
+            @_specialize(exported: true, where Component == UInt16) 
             public 
-            func argbPremultiplied<Sample>(of type:Sample.Type) -> [Sample.FusedVector4]? 
-                where Sample:FusedVector4Element
+            func argbPremultiplied<Component>(of type:Component.Type) 
+                -> [Component.FusedVector4]? where Component:FusedVector4Element
             {
                 // *all* color formats can produce pixels with alpha, so we might 
                 // as well call the `rgba(of:)` function and let map fusion 
                 // optimize it
-                return self.rgba(of: Sample.self)?.map 
+                return self.rgba(of: Component.self)?.map 
                 {
                     $0.premultiplied.argb
                 }
@@ -2719,8 +3196,18 @@ enum PNG
             func scale<T, Sample>(bigEndian:T.Type, at index:Int, to _:Sample.Type) -> Sample 
                 where T:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
-                let scalar:Sample = self.load(bigEndian: T.self, at: index, as: Sample.self)
-                return scalar * RGBA<Sample>.quantum(depth: self.properties.format.depth)
+                // this branch should be gone in specialized form. it seems to be 
+                // effectively free.
+                if Sample.bitWidth > T.bitWidth
+                {
+                    let scalar:Sample = self.load(bigEndian: T.self, at: index, as: Sample.self)
+                    return scalar * VA<Sample>.quantum(depth: self.properties.format.depth)
+                }
+                else 
+                {
+                    let scalar:T = self.load(bigEndian: T.self, at: index, as: T.self)
+                    return .init(truncatingIfNeeded: scalar &>> (T.bitWidth - Sample.bitWidth))
+                }
             }
             
             private 
@@ -2764,9 +3251,10 @@ enum PNG
             func mapBitIntensity<Sample, Result>(_ body:(Sample) -> Result) -> [Result] 
                  where Sample:FixedWidthInteger & UnsignedInteger
             {
+                assert(Sample.bitWidth >= 8)
                 return self.mapBits 
                 {
-                    return body($0 * RGBA<Sample>.quantum(depth: self.properties.format.depth))
+                    return body($0 * VA<Sample>.quantum(depth: self.properties.format.depth))
                 }
             }
             
@@ -2831,6 +3319,227 @@ enum PNG
                 }
             }
         }
+        
+        /// The shape of an image stored in a two-dimensional array.
+        struct Shape 
+        {
+            let pitch:Int, 
+                size:(x:Int, y:Int)
+            
+            var byteCount:Int 
+            {
+                return self.pitch * self.size.y
+            }
+        }
+    }
+    
+    // single stage functions 
+    
+    /** Returns a row-major matrix of the first components of all the pixels 
+        in this PNG file, normalized to the range of the given component type.
+        
+        If this image has more than one component per pixel, the first 
+        component of each pixel is returned. If this image has indexed color, 
+        the components returned are the first components of the RGB palette 
+        colors of those pixels. This method ignores the transparency and 
+        chroma keys of this image.
+        
+        To avoid information loss, you may want to check if this image’s 
+        component type has too many bits to be represented by the destination 
+        component type. This method should not be called using an integer 
+        type less than 8 bits wide.
+        
+        *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, 
+        and `UInt`.
+        
+        - Parameters:
+            - path: A path to a PNG file.
+            - type: An integer type.
+        - Returns: A tuple containing a row-major matrix of pixel components, normalized 
+            to its `Component` type, and the logical pixel dimensions of the matrix.
+    */
+    @_specialize(exported: true, where Component == UInt8) 
+    @_specialize(exported: true, where Component == UInt16) 
+    @_specialize(exported: true, where Component == UInt32) 
+    @_specialize(exported: true, where Component == UInt64) 
+    @_specialize(exported: true, where Component == UInt)
+    public static 
+    func v<Component>(path:String, of type:Component.Type) throws 
+        -> (pixels:[Component], size:(x:Int, y:Int))
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let image:Data.Rectangular = try .decompress(path: path) 
+        else 
+        {
+            throw File.Error.couldNotOpen
+        }
+        
+        guard let pixels:[Component] = image.v(of: Component.self)
+        else 
+        {
+            throw DecodingError.missingPalette
+        }
+        
+        return (pixels, image.properties.size)
+    } 
+    
+    /** Returns a row-major matrix of the grayscale-alpha color values represented 
+        by all the pixels in this PNG file, normalized to the range of 
+        the given component type.
+        
+        If this image has grayscale color, the grayscale-alpha colors returned 
+        share the value component, and have `Component.max` in the alpha 
+        component. If this image has RGB color, the grayscale-alpha colors 
+        have the red component in the value component, and have `Component.max` 
+        in the alpha component. If this image has RGBA color, the grayscale-alpha 
+        colors share the alpha component in addition.
+        
+        To avoid information loss, you may want to check if this image’s 
+        component type has too many bits to be represented by the destination 
+        component type. This method should not be called using an integer 
+        type less than 8 bits wide.
+        
+        *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, 
+        and `UInt`.
+        
+        - Parameters:
+            - path: A path to a PNG file.
+            - type: An integer type.
+        - Returns: A tuple containing a row-major matrix of pixel components, normalized 
+            to its `Component` type, and the logical pixel dimensions of the matrix.
+    */
+    @_specialize(exported: true, where Component == UInt8) 
+    @_specialize(exported: true, where Component == UInt16) 
+    @_specialize(exported: true, where Component == UInt32) 
+    @_specialize(exported: true, where Component == UInt64) 
+    @_specialize(exported: true, where Component == UInt)
+    public static 
+    func va<Component>(path:String, of type:Component.Type) throws 
+        -> (pixels:[VA<Component>], size:(x:Int, y:Int))
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let image:Data.Rectangular = try .decompress(path: path) 
+        else 
+        {
+            throw File.Error.couldNotOpen
+        }
+
+        guard let pixels:[VA<Component>] = image.va(of: Component.self)
+        else 
+        {
+            throw DecodingError.missingPalette
+        }
+        
+        return (pixels, image.properties.size)
+    }
+    
+    /** Returns a row-major matrix of the RGBA color values represented 
+        by all the pixels in this PNG file, normalized to the range of 
+        the given component type.
+        
+        If this image has grayscale color, the RGBA colors returned have 
+        the value component in the red, green, and blue components, and 
+        `Component.max` in the alpha component. If this image has grayscale-alpha 
+        color, the RGBA colors returned share the alpha component in addition.
+        If this image has RGB color, the RGBA colors share the red, green, 
+        and blue components, and have `Component.max` in the alpha component.
+        
+        To avoid information loss, you may want to check if this image’s 
+        component type has too many bits to be represented by the destination 
+        component type. This method should not be called using an integer 
+        type less than 8 bits wide.
+        
+        *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, 
+        `UInt64`, and `UInt`.
+        
+        - Parameters:
+            - path: A path to a PNG file.
+            - type: An integer type.
+        - Returns: A tuple containing a row-major matrix of pixel components, normalized 
+            to its `Component` type, and the logical pixel dimensions of the matrix.
+    */
+    @_specialize(exported: true, where Component == UInt8) 
+    @_specialize(exported: true, where Component == UInt16) 
+    @_specialize(exported: true, where Component == UInt32) 
+    @_specialize(exported: true, where Component == UInt64) 
+    @_specialize(exported: true, where Component == UInt)
+    public static 
+    func rgba<Component>(path:String, of type:Component.Type) throws 
+        -> (pixels:[RGBA<Component>], size:(x:Int, y:Int))
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let image:Data.Rectangular = try .decompress(path: path) 
+        else 
+        {
+            throw File.Error.couldNotOpen
+        }
+        
+        guard let pixels:[RGBA<Component>] = image.rgba(of: Component.self)
+        else 
+        {
+            throw DecodingError.missingPalette
+        }
+        
+        return (pixels, image.properties.size)
+    }
+    
+    /** Returns a row-major matrix of the RGBA color values represented 
+        by all the pixels in this PNG file, normalized to the range of 
+        the given component type and encoded as integer slugs containing 
+        four components in ARGB order. The alpha components are premultiplied 
+        into the colors.
+        
+        If this image has grayscale color, the RGBA colors returned have 
+        the value component in the red, green, and blue components, and 
+        `Component.max` in the alpha component. If this image has grayscale-alpha 
+        color, the RGBA colors returned share the alpha component in addition.
+        If this image has RGB color, the RGBA colors share the red, green, 
+        and blue components, and have `Component.max` in the alpha component. 
+        The RGBA colors are packed into four-component integer slugs of a 
+        type large enough to hold four instances of the given type, if one 
+        exists. The color components are packed in ARGB order, with alpha 
+        in the high bits.
+        
+        Allowed `Component` types by default are `UInt8`, and `UInt16`. 
+        Custom `Component` types can be used by conforming them to the 
+        `FusedVector4Element` protocol and supplying the `FusedVector4` 
+        associatedtype. This type must satisfy `Self.bitWidth == Component.bitWidth << 2`.
+        
+        To avoid information loss, you may want to check if this image’s 
+        component type has too many bits to be represented by the destination 
+        component type. This method should not be called using an integer 
+        type less than 8 bits wide.
+        
+        *Specialized* for `Component` types `UInt8` and `UInt16`. 
+        (`Component.FusedVector4` types `UInt32` and `UInt64`.)
+        
+        - Parameters:
+            - path: A path to a PNG file.
+            - type: An integer type.
+        - Returns: A tuple containing a row-major matrix of pixel components, normalized 
+            to its `Component` type, and encoded as four-component integer slugs, 
+            and the logical pixel dimensions of the matrix.
+    */
+    @_specialize(exported: true, where Component == UInt8) 
+    @_specialize(exported: true, where Component == UInt16) 
+    public static 
+    func argbPremultiplied<Component>(path:String, of type:Component.Type) throws 
+        -> (pixels:[Component.FusedVector4], size:(x:Int, y:Int))
+        where Component:FusedVector4Element
+    {
+        guard let image:Data.Rectangular = try .decompress(path: path) 
+        else 
+        {
+            throw File.Error.couldNotOpen
+        }
+        
+        guard let pixels:[Component.FusedVector4] = image.argbPremultiplied(of: Component.self)
+        else 
+        {
+            throw DecodingError.missingPalette
+        }
+        
+        return (pixels, image.properties.size)
     }
     
     /// A four-byte PNG chunk type identifier.
@@ -3006,20 +3715,16 @@ enum PNG
                 
                 - Parameters:
                     chunk: A PNG chunk type.
-                - Returns: A `ReadError` case, if the given chunk type was out of place 
-                    or a necessary prerequisite chunk was missing, `nil` otherwise.
-                
-                - Throws: `prematureIEND` if an `IEND` chunk has already been registered.
-                    `illegalChunk`, `misplacedChunk`, and `duplicateChunk` can also 
-                    be thrown, with their standard meanings.
+                - Returns: A `DecodingError` case, if the given chunk type was out of place 
+                    or a necessary prerequisite chunk was missing, `nil` otherwise. 
             */
             mutating 
-            func push(_ chunk:Chunk) -> ReadError? 
+            func push(_ chunk:Chunk) -> DecodingError? 
             {                
                 guard self.last != .IEND
                 else 
                 {
-                    return .prematureIEND
+                    return .postEndChunk(chunk)
                 }
             
                 if      chunk ==                                                                  .tRNS
@@ -3027,7 +3732,7 @@ enum PNG
                     guard !self.format.hasAlpha // tRNS forbidden in alpha’d formats
                     else
                     {
-                        return .illegalChunk(chunk)
+                        return .unexpectedChunk(chunk)
                     }
                 }
                 else if chunk ==   .PLTE
@@ -3036,7 +3741,7 @@ enum PNG
                     guard self.format.hasColor // PLTE requires non-grayscale format
                     else
                     {
-                        return .illegalChunk(chunk)
+                        return .unexpectedChunk(chunk)
                     }
 
                     if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
@@ -3100,21 +3805,30 @@ enum PNG
     
     /// Errors that can occur while reading, decompressing, or decoding PNG files.
     public 
-    enum ReadError:Error
+    enum DecodingError:Error 
     {
-        /// A PNG chunk has a type-specific validity error.
-        case syntax(message: String)
-        
         /// A PNG file is missing its magic signature.
-        case signature
+        case missingSignature
         
-        /// An unexpected IEND chunk has been encountered.
-        case prematureIEND
+        /// A PNG image is missing a required palette.
+        case missingPalette 
+        /// A data interface is unable to provide requested data.
+        case dataUnavailable
+        
+        /// An image data buffer does not match the shape specified by an associated 
+        /// `Properties` record 
+        case inconsistentMetadata
+        
+        /// A PNG chunk has a type-specific validity error.
+        case invalidChunk(message:String)
+        /// A PNG chunk has an invalid type name.
+        case invalidName((UInt8, UInt8, UInt8, UInt8))
+        
         /// A PNG chunk’s crc32 value indicates it has been corrupted.
-        case corruptedChunk
+        case corruptedChunk(Chunk)
         /// A PNG chunk has been encountered which cannot appear assuming a particular 
         /// sequence of preceeding chunks have been encountered.
-        case illegalChunk(Chunk)
+        case unexpectedChunk(Chunk)
         
         /// A PNG chunk has been encountered that is out of correct order assuming 
         /// a particular sequence of preceeding chunks have been encountered.
@@ -3125,18 +3839,18 @@ enum PNG
         case duplicateChunk(Chunk)
         /// A prerequisite PNG chunk is missing.
         case missingChunk(Chunk)
+        /// A PNG chunk occured in sequence after an IEND chunk.
+        case postEndChunk(Chunk)
     }
     
     /// Errors that can occur while writing, compressing, or encoding PNG files.
     public 
-    enum WriteError:Error 
+    enum EncodingError:Error 
     {
-        /// An input scanline or image buffer has the wrong size.
+        /// A data interface is unable to accept given data.
+        case notAcceptingData 
+        /// An input scanline has the wrong size.
         case bufferCount
-        /// The PNG magic file signature could not be written. 
-        case signature 
-        /// A serialized PNG chunk could not be written.
-        case chunk
     }
 
     // empty struct to namespace our chunk iteration methods. we can’t store the 
@@ -3147,7 +3861,118 @@ enum PNG
     public 
     struct ChunkIterator<DataInterface> 
     {
-    }    
+    }
+    
+    
+    // internal benchmarking functions, to measure module boundary overhead 
+    public 
+    enum _Benchmarks 
+    {
+        public static 
+        func _structuredARGBPremultiplied(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[UInt32] = try? argbPremultiplied(path: path, of: UInt8.self).pixels
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _structuredRGBA(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[RGBA<UInt8>] = try? rgba(path: path, of: UInt8.self).pixels
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _planarRGBA(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[UInt8] = try? rgba(path: path, of: UInt8.self).pixels.planar() 
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _interleavedRGBA(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[UInt8] = try? rgba(path: path, of: UInt8.self).pixels.interleaved() 
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _structuredVA(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[VA<UInt8>] = try? va(path: path, of: UInt8.self).pixels
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _planarVA(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[UInt8] = try? va(path: path, of: UInt8.self).pixels.planar() 
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _interleavedVA(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[UInt8] = try? va(path: path, of: UInt8.self).pixels.interleaved() 
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+        public static 
+        func _structuredV(_ path:String) -> Int
+        {
+            let t1:Int = clock()
+            guard let _:[UInt8] = try? v(path: path, of: UInt8.self).pixels
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t:Int = clock() - t1
+            return t
+        }
+    }
 }
 
 extension PNG.ChunkIterator where DataInterface:DataSource 
