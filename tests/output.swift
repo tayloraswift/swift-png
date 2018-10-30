@@ -75,3 +75,22 @@ func printProgress(_ percent:Double, width:Int = TERM_WIDTH)
     print("\(Colors.lightGreen.0)]\(Colors.off.0)")
     fflush(stdout)
 }
+
+func formatInt(_ integer:Int, separator:String = ",") -> String
+{
+    let monolith:String = .init(integer)
+    let incomplete:Int  = monolith.count % 3 
+    
+    var index:String.Index = monolith.startIndex, 
+        next:String.Index  = monolith.index(index, offsetBy: incomplete)
+    var groups:[Substring] = incomplete == 0 ? [] : [monolith[index ..< next]]
+    
+    for _ in 0 ..< monolith.count / 3
+    {
+        index = next 
+        next  = monolith.index(index, offsetBy: 3)
+        groups.append(monolith[index ..< next])
+    }
+    
+    return groups.joined(separator: separator)
+}
