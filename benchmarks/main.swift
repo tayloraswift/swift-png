@@ -105,6 +105,26 @@ func structuredV(_ path:String) -> Int
     return t
 }
 
+
+func encodeRGBA(_ path:String) -> Int
+{
+    guard let uncompressed:PNG.Data.Uncompressed = try? .decompress(path: path)
+    else 
+    {
+        fatalError("could not open, read, or decode PNG file '\(path)'")
+    }
+    
+    let t1:Int = clock()
+    guard let _:Void = try? uncompressed.compress(path: path + ".png")
+    else 
+    {
+        fatalError("could not open, write, or encode PNG file '\(path).png'")
+    }
+    let t:Int = clock() - t1
+    return t
+}
+
+
 func benchmark(_ name:String, function:(String) -> Int) 
 {
     let t:Int = function("benchmarks/apollo17.png")
@@ -130,3 +150,6 @@ benchmark("  VA8   (interleaved, public  )", function: interleavedVA(_:))
 
 benchmark("   V8   (interleaved, internal)", function: PNG._Benchmarks._structuredV(_:))
 benchmark("   V8   (interleaved, public  )", function: structuredV(_:))
+
+benchmark("RGBA8   (encode,      internal)", function: PNG._Benchmarks._encodeRGBA(_:))
+benchmark("RGBA8   (encode,      public  )", function: encodeRGBA(_:))

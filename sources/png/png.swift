@@ -50,7 +50,7 @@ extension Array where Element == UInt8
 }
 
 public 
-protocol FixedLayoutColor:RandomAccessCollection 
+protocol FixedLayoutColor:RandomAccessCollection, Hashable, CustomStringConvertible
 {
     static 
     var components:Int 
@@ -91,6 +91,13 @@ protocol VAColor:FixedLayoutColor
 }
 extension VAColor 
 {
+    /// A textual representation of this color.
+    public
+    var description:String
+    {
+        return "(\(self.v), \(self.a))"
+    }
+    
     @inlinable
     public static 
     var components:Int 
@@ -137,6 +144,13 @@ protocol RGBAColor:FixedLayoutColor
 }
 extension RGBAColor 
 {
+    /// A textual representation of this color.
+    public
+    var description:String
+    {
+        return "(\(self.r), \(self.g), \(self.b), \(self.a))"
+    }
+    
     @inlinable
     public static 
     var components:Int 
@@ -167,6 +181,54 @@ extension RGBAColor
 
 extension Array where Element:FixedLayoutColor 
 {
+    /** Converts this array of color values to a palette table and an array of indices.
+        
+        - Returns: A tuple containing the indices of the colors in this array, and 
+            a table of color palette entries, or `nil` if this array of color values 
+            could not be indexed into 256 or fewer palette entries.
+    */
+    public 
+    func indexPalette() -> (indexed:[UInt8], palette:[Element])?
+    {
+        var indexed:[UInt8]          = [], 
+            palette:[Element: UInt8] = [:]
+            indexed.reserveCapacity(self.count)
+            palette.reserveCapacity(1 << UInt8.bitWidth)
+        for color:Element in self 
+        {            
+            if let index:UInt8 = palette[color] 
+            {
+                indexed.append(index)
+            }
+            else 
+            {
+                guard let index:UInt8 = UInt8.init(exactly: palette.count)
+                else 
+                {
+                    return nil
+                }
+                
+                palette[color] = index
+                indexed.append(index)
+            }
+        }
+        
+        // invert the palette dictionary 
+        let table:[Element] = .init(unsafeUninitializedCapacity: palette.count) 
+        {
+            (buffer:inout UnsafeMutableBufferPointer<Element>, count:inout Int) in 
+            
+            for (color, index):(Element, UInt8) in palette 
+            {
+                buffer[Int(index)] = color 
+            }
+            
+            count = palette.count
+        }
+        
+        return (indexed, table)
+    }
+    
     /** Temporarily view this color matrix as a flattened buffer of interleaved 
         color components.
         
@@ -416,7 +478,7 @@ enum PNG
         as flat buffers containing interleaved components. */
     @_fixed_layout 
     public 
-    struct VA<Component>:Equatable, CustomStringConvertible, VAColor
+    struct VA<Component>:VAColor
         where Component:FixedWidthInteger & UnsignedInteger 
     {
         /// The value component of this color.
@@ -425,13 +487,6 @@ enum PNG
         /// The alpha component of this color.
         public 
         let a:Component
-        
-        /// A textual representation of this color.
-        public
-        var description:String
-        {
-            return "(\(self.v), \(self.a))"
-        }
         
         /** Creates an opaque grayscale color with the value component set to the 
             given value sample, and the alpha component set to `Component.max`. 
@@ -591,7 +646,7 @@ enum PNG
         safely reinterpreted as flat buffers containing interleaved components. */
     @_fixed_layout
     public
-    struct RGBA<Component>:Equatable, CustomStringConvertible, RGBAColor
+    struct RGBA<Component>:RGBAColor
         where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color. 
@@ -606,13 +661,6 @@ enum PNG
         /// The alpha component of this color. 
         public 
         let a:Component
-        
-        /// A textual representation of this color.
-        public
-        var description:String
-        {
-            return "(\(self.r), \(self.g), \(self.b), \(self.a))"
-        }
         
         /** Creates an opaque grayscale color with all color components set to the given 
             value sample, and the alpha component set to `Component.max`. 
@@ -1614,6 +1662,9 @@ enum PNG
             /** Filters and compresses scanlines returned by the given closure,  
                 appending the compressed data to the given data buffer. 
                 
+                *Specialized* for `RAC` types `[UInt8]`, `ArraySlice<UInt8>`, `UnsafeBufferPointer<UInt8>`, 
+                `Slice<UnsafeBufferPointer<UInt8>>`, and `Slice<UnsafeMutableBufferPointer<UInt8>>`.
+                
                 - Parameters:
                     - data: A data buffer to append compressed scanline data to.
                     - capacity: The maximum size `data` is allowed to reach before 
@@ -1629,9 +1680,16 @@ enum PNG
                 - Throws: `EncodingError.bufferCount`, if `generator` returns a scanline 
                     that does not have the expected size.
             */
+            @_specialize(where RAC == [UInt8])
+            @_specialize(where RAC == ArraySlice<UInt8>)
+            @_specialize(where RAC == UnsafeBufferPointer<UInt8>)
+            @_specialize(where RAC == UnsafeMutableBufferPointer<UInt8>)
+            @_specialize(where RAC == Slice<UnsafeBufferPointer<UInt8>>)
+            @_specialize(where RAC == Slice<UnsafeMutableBufferPointer<UInt8>>)
             public mutating 
-            func consolidate(extending data:inout [UInt8], capacity:Int, 
-                scanlinesFrom generator:() -> ArraySlice<UInt8>?) throws -> Bool
+            func consolidate<RAC>(extending data:inout [UInt8], capacity:Int, 
+                scanlinesFrom generator:() -> RAC?) throws -> Bool
+                where RAC:RandomAccessCollection, RAC.Element == UInt8
             {
                 while let reference:[UInt8] = self.reference
                 {
@@ -1644,7 +1702,7 @@ enum PNG
                         return true 
                     }
                     
-                    guard let row:ArraySlice<UInt8> = generator()
+                    guard let row:RAC = generator()
                     else 
                     {
                         return true
@@ -1697,7 +1755,8 @@ enum PNG
                     the filter chosen by the library.
             */
             private  
-            func filter(_ current:ArraySlice<UInt8>, reference:[UInt8]) -> [UInt8]
+            func filter<S>(_ current:S, reference:[UInt8]) -> [UInt8] 
+                where S:Sequence, S.Element == UInt8
             {
                 // filtering can be done in parallel 
                 let candidates:(sub:[UInt8], up:[UInt8], average:[UInt8], paeth:[UInt8])
@@ -1716,12 +1775,12 @@ enum PNG
                     $0.1   &- $0.0
                 }
                 
-                candidates.average =    [3] + 
+                candidates.average =   ([3] + 
                 zip(reference, 
                     current).prefix(self.stride).map 
                 {
                     $0.1   &- $0.0 >> 1
-                } 
+                } as [UInt8])
                 + 
                 zip(           reference.dropFirst(self.stride), 
                     zip(current, current.dropFirst(self.stride))).map 
@@ -1790,7 +1849,8 @@ enum PNG
                     scanline candidate. A higher score indicates less compressibility.
             */
             private static 
-            func score(_ filtered:ArraySlice<UInt8>) -> Int
+            func score<S>(_ filtered:S) -> Int
+                where S:Sequence, S.Element == UInt8
             {
                 return zip(filtered, filtered.dropFirst()).count
                 {
@@ -2319,12 +2379,14 @@ enum PNG
                     var data:[UInt8] = []
                     let more:Bool = try encoder.consolidate(extending: &data, capacity: chunkSize) 
                     {
+                        () -> ArraySlice<UInt8>? in 
+                        
                         guard let update:Int? = pitches.next(), 
                               let count:Int   = update ?? pitch
                         else 
                         {
                             return nil 
-                        }                        
+                        }
                         defer 
                         {
                             base += count
@@ -4064,6 +4126,25 @@ enum PNG
                 fatalError("could not open, read, or decode PNG file '\(path)'")
             }
             
+            let t:Int = clock() - t1
+            return t
+        }
+        
+        public static 
+        func _encodeRGBA(_ path:String) -> Int
+        {
+            guard let uncompressed:PNG.Data.Uncompressed = try? .decompress(path: path)
+            else 
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t1:Int = clock()
+            guard let _:Void = try? uncompressed.compress(path: path + ".png")
+            else 
+            {
+                fatalError("could not open, write, or encode PNG file '\(path).png'")
+            }
             let t:Int = clock() - t1
             return t
         }
