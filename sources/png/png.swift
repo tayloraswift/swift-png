@@ -390,8 +390,7 @@ extension PNG.RGBA where Component:FusedVector4Element
     var argb:Component.FusedVector4
     {
         let a:Math<Component.FusedVector4>.V4 = 
-            Math.cast(truncatingIfNeeded: (self.a, self.r, self.g, self.b), 
-                                      as: Component.FusedVector4.self)
+            Math.cast((self.a, self.r, self.g, self.b), as: Component.FusedVector4.self)
                 
         let x:Math<Component.FusedVector4>.V4
         
@@ -960,7 +959,7 @@ enum PNG
     private static 
     func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     {
-        let v:Math<Int16>.V3 = Math.cast(truncatingIfNeeded: (a, b, c), as: Int16.self), 
+        let v:Math<Int16>.V3 = Math.cast((a, b, c), as: Int16.self), 
             p:Int16          = v.x + v.y - v.z
         let d:Math<Int16>.V3 = Math.abs(Math.sub((p, p, p), v))
 
