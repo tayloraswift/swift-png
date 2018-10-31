@@ -50,7 +50,34 @@ extension Array where Element == UInt8
 }
 
 public 
-protocol _VAColor
+protocol FixedLayoutColor:RandomAccessCollection 
+{
+    static 
+    var components:Int 
+    {
+        get
+    }
+}
+extension FixedLayoutColor 
+{
+    @inlinable
+    public 
+    var startIndex:Int 
+    {
+        return 0
+    }
+    @inlinable
+    public 
+    var endIndex:Int 
+    {
+        return Self.components
+    }
+}
+
+// `RandomAccessCollection` conformance helps the optimizer speed up a lot of operations 
+//  using color types
+public 
+protocol VAColor:FixedLayoutColor
 {
     associatedtype Component:FixedWidthInteger & UnsignedInteger
     var v:Component 
@@ -62,8 +89,33 @@ protocol _VAColor
         get 
     }
 }
+extension VAColor 
+{
+    @inlinable
+    public static 
+    var components:Int 
+    {
+        return 2
+    }
+    
+    @inlinable
+    public 
+    subscript(index:Int) -> Component 
+    {
+        switch index 
+        {
+            case 0:
+                return self.v
+            case 1:
+                return self.a 
+            default:
+                fatalError("(_RGBAColor) index \(index) out of range")
+        }
+    }
+}
+
 public 
-protocol _RGBAColor 
+protocol RGBAColor:FixedLayoutColor
 {
     associatedtype Component:FixedWidthInteger & UnsignedInteger
     var r:Component 
@@ -83,8 +135,69 @@ protocol _RGBAColor
         get 
     }
 }
+extension RGBAColor 
+{
+    @inlinable
+    public static 
+    var components:Int 
+    {
+        return 4
+    }
+    
+    @inlinable
+    public 
+    subscript(index:Int) -> Component 
+    {
+        switch index 
+        {
+            case 0:
+                return self.r
+            case 1:
+                return self.g 
+            case 2:
+                return self.b 
+            case 3:
+                return self.a
+            default:
+                fatalError("(_RGBAColor) index \(index) out of range")
+        }
+    }
+}
 
-extension Array where Element:_VAColor
+
+extension Array where Element:FixedLayoutColor 
+{
+    /** Temporarily view this color matrix as a flattened buffer of interleaved 
+        color components.
+        
+        - Parameters:
+            - body: A closure taking a buffer pointer to this color matrix, viewed 
+                as a flat buffer of interleaved color components. 
+        - Returns: The return value of `body`, if it has one. 
+        
+        - Note: The buffer passed to the closure is only valid for the execution 
+            of that closure.
+    */
+    @inlinable 
+    public 
+    func withUnsafeBufferPointerToComponents<Result>(_ body:(UnsafeBufferPointer<Element.Element>) throws -> Result) 
+        rethrows -> Result 
+    {
+        return try self.withUnsafeBufferPointer 
+        {
+            (buffer:UnsafeBufferPointer<Element>) in 
+            
+            let raw:UnsafeRawBufferPointer = .init(buffer)
+            defer 
+            {
+                raw.bindMemory(to: Element.self)
+            }
+            return try body(raw.bindMemory(to: Element.Element.self))
+        }
+    }
+}
+
+extension Array where Element:VAColor
 {
     /** Converts this matrix of grayscale-alpha colors into a planar representation.
         
@@ -124,20 +237,13 @@ extension Array where Element:_VAColor
     */
     @inlinable
     public 
-    func interleaved() -> [Element.Component] 
+    func interleaved() -> [Element.Element] 
     {
-        // flatMap is too slow sadly 
-        var flattened:[Element.Component] = []
-            flattened.reserveCapacity(self.count << 1)
-        for pixel:Element in self 
-        {
-            flattened.append(pixel.v)
-            flattened.append(pixel.a)
-        }
-        return flattened
+        return self.flatMap{ $0 }
     }
 }
-extension Array where Element:_RGBAColor
+
+extension Array where Element:RGBAColor
 {
     /** Converts this matrix of RGBA colors into a planar representation.
         
@@ -169,8 +275,8 @@ extension Array where Element:_RGBAColor
         return planar
     }
     
-    /** Flattens this matrix of grayscale-alpha colors into an unstructured array 
-        of its interleaved components.
+    /** Flattens this matrix of RGBA colors into an unstructured array of its 
+        interleaved components.
         
         *Inlinable*.
         
@@ -182,19 +288,9 @@ extension Array where Element:_RGBAColor
     */
     @inlinable
     public 
-    func interleaved() -> [Element.Component] 
+    func interleaved() -> [Element.Element] 
     {
-        // flatMap is too slow sadly 
-        var flattened:[Element.Component] = []
-            flattened.reserveCapacity(self.count << 2)
-        for pixel:Element in self 
-        {
-            flattened.append(pixel.r)
-            flattened.append(pixel.g)
-            flattened.append(pixel.b)
-            flattened.append(pixel.a)
-        }
-        return flattened
+        return self.flatMap{ $0 }
     }
 }
 
@@ -321,7 +417,7 @@ enum PNG
         as flat buffers containing interleaved components. */
     @_fixed_layout 
     public 
-    struct VA<Component>:Equatable, CustomStringConvertible, _VAColor
+    struct VA<Component>:Equatable, CustomStringConvertible, VAColor
         where Component:FixedWidthInteger & UnsignedInteger 
     {
         /// The value component of this color.
@@ -496,7 +592,7 @@ enum PNG
         safely reinterpreted as flat buffers containing interleaved components. */
     @_fixed_layout
     public
-    struct RGBA<Component>:Equatable, CustomStringConvertible, _RGBAColor
+    struct RGBA<Component>:Equatable, CustomStringConvertible, RGBAColor
         where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color. 
