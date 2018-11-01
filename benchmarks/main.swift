@@ -108,14 +108,16 @@ func structuredV(_ path:String) -> Int
 
 func encodeRGBA(_ path:String) -> Int
 {
-    guard let uncompressed:PNG.Data.Uncompressed = try? .decompress(path: path)
+    guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) = 
+        try? PNG.rgba(path: path, of: UInt8.self)
     else 
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
     
     let t1:Int = clock()
-    guard let _:Void = try? uncompressed.compress(path: path + ".png")
+    guard let _:Void = 
+        try? PNG.Data.Uncompressed.convert(rgba: rgba, size: (x, y), to: .rgba8).compress(path: path + ".png")
     else 
     {
         fatalError("could not open, write, or encode PNG file '\(path).png'")
