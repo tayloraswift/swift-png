@@ -47,6 +47,13 @@ extension Array where Element == UInt8
             }
         }
     }
+    
+    fileprivate mutating  
+    func append(bigEndian:UInt16) 
+    {
+        self.append(.init(truncatingIfNeeded: bigEndian >> 8))
+        self.append(.init(truncatingIfNeeded: bigEndian     ))
+    }
 }
 
 public 
@@ -2196,8 +2203,16 @@ enum PNG
                     return nil 
                 }
                 
+                self.init(_data: data, properties: properties)
+            }
+            
+            private  
+            init(_data:[UInt8], properties:Properties) 
+            {
+                assert(_data.count == properties.byteCount)
+                
                 self.properties = properties
-                self.data       = data 
+                self.data       = _data 
             }
             
             /** Decomposes this uncompressed image into its constituent sub-images, 
@@ -2340,6 +2355,18 @@ enum PNG
                 chunkSize:Int = 1 << 16, level:Int = 9) throws 
                 where Destination:DataDestination
             {
+                try Uncompressed.compress( self.data, 
+                               properties: self.properties, 
+                                       to: &destination, 
+                                chunkSize: chunkSize, 
+                                    level: level)
+            }
+            
+            static   
+            func compress<RAC, Destination>(_ data:RAC, properties:Properties, 
+                to destination:inout Destination, chunkSize:Int, level:Int) throws 
+                where RAC:RandomAccessCollection, RAC.Element == UInt8, Destination:DataDestination
+            {
                 precondition(chunkSize >= 1, "chunk size must be positive")
                 
                 guard var iterator:ChunkIterator<Destination> = 
@@ -2359,27 +2386,27 @@ enum PNG
                     }
                 }
                 
-                try _next(.IHDR, self.properties.encodeIHDR())
-                try self.properties.encodePLTE().map 
+                try _next(.IHDR, properties.encodeIHDR())
+                try properties.encodePLTE().map 
                 {
                     try _next(.PLTE, $0)
                 }
-                try self.properties.encodetRNS().map 
+                try properties.encodetRNS().map 
                 {
                     try _next(.tRNS, $0)
                 }
                 
-                var pitches:Properties.Pitches = self.properties.pitches, 
-                    encoder:Properties.Encoder = try self.properties.encoder(level: level)
+                var pitches:Properties.Pitches = properties.pitches, 
+                    encoder:Properties.Encoder = try properties.encoder(level: level)
                 
                 var pitch:Int?, 
-                    base:Int     = self.data.startIndex
+                    base:RAC.Index = data.startIndex
                 while true  
                 {
-                    var data:[UInt8] = []
-                    let more:Bool = try encoder.consolidate(extending: &data, capacity: chunkSize) 
+                    var output:[UInt8] = []
+                    let more:Bool = try encoder.consolidate(extending: &output, capacity: chunkSize) 
                     {
-                        () -> ArraySlice<UInt8>? in 
+                        () -> RAC.SubSequence? in 
                         
                         guard let update:Int? = pitches.next(), 
                               let count:Int   = update ?? pitch
@@ -2387,16 +2414,17 @@ enum PNG
                         {
                             return nil 
                         }
-                        defer 
-                        {
-                            base += count
-                            pitch = count 
-                        }
                         
-                        return self.data[base ..< base + count]
+                        let end:RAC.Index          = data.index(base, offsetBy: count), 
+                            range:Range<RAC.Index> = base ..< end 
+                        
+                        base  = end
+                        pitch = count 
+                        
+                        return data[range]
                     }
                     
-                    try _next(.IDAT, data)
+                    try _next(.IDAT, output)
                     
                     guard more 
                     else  
@@ -2557,6 +2585,28 @@ enum PNG
                 }
             }
             
+            /* static   
+            func compress<RAC>(_ data:RAC, properties:Properties, 
+                path outputPath:String, chunkSize:Int, level:Int) throws
+                where RAC:RandomAccessCollection, RAC.Element == UInt8, Destination:DataDestination
+            {
+                guard let _:Void = 
+                (
+                    try File.Destination.open(path: outputPath) 
+                    {
+                        try compress(  data, 
+                           properties: properties, 
+                                   to: &$0, 
+                            chunkSize: chunkSize, 
+                                level: level)
+                    }
+                )
+                else 
+                {
+                    throw File.Error.couldNotOpen
+                }
+            } */
+            
             /** Decompresses a PNG file at the given file path, and returns 
                 it as an `Uncompressed` image.
                 
@@ -2581,6 +2631,217 @@ enum PNG
                 }
                 
                 return uncompressed
+            }
+            
+            @_specialize(exported: true, where Component == UInt8) 
+            @_specialize(exported: true, where Component == UInt16) 
+            @_specialize(exported: true, where Component == UInt32) 
+            @_specialize(exported: true, where Component == UInt64) 
+            @_specialize(exported: true, where Component == UInt)
+            public static 
+            func convert<Component>(rgba:[RGBA<Component>], 
+                size:(x:Int, y:Int), to format:Properties.Format, chromaKey:RGBA<UInt16>? = nil) 
+                throws -> Uncompressed
+                where Component:FixedWidthInteger & UnsignedInteger
+            {
+                let properties:Properties
+                var data:[UInt8]          = []
+                
+                switch format
+                {
+                    case .rgba16, .rgba8, .va16, .va8:
+                        properties = .init(size: size, format: format, interlaced: false)
+                        data.reserveCapacity(properties.byteCount)
+                    
+                    case .rgb16, .rgb8, .v16, .v8, .v4, .v2, .v1:
+                        properties = .init(size: size, format: format, interlaced: false, chromaKey: chromaKey)
+                        data.reserveCapacity(properties.byteCount)
+                    
+                    case .indexed8, .indexed4, .indexed2, .indexed1:
+                        guard let (indexed, palette):([UInt8], [RGBA<UInt8>]) = 
+                            (rgba.map{ $0.downscale(to: UInt8.self) }.indexPalette()), 
+                            palette.count <= 1 << format.depth
+                        else 
+                        {
+                            throw EncodingError.paletteOverflow
+                        }
+                        
+                        properties = .init(size: size, format: format, interlaced: false, palette: palette)
+                        if format.depth < 8 
+                        {
+                            let level:Int 
+                            switch format 
+                            {
+                                case .indexed4:
+                                    level = 1 
+                                case .indexed2:
+                                    level = 2
+                                case .indexed1:
+                                    level = 3
+                                default:
+                                    fatalError("unreachable")
+                            }
+                            
+                            data = compact(data, level: level)
+                        }
+                        else 
+                        {
+                            data       = indexed
+                        }
+                }
+                
+                switch format 
+                {
+                    case .rgba16:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt16>
+                            if Component.bitWidth >= UInt16.bitWidth 
+                            {
+                                scaled = pixel.downscale(to: UInt16.self)
+                            }
+                            else 
+                            {
+                                scaled = pixel.upscale(to: UInt16.self)
+                            }
+                            data.append(bigEndian: scaled.r)
+                            data.append(bigEndian: scaled.g)
+                            data.append(bigEndian: scaled.b)
+                            data.append(bigEndian: scaled.a)
+                        }
+                    
+                    case .rgba8:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
+                            data.append(scaled.r)
+                            data.append(scaled.g)
+                            data.append(scaled.b)
+                            data.append(scaled.a)
+                        }
+                    
+                    case .rgb16:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt16>
+                            if Component.bitWidth >= UInt16.bitWidth 
+                            {
+                                scaled = pixel.downscale(to: UInt16.self)
+                            }
+                            else 
+                            {
+                                scaled = pixel.upscale(to: UInt16.self)
+                            }
+                            data.append(bigEndian: scaled.r)
+                            data.append(bigEndian: scaled.g)
+                            data.append(bigEndian: scaled.b)
+                        }
+                    
+                    case .rgb8:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
+                            data.append(scaled.r)
+                            data.append(scaled.g)
+                            data.append(scaled.b)
+                        }
+                        
+                    case .va16:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:VA<UInt16>
+                            if Component.bitWidth >= UInt16.bitWidth 
+                            {
+                                scaled = pixel.va.downscale(to: UInt16.self)
+                            }
+                            else 
+                            {
+                                scaled = pixel.va.upscale(to: UInt16.self)
+                            }
+                            data.append(bigEndian: scaled.v)
+                            data.append(bigEndian: scaled.a)
+                        }
+                    
+                    case .va8:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:VA<UInt8> = pixel.va.downscale(to: UInt8.self)
+                            data.append(scaled.v)
+                            data.append(scaled.a)
+                        }
+                    
+                    case .v16:
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:VA<UInt16>
+                            if Component.bitWidth >= UInt16.bitWidth 
+                            {
+                                scaled = pixel.va.downscale(to: UInt16.self)
+                            }
+                            else 
+                            {
+                                scaled = pixel.va.upscale(to: UInt16.self)
+                            }
+                            data.append(bigEndian: scaled.v)
+                        }
+                    
+                    case .v8:
+                        let shift:Int = Component.bitWidth - UInt8.bitWidth
+                        data = rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }
+                    
+                    case .v4, .v2, .v1:
+                        let shift:Int = Component.bitWidth - format.depth, 
+                            level:Int 
+                        
+                        switch format 
+                        {
+                            case .v4:
+                                level = 1 
+                            case .v2:
+                                level = 2
+                            case .v1:
+                                level = 3
+                            default:
+                                fatalError("unreachable")
+                        }
+                        
+                        data = compact(rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }, level: level)
+                    
+                    
+                    case .indexed8, .indexed4, .indexed2, .indexed1:
+                        break
+                }
+                
+                return .init(_data: data, properties: properties)
+            }
+            
+            private static 
+            func compact(_ scalars:[UInt8], level:Int) -> [UInt8] 
+            {
+                let tail:Int = (scalars.count >> level) << level
+                var opaque:[UInt8] = []
+                    opaque.reserveCapacity(scalars.count >> level + (tail < scalars.count ? 1 : 0))
+                for group:Int in 0 ..< (scalars.count >> level) 
+                {
+                    var byte:UInt8 = 0
+                    for scalar in scalars[group << level ..< (group + 1) << level] 
+                    {
+                        byte = byte &<< level | scalar
+                    }
+                    opaque.append(byte)
+                }
+                
+                if tail < scalars.count 
+                {
+                    var byte:UInt8 = 0
+                    for scalar in scalars[tail...] 
+                    {
+                        byte = byte &<< level | scalar
+                    }
+                    opaque.append(byte)
+                }
+                
+                return opaque
             }
         }
         
@@ -3699,6 +3960,49 @@ enum PNG
         return (pixels, image.properties.size)
     }
     
+    public static 
+    func convert<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int), 
+        to format:Properties.Format, destination:inout Destination, level:Int = 9) throws 
+        where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
+    {
+        /* switch format 
+        {
+            case .rgba16:
+                let properties:Properties = .init(size: size, format: format, interlaced: false)
+                // take fast path if possible 
+                if Component.bitWidth == 16 
+                {
+                    rgba.withUnsafeBufferPointerToComponents 
+                    {
+                        Data.Uncompressed.compress($0, 
+                                       properties: properties, 
+                                               to: &destination, 
+                                        chunkSize: 1 << 16, 
+                                            level: level)
+                    }
+                    
+                    return 
+                }
+            
+            case .rgba8:
+                let properties:Properties = .init(size: size, format: format, interlaced: false)
+                // take fast path if possible 
+                if Component.bitWidth == 8 
+                {
+                    rgba.withUnsafeBufferPointerToComponents 
+                    {
+                        Data.Uncompressed.compress($0, 
+                                       properties: properties, 
+                                               to: &destination, 
+                                        chunkSize: 1 << 16, 
+                                            level: level)
+                    }
+                    
+                    return 
+                }
+        } */
+    }
+    
     /// A four-byte PNG chunk type identifier.
     public 
     struct Chunk:Hashable, Equatable, CustomStringConvertible
@@ -4008,6 +4312,9 @@ enum PNG
         case notAcceptingData 
         /// An input scanline has the wrong size.
         case bufferCount
+        
+        /// An image being encoded has too many colors to index 
+        case paletteOverflow
     }
 
     // empty struct to namespace our chunk iteration methods. we can’t store the 
@@ -4133,14 +4440,16 @@ enum PNG
         public static 
         func _encodeRGBA(_ path:String) -> Int
         {
-            guard let uncompressed:PNG.Data.Uncompressed = try? .decompress(path: path)
+            guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) = 
+                try? PNG.rgba(path: path, of: UInt8.self)
             else 
             {
                 fatalError("could not open, read, or decode PNG file '\(path)'")
             }
             
             let t1:Int = clock()
-            guard let _:Void = try? uncompressed.compress(path: path + ".png")
+            guard let _:Void = 
+                try? PNG.Data.Uncompressed.convert(rgba: rgba, size: (x, y), to: .rgba8).compress(path: path + ".png")
             else 
             {
                 fatalError("could not open, write, or encode PNG file '\(path).png'")
