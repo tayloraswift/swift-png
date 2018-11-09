@@ -448,6 +448,48 @@ extension UInt16:FusedVector4Element
     typealias FusedVector4 = UInt64
 }
 
+struct Bitfield<Storage> where Storage:FixedWidthInteger & UnsignedInteger
+{
+    private 
+    var storage:Storage 
+    
+    init() 
+    {
+        self.storage = .init()
+    }
+    
+    subscript(index:Int) -> Bool 
+    {
+        get 
+        {
+            return self.storage & (1 << index) != 0
+        }
+        
+        set(value) 
+        {
+            if value 
+            {
+                self.storage |=  (1 &<< index)
+            }
+            else 
+            {
+                self.storage &= ~(1 &<< index)
+            }
+        }
+    }
+    
+    mutating 
+    func testAndSet(_ index:Int) -> Bool 
+    {
+        defer 
+        {
+            self[index] = true 
+        }
+        
+        return self[index]
+    }
+}
+
 extension PNG.RGBA where Component:FusedVector4Element
 {
     /** The components of this pixel value packed into a single unsigned integer in 
@@ -1065,108 +1107,199 @@ enum PNG
             |    16   |            | `v16`         | `va16`          | `rgb16` | `rgba16` |
             
         */
+        
         public 
-        enum Format:UInt16 
+        enum Format 
         {
-            // bitfield contains depth in upper byte, then code in lower byte
-            case v1         = 0x01_00,
-                 v2         = 0x02_00,
-                 v4         = 0x04_00,
-                 v8         = 0x08_00,
-                 v16        = 0x10_00,
-                 rgb8       = 0x08_02,
-                 rgb16      = 0x10_02,
-                 indexed1   = 0x01_03,
-                 indexed2   = 0x02_03,
-                 indexed4   = 0x04_03,
-                 indexed8   = 0x08_03,
-                 va8        = 0x08_04,
-                 va16       = 0x10_04,
-                 rgba8      = 0x08_06,
-                 rgba16     = 0x10_06
-            
-            /** A boolean value indicating if this pixel format has indexed color.
-                
-                `true` if `self` is `indexed1`, `indexed2`, `indexed4`, or `indexed8`. 
-                `false` otherwise.
-            */
+            case    v1, 
+                    v2, 
+                    v4, 
+                    v8, 
+                    v16, 
+                    rgb8(_ palette:[RGBA<UInt8>]?), 
+                    rgb16(_ palette:[RGBA<UInt8>]?), 
+                    indexed1(_ palette:[RGBA<UInt8>]), 
+                    indexed2(_ palette:[RGBA<UInt8>]), 
+                    indexed4(_ palette:[RGBA<UInt8>]), 
+                    indexed8(_ palette:[RGBA<UInt8>]), 
+                    va8, 
+                    va16, 
+                    rgba8(_ palette:[RGBA<UInt8>]?), 
+                    rgba16(_ palette:[RGBA<UInt8>]?) 
+                        
             public 
-            var isIndexed:Bool 
+            enum Code:UInt16 
             {
-                return self.rawValue & 1 != 0
-            }
-            
-            /** A boolean value indicating if this pixel format has at least three 
-                color components.
-                
-                `true` if `self` is `indexed1`, `indexed2`, `indexed4`, `indexed8`, 
-                `rgb8`, `rgb16`, `rgba8`, or `rgba16`. `false` otherwise.
-            */
-            public 
-            var hasColor:Bool 
-            {
-                return self.rawValue & 2 != 0
-            }
-            
-            /** A boolean value indicating if this pixel format has an alpha channel.
-                
-                `true` if `self` is `va8`, `va16`, `rgba8`, or 
-                `rgba16`. `false` otherwise. 
-            */
-            public 
-            var hasAlpha:Bool 
-            {
-                return self.rawValue & 4 != 0
-            }
-            
-            /// The bit depth of each channel of this pixel format.
-            public 
-            var depth:Int
-            {
-                return .init(self.rawValue >> 8)
-            }
-            
-            /// The number of channels encoded by this pixel format.
-            public 
-            var channels:Int
-            {
-                switch self
+                case    v1          = 0x01_00, 
+                        v2          = 0x02_00, 
+                        v4          = 0x04_00, 
+                        v8          = 0x08_00, 
+                        v16         = 0x10_00, 
+                        rgb8        = 0x08_02, 
+                        rgb16       = 0x10_02, 
+                        indexed1    = 0x01_03, 
+                        indexed2    = 0x02_03, 
+                        indexed4    = 0x04_03, 
+                        indexed8    = 0x08_03, 
+                        va8         = 0x08_04, 
+                        va16        = 0x10_04, 
+                        rgba8       = 0x08_06, 
+                        rgba16      = 0x10_06 
+        
+                // upper byte
+                /// The bit depth of each channel of this pixel format.
+                @inlinable
+                public 
+                var depth:Int
                 {
-                case .v1, .v2, .v4, .v8, .v16,
-                    .indexed1, .indexed2, .indexed4, .indexed8:
-                    return 1
-                case .va8, .va16:
-                    return 2
-                case .rgb8, .rgb16:
-                    return 3
-                case .rgba8, .rgba16:
-                    return 4
+                    return .init(self.rawValue >> 8)
+                }
+                
+                /** A boolean value indicating if this pixel format has indexed color.
+                    
+                    `true` if `self` is `indexed1`, `indexed2`, `indexed4`, or `indexed8`. 
+                    `false` otherwise.
+                */
+                @inlinable
+                public 
+                var isIndexed:Bool 
+                {
+                    return self.rawValue & 1 != 0
+                }
+                
+                /** A boolean value indicating if this pixel format has at least three 
+                    color components.
+                    
+                    `true` if `self` is `indexed1`, `indexed2`, `indexed4`, `indexed8`, 
+                    `rgb8`, `rgb16`, `rgba8`, or `rgba16`. `false` otherwise.
+                */
+                @inlinable
+                public 
+                var hasColor:Bool 
+                {
+                    return self.rawValue & 2 != 0
+                }
+                
+                /** A boolean value indicating if this pixel format has an alpha channel.
+                    
+                    `true` if `self` is `va8`, `va16`, `rgba8`, or 
+                    `rgba16`. `false` otherwise. 
+                */
+                @inlinable
+                public 
+                var hasAlpha:Bool 
+                {
+                    return self.rawValue & 4 != 0
+                }
+                
+                /// The number of channels encoded by this pixel format.
+                @inlinable
+                public 
+                var channels:Int
+                {
+                    switch self
+                    {
+                    case .v1, .v2, .v4, .v8, .v16,
+                        .indexed1, .indexed2, .indexed4, .indexed8:
+                        return 1
+                    case .va8, .va16:
+                        return 2
+                    case .rgb8, .rgb16:
+                        return 3
+                    case .rgba8, .rgba16:
+                        return 4
+                    }
+                }
+                
+                /** The total number of bits needed to encode all channels of this pixel 
+                    format. */
+                @inlinable
+                var volume:Int 
+                {
+                    return self.depth * self.channels 
+                }
+                
+                /// The number of components represented by this pixel format.
+                @inlinable
+                public 
+                var components:Int 
+                {
+                    //        base +     2 × colored     +    alpha
+                    return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
+                }
+                
+                /** Returns the shape of a buffer just large enough to contain an image 
+                    of the given size, stored in this color format. */
+                func shape(from size:Math<Int>.V2) -> Data.Shape 
+                {
+                    let scanlineBitCount:Int = size.x * self.channels * self.depth
+                                                    // ceil(scanlineBitCount / 8)
+                    let pitch:Int = scanlineBitCount >> 3 + (scanlineBitCount & 7 == 0 ? 0 : 1)
+                    return .init(pitch: pitch, size: size)
+                }
+
+            }
+            
+            // lower byte
+            @inlinable
+            public 
+            var code:Code 
+            {
+                switch self 
+                {
+                    case .v1:
+                        return .v1
+                    case .v2:
+                        return .v2
+                    case .v4:
+                        return .v4
+                    case .v8:
+                        return .v8
+                    case .v16:
+                        return .v16
+                    case .rgb8:
+                        return .rgb8
+                    case .rgb16:
+                        return .rgb16
+                    case .indexed1:
+                        return .indexed1
+                    case .indexed2:
+                        return .indexed2
+                    case .indexed4:
+                        return .indexed4
+                    case .indexed8:
+                        return .indexed8
+                    case .va8:
+                        return .va8
+                    case .va16:
+                        return .va16
+                    case .rgba8:
+                        return .rgba8
+                    case .rgba16:
+                        return .rgba16
                 }
             }
             
-            /** The total number of bits needed to encode all channels of this pixel 
-                format. */
-            var volume:Int 
-            {
-                return self.depth * self.channels 
-            }
-            
-            /// The number of components represented by this pixel format.
+            /// The palette associated with this color format, if applicable.
             public 
-            var components:Int 
+            var palette:[RGBA<UInt8>]? 
             {
-                //        base +     2 × colored     +    alpha
-                return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
-            }
-            
-            /** Returns the shape of a buffer just large enough to contain an image 
-                of the given size, stored in this color format. */
-            func shape(from size:Math<Int>.V2) -> Data.Shape 
-            {
-                let scanlineBitCount:Int = size.x * self.channels * self.depth
-                                                // ceil(scanlineBitCount / 8)
-                let pitch:Int = scanlineBitCount >> 3 + (scanlineBitCount & 7 == 0 ? 0 : 1)
-                return .init(pitch: pitch, size: size)
+                switch self 
+                {
+                    case    let .indexed1(palette), 
+                            let .indexed2(palette),  
+                            let .indexed4(palette),  
+                            let .indexed8(palette):
+                        return palette 
+                    
+                    case    let .rgb8(option), 
+                            let .rgb16(option), 
+                            let .rgba8(option),
+                            let .rgba16(option):
+                        return option 
+                    default:
+                        return nil 
+                }
             }
         }
         
@@ -1282,13 +1415,207 @@ enum PNG
             }
         }
         
-        /// The pixel format of this PNG image.
+        public 
+        struct Header 
+        {
+            public 
+            let size:(x:Int, y:Int)
+            public 
+            let code:Format.Code
+            public 
+            let interlaced:Bool 
+            
+            /** Decodes the data of an IHDR chunk as a `Properties` record.
+                
+                - Parameters:
+                    - data: IHDR chunk data.
+                - Returns: A `Properties` object containing the information encoded by 
+                    the given IHDR chunk.
+                - Throws:
+                    - DecodingError.invalidChunk: If any of the IHDR chunk fields contain 
+                        an invalid value. 
+            */
+            public static 
+            func decodeIHDR(_ data:[UInt8]) throws -> Header
+            {
+                guard data.count == 13 
+                else 
+                {
+                    throw DecodingError.invalidChunk(message: "png header length is \(data.count), expected 13")
+                }
+                
+                let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
+                guard let code:Format.Code = Format.Code.init(rawValue: colorcode)
+                else 
+                {
+                    throw DecodingError.invalidChunk(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
+                }
+                
+                // validate other fields 
+                guard data[10] == 0 
+                else 
+                {
+                    throw DecodingError.invalidChunk(message: "compression byte has value \(data[10]), expected 0")
+                }
+                guard data[11] == 0 
+                else 
+                {
+                    throw DecodingError.invalidChunk(message: "filter byte has value \(data[11]), expected 0")
+                }
+                
+                let interlaced:Bool 
+                switch data[12]
+                {
+                    case 0:
+                        interlaced = false 
+                    case 1: 
+                        interlaced = true 
+                    default:
+                        throw DecodingError.invalidChunk(message: "interlacing byte has invalid value \(data[12])")
+                }
+                
+                let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
+                    height:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
+                
+                return .init(size: (width, height), code: code, interlaced: interlaced)
+            }
+            
+            /** Decodes the data of a PLTE chunk, validates, and returns it as an 
+                array of `PNG.RGBA<UInt8>` entries.
+                
+                - Parameters: 
+                    - data: PLTE chunk data. Must not contain more entries than this 
+                        PNG’s color depth can uniquely encode.
+                - Throws: 
+                    - DecodingError.invalidChunk: If the given palette data does not contain 
+                        a whole number of palette entries, or if it contains more than 
+                        `1 << format.depth` entries
+                    - DecodingError.unexpectedChunk: If this PNG does not have 
+                        a three-color format.
+            */
+            public  
+            func decodePLTE(_ data:[UInt8]) throws -> [RGBA<UInt8>]
+            {
+                guard self.code.hasColor 
+                else 
+                {
+                    throw DecodingError.unexpectedChunk(.PLTE)
+                }
+                
+                guard data.count.isMultiple(of: 3)
+                else
+                {
+                    throw DecodingError.invalidChunk(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
+                }
+                
+                // check number of palette entries 
+                let maxEntries:Int = 1 << self.code.depth
+                guard data.count <= maxEntries * 3
+                else 
+                {
+                    throw DecodingError.invalidChunk(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
+                }
+
+                return stride(from: data.startIndex, to: data.endIndex, by: 3).map
+                {
+                    let r:UInt8 = data[$0    ],
+                        g:UInt8 = data[$0 + 1],
+                        b:UInt8 = data[$0 + 2]
+                    return .init(r, g, b)
+                }
+            }
+            
+            /** Decodes the data of a tRNS chunk, validates, and modifies the given 
+                palette table.
+                
+                This method should only be called if the PNG has an indexed pixel format.
+                
+                - Parameters: 
+                    - data: tRNS chunk data. It must not contain more transparency 
+                        values than the PNG’s color depth can uniquely encode.
+                - Throws: 
+                    - DecodingError.invalidChunk: If the given transparency data 
+                        contains more than `palette.count` trasparency values.
+                    - DecodingError.unexpectedChunk: If the PNG does not have an 
+                        indexed color format.
+            */
+            public  
+            func decodetRNS(_ data:[UInt8], palette:inout [RGBA<UInt8>]) throws
+            {
+                guard self.code.isIndexed 
+                else 
+                {
+                    throw DecodingError.unexpectedChunk(.tRNS)
+                }
+                
+                guard data.count <= palette.count
+                else
+                {
+                    throw DecodingError.invalidChunk(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
+                }
+                
+                palette = zip(palette, data).map 
+                {
+                    $0.0.withAlpha($0.1)
+                } 
+                + 
+                palette.dropFirst(data.count)
+            }
+            
+            /** Decodes the data of a tRNS chunk, validates, and returns a chroma key.
+                
+                This method should only be called if the PNG has an RGB or grayscale 
+                pixel format.
+                
+                - Parameters: 
+                    - data: tRNS chunk data. If this PNG has a grayscale pixel format, 
+                        it must contain one value sample. If this PNG has an RGB pixel 
+                        format, it must contain three samples, red, green, and blue.
+                - Throws: 
+                    - DecodingError.invalidChunk: If the given transparency data does not 
+                        contain the correct number of samples.
+                    - DecodingError.unexpectedChunk: If the PNG does not have an 
+                        opaque color format.
+            */
+            public 
+            func decodetRNS(_ data:[UInt8]) throws -> RGBA<UInt16>
+            {
+                switch self.code
+                {
+                    case .v1, .v2, .v4, .v8, .v16:
+                        guard data.count == 2
+                        else
+                        {
+                            throw DecodingError.invalidChunk(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
+                        }
+                        
+                        let quantum:UInt16 = VA<UInt16>.quantum(depth: self.code.depth), 
+                            v:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+                        return .init(v)
+                    
+                    case .rgb8, .rgb16:
+                        guard data.count == 6
+                        else
+                        {
+                            throw DecodingError.invalidChunk(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
+                        }
+                        
+                        let quantum:UInt16 = VA<UInt16>.quantum(depth: self.code.depth), 
+                            r:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0), 
+                            g:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2), 
+                            b:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+                        return .init(r, g, b)
+                    
+                    default:
+                        throw DecodingError.unexpectedChunk(.tRNS)
+                }
+            }
+        }
+        
+        /// The pixel format of this PNG image, and its associated color palette, 
+        /// if applicable.
         public 
         let format:Format
-        
-        /// The color palette of this PNG image, if it has one.
-        public 
-        var palette:[RGBA<UInt8>]?
         
         /** The chroma key of this PNG image, if it has one. 
             
@@ -1355,22 +1682,21 @@ enum PNG
             }
         }
         
-        /** Creates a PNG metadata record with the given properties.
+        /** Creates a PNG `Properties` record with the given properties.
             
             - Parameters:
                 - size: A pair of pixel dimensions.
                 - format: A pixel format.
                 - interlaced: A boolean value indicating if an interlacing algorithm 
-                    will be used.
-                - palette: A color palette, or `nil`. The default is `nil`.
+                    will be used. The default is `false`.
                 - chromaKey: A chroma key, or `nil`. The default is `nil`.
         */
         public 
-        init(size:(x:Int, y:Int), format:Format, interlaced:Bool, 
-            palette:[RGBA<UInt8>]? = nil, chromaKey:RGBA<UInt16>? = nil)
+        init(size:(x:Int, y:Int), format:Format, interlaced:Bool = false, 
+            chromaKey:RGBA<UInt16>? = nil)
         {
             self.format = format
-            self.shape  = format.shape(from: size)
+            self.shape  = format.code.shape(from: size)
             
             if interlaced 
             {
@@ -1408,7 +1734,7 @@ enum PNG
                 {
                     (size:Math<Int>.V2, strider:Math<StrideTo<Int>>.V2) in 
                     
-                    return .init(shape: format.shape(from: size), strider: strider)
+                    return .init(shape: format.code.shape(from: size), strider: strider)
                 }
                 
                 self.interlacing = .adam7(subImages)
@@ -1418,7 +1744,6 @@ enum PNG
                 self.interlacing = .none
             }
             
-            self.palette   = palette 
             self.chromaKey = chromaKey
         }
         
@@ -1429,7 +1754,7 @@ enum PNG
         func decoder() throws -> Decoder
         {
             let inflator:LZ77.Inflator = try .init(), 
-                stride:Int             = max(1, self.format.volume >> 3)
+                stride:Int             = max(1, self.format.code.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, inflator: inflator)
         }
         
@@ -1444,7 +1769,7 @@ enum PNG
         func encoder(level:Int) throws -> Encoder
         {
             let deflator:LZ77.Deflator = try .init(level: level), 
-                stride:Int             = max(1, self.format.volume >> 3)
+                stride:Int             = max(1, self.format.code.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, deflator: deflator)
         }
         
@@ -1866,62 +2191,7 @@ enum PNG
             } 
         }
         
-        /** Decodes the data of an IHDR chunk as a `Properties` record.
-            
-            - Parameters:
-                - data: IHDR chunk data.
-            - Returns: A `Properties` object containing the information encoded by 
-                the given IHDR chunk.
-            - Throws:
-                - DecodingError.invalidChunk: If any of the IHDR chunk fields contain 
-                    an invalid value. 
-        */
-        public static 
-        func decodeIHDR(_ data:[UInt8]) throws -> Properties
-        {
-            guard data.count == 13 
-            else 
-            {
-                throw DecodingError.invalidChunk(message: "png header length is \(data.count), expected 13")
-            }
-            
-            let colorcode:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 8)
-            guard let format:Format = Format.init(rawValue: colorcode)
-            else 
-            {
-                throw DecodingError.invalidChunk(message: "color format bytes have invalid values (\(data[8]), \(data[9]))")
-            }
-            
-            // validate other fields 
-            guard data[10] == 0 
-            else 
-            {
-                throw DecodingError.invalidChunk(message: "compression byte has value \(data[10]), expected 0")
-            }
-            guard data[11] == 0 
-            else 
-            {
-                throw DecodingError.invalidChunk(message: "filter byte has value \(data[11]), expected 0")
-            }
-            
-            let interlaced:Bool 
-            switch data[12]
-            {
-                case 0:
-                    interlaced = false 
-                case 1: 
-                    interlaced = true 
-                default:
-                    throw DecodingError.invalidChunk(message: "interlacing byte has invalid value \(data[12])")
-            }
-            
-            let width:Int  = data.load(bigEndian: UInt32.self, as: Int.self, at: 0), 
-                height:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
-            
-            return .init(size: (width, height), format: format, interlaced: interlaced)
-        }
-        
-        /** Encodes the information in this PNG metadata record as the chunk data 
+        /** Encodes the header fields of this `Properties` record as the chunk data 
             of an IHDR chunk.
             
             - Returns: An array containing IHDR chunk data. The chunk header, length, 
@@ -1933,53 +2203,16 @@ enum PNG
             let header:[UInt8] = 
             [UInt8].store(self.shape.size.x,         asBigEndian: UInt32.self) + 
             [UInt8].store(self.shape.size.y,         asBigEndian: UInt32.self) + 
-            [UInt8].store(self.format.rawValue, asBigEndian: UInt16.self) + 
+            [UInt8].store(self.format.code.rawValue, asBigEndian: UInt16.self) + 
             [0, 0, self.interlaced ? 1 : 0]
             
             return header
         }
         
-        /** Decodes the data of a PLTE chunk, validates, and stores it in this PNG 
-            metadata record.
-            
-            - Parameters: 
-                - data: PLTE chunk data. Must not contain more entries than this 
-                    PNG’s color depth can uniquely encode.
-            - Throws: 
-                - DecodingError.invalidChunk: If the given palette data does not contain 
-                    a whole number of palette entries, or if it contains more than 
-                    `1 << format.depth` entries.
-        */
-        public mutating 
-        func decodePLTE(_ data:[UInt8]) throws
-        {
-            guard data.count.isMultiple(of: 3)
-            else
-            {
-                throw DecodingError.invalidChunk(message: "palette does not contain a whole number of entries (\(data.count) bytes)")
-            }
-            
-            // check number of palette entries 
-            let maxEntries:Int = 1 << self.format.depth
-            guard data.count <= maxEntries * 3
-            else 
-            {
-                throw DecodingError.invalidChunk(message: "palette contains too many entries (found \(data.count / 3), expected\(maxEntries))")
-            }
-
-            self.palette = stride(from: data.startIndex, to: data.endIndex, by: 3).map
-            {
-                let r:UInt8 = data[$0    ],
-                    g:UInt8 = data[$0 + 1],
-                    b:UInt8 = data[$0 + 2]
-                return .init(r, g, b)
-            }
-        }
-        
         /** Encodes this PNG’s palette as the chunk data of a PLTE chunk, if it 
             has one.
             
-            This method always returns valid PLTE chunk data. If this metadata 
+            This method always returns valid PLTE chunk data. If this `Properties` 
             record has more palette entries than can be encoded with its color depth, 
             only the first `1 << format.depth` entries are encoded. This method 
             does not remove palette entries from this metatada record itself.
@@ -1991,101 +2224,9 @@ enum PNG
         public 
         func encodePLTE() -> [UInt8]?
         {
-            guard   self.format.hasColor, 
-                    let palette:[RGBA<UInt8>] = self.palette 
-            else 
-            {
-                return nil 
-            }
-            
-            return palette.prefix(1 << self.format.depth).flatMap 
+            return self.format.palette?.prefix(1 << self.format.code.depth).flatMap 
             {
                 [$0.r, $0.g, $0.b]
-            }
-        }
-        
-        /** Decodes the data of a tRNS chunk, validates, and modifies this PNG 
-            metadata record’s palette entries, or chroma key, as appropriate.
-            
-            This method should only be called if this PNG has an opaque pixel format, 
-            and only after `decodePLTE(_:)` has been called on this metadata record. 
-            If this PNG has a transparent pixel format, this method returns immediately 
-            with no effects.
-            
-            This method sets the `chromaKey` property if this PNG has an opaque 
-            grayscale or RGB pixel format. It instead modifies the color palette 
-            if this PNG has an indexed pixel format.
-            
-            - Parameters: 
-                - data: tRNS chunk data. If this PNG has a grayscale pixel format, 
-                    it must contain one value sample. If this PNG has an RGB pixel 
-                    format, it must contain three samples, red, green, and blue. 
-                    If this PNG has an indexed pixel format, it must not contain 
-                    more transparency values than this PNG’s color depth can uniquely 
-                    encode.
-            - Throws: 
-                - DecodingError.invalidChunk: If the given transparency data does not 
-                    contain the correct number of samples, or, in the case of indexed 
-                    color, if it contains more than `1 << format.depth` trasparency 
-                    values.
-                - DecodingError.missingPalette: If this PNG has an indexed color format, 
-                    and this metadata record has not been assigned a palette, either 
-                    through a `decodePLTE(_:)` call, or by manual assignment to 
-                    the `palette` property.
-        */
-        public mutating 
-        func decodetRNS(_ data:[UInt8]) throws
-        {
-            switch self.format
-            {
-                case .v1, .v2, .v4, .v8, .v16:
-                    guard data.count == 2
-                    else
-                    {
-                        throw DecodingError.invalidChunk(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
-                    }
-                    
-                    let quantum:UInt16 = VA<UInt16>.quantum(depth: self.format.depth), 
-                        v:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-                    self.chromaKey = .init(v)
-                
-                case .rgb8, .rgb16:
-                    guard data.count == 6
-                    else
-                    {
-                        throw DecodingError.invalidChunk(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
-                    }
-                    
-                    let quantum:UInt16 = VA<UInt16>.quantum(depth: self.format.depth), 
-                        r:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0), 
-                        g:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2), 
-                        b:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-                    self.chromaKey = .init(r, g, b)
-                
-                case .indexed1, .indexed2, .indexed4, .indexed8:
-                    guard let palette:[RGBA<UInt8>] = self.palette
-                    else
-                    {
-                        throw DecodingError.missingPalette
-                    }
-
-                    guard data.count <= palette.count
-                    else
-                    {
-                        throw DecodingError.invalidChunk(message: "indexed image contains too many transparency entries (\(data.count), expected \(palette.count))")
-                    }
-                    
-                    self.palette = zip(palette, data).map 
-                    {
-                        $0.0.withAlpha($0.1)
-                    } 
-                    + 
-                    palette.dropFirst(data.count)
-                    
-                    self.chromaKey = nil
-                
-                default:
-                    break // this is an error, but it should have already been caught by PNGConditions
             }
         }
         
@@ -2093,10 +2234,10 @@ enum PNG
             chunk, if it has any.
             
             This method always returns valid tRNS chunk data. If this PNG has an 
-            indexed pixel format, and this metadata record has more palette entries 
+            indexed pixel format, and this `Properties` record has more palette entries 
             than can be encoded with its color depth, then only the first `1 << format.depth` 
             transparency values are encoded. This method does not remove palette 
-            entries from this metatada record itself.
+            entries from this `Properties` record itself.
             
             - Returns: An array containing tRNS chunk data, or `nil` if this PNG 
                 does not have an transparency information. The chunk header, length, 
@@ -2108,7 +2249,7 @@ enum PNG
                 if it has an indexed color format. In the indexed color case, trailing 
                 opaque palette entries are trimmed from the outputted sequence of 
                 transparency values. If all palette entries are opaque, or this 
-                metadata record has not been assigned a palette, `nil` is returned.
+                `Properties` record has not been assigned a palette, `nil` is returned.
         */
         public 
         func encodetRNS() -> [UInt8]? 
@@ -2121,11 +2262,11 @@ enum PNG
                     {
                         return nil 
                     }
-                    let quantization:Int = UInt16.bitWidth - self.format.depth
+                    let quantization:Int = UInt16.bitWidth - self.format.code.depth
                     return [key.r >> quantization].flatMap
-                        {
-                            [UInt8].store($0, asBigEndian: UInt16.self)
-                        }
+                    {
+                        [UInt8].store($0, asBigEndian: UInt16.self)
+                    }
                 
                 case .rgb8, .rgb16:
                     guard let key:RGBA<UInt16> = self.chromaKey 
@@ -2133,7 +2274,7 @@ enum PNG
                     {
                         return nil 
                     }
-                    let quantization:Int = UInt16.bitWidth - self.format.depth
+                    let quantization:Int = UInt16.bitWidth - self.format.code.depth
                     return 
                         [
                             key.r >> quantization, 
@@ -2144,14 +2285,12 @@ enum PNG
                             [UInt8].store($0, asBigEndian: UInt16.self)
                         }
                 
-                case .indexed1, .indexed2, .indexed4, .indexed8:
-                    guard let palette:[RGBA<UInt8>] = self.palette
-                    else
-                    {
-                        return nil
-                    }
+                case    let .indexed1(palette), 
+                        let .indexed2(palette), 
+                        let .indexed4(palette), 
+                        let .indexed8(palette):
                     
-                    var alphas:[UInt8] = palette.prefix(1 << self.format.depth).map{ $0.a } 
+                    var alphas:[UInt8] = palette.prefix(1 << self.format.code.depth).map{ $0.a } 
                     guard let last:Int = alphas.lastIndex(where: { $0 != UInt8.max })
                     else 
                     {
@@ -2176,7 +2315,7 @@ enum PNG
         public 
         struct Uncompressed 
         {
-            /// The global image metadata of this PNG image.
+            /// The global image `Properties` of this PNG image.
             public 
             let properties:Properties
             /** The buffer containing this PNG’s decoded, but not necessarily 
@@ -2185,19 +2324,20 @@ enum PNG
             let data:[UInt8]
             
             /** Creates an uncompressed PNG image with the given pixel buffer and 
-                metadata record.
+                `Properties` record.
                 
                 - Parameters: 
                     - data: A pixel buffer. 
-                    - properties: A metadata record.
+                    - properties: A `Properties` record.
                 - Returns: An uncompressed PNG image, if the size of the given 
                     pixel buffer is consistent with the size and format information 
-                    in the given `properties`, and `nil` otherwise.
+                    in the given `properties`, and the given `properties` contains 
+                    a palette, if needed, and `nil` otherwise.
             */
             public 
             init?(_ data:[UInt8], properties:Properties) 
             {
-                guard data.count == properties.byteCount 
+                guard data.count == properties.byteCount
                 else 
                 {
                     return nil 
@@ -2266,14 +2406,13 @@ enum PNG
                 let properties:Properties = .init(size: self.properties.shape.size, 
                                                 format: self.properties.format, 
                                             interlaced: false, 
-                                               palette: self.properties.palette, 
                                              chromaKey: self.properties.chromaKey)
                 
                 let deinterlaced:[UInt8] = .init(unsafeUninitializedCapacity: properties.byteCount)
                 {
                     (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
                     
-                    let volume:Int = properties.format.volume
+                    let volume:Int = properties.format.code.volume
                     if volume < 8 
                     {
                         // initialize the buffer to 0. this makes it so we can store 
@@ -2334,34 +2473,6 @@ enum PNG
                 return .init(deinterlaced, properties: properties)
             }
             
-            /** Compresses this image, and outputs the compressed PNG file to the given 
-                data destination.
-                
-                Excessively small chunk sizes may harm image compression. Higher 
-                compression levels produce smaller PNG files, but take longer to 
-                run.
-                
-                - Parameters:
-                    - destination: A data destination to write the contents of the 
-                        compressed file to.
-                    - chunkSize: The maximum IDAT chunk size to use. The default 
-                        is 65536 bytes.
-                    - level: The level of LZ77 compression to use. Must be in the 
-                        range `0 ... 9`, where 0 is no compression, and 9 is maximal 
-                        compression.
-            */
-            public  
-            func compress<Destination>(to destination:inout Destination, 
-                chunkSize:Int = 1 << 16, level:Int = 9) throws 
-                where Destination:DataDestination
-            {
-                try Uncompressed.compress( self.data, 
-                               properties: self.properties, 
-                                       to: &destination, 
-                                chunkSize: chunkSize, 
-                                    level: level)
-            }
-            
             static   
             func compress<RAC, Destination>(_ data:RAC, properties:Properties, 
                 to destination:inout Destination, chunkSize:Int, level:Int) throws 
@@ -2397,10 +2508,10 @@ enum PNG
                 }
                 
                 var pitches:Properties.Pitches = properties.pitches, 
-                    encoder:Properties.Encoder = try properties.encoder(level: level)
+                encoder:Properties.Encoder = try properties.encoder(level: level)
                 
                 var pitch:Int?, 
-                    base:RAC.Index = data.startIndex
+                base:RAC.Index = data.startIndex
                 while true  
                 {
                     var output:[UInt8] = []
@@ -2408,15 +2519,15 @@ enum PNG
                     {
                         () -> RAC.SubSequence? in 
                         
-                        guard let update:Int? = pitches.next(), 
-                              let count:Int   = update ?? pitch
+                        guard   let update:Int? = pitches.next(), 
+                                let count:Int   = update ?? pitch
                         else 
                         {
                             return nil 
                         }
                         
-                        let end:RAC.Index          = data.index(base, offsetBy: count), 
-                            range:Range<RAC.Index> = base ..< end 
+                        let end:RAC.Index      = data.index(base, offsetBy: count), 
+                        range:Range<RAC.Index> = base ..< end 
                         
                         base  = end
                         pitch = count 
@@ -2436,6 +2547,43 @@ enum PNG
                 try _next(.IEND)
             }
             
+            /** Compresses this image, and outputs the compressed PNG file to the given 
+                data destination.
+                
+                Excessively small chunk sizes may harm image compression. Higher 
+                compression levels produce smaller PNG files, but take longer to 
+                run.
+                
+                - Parameters:
+                    - destination: A data destination to write the contents of the 
+                        compressed file to.
+                    - chunkSize: The maximum IDAT chunk size to use. The default 
+                        is 65536 bytes.
+                    - level: The level of LZ77 compression to use. Must be in the 
+                        range `0 ... 9`, where 0 is no compression, and 9 is maximal 
+                        compression.
+
+            */
+            public  
+            func compress<Destination>(to destination:inout Destination, 
+                chunkSize:Int = 1 << 16, level:Int = 9) throws 
+                where Destination:DataDestination
+            {
+                try Uncompressed.compress( self.data, 
+                               properties: self.properties, 
+                                       to: &destination, 
+                                chunkSize: chunkSize, 
+                                    level: level)
+            }
+            private 
+            enum DecompressionStage 
+            {
+                case i                             // initial
+                case ii(header:Properties.Header)  // IHDR sighted
+                case iii(header:Properties.Header, palette:[RGBA<UInt8>]) // PLTE sighted
+                case iv(properties:Properties, decoder:Properties.Decoder) // IDAT sighted
+                case v(properties:Properties)      // IDAT ended
+            }
             /** Decompresses a PNG file from the given data source, and returns 
                 it as an `Uncompressed` image.
                 
@@ -2479,65 +2627,116 @@ enum PNG
                     return (chunk, contents)
                 }
                 
+                var chromaKey:RGBA<UInt16>? = nil, 
+                    data:[UInt8] = []
                 
-                // first chunk must be IHDR 
-                let (first, header):(Chunk, [UInt8]) = try _next()
-                guard first == .IHDR
-                else 
-                {
-                    throw DecodingError.missingChunk(.IHDR)
-                }
-                
-                var properties:Properties      = try .decodeIHDR(header), 
-                    decoder:Properties.Decoder = try properties.decoder()
-                
-                var validator:Chunk.OrderingValidator = .init(format: properties.format)
-                
-                var data:[UInt8] = []
-                    data.reserveCapacity(properties.byteCount)
-                
-                var streamContinue:Bool = true
-                
+                var (chunk, contents):(Chunk, [UInt8])  = try _next(), 
+                    stage:DecompressionStage            = .i, 
+                    seen:Bitfield<UInt16>               = .init()
                 while true 
                 {
-                    let (chunk, contents):(Chunk, [UInt8]) = try _next()
-                    
-                    // validate chunk ordering 
-                    if let error:DecodingError = validator.push(chunk)
+                    switch (chunk, stage) 
                     {
-                        throw error 
-                    }
-
-                    switch chunk 
-                    {
-                        case .IHDR:
-                            fatalError("unreachable: validator enforces no duplicate IHDR chunks")
+                        case    (.IHDR, .i):
+                            stage   = .ii(header: try .decodeIHDR(contents))
+                            seen[0] = true
+                        case    (_, .i):
+                            throw DecodingError.missingChunk(.IHDR)
+                            
+                        case    (.PLTE, .ii(let header)):
+                            // call will throw if header does not have a color format
+                            stage = .iii(header: header, palette: try header.decodePLTE(contents))
+                        // case    (.PLTE, .iii):
+                        //     throw DecodingError.duplicateChunk(.PLTE)
+                        case    (.PLTE, .iv):
+                            throw DecodingError.unexpectedChunk(.PLTE)
                         
-                        case .IDAT:
-                            guard streamContinue 
-                            else 
+                        case    (.IDAT, .ii(let header)):
+                            let format:Properties.Format
+                            switch header.code 
                             {
-                                throw DecodingError.unexpectedChunk(.IDAT)
+                                case .v1:
+                                    format = .v1
+                                case .v2:
+                                    format = .v2 
+                                case .v4:
+                                    format = .v4 
+                                case .v8:
+                                    format = .v8 
+                                case .v16:
+                                    format = .v16 
+                                case .rgb8:
+                                    format = .rgb8(nil)
+                                case .rgb16:
+                                    format = .rgb16(nil)
+                                case .indexed1, .indexed2, .indexed4, .indexed8:
+                                    throw DecodingError.missingChunk(.PLTE)
+                                case .va8:
+                                    format = .va8 
+                                case .va16:
+                                    format = .va16 
+                                case .rgba8:
+                                    format = .rgba8(nil)
+                                case .rgba16:
+                                    format = .rgba16(nil)
                             }
                             
-                            streamContinue = try decoder.forEachScanline(decodedFrom: contents) 
+                            let properties:Properties = .init(size: header.size, 
+                                                            format: format, 
+                                                        interlaced: header.interlaced, 
+                                                         chromaKey: chromaKey
+                                                            )
+                            data.reserveCapacity(properties.byteCount)
+                            stage = .iv(properties: properties, decoder: try properties.decoder())
+                            continue 
+                        
+                        case    (.IDAT, .iii(let header, let palette)):
+                            let format:Properties.Format
+                            switch header.code 
+                            {
+                                case .rgb8:
+                                    format = .rgb8(palette)
+                                case .rgb16:
+                                    format = .rgb16(palette)
+                                case .indexed1:
+                                    format = .indexed1(palette)
+                                case .indexed2:
+                                    format = .indexed2(palette)
+                                case .indexed4:
+                                    format = .indexed4(palette)
+                                case .indexed8:
+                                    format = .indexed8(palette)
+                                case .rgba8:
+                                    format = .rgba8(palette)
+                                case .rgba16:
+                                    format = .rgba16(palette)
+                                case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
+                                    fatalError("unreachable: `case (.PLTE, .ii(let header)):` should have blocked off this state")
+                            }
+                            
+                            let properties:Properties = .init(size: header.size, 
+                                                            format: format, 
+                                                        interlaced: header.interlaced, 
+                                                         chromaKey: chromaKey
+                                                            )
+                            data.reserveCapacity(properties.byteCount)
+                            stage = .iv(properties: properties, decoder: try properties.decoder())
+                            continue 
+                        
+                        case    (.IDAT, .iv(let properties, var decoder)):
+                            let streamContinue:Bool = try decoder.forEachScanline(decodedFrom: contents) 
                             {
                                 data.append(contentsOf: $0)
                             }
-                        
-                        case .PLTE:
-                            try properties.decodePLTE(contents)
-                        
-                        case .tRNS:
-                            try properties.decodetRNS(contents)
-                        
-                        case .IEND:
-                            guard !streamContinue 
-                            else 
-                            {
-                                throw DecodingError.unexpectedChunk(.IEND)
-                            }
                             
+                            stage = streamContinue ? 
+                                .iv(properties: properties, decoder: decoder) : 
+                                .v(properties: properties)
+                        
+                        case    (_, .iv):
+                            throw DecodingError.unexpectedChunk(chunk)
+                        
+                        case    (.IEND, .v(let properties)):
                             guard let uncompressed:Uncompressed = 
                                 Uncompressed.init(data, properties: properties)
                             else 
@@ -2548,8 +2747,94 @@ enum PNG
                             
                             return uncompressed
                         
-                        default:
+                        case    (.IEND, .ii), 
+                                (.IEND, .iii):
+                            throw DecodingError.missingChunk(.IDAT)
+                        
+                        case    (.tRNS, .ii(let header)):
+                            // call will throw if header does not have a v or rgb format
+                            chromaKey = try header.decodetRNS(contents)
+                        case    (.tRNS, .iii(let header, var palette)):
+                            // call will throw if header does not have a v or rgb format
+                            try header.decodetRNS(contents, palette: &palette)
+                            stage = .iii(header: header, palette: palette)
+                        
+                        case    (.bKGD, .ii(let header)):
+                            guard !header.code.isIndexed 
+                            else 
+                            {
+                                throw DecodingError.missingChunk(.PLTE)
+                            }
+                            
+                        case    (.hIST, .ii):
+                            throw DecodingError.missingChunk(.PLTE)
+                        
+                        case    (.IHDR, .iii), 
+                                (.cHRM, .iii),
+                                (.gAMA, .iii),
+                                (.iCCP, .iii),
+                                (.sRGB, .iii), 
+                                
+                                (.IHDR, .v), 
+                                (.PLTE, .v), 
+                                (.IDAT, .v), 
+                                (.cHRM, .v),
+                                (.gAMA, .v),
+                                (.iCCP, .v),
+                                (.sRGB, .v), 
+                                
+                                (.pHYs, .v),
+                                (.sPLT, .v),
+                                
+                                (.bKGD, .v),
+                                (.hIST, .v),
+                                (.tRNS, .v):
+                            throw DecodingError.unexpectedChunk(chunk)
+                        
+                        default: 
                             break
+                    }
+                    
+                    (chunk, contents) = try _next()
+                    
+                    // make sure certain chunks don’t duplicate
+                    let index:Int
+                    switch chunk 
+                    {
+                        case .IHDR:
+                            index = 0
+                        case .PLTE:
+                            index = 1
+                        case .IEND:
+                            index = 2
+                        case .cHRM:
+                            index = 3
+                        case .gAMA:
+                            index = 4
+                        case .iCCP:
+                            index = 5
+                        case .sBIT:
+                            index = 6
+                        case .sRGB:
+                            index = 7
+                        case .bKGD:
+                            index = 8
+                        case .hIST:
+                            index = 9
+                        case .tRNS:
+                            index = 10
+                        case .pHYs:
+                            index = 11
+                        case .tIME:
+                            index = 12
+                        default:
+                            continue
+                    }
+                    
+                    guard !seen.testAndSet(index) 
+                    else 
+                    {
+                        throw DecodingError.duplicateChunk(chunk)
                     }
                 }
             }
@@ -2585,28 +2870,6 @@ enum PNG
                 }
             }
             
-            /* static   
-            func compress<RAC>(_ data:RAC, properties:Properties, 
-                path outputPath:String, chunkSize:Int, level:Int) throws
-                where RAC:RandomAccessCollection, RAC.Element == UInt8, Destination:DataDestination
-            {
-                guard let _:Void = 
-                (
-                    try File.Destination.open(path: outputPath) 
-                    {
-                        try compress(  data, 
-                           properties: properties, 
-                                   to: &$0, 
-                            chunkSize: chunkSize, 
-                                level: level)
-                    }
-                )
-                else 
-                {
-                    throw File.Error.couldNotOpen
-                }
-            } */
-            
             /** Decompresses a PNG file at the given file path, and returns 
                 it as an `Uncompressed` image.
                 
@@ -2640,113 +2903,42 @@ enum PNG
             @_specialize(exported: true, where Component == UInt)
             public static 
             func convert<Component>(rgba:[RGBA<Component>], 
-                size:(x:Int, y:Int), to format:Properties.Format, chromaKey:RGBA<UInt16>? = nil) 
-                throws -> Uncompressed
+                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil) 
+                -> Uncompressed?
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 let properties:Properties
-                var data:[UInt8]          = []
+                var data:[UInt8]
                 
-                switch format
+                let shift:Int = Component.bitWidth - code.depth
+                switch code
                 {
-                    case .rgba16, .rgba8, .va16, .va8:
-                        properties = .init(size: size, format: format, interlaced: false)
+                    case .v1:
+                        properties = .init(size: size, format: .v1, chromaKey: chromaKey)
+                        data  = compact(rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }, 
+                                        size: size, 
+                                        code: code
+                                        )
+                    case .v2:
+                        properties = .init(size: size, format: .v2, chromaKey: chromaKey)
+                        data  = compact(rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }, 
+                                        size: size, 
+                                        code: code
+                                        )
+                    case .v4:
+                        properties = .init(size: size, format: .v4, chromaKey: chromaKey)
+                        data  = compact(rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }, 
+                                        size: size, 
+                                        code: code
+                                        )
+                    case .v8:
+                        properties = .init(size: size, format: .v8, chromaKey: chromaKey)
+                        data = rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }
+                    
+                    case .v16:
+                        properties = .init(size: size, format: .v16, chromaKey: chromaKey)
+                        data = []
                         data.reserveCapacity(properties.byteCount)
-                    
-                    case .rgb16, .rgb8, .v16, .v8, .v4, .v2, .v1:
-                        properties = .init(size: size, format: format, interlaced: false, chromaKey: chromaKey)
-                        data.reserveCapacity(properties.byteCount)
-                    
-                    case .indexed8, .indexed4, .indexed2, .indexed1:
-                        guard let (indexed, palette):([UInt8], [RGBA<UInt8>]) = 
-                            (rgba.map{ $0.downscale(to: UInt8.self) }.indexPalette()), 
-                            palette.count <= 1 << format.depth
-                        else 
-                        {
-                            throw EncodingError.paletteOverflow
-                        }
-                        
-                        properties = .init(size: size, format: format, interlaced: false, palette: palette)
-                        if format.depth < 8 
-                        {
-                            let level:Int 
-                            switch format 
-                            {
-                                case .indexed4:
-                                    level = 1 
-                                case .indexed2:
-                                    level = 2
-                                case .indexed1:
-                                    level = 3
-                                default:
-                                    fatalError("unreachable")
-                            }
-                            
-                            data = compact(data, level: level)
-                        }
-                        else 
-                        {
-                            data       = indexed
-                        }
-                }
-                
-                switch format 
-                {
-                    case .rgba16:
-                        for pixel:RGBA<Component> in rgba 
-                        {
-                            let scaled:RGBA<UInt16>
-                            if Component.bitWidth >= UInt16.bitWidth 
-                            {
-                                scaled = pixel.downscale(to: UInt16.self)
-                            }
-                            else 
-                            {
-                                scaled = pixel.upscale(to: UInt16.self)
-                            }
-                            data.append(bigEndian: scaled.r)
-                            data.append(bigEndian: scaled.g)
-                            data.append(bigEndian: scaled.b)
-                            data.append(bigEndian: scaled.a)
-                        }
-                    
-                    case .rgba8:
-                        for pixel:RGBA<Component> in rgba 
-                        {
-                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
-                            data.append(scaled.r)
-                            data.append(scaled.g)
-                            data.append(scaled.b)
-                            data.append(scaled.a)
-                        }
-                    
-                    case .rgb16:
-                        for pixel:RGBA<Component> in rgba 
-                        {
-                            let scaled:RGBA<UInt16>
-                            if Component.bitWidth >= UInt16.bitWidth 
-                            {
-                                scaled = pixel.downscale(to: UInt16.self)
-                            }
-                            else 
-                            {
-                                scaled = pixel.upscale(to: UInt16.self)
-                            }
-                            data.append(bigEndian: scaled.r)
-                            data.append(bigEndian: scaled.g)
-                            data.append(bigEndian: scaled.b)
-                        }
-                    
-                    case .rgb8:
-                        for pixel:RGBA<Component> in rgba 
-                        {
-                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
-                            data.append(scaled.r)
-                            data.append(scaled.g)
-                            data.append(scaled.b)
-                        }
-                        
-                    case .va16:
                         for pixel:RGBA<Component> in rgba 
                         {
                             let scaled:VA<UInt16>
@@ -2759,18 +2951,23 @@ enum PNG
                                 scaled = pixel.va.upscale(to: UInt16.self)
                             }
                             data.append(bigEndian: scaled.v)
-                            data.append(bigEndian: scaled.a)
                         }
                     
                     case .va8:
+                        properties = .init(size: size, format: .va8)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba 
                         {
                             let scaled:VA<UInt8> = pixel.va.downscale(to: UInt8.self)
                             data.append(scaled.v)
                             data.append(scaled.a)
                         }
-                    
-                    case .v16:
+                        
+                    case .va16:
+                        properties = .init(size: size, format: .va16)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba 
                         {
                             let scaled:VA<UInt16>
@@ -2783,62 +2980,143 @@ enum PNG
                                 scaled = pixel.va.upscale(to: UInt16.self)
                             }
                             data.append(bigEndian: scaled.v)
+                            data.append(bigEndian: scaled.a)
                         }
                     
-                    case .v8:
-                        let shift:Int = Component.bitWidth - UInt8.bitWidth
-                        data = rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }
-                    
-                    case .v4, .v2, .v1:
-                        let shift:Int = Component.bitWidth - format.depth, 
-                            level:Int 
-                        
-                        switch format 
+                    case .rgb8:
+                        properties = .init(size: size, format: .rgb8(nil), chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:RGBA<Component> in rgba 
                         {
-                            case .v4:
-                                level = 1 
-                            case .v2:
-                                level = 2
-                            case .v1:
-                                level = 3
+                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
+                            data.append(scaled.r)
+                            data.append(scaled.g)
+                            data.append(scaled.b)
+                        }
+                    
+                    case .rgb16:
+                        properties = .init(size: size, format: .rgb16(nil), chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt16>
+                            if Component.bitWidth >= UInt16.bitWidth 
+                            {
+                                scaled = pixel.downscale(to: UInt16.self)
+                            }
+                            else 
+                            {
+                                scaled = pixel.upscale(to: UInt16.self)
+                            }
+                            data.append(bigEndian: scaled.r)
+                            data.append(bigEndian: scaled.g)
+                            data.append(bigEndian: scaled.b)
+                        }
+                    
+                    case .rgba8:
+                        properties = .init(size: size, format: .rgba8(nil))
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
+                            data.append(scaled.r)
+                            data.append(scaled.g)
+                            data.append(scaled.b)
+                            data.append(scaled.a)
+                        }
+                    
+                    case .rgba16:
+                        properties = .init(size: size, format: .rgba16(nil))
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:RGBA<Component> in rgba 
+                        {
+                            let scaled:RGBA<UInt16>
+                            if Component.bitWidth >= UInt16.bitWidth 
+                            {
+                                scaled = pixel.downscale(to: UInt16.self)
+                            }
+                            else 
+                            {
+                                scaled = pixel.upscale(to: UInt16.self)
+                            }
+                            data.append(bigEndian: scaled.r)
+                            data.append(bigEndian: scaled.g)
+                            data.append(bigEndian: scaled.b)
+                            data.append(bigEndian: scaled.a)
+                        }
+                    
+                    case .indexed8, .indexed4, .indexed2, .indexed1:
+                        guard let (indexed, palette):([UInt8], [RGBA<UInt8>]) = 
+                            (rgba.map{ $0.downscale(to: UInt8.self) }.indexPalette()), 
+                            palette.count <= 1 << code.depth
+                        else 
+                        {
+                            return nil
+                        }
+                        
+                        switch code 
+                        {
+                            case .indexed1:
+                                properties  = .init(size: size, format: .indexed1(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed2:
+                                properties  = .init(size: size, format: .indexed2(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed4:
+                                properties  = .init(size: size, format: .indexed4(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed8:
+                                properties  = .init(size: size, format: .indexed8(palette))
+                                data        = indexed
                             default:
                                 fatalError("unreachable")
                         }
-                        
-                        data = compact(rgba.map{ .init(truncatingIfNeeded: $0.r &>> shift) }, level: level)
-                    
-                    
-                    case .indexed8, .indexed4, .indexed2, .indexed1:
-                        break
                 }
                 
                 return .init(_data: data, properties: properties)
             }
             
             private static 
-            func compact(_ scalars:[UInt8], level:Int) -> [UInt8] 
+            func compact(_ scalars:[UInt8], size:(x:Int, y:Int), code:Properties.Format.Code) 
+                -> [UInt8] 
             {
-                let tail:Int = (scalars.count >> level) << level
-                var opaque:[UInt8] = []
-                    opaque.reserveCapacity(scalars.count >> level + (tail < scalars.count ? 1 : 0))
-                for group:Int in 0 ..< (scalars.count >> level) 
-                {
-                    var byte:UInt8 = 0
-                    for scalar in scalars[group << level ..< (group + 1) << level] 
-                    {
-                        byte = byte &<< level | scalar
-                    }
-                    opaque.append(byte)
-                }
+                let shape:Data.Shape = code.shape(from: size)
+                var opaque:[UInt8]   = []
+                    opaque.reserveCapacity(shape.byteCount)
                 
-                if tail < scalars.count 
+                let population:Int = 8 / code.depth, 
+                    extras:Int     = size.x % population 
+                
+                for base:Int in stride(from: scalars.startIndex, 
+                                        to:  scalars.endIndex, 
+                                        by:  size.x)
                 {
-                    var byte:UInt8 = 0
-                    for scalar in scalars[tail...] 
+                    for group:Int in stride(from: base, 
+                                            to: base + size.x - extras, 
+                                            by: population)
                     {
-                        byte = byte &<< level | scalar
+                        var byte:UInt8 = 0
+                        for scalar in scalars[group ..< group + population] 
+                        {
+                            byte = byte &<< code.depth | scalar
+                        }
+                        opaque.append(byte)
                     }
-                    opaque.append(byte)
+                    
+                    if extras > 0
+                    {
+                        var byte:UInt8 = 0
+                        for scalar in scalars[base + size.x - extras ..< base + size.x] 
+                        {
+                            byte = byte &<< code.depth | scalar
+                        }
+                        
+                        opaque.append(byte << (code.depth * (population - extras)))
+                    }
                 }
                 
                 return opaque
@@ -2850,7 +3128,7 @@ enum PNG
         public 
         struct Rectangular 
         {
-            /// The global image metadata of this PNG image.
+            /// The global image `Properties` of this PNG image.
             public 
             let properties:Properties
             /** A rectangular row-major matrix containing this PNG’s pixel data.
@@ -2861,12 +3139,12 @@ enum PNG
             let data:[UInt8]
             
             /** Creates a fully decoded PNG image with the given pixel matrix and 
-                metadata record.
+                `Properties` record.
                 
                 - Parameters: 
                     - data: An untyped, padded data buffer containing a row-major 
                         pixel matrix. 
-                    - properties: A metadata record.
+                    - properties: A `Properties` record.
                 - Returns: A fully decoded PNG image. The size of the given pixel 
                     matrix must be consistent with the size and format information 
                     in the given image `properties`.
@@ -2909,7 +3187,7 @@ enum PNG
             func checkWidth<Sample>(of type:Sample.Type) -> Bool 
                 where Sample:FixedWidthInteger
             {
-                return Sample.bitWidth >= self.properties.format.depth
+                return Sample.bitWidth >= self.properties.format.code.depth
             }
             
             /** Calls the given closure on each single-channel pixel in this 
@@ -3164,7 +3442,7 @@ enum PNG
             @_specialize(exported: true, where Component == UInt64) 
             @_specialize(exported: true, where Component == UInt)
             public 
-            func v<Component>(of type:Component.Type) -> [Component]?
+            func v<Component>(of type:Component.Type) -> [Component]
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 switch self.properties.format 
@@ -3214,14 +3492,9 @@ enum PNG
                             (r:Component, _:Component, _:Component, _:Component) in r
                         }
                         
-                    case .indexed1, .indexed2, .indexed4:
-                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
-                        else 
-                        {
-                            // missing palette, should never occur in normal circumstances
-                            return nil
-                        }
-                        
+                    case    .indexed1(let palette), 
+                            .indexed2(let palette), 
+                            .indexed4(let palette):
                         // map over raw sample values instead of scaled values
                         return self.mapBits 
                         {
@@ -3233,14 +3506,8 @@ enum PNG
                             return palette[index].upscale(to: Component.self).r
                         }
                     
-                    case .indexed8:
+                    case    .indexed8(let palette):
                         // same as above except loading byte-size samples
-                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
-                        else 
-                        {
-                            return nil
-                        }
-                        
                         return self.map(from: UInt8.self)
                         {
                             (index:Int) in 
@@ -3361,7 +3628,7 @@ enum PNG
             @_specialize(exported: true, where Component == UInt64) 
             @_specialize(exported: true, where Component == UInt)
             public 
-            func va<Component>(of type:Component.Type) -> [VA<Component>]? 
+            func va<Component>(of type:Component.Type) -> [VA<Component>]
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 switch self.properties.format 
@@ -3399,13 +3666,9 @@ enum PNG
                             .init($0, $3)
                         }
                         
-                    case .indexed1, .indexed2, .indexed4:
-                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
-                        else 
-                        {
-                            // missing palette, should never occur in normal circumstances
-                            return nil
-                        }
+                    case    .indexed1(let palette), 
+                            .indexed2(let palette), 
+                            .indexed4(let palette):
                         
                         // map over raw sample values instead of scaled values
                         return self.mapBits 
@@ -3414,14 +3677,7 @@ enum PNG
                             return palette[index].va.upscale(to: Component.self)
                         }
                     
-                    case .indexed8:
-                        // same as above except loading byte-size samples
-                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
-                        else 
-                        {
-                            return nil
-                        }
-                        
+                    case    .indexed8(let palette):
                         return self.map(from: UInt8.self)
                         {
                             (index:Int) in 
@@ -3462,7 +3718,7 @@ enum PNG
             @_specialize(exported: true, where Component == UInt64) 
             @_specialize(exported: true, where Component == UInt)
             public 
-            func rgba<Component>(of type:Component.Type) -> [RGBA<Component>]? 
+            func rgba<Component>(of type:Component.Type) -> [RGBA<Component>]
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 switch self.properties.format 
@@ -3494,14 +3750,9 @@ enum PNG
                     case .rgba16:
                         return self.mapIntensity(from: UInt16.self, RGBA.init(_:_:_:_:)) 
                         
-                    case .indexed1, .indexed2, .indexed4:
-                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
-                        else 
-                        {
-                            // missing palette, should never occur in normal circumstances
-                            return nil
-                        }
-                        
+                    case    .indexed1(let palette), 
+                            .indexed2(let palette), 
+                            .indexed4(let palette):
                         // map over raw sample values instead of scaled values
                         return self.mapBits 
                         {
@@ -3513,14 +3764,8 @@ enum PNG
                             return palette[index].upscale(to: Component.self)
                         }
                     
-                    case .indexed8:
+                    case    .indexed8(let palette):
                         // same as above except loading byte-size samples
-                        guard let palette:[RGBA<UInt8>] = self.properties.palette 
-                        else 
-                        {
-                            return nil
-                        }
-                        
                         return self.map(from: UInt8.self)
                         {
                             (index:Int) in 
@@ -3571,12 +3816,12 @@ enum PNG
             @_specialize(exported: true, where Component == UInt16) 
             public 
             func argbPremultiplied<Component>(of type:Component.Type) 
-                -> [Component.FusedVector4]? where Component:FusedVector4Element
+                -> [Component.FusedVector4] where Component:FusedVector4Element
             {
                 // *all* color formats can produce pixels with alpha, so we might 
                 // as well call the `rgba(of:)` function and let map fusion 
                 // optimize it
-                return self.rgba(of: Component.self)?.map 
+                return self.rgba(of: Component.self).map 
                 {
                     $0.premultiplied.argb
                 }
@@ -3619,7 +3864,7 @@ enum PNG
                 if Sample.bitWidth > T.bitWidth
                 {
                     let scalar:Sample = self.load(bigEndian: T.self, at: index, as: Sample.self)
-                    return scalar * VA<Sample>.quantum(depth: self.properties.format.depth)
+                    return scalar * VA<Sample>.quantum(depth: self.properties.format.code.depth)
                 }
                 else 
                 {
@@ -3632,14 +3877,14 @@ enum PNG
             func mapBits<Sample, Result>(_ body:(Sample) -> Result) -> [Result] 
                 where Sample:FixedWidthInteger
             {
-                assert(self.properties.format.depth < Sample.bitWidth)
+                assert(self.properties.format.code.depth < Sample.bitWidth)
                 
                 return withoutActuallyEscaping(body)
                 {
                     (body:@escaping (Sample) -> Result) in
                     
-                    let depth:Int = self.properties.format.depth, 
-                        count:Int = self.properties.format.volume * self.properties.shape.size.x
+                    let depth:Int = self.properties.format.code.depth, 
+                        count:Int = self.properties.format.code.volume * self.properties.shape.size.x
                     return stride(from: 0, to: self.data.count, by: self.properties.shape.pitch).flatMap 
                     {
                         (i:Int) -> LazyMapSequence<StrideTo<Int>, Result> in
@@ -3657,7 +3902,7 @@ enum PNG
             func map<Atom, Sample, Result>(from _:Atom.Type, _ body:(Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger, Sample:FixedWidthInteger
             {
-                assert(self.properties.format.depth == Atom.bitWidth)
+                assert(self.properties.format.code.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
                 {
@@ -3672,7 +3917,7 @@ enum PNG
                 assert(Sample.bitWidth >= 8)
                 return self.mapBits 
                 {
-                    return body($0 * VA<Sample>.quantum(depth: self.properties.format.depth))
+                    return body($0 * VA<Sample>.quantum(depth: self.properties.format.code.depth))
                 }
             }
             
@@ -3681,7 +3926,7 @@ enum PNG
                                                     _ body:(Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
-                assert(self.properties.format.depth == Atom.bitWidth)
+                assert(self.properties.format.code.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
                 {
@@ -3694,7 +3939,7 @@ enum PNG
                                                     _ body:(Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
-                assert(self.properties.format.depth == Atom.bitWidth)
+                assert(self.properties.format.code.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
                 {
@@ -3709,7 +3954,7 @@ enum PNG
                                                     _ body:(Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
-                assert(self.properties.format.depth == Atom.bitWidth)
+                assert(self.properties.format.code.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
                 {
@@ -3725,7 +3970,7 @@ enum PNG
                                                     _ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result] 
                  where Atom:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
-                assert(self.properties.format.depth == Atom.bitWidth)
+                assert(self.properties.format.code.depth == Atom.bitWidth)
                 
                 return (0 ..< Math.vol(self.properties.shape.size)).map 
                 {
@@ -3792,13 +4037,7 @@ enum PNG
             throw File.Error.couldNotOpen
         }
         
-        guard let pixels:[Component] = image.v(of: Component.self)
-        else 
-        {
-            throw DecodingError.missingPalette
-        }
-        
-        return (pixels, image.properties.size)
+        return (image.v(of: Component.self), image.properties.size)
     } 
     
     /** Returns a row-major matrix of the grayscale-alpha color values represented 
@@ -3841,14 +4080,8 @@ enum PNG
         {
             throw File.Error.couldNotOpen
         }
-
-        guard let pixels:[VA<Component>] = image.va(of: Component.self)
-        else 
-        {
-            throw DecodingError.missingPalette
-        }
         
-        return (pixels, image.properties.size)
+        return (image.va(of: Component.self), image.properties.size)
     }
     
     /** Returns a row-major matrix of the RGBA color values represented 
@@ -3892,13 +4125,7 @@ enum PNG
             throw File.Error.couldNotOpen
         }
         
-        guard let pixels:[RGBA<Component>] = image.rgba(of: Component.self)
-        else 
-        {
-            throw DecodingError.missingPalette
-        }
-        
-        return (pixels, image.properties.size)
+        return (image.rgba(of: Component.self), image.properties.size)
     }
     
     /** Returns a row-major matrix of the RGBA color values represented 
@@ -3951,57 +4178,70 @@ enum PNG
             throw File.Error.couldNotOpen
         }
         
-        guard let pixels:[Component.FusedVector4] = image.argbPremultiplied(of: Component.self)
-        else 
-        {
-            throw DecodingError.missingPalette
-        }
-        
-        return (pixels, image.properties.size)
+        return (image.argbPremultiplied(of: Component.self), image.properties.size)
     }
     
-    public static 
+    static 
     func convert<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int), 
-        to format:Properties.Format, destination:inout Destination, level:Int = 9) throws 
+        to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil, 
+        destination:inout Destination, level:Int = 9) throws 
         where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
     {
-        /* switch format 
+        switch code 
         {
-            case .rgba16:
-                let properties:Properties = .init(size: size, format: format, interlaced: false)
-                // take fast path if possible 
-                if Component.bitWidth == 16 
-                {
-                    rgba.withUnsafeBufferPointerToComponents 
-                    {
-                        Data.Uncompressed.compress($0, 
-                                       properties: properties, 
-                                               to: &destination, 
-                                        chunkSize: 1 << 16, 
-                                            level: level)
-                    }
-                    
-                    return 
-                }
-            
+            // take fast path if possible 
             case .rgba8:
-                let properties:Properties = .init(size: size, format: format, interlaced: false)
-                // take fast path if possible 
-                if Component.bitWidth == 8 
+                let properties:Properties = .init(size: size, format: .rgba8(nil))
+                if let rgba8:[RGBA<UInt8>] = rgba as? [RGBA<UInt8>]
                 {
-                    rgba.withUnsafeBufferPointerToComponents 
+                    try rgba8.withUnsafeBufferPointerToComponents 
                     {
-                        Data.Uncompressed.compress($0, 
-                                       properties: properties, 
-                                               to: &destination, 
-                                        chunkSize: 1 << 16, 
-                                            level: level)
+                        try Data.Uncompressed.compress(    $0, 
+                                               properties: properties, 
+                                                       to: &destination, 
+                                                chunkSize: 1 << 16, 
+                                                    level: level)
                     }
-                    
-                    return 
                 }
-        } */
+                else 
+                {
+                    fallthrough
+                }
+            default:
+                guard let uncompressed:Data.Uncompressed = 
+                    .convert(rgba: rgba, size: size, to: code, chromaKey: chromaKey)
+                else 
+                {
+                    throw EncodingError.paletteOverflow
+                }
+                
+                try uncompressed.compress(to: &destination, level: level)
+        }
     }
+    
+    public static   
+    func convert<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int), 
+        to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil, 
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let _:Void = 
+        (
+            try File.Destination.open(path: outputPath) 
+            {
+                try convert( rgba: rgba, 
+                             size: size, 
+                               to: code, 
+                        chromaKey: chromaKey, 
+                      destination: &$0, 
+                            level: level)
+            }
+        )
+        else 
+        {
+            throw File.Error.couldNotOpen
+        }
+    } 
     
     /// A four-byte PNG chunk type identifier.
     public 
@@ -4149,119 +4389,6 @@ enum PNG
         /// The PNG compressed Latin-1 text chunk type.
         public static     
         let zTXt:Chunk = .init(122, 84, 88, 116)
-        
-        /// A validator that checks for chunk ordering and presence.
-        struct OrderingValidator 
-        {
-            private 
-            var format:Properties.Format, 
-                last:Chunk, 
-                seen:Set<Chunk>
-            
-            /** Initialize this validator to the state of just having seen an IHDR 
-                chunk. 
-                
-                - Parameters:
-                    - format: The pixel format from a PNG image header.
-            */
-            init(format:Properties.Format) 
-            {
-                self.format = format 
-                self.last   =  .IHDR
-                self.seen   = [.IHDR] 
-            }
-            
-            /** Registers the given chunk type as having been seen, returning an 
-                error if the recorded chunk sequence has become invalid.
-                
-                - Parameters:
-                    chunk: A PNG chunk type.
-                - Returns: A `DecodingError` case, if the given chunk type was out of place 
-                    or a necessary prerequisite chunk was missing, `nil` otherwise. 
-            */
-            mutating 
-            func push(_ chunk:Chunk) -> DecodingError? 
-            {                
-                guard self.last != .IEND
-                else 
-                {
-                    return .postEndChunk(chunk)
-                }
-            
-                if      chunk ==                                                                  .tRNS
-                {
-                    guard !self.format.hasAlpha // tRNS forbidden in alpha’d formats
-                    else
-                    {
-                        return .unexpectedChunk(chunk)
-                    }
-                }
-                else if chunk ==   .PLTE
-                {
-                    // PLTE must come before bKGD, hIST, and tRNS
-                    guard self.format.hasColor // PLTE requires non-grayscale format
-                    else
-                    {
-                        return .unexpectedChunk(chunk)
-                    }
-
-                    if self.seen.contains(.bKGD) || self.seen.contains(.hIST) || self.seen.contains(.tRNS)
-                    {
-                        return .misplacedChunk(chunk)
-                    }
-                }
-
-                // these chunks must occur before PLTE
-                switch chunk
-                {
-                    case                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
-                        if self.seen.contains(.PLTE)
-                        {
-                            return .misplacedChunk(chunk)
-                        }
-                        
-                        fallthrough 
-                    
-                    // these chunks (and the ones in previous cases) must occur before IDAT
-                    case           .PLTE,                                           .bKGD, .hIST, .tRNS, .pHYs, .sPLT:
-                        if self.seen.contains(.IDAT)
-                        {
-                            return .misplacedChunk(chunk)
-                        }
-                        
-                        fallthrough 
-                    
-                    // these chunks (and the ones in previous cases) cannot duplicate
-                    case    .IHDR,                                                                                     .tIME:
-                        if self.seen.contains(chunk)
-                        {
-                            return .duplicateChunk(chunk)
-                        }
-                    
-                    
-                    // IDAT blocks much be consecutive
-                    case .IDAT:
-                        if  self.last != .IDAT, 
-                            self.seen.contains(.IDAT)
-                        {
-                            return .misplacedChunk(.IDAT)
-                        }
-
-                        if  self.format.isIndexed, 
-                           !self.seen.contains(.PLTE)
-                        {
-                            return .missingChunk(.PLTE)
-                        }
-                        
-                    default:
-                        break
-                }
-                
-                self.seen.insert(chunk)
-                self.last = chunk
-                return nil
-            }
-        }
     }
     
     /// Errors that can occur while reading, decompressing, or decoding PNG files.
@@ -4271,8 +4398,6 @@ enum PNG
         /// A PNG file is missing its magic signature.
         case missingSignature
         
-        /// A PNG image is missing a required palette.
-        case missingPalette 
         /// A data interface is unable to provide requested data.
         case dataUnavailable
         
@@ -4291,17 +4416,12 @@ enum PNG
         /// sequence of preceeding chunks have been encountered.
         case unexpectedChunk(Chunk)
         
-        /// A PNG chunk has been encountered that is out of correct order assuming 
-        /// a particular sequence of preceeding chunks have been encountered.
-        case misplacedChunk(Chunk)
         /// A PNG chunk has been encountered that is of the same type as a previously 
         /// encountered chunk, and is of a type which cannot appear multiple times 
         /// in the same PNG file.
         case duplicateChunk(Chunk)
         /// A prerequisite PNG chunk is missing.
         case missingChunk(Chunk)
-        /// A PNG chunk occured in sequence after an IEND chunk.
-        case postEndChunk(Chunk)
     }
     
     /// Errors that can occur while writing, compressing, or encoding PNG files.
@@ -4313,7 +4433,7 @@ enum PNG
         /// An input scanline has the wrong size.
         case bufferCount
         
-        /// An image being encoded has too many colors to index 
+        /// An image being encoded has too many colors to index.
         case paletteOverflow
     }
 
@@ -4447,13 +4567,20 @@ enum PNG
                 fatalError("could not open, read, or decode PNG file '\(path)'")
             }
             
+            guard let uncompressed:PNG.Data.Uncompressed = 
+                .convert(rgba: rgba, size: (x, y), to: .rgba8)
+            else 
+            {
+                fatalError("unreachable")
+            }
+            
             let t1:Int = clock()
-            guard let _:Void = 
-                try? PNG.Data.Uncompressed.convert(rgba: rgba, size: (x, y), to: .rgba8).compress(path: path + ".png")
+            guard let _:Void = try? uncompressed.compress(path: path + ".png")
             else 
             {
                 fatalError("could not open, write, or encode PNG file '\(path).png'")
             }
+            
             let t:Int = clock() - t1
             return t
         }
