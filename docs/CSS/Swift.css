@@ -1,0 +1,91 @@
+/* Layout */
+
+.swift {
+    display: inline;
+    white-space: pre-wrap;
+}
+.swift.blockquote {
+    display: block;
+    margin: 1.4em 0;
+    border: 1px solid;
+     border-radius: 0.35294em;
+    padding: 0.35294em 0.94118em;
+}
+
+/* Colour */
+
+.swift.blockquote {
+    background-color: #F9FAFA;
+    border-color:  #E6E6E6;
+}
+.swift {
+    color: #000000;
+}
+
+.swift .keyword {
+    color: #AA0D91;
+}
+
+.swift .punctuation {
+    color: #000000;
+}
+
+.swift .external.identifier {
+    color: #5C2699;
+}
+.swift .internal.identifier {
+    color: #3F6E74;
+}
+
+.swift .number {
+    color: #0E0EFF;
+}
+
+.swift .string {
+    color: #C41A16;
+}
+.swift .string‐punctuation {
+    color: #62270B;
+}
+
+.swift .compilation‐condition {
+    color: #643820;
+}
+
+.swift .comment {
+    color: #007400;
+}
+.swift .comment‐punctuation {
+    color: #003A00;
+}
+.swift .url {
+    color: #0E0EFF;
+}
+
+.swift .code {
+    color: #000000;
+}
+
+/* Font */
+
+.swift {
+    font-family: "SF Mono", Menlo, monospace, "SF Pro Icons";
+    letter-spacing: -0.027em;
+    line-height: 1.26667;
+}
+
+.swift .text {
+    font-family: "SF Pro Text", "SF Pro Icons", "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    letter-spacing: 0;
+}
+
+.swift .comment‐keyword {
+    font-weight: bold;
+}
+
+.swift .url:link, .swift .url:visited {
+    text-decoration: none;
+}
+.swift .url:hover {
+    text-decoration: underline;
+}

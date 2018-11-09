@@ -1,0 +1,327 @@
+/*
+
+ */
+
+/* General Layout */
+
+*, *::before, *::after {
+    box-sizing: inherit;
+}
+html {
+    box-sizing: border-box;
+}
+
+main {
+    max-width: 50em;
+}
+
+h1, h2 {
+    margin: 0;
+}
+h3, h4, h5, h6 {
+    margin-top: 1.4em;
+    margin-bottom: 0;
+}
+
+section {
+    margin-top: 3rem;
+}
+section:last-child {
+    margin-bottom: 3rem;
+}
+
+p {
+    margin: 0;
+}
+p:not(:first-child) {
+    margin-top: 0.7em;
+}
+
+blockquote {
+    margin: 1.4em 0;
+}
+
+blockquote {
+    border-left: 0.25em solid #DFE2E5;
+    padding: 0 1em;
+}
+blockquote > p, blockquote > p:not(:first-child) {
+    margin: 0;
+}
+[dir="rtl"] blockquote > p.citation {
+    text-align: left;
+}
+[dir="ltr"] blockquote > p.citation {
+    text-align: right;
+}
+
+ul, ol {
+    margin-top: 0.7em;
+    margin-left: 2rem;
+    margin-right: 2rem;
+    margin-bottom: 0;
+    padding: 0;
+}
+li:not(:first-child) {
+    margin-top: 0.7em;
+}
+
+/* Specific Layout */
+
+header.navigation‐bar {
+    box-sizing: content-box;
+    height: calc((52 / 17) * 1rem);
+    padding: 0 calc((22 / 17) * 1rem);
+}
+nav.navigation‐bar {
+    display: flex;
+     align-items: center;
+     justify-content: space-between;
+    height: 100%;
+}
+.navigation‐path {
+    display: flex;
+     align-items: center;
+     justify-content: space-between;
+     overflow: hidden;
+     flex-wrap: nowrap;
+     white-space: nowrap;
+     text-overflow: ellipsis;
+    height: 100%;
+}
+[dir="rtl"].navigation‐path a, [dir="rtl"].navigation‐path span {
+    margin-right: 1.05882rem;
+}
+[dir="ltr"].navigation‐path a, [dir="ltr"].navigation‐path span {
+    margin-left: 1.05882rem;
+}
+.navigation‐path a:first-child, .navigation‐path span:first-child {
+    margin-left: 0;
+    margin-right: 0;
+}
+[dir="rtl"].navigation‐path a::before, [dir="rtl"].navigation‐path span::before {
+    padding-left: 1.05882rem;
+}
+[dir="ltr"].navigation‐path a::before, [dir="ltr"].navigation‐path span::before {
+    padding-right: 1.05882rem;
+}
+.navigation‐path a:first-child::before, .navigation‐path span:first-child::before {
+    display: none;
+}
+
+.content‐container {
+    height: calc(100vh - calc((52 / 17) * 1rem) - calc((45 / 17) * 1rem));
+    width: 100%;
+    display: flex;
+}
+header.index {
+    height: 100%;
+    max-width: 25%;
+    padding: calc((12 / 17) * 1rem) 0;
+    overflow-y: auto;
+}
+
+.index a {
+    cursor: pointer;
+    display: block;
+    padding: 0.2em calc((22 / 17) * 1rem);
+    overflow: hidden;
+}
+.index a:not(:first-child) {
+    padding-left: calc(1em + calc((22 / 17) * 1rem));
+}
+
+main {
+    height: 100%;
+    overflow-y: auto;
+    padding: 0 calc((22 / 17) * 1rem);
+}
+
+.title {
+    margin-top: 2rem;
+    margin-bottom: 1.5rem;
+}
+.symbol‐type {
+    margin-bottom: calc((20 / 17) * 1rem);
+}
+
+.description {
+    margin-bottom: 2rem;
+}
+.description p {
+    margin: 0;
+}
+
+.declaration::before {
+    border-top: 1px solid #D6D6D6;
+    content: "";
+    display: block;
+}
+.declaration {
+    margin-top: 0;
+}
+.declaration h2 {
+    margin-top: 2rem;
+}
+.declaration .swift.blockquote {
+    margin-top: 1rem;
+}
+
+h2 + .child {
+    margin-top: 2rem;
+}
+.child:not(:last-child) {
+    margin-bottom: 1.5rem;
+}
+.child > p {
+    margin: 0 2.35294rem;
+}
+
+footer {
+    display: flex;
+     align-items: center;
+     justify-content: space-between;
+    height: calc((45 / 17) * 1rem);
+    padding: 0 calc((22 / 17) * 1rem);
+}
+
+/* Colours */
+
+html {
+    color: #333333;
+}
+
+a {
+    color: #0070C9;
+}
+
+blockquote {
+    color: #6A737D;
+}
+
+.navigation‐bar {
+    background-color: #333;
+    color: #CCCCCC;
+}
+.navigation‐path a {
+    color: #FFFFFF;
+}
+
+.index {
+    background-color: #F2F2F2;
+}
+.index a {
+    color: #555555;
+}
+.index a.heading {
+    color: #333;
+}
+
+.symbol‐type {
+    color: #666;
+}
+
+footer {
+    background-color: #F2F2F2;
+    color: #888888;
+}
+
+
+/* General Fonts */
+
+html {
+    font-family: "SF Pro Text", "SF Pro Icons", "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-size: 106.25%;
+    letter-spacing: -0.021em;
+    line-height: 1.52947;
+}
+
+h1, h2 {
+    font-family: "SF Pro Display", "SF Pro Icons", "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+}
+h1 {
+    font-size: calc((40 / 17) * 1rem);
+    font-weight: 500;
+    letter-spacing: 0.008em;
+    line-height: 1.05;
+}
+h2 {
+    font-size: calc((32 / 17) * 1rem);
+    font-weight: 500;
+    letter-spacing: 0.011em;
+    line-height: 1.09375;
+}
+h3 {
+    font-size: calc((28 / 17) * 1rem);
+    font-weight: 500;
+    letter-spacing: 0.012em;
+    line-height: 1.1073;
+}
+h4, h5, h6 {
+    font-weight: 500;
+    letter-spacing: 0.015em;
+    line-height: 1.20849;
+}
+h4 {
+    font-size: calc((24 / 17) * 1rem);
+}
+h5 {
+    font-size: calc((20 / 17) * 1rem);
+}
+h6 {
+    font-size: calc((18 / 17) * 1rem);
+}
+
+a:link, a:visited {
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Specific Fonts */
+
+.navigation‐bar {
+    font-size: calc((15 / 17) * 1rem);
+    letter-spacing: -0.014em;
+    line-height: 1.26667;
+}
+.navigation‐path a::before, .navigation‐path span::before {
+    font-family: "SF Pro Icons", "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    content: "‣";
+    line-height: 1;
+}
+
+.index {
+    font-size: calc((12 / 17) * 1rem);
+    letter-spacing: .015em;
+    line-height: calc((20 / 17) * 1rem);
+}
+.index a.heading {
+    font-weight: 600;
+}
+
+.symbol‐type {
+    font-family: "SF Pro Display", "SF Pro Icons", "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-size: calc((22 / 17) * 1rem);
+    letter-spacing: 0.016em;
+    line-height: 1;
+}
+
+.description {
+    font-family: "SF Pro Display", "SF Pro Icons", "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-size: calc((22 / 17) * 1rem);
+    font-weight: 300;
+    letter-spacing: 0.016em;
+    line-height: 1.45455;
+}
+
+.declaration .swift.blockquote {
+    font-size: calc((15 / 17) * 1rem);
+}
+
+footer {
+    font-size: calc((11 / 17) * 1rem);
+    letter-spacing: calc((0.23999999463558197 / 17) * 1rem);
+    line-height: calc((14 / 17) * 1rem);
+}
