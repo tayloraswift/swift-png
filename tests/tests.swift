@@ -58,7 +58,7 @@ func testEncode(_ name:String) -> String?
         try PNG.convert(rgba: rectangular.rgba(of: UInt16.self),
                         size: rectangular.properties.size,
                           to: rectangular.properties.format.code,
-                   chromaKey: rectangular.properties.chromaKey, 
+                   chromaKey: rectangular.properties.chromaKey,
                         path: outPath)
     }
     catch

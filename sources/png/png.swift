@@ -1847,7 +1847,7 @@ enum PNG
 
                         try body(self.scanline.dropFirst())
 
-                        // transfer scanline to reference line 
+                        // transfer scanline to reference line
                         if let pitch:Int? = self.pitches.next()
                         {
                             if let pitch:Int = pitch
