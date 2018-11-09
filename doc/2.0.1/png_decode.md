@@ -9,7 +9,7 @@ Decompress, decode, and validate the raw pixel contents of a PNG file, without p
 ## Declaration
 
 ````swift
-func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT])) 
+func png_decode(path:String, recognizing recognized:Set<PNGChunk> = Set([.IDAT]))
      throws -> ([UInt8], PNGProperties)
 ````
 

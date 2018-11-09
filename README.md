@@ -22,7 +22,7 @@ import PNG
 
 let (pixels, (x: width, y: height)) = try PNG.rgba(path: "example.png", of: UInt8.self)
 // pixels: [PNG.RGBA<UInt8>]
-// width:  Int 
+// width:  Int
 // height: Int
 ````
 
@@ -30,7 +30,7 @@ Use a component type of `UInt16` to capture the full color depth of a 16-bit PNG
 ````swift
 let (pixels, (x: width, y: height)) = try PNG.rgba(path: "example.png", of: UInt16.self)
 // pixels: [PNG.RGBA<UInt16>]
-// width:  Int 
+// width:  Int
 // height: Int
 ````
 
@@ -38,13 +38,13 @@ Return only the components you need with the grayscale and grayscale-alpha APIs.
 ````swift
 let (pixels, (x: width, y: height)) = try PNG.va(path: "example.png", of: UInt8.self)
 // pixels: [PNG.VA<UInt8>]
-// width:  Int 
+// width:  Int
 // height: Int
 ````
 ````swift
 let (pixels, (x: width, y: height)) = try PNG.v(path: "example.png", of: UInt8.self)
 // pixels: [UInt8]
-// width:  Int 
+// width:  Int
 // height: Int
 ````
 

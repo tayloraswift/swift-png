@@ -5,6 +5,11 @@ Package.resolved
 /*.xcodeproj
 /tests/*.png
 /docs
-doc.json 
+doc.json
 typemanifest.txt
 /benchmarks/*.png.png
+
+Refresh (Linux).sh
+Validate (Linux).sh
+Refresh (macOS).command
+Validate (macOS).command

@@ -50,7 +50,7 @@ A normalized color unit consisting of four color samples.
 
 >     premultiplied_sample = (sample * (alpha + 1)) >> 8
 
-> Only available when `Sample` is `UInt8`. 
+> Only available when `Sample` is `UInt8`.
 
 #### `var premultiplied:`[`RGBA`](rgba.md)`<UInt16> { get }`
 
@@ -58,7 +58,7 @@ A normalized color unit consisting of four color samples.
 
 >     premultiplied_sample = (sample * (alpha + 1)) >> 16
 
-> Only available when `Sample` is `UInt16`. 
+> Only available when `Sample` is `UInt16`.
 
 #### `var argb32:UInt32 { get }`
 
