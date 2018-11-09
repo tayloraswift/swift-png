@@ -7,7 +7,7 @@ enum Math<N>
 }
 
 extension Math where N:Numeric
-{    
+{
     @inline(__always)
     static
     func sub(_ v1:V3, _ v2:V3) -> V3
