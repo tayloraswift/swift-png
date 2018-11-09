@@ -4012,20 +4012,12 @@ enum PNG
         component type. This method should not be called using an integer
         type less than 8 bits wide.
 
-        *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, `UInt64`,
-        and `UInt`.
-
         - Parameters:
             - path: A path to a PNG file.
             - type: An integer type.
         - Returns: A tuple containing a row-major matrix of pixel components, normalized
             to its `Component` type, and the logical pixel dimensions of the matrix.
     */
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
     public static
     func v<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[Component], size:(x:Int, y:Int))
@@ -4056,20 +4048,12 @@ enum PNG
         component type. This method should not be called using an integer
         type less than 8 bits wide.
 
-        *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, `UInt64`,
-        and `UInt`.
-
         - Parameters:
             - path: A path to a PNG file.
             - type: An integer type.
         - Returns: A tuple containing a row-major matrix of pixel components, normalized
             to its `Component` type, and the logical pixel dimensions of the matrix.
     */
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
     public static
     func va<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[VA<Component>], size:(x:Int, y:Int))
@@ -4099,21 +4083,13 @@ enum PNG
         component type has too many bits to be represented by the destination
         component type. This method should not be called using an integer
         type less than 8 bits wide.
-
-        *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
-        `UInt64`, and `UInt`.
-
+        
         - Parameters:
             - path: A path to a PNG file.
             - type: An integer type.
         - Returns: A tuple containing a row-major matrix of pixel components, normalized
             to its `Component` type, and the logical pixel dimensions of the matrix.
     */
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
     public static
     func rgba<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[RGBA<Component>], size:(x:Int, y:Int))
@@ -4155,9 +4131,6 @@ enum PNG
         component type. This method should not be called using an integer
         type less than 8 bits wide.
 
-        *Specialized* for `Component` types `UInt8` and `UInt16`.
-        (`Component.FusedVector4` types `UInt32` and `UInt64`.)
-
         - Parameters:
             - path: A path to a PNG file.
             - type: An integer type.
@@ -4165,8 +4138,6 @@ enum PNG
             to its `Component` type, and encoded as four-component integer slugs,
             and the logical pixel dimensions of the matrix.
     */
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
     public static
     func argbPremultiplied<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[Component.FusedVector4], size:(x:Int, y:Int))
@@ -4180,7 +4151,7 @@ enum PNG
 
         return (image.argbPremultiplied(of: Component.self), image.properties.size)
     }
-
+    
     static
     func convert<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
@@ -4218,7 +4189,7 @@ enum PNG
                 try uncompressed.compress(to: &destination, level: level)
         }
     }
-
+    
     public static
     func convert<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,

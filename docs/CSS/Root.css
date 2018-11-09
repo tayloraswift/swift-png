@@ -1,0 +1,34 @@
+/*
+
+ */
+
+/* Layout */
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Colours */
+
+html {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+/* Fonts */
+
+@media print {
+    html {
+        font-family: serif;
+    }
+}
+@media screen {
+    html {
+        font-family: sans-serif;
+    }
+}
+
+span[lang] {
+    font-style: italic;
+}
