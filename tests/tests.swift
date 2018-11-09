@@ -48,24 +48,18 @@ func testEncode(_ name:String) -> String?
     
     do 
     {
-        guard let uncompressed:PNG.Data.Uncompressed = try .decompress(path: pngPath)
+        guard let rectangular:PNG.Data.Rectangular = try .decompress(path: pngPath)
         else 
         {
             return "failed to open file '\(pngPath)'"
         }
         
         // compress image into png
-        guard let _:Void = 
-        (
-            try PNG.File.Destination.open(path: outPath) 
-            {
-                try uncompressed.compress(to: &$0, level: 9)
-            }
-        )
-        else 
-        {
-            fatalError("failed to open file '\(outPath)'")
-        }
+        try PNG.convert(rgba: rectangular.rgba(of: UInt16.self), 
+                        size: rectangular.properties.size, 
+                          to: rectangular.properties.format.code, 
+                   chromaKey: rectangular.properties.chromaKey, 
+                        path: outPath)
     }
     catch 
     {
@@ -92,11 +86,7 @@ func testDecode(png pngPath:String, rgba rgbaPath:String) -> String?
             return "failed to open file '\(pngPath)'"
         }
         
-        guard let image:[PNG.RGBA<UInt16>] = rectangular.rgba(of: UInt16.self)
-        else 
-        {
-            fatalError("unreachable: internal checks should have guaranteed palette validity")
-        }
+        let image:[PNG.RGBA<UInt16>] = rectangular.rgba(of: UInt16.self)
         
         guard let result:[PNG.RGBA<UInt16>]? = 
         (PNG.File.Source.open(path: rgbaPath) 
