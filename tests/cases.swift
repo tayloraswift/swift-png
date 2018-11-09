@@ -1,25 +1,25 @@
 import PNG
 
-enum Group 
+enum Group
 {
-    case mapStrings(_ expectation:Bool, _ name:String, _ function:(String) -> String?, [String]), 
+    case mapStrings(_ expectation:Bool, _ name:String, _ function:(String) -> String?, [String]),
          functions(_ expectation:Bool, _ name:String, _ functions:[(name:String, function:() -> String?)])
-    
-    var count:Int 
+
+    var count:Int
     {
-        switch self 
+        switch self
         {
             case .mapStrings(_, _, _, let cases):
                 return cases.count
-            
+
             case .functions(_, _, let functions):
-                return functions.count 
+                return functions.count
         }
     }
-    
-    var name:String 
+
+    var name:String
     {
-        switch self 
+        switch self
         {
             case .mapStrings(_, let name, _, _):
                 return name
@@ -27,50 +27,50 @@ enum Group
                 return name
         }
     }
-    
-    func forEach(filter:Set<String>? = nil, body:(String, Bool, String?) -> ()) 
+
+    func forEach(filter:Set<String>? = nil, body:(String, Bool, String?) -> ())
     {
-        switch self 
+        switch self
         {
             case .mapStrings(let expectation, _, let function, let cases):
                 (
-                    filter.map 
+                    filter.map
                     {
-                        (filter:Set<String>) in 
-                        cases.filter 
+                        (filter:Set<String>) in
+                        cases.filter
                         {
                             filter.contains("\(self.name):\($0)")
                         }
-                    } 
-                    ?? 
-                    cases 
-                ).forEach 
+                    }
+                    ??
+                    cases
+                ).forEach
                 {
                     body($0, expectation, function($0))
                 }
-            
+
             case .functions(let expectation, _, let functions):
-                for (string, function):(String, () -> String?) in functions 
+                for (string, function):(String, () -> String?) in functions
                 {
                     if let filter:Set<String> = filter
                     {
                         guard filter.contains("\(self.name):\(string)")
-                        else 
+                        else
                         {
-                            return 
+                            return
                         }
                     }
-                    
+
                     body(string, expectation, function())
                 }
         }
     }
 }
 
-let suite:[(name:String, members:[String])] = 
+let suite:[(name:String, members:[String])] =
 [
     (
-        "basic", 
+        "basic",
         [
             "PngSuite",
 
@@ -90,9 +90,9 @@ let suite:[(name:String, members:[String])] =
             "basn6a08",
             "basn6a16"
         ]
-    ), 
+    ),
     (
-        "interlacing", 
+        "interlacing",
         [
             "basi0g01",
             "basi0g02",
@@ -110,9 +110,9 @@ let suite:[(name:String, members:[String])] =
             "basi6a08",
             "basi6a16"
         ]
-    ), 
+    ),
     (
-        "sizing", 
+        "sizing",
         [
             "s01i3p01",
             "s01n3p01",
@@ -151,9 +151,9 @@ let suite:[(name:String, members:[String])] =
             "s40i3p04",
             "s40n3p04"
         ]
-    ), 
+    ),
     (
-        "backgrounds", 
+        "backgrounds",
         [
             "bgai4a08",
             "bgai4a16",
@@ -164,9 +164,9 @@ let suite:[(name:String, members:[String])] =
             "bgwn6a08",
             "bgyn6a16"
         ]
-    ), 
+    ),
     (
-        "transparency", 
+        "transparency",
         [
             "tbbn0g04",
             "tbbn2c16",
@@ -183,9 +183,9 @@ let suite:[(name:String, members:[String])] =
             "tp0n3p08",
             "tp1n3p08"
         ]
-    ), 
+    ),
     (
-        "(inactive)", 
+        "(inactive)",
         [
             "g03n0g16",
             "g03n2c08",
@@ -206,9 +206,9 @@ let suite:[(name:String, members:[String])] =
             "g25n2c08",
             "g25n3p04"
         ]
-    ), 
+    ),
     (
-        "filtering", 
+        "filtering",
         [
             "f00n0g08",
             "f00n2c08",
@@ -222,9 +222,9 @@ let suite:[(name:String, members:[String])] =
             "f04n2c08",
             "f99n0g04"
         ]
-    ), 
+    ),
     (
-        "palettes", 
+        "palettes",
         [
             "pp0n2c16",
             "pp0n6a08",
@@ -233,9 +233,9 @@ let suite:[(name:String, members:[String])] =
             "ps2n0g08",
             "ps2n2c16"
         ]
-    ), 
+    ),
     (
-        "ancillary chunks", 
+        "ancillary chunks",
         [
             "ccwn2c08",
             "ccwn3p08",
@@ -263,9 +263,9 @@ let suite:[(name:String, members:[String])] =
             "ctjn0g04",
             "ctzn0g04"
         ]
-    ), 
+    ),
     (
-        "ordering", 
+        "ordering",
         [
             "oi1n0g16",
             "oi1n2c16",
@@ -276,39 +276,39 @@ let suite:[(name:String, members:[String])] =
             "oi9n0g16",
             "oi9n2c16"
         ]
-    ), 
+    ),
     (
-        "zlib compression", 
+        "zlib compression",
         [
             "z00n2c08",
             "z03n2c08",
             "z06n2c08",
             "z09n2c08"
         ]
-    ), 
+    ),
     (
-        "large", 
+        "large",
         [
             "becky palette",
             "if red got the grammy",
             "taylor",
             "wildest dreams adam7"
         ]
-    ), 
+    ),
 ]
-let cases:[Group] = 
+let cases:[Group] =
 [
-    .functions(true, "rgba operations", 
+    .functions(true, "rgba operations",
         [
             (
-                "premultiply8", 
+                "premultiply8",
                 {
                     testPremultiplication(for: UInt8.self)
                 }
-            ), 
+            ),
             // this takes way too long to run
             /* (
-                "premultiply16", 
+                "premultiply16",
                 {
                     testPremultiplication(for: UInt16.self)
                 }
@@ -316,13 +316,13 @@ let cases:[Group] =
         ]
     )
 ]
-+ 
-suite.map 
++
+suite.map
 {
     .mapStrings(true, $0.name + "-decode", testDecode(_:), $0.members)
 }
-+ 
-suite.map 
++
+suite.map
 {
     .mapStrings(true, $0.name + "-reencode", testEncode(_:), $0.members)
 }

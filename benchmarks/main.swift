@@ -4,17 +4,17 @@ import func Darwin.clock
 import func Glibc.clock
 #endif
 
-import PNG 
+import PNG
 
 func structuredARGBPremultiplied(_ path:String) -> Int
 {
     let t1:Int = clock()
     guard let _:[UInt32] = try? PNG.argbPremultiplied(path: path, of: UInt8.self).pixels
-    else 
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
@@ -22,35 +22,35 @@ func structuredRGBA(_ path:String) -> Int
 {
     let t1:Int = clock()
     guard let _:[PNG.RGBA<UInt8>] = try? PNG.rgba(path: path, of: UInt8.self).pixels
-    else 
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
 func planarRGBA(_ path:String) -> Int
 {
     let t1:Int = clock()
-    guard let _:[UInt8] = try? PNG.rgba(path: path, of: UInt8.self).pixels.planar() 
-    else 
+    guard let _:[UInt8] = try? PNG.rgba(path: path, of: UInt8.self).pixels.planar()
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
 func interleavedRGBA(_ path:String) -> Int
 {
     let t1:Int = clock()
-    guard let _:[UInt8] = try? PNG.rgba(path: path, of: UInt8.self).pixels.interleaved() 
-    else 
+    guard let _:[UInt8] = try? PNG.rgba(path: path, of: UInt8.self).pixels.interleaved()
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
@@ -59,35 +59,35 @@ func structuredVA(_ path:String) -> Int
 {
     let t1:Int = clock()
     guard let _:[PNG.VA<UInt8>] = try? PNG.va(path: path, of: UInt8.self).pixels
-    else 
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
 func planarVA(_ path:String) -> Int
 {
     let t1:Int = clock()
-    guard let _:[UInt8] = try? PNG.va(path: path, of: UInt8.self).pixels.planar() 
-    else 
+    guard let _:[UInt8] = try? PNG.va(path: path, of: UInt8.self).pixels.planar()
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
 func interleavedVA(_ path:String) -> Int
 {
     let t1:Int = clock()
-    guard let _:[UInt8] = try? PNG.va(path: path, of: UInt8.self).pixels.interleaved() 
-    else 
+    guard let _:[UInt8] = try? PNG.va(path: path, of: UInt8.self).pixels.interleaved()
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
@@ -96,11 +96,11 @@ func structuredV(_ path:String) -> Int
 {
     let t1:Int = clock()
     guard let _:[UInt8] = try? PNG.v(path: path, of: UInt8.self).pixels
-    else 
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
@@ -108,33 +108,33 @@ func structuredV(_ path:String) -> Int
 
 func encodeRGBA(_ path:String) -> Int
 {
-    guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) = 
+    guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) =
         try? PNG.rgba(path: path, of: UInt8.self)
-    else 
+    else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
-    
-    guard let uncompressed:PNG.Data.Uncompressed = 
+
+    guard let uncompressed:PNG.Data.Uncompressed =
         .convert(rgba: rgba, size: (x, y), to: .rgba8)
-    else 
+    else
     {
         fatalError("unreachable")
     }
-    
+
     let t1:Int = clock()
     guard let _:Void = try? uncompressed.compress(path: path + ".png")
-    else 
+    else
     {
         fatalError("could not open, write, or encode PNG file '\(path).png'")
     }
-    
+
     let t:Int = clock() - t1
     return t
 }
 
 
-func benchmark(_ name:String, function:(String) -> Int) 
+func benchmark(_ name:String, function:(String) -> Int)
 {
     let t:Int = function("benchmarks/apollo17.png")
     print("\(name): \(Colors.off.1)\(formatInt(t))\(Colors.off.0)")
