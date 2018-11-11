@@ -9,6 +9,12 @@ configuration.supportedOperatingSystems.remove(.iOS)
 configuration.supportedOperatingSystems.remove(.watchOS)
 configuration.supportedOperatingSystems.remove(.tvOS)
 
+// ••••••• Management •••••••
+
+// This lets Workspace keep the Travis CI configuration up to date with the latest recommended set‐up.
+// If you need to customize “.travis.yml”, turn this off.
+configuration.continuousIntegration.manage = true
+
 // ••••••• Proofreading •••••••
 
 // These are documented at https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/ProofreadingRule.html

@@ -1,14 +1,42 @@
+
+
+language: generic
 matrix:
   include:
-  - os: linux
-    language: generic
-    sudo: required
-    dist: trusty
-    env:
-    - SWIFT_BRANCH=swift-4.2-branch SWIFT_VERSION=swift-4.2-DEVELOPMENT-SNAPSHOT-2018-08-18-a
-    install:
-    - mkdir swift
-    - curl https://swift.org/builds/$SWIFT_BRANCH/ubuntu1404/$SWIFT_VERSION/$SWIFT_VERSION-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
-    script:
-    - env PATH=$(pwd)/swift/$SWIFT_VERSION-ubuntu14.04/usr/bin:$PATH swift build -c release
-    - .build/release/tests
+    - os: osx
+      env:
+        - JOB="macOS + Swift Package Manager"
+      osx_image: xcode10.1
+      script:
+        - "bash \"./Refresh (macOS).command\""
+        - "bash \"./Validate (macOS).command\" •job macos‐swift‐package‐manager"
+    - os: osx
+      env:
+        - JOB="macOS + Xcode"
+      osx_image: xcode10.1
+      script:
+        - "bash \"./Refresh (macOS).command\""
+        - "bash \"./Validate (macOS).command\" •job macos‐xcode"
+    - os: linux
+      env:
+        - JOB="Linux"
+      dist: trusty
+      script:
+        - "export SWIFT_VERSION=4.2.1"
+        - "eval \"$(curl -sL https://gist.githubusercontent.com/kylef/5c0475ff02b7c7671d2a/raw/9f442512a46d7a2af7b850d65a7e9bd31edfb09b/swiftenv-install.sh)\""
+        - "bash \"./Refresh (macOS).command\""
+        - "bash \"./Validate (macOS).command\" •job linux"
+    - os: linux
+      env:
+        - JOB="Miscellaneous"
+      dist: trusty
+      script:
+        - "export SWIFT_VERSION=4.2.1"
+        - "eval \"$(curl -sL https://gist.githubusercontent.com/kylef/5c0475ff02b7c7671d2a/raw/9f442512a46d7a2af7b850d65a7e9bd31edfb09b/swiftenv-install.sh)\""
+        - "bash \"./Refresh (macOS).command\""
+        - "bash \"./Validate (macOS).command\" •job miscellaneous"
+
+cache:
+  directories:
+  - $HOME/Library/Caches/ca.solideogloria.Workspace
+  - $HOME/.cache/ca.solideogloria.Workspace
