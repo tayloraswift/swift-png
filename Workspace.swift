@@ -15,6 +15,9 @@ configuration.supportedOperatingSystems.remove(.tvOS)
 // If you need to customize “.travis.yml”, turn this off.
 configuration.continuousIntegration.manage = true
 
+// Allows Workspace to create an Xcode project on macOS.
+configuration.xcode.manage = true
+
 // ••••••• Proofreading •••••••
 
 // These are documented at https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/ProofreadingRule.html
