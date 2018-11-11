@@ -4083,7 +4083,7 @@ enum PNG
         component type has too many bits to be represented by the destination
         component type. This method should not be called using an integer
         type less than 8 bits wide.
-        
+
         - Parameters:
             - path: A path to a PNG file.
             - type: An integer type.
@@ -4151,7 +4151,7 @@ enum PNG
 
         return (image.argbPremultiplied(of: Component.self), image.properties.size)
     }
-    
+
     static
     func convert<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
@@ -4189,7 +4189,7 @@ enum PNG
                 try uncompressed.compress(to: &destination, level: level)
         }
     }
-    
+
     public static
     func convert<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
