@@ -2,6 +2,15 @@ import WorkspaceConfiguration
 
 let configuration:WorkspaceConfiguration = .init()
 
+// ••••••• General •••••••
+
+// The project appears to only target Linux.
+// In any case, it fails to compile on macOS right now.
+configuration.supportedOperatingSystems.remove(.macOS)
+configuration.supportedOperatingSystems.remove(.iOS)
+configuration.supportedOperatingSystems.remove(.watchOS)
+configuration.supportedOperatingSystems.remove(.tvOS)
+
 // ••••••• Proofreading •••••••
 
 // These are documented at https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/ProofreadingRule.html
