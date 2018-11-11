@@ -5,6 +5,7 @@ let configuration:WorkspaceConfiguration = .init()
 // ••••••• General •••••••
 
 // The project does not appear to support these platforms.
+configuration.supportedOperatingSystems.remove(.macOS)
 configuration.supportedOperatingSystems.remove(.iOS)
 configuration.supportedOperatingSystems.remove(.watchOS)
 configuration.supportedOperatingSystems.remove(.tvOS)

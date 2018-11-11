@@ -3,20 +3,6 @@
 language: generic
 matrix:
   include:
-    - os: osx
-      env:
-        - JOB="macOS + Swift Package Manager"
-      osx_image: xcode10.1
-      script:
-        - "bash \"./Refresh (macOS).command\""
-        - "bash \"./Validate (macOS).command\" •job macos‐swift‐package‐manager"
-    - os: osx
-      env:
-        - JOB="macOS + Xcode"
-      osx_image: xcode10.1
-      script:
-        - "bash \"./Refresh (macOS).command\""
-        - "bash \"./Validate (macOS).command\" •job macos‐xcode"
     - os: linux
       env:
         - JOB="Linux"
