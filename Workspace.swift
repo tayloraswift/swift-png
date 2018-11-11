@@ -18,6 +18,9 @@ configuration.continuousIntegration.manage = true
 // Allows Workspace to create an Xcode project on macOS.
 configuration.xcode.manage = true
 
+// XCTest cannot see what is going on it the test subprocess.
+configuration.testing.enforceCoverage = false
+
 // ••••••• Proofreading •••••••
 
 // These are documented at https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/ProofreadingRule.html
