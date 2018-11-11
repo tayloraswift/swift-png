@@ -32,3 +32,11 @@ configuration.proofreading.rules.remove(.autoindentResilience)
 // ••••••• Documentation •••••••
 
 configuration.documentation.localizations = ["en-US"]
+
+// #workaround(workspace version 0.14.2, Until Workspace sees several problematic documentation comments.)
+// See https://github.com/SDGGiesbrecht/Workspace/issues/209
+//
+// Alternatively, the offending symbols’ documentation could be converted to the “///” format.
+// Then the coverage check would work properly.
+// (And the information would not be missing from the rendered documentation.)
+configuration.documentation.api.enforceCoverage = false
