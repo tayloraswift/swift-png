@@ -11,9 +11,9 @@ configuration.supportedOperatingSystems.remove(.tvOS)
 
 // ••••••• Management •••••••
 
-// This lets Workspace keep the Travis CI configuration up to date with the latest recommended set‐up.
-// If you need to customize “.travis.yml”, turn this off.
-configuration.continuousIntegration.manage = true
+// This would let Workspace keep the Travis CI configuration up to date with the latest recommended set‐up.
+// Since you want “.travis.yml” customized, this is off.
+configuration.continuousIntegration.manage = false
 
 // Allows Workspace to create an Xcode project on macOS.
 configuration.xcode.manage = true
