@@ -26,6 +26,24 @@ matrix:
         - "eval \"$(curl -sL https://gist.githubusercontent.com/kylef/5c0475ff02b7c7671d2a/raw/9f442512a46d7a2af7b850d65a7e9bd31edfb09b/swiftenv-install.sh)\""
         - "bash \"./Refresh (macOS).command\""
         - "bash \"./Validate (macOS).command\" •job miscellaneous"
+    - os: linux
+      env:
+        - JOB="Deployment"
+        - secure: "Replace this with a real key."
+            # https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/APIDocumentationConfiguration/Properties/encryptedTravisCIDeploymentKey.html
+      if: branch = master and (not type = pull_request)
+
+      deploy:
+        provider: pages
+        local_dir: docs
+        github_token: $GITHUB_TOKEN
+        skip_cleanup: true
+      dist: trusty
+      script:
+        - "export SWIFT_VERSION=4.2.1"
+        - "eval \"$(curl -sL https://gist.githubusercontent.com/kylef/5c0475ff02b7c7671d2a/raw/9f442512a46d7a2af7b850d65a7e9bd31edfb09b/swiftenv-install.sh)\""
+        - "bash \"./Refresh (macOS).command\""
+        - "bash \"./Validate (macOS).command\" •job deployment"
 
 cache:
   directories:

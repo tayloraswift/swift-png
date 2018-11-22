@@ -44,7 +44,7 @@ configuration.proofreading.rules.remove(.autoindentResilience)
 configuration.documentation.localizations = ["en-US"]
 
 // https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/APIDocumentationConfiguration/Properties/encryptedTravisCIDeploymentKey.html
-configuration.documentation.api.encryptedTravisCIDeploymentKey = "You’ll have to encrypt one yourself and provide it here."
+configuration.documentation.api.encryptedTravisCIDeploymentKey = "This is not a real key."
 
 // #workaround(workspace version 0.14.2, Until Workspace sees several problematic documentation comments.)
 // See https://github.com/SDGGiesbrecht/Workspace/issues/209
