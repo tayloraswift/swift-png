@@ -16,8 +16,7 @@ targets += [
 #endif
 targets += [
         .target(name: "PNGTests", dependencies: ["PNG"], path: "tests"),
-        .target(name: "PNGBenchmarks", dependencies: ["PNG"], path: "benchmarks"),
-        .testTarget(name: "PNGXCTests", dependencies: ["SDGExternalProcess"], path: "XCTest/PNGTests")
+        .target(name: "PNGBenchmarks", dependencies: ["PNG"], path: "benchmarks")
 ]
 
 let package = Package(
@@ -27,10 +26,6 @@ let package = Package(
         .library(name: "PNG", targets: ["PNG"]),
         .executable(name: "tests", targets: ["PNGTests"]),
         .executable(name: "benchmarks", targets: ["PNGBenchmarks"])
-    ],
-    dependencies:
-    [
-    .package(url: "https://github.com/SDGGiesbrecht/SDGCornerstone", from: Version(0, 12, 0))
     ],
     targets: targets,
     swiftLanguageVersions: [.v4_2]
