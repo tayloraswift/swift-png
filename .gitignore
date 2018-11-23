@@ -8,7 +8,6 @@ doc.json
 typemanifest.txt
 /benchmarks/*.png.png
 
-Refresh (Linux).sh
 Validate (Linux).sh
-Refresh (macOS).command
 Validate (macOS).command
+# CI needs the “Refresh” scripts.

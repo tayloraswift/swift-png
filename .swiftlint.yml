@@ -1,2 +1,49 @@
+# These are documented at https://github.com/realm/SwiftLint/blob/master/Rules.md
 disabled_rules:
   - colon
+
+  # The following rules may conflict with the PNG project style:
+
+  # (Rules with an asterisk would have been disabled by Workspace anyway if this file were not present,
+  # but SwiftLint interprets this file based on its own defaults.)
+
+  # Would require shorter lines, functions and files.
+  - line_length # *
+  - function_body_length # *
+  - file_length # *
+  - type_body_length # *
+
+  # Would prohibit short identifiers like “t” or “V2”.
+  - identifier_name # *
+  - type_name # *
+
+  # Would require standardized whitespace and indentation.
+  - comma
+  - opening_brace
+  - statement_position # Effectively another brace rule.
+  - closure_parameter_position # Effectively another brace rule.
+  - switch_case_alignment
+  - vertical_whitespace
+  - vertical_parameter_alignment
+
+  # Would prohibit final commas in lists.
+  - trailing_comma
+
+  # Would prohibit “()” in favour of “Void”.
+  - void_return
+
+  # Would prohibit “let _ =” in favour of “_ =”.
+  - redundant_discardable_let
+
+  # Would require refactoring.
+  - nesting # *
+  - cyclomatic_complexity # *
+  - large_tuple # *
+
+  # Would prohibit “for ... { if” in favour of “for ... where ... {”.
+  - for_where
+
+# (Workspace would also have excluded these automatically if this file were not present.)
+excluded:
+  - .build
+  - Packages
