@@ -2,14 +2,14 @@ import WorkspaceConfiguration
 
 let configuration:WorkspaceConfiguration = .init()
 
-// ••••••• General •••••••
+// General 
 
 // The project does not appear to support these platforms.
 configuration.supportedOperatingSystems.remove(.iOS)
 configuration.supportedOperatingSystems.remove(.watchOS)
 configuration.supportedOperatingSystems.remove(.tvOS)
 
-// ••••••• Management •••••••
+// Management
 
 // This would let Workspace keep the Travis CI configuration up to date with the latest recommended set‐up.
 // Since you want “.travis.yml” customized, this is off.
@@ -21,7 +21,7 @@ configuration.xcode.manage = true
 // XCTest cannot see what is going on it the test subprocess.
 configuration.testing.enforceCoverage = false
 
-// ••••••• Proofreading •••••••
+// Proofreading
 
 // These are documented at https://sdggiesbrecht.github.io/Workspace/🇨🇦EN/Types/ProofreadingRule.html
 
@@ -39,7 +39,7 @@ configuration.proofreading.rules.remove(.parameterGrouping)
 // which is vulnerable to Xcode’s autoindent destroying semantic Markdown indents.
 configuration.proofreading.rules.remove(.autoindentResilience)
 
-// ••••••• Documentation •••••••
+// Documentation
 
 configuration.documentation.localizations = ["en-US"]
 

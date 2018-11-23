@@ -1,107 +1,119 @@
 #if os(macOS)
 import func Darwin.clock
+func clock() -> Int 
+{
+    return .init(Darwin.clock())
+}
+
 #elseif os(Linux)
 import func Glibc.clock
+func clock() -> Int 
+{
+    return Glibc.clock()
+}
+
+#else 
+    #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 import PNG
 
 func structuredARGBPremultiplied(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[UInt32] = try? PNG.argbPremultiplied(path: path, of: UInt8.self).pixels
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 func structuredRGBA(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[PNG.RGBA<UInt8>] = try? PNG.rgba(path: path, of: UInt8.self).pixels
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 func planarRGBA(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[UInt8] = try? PNG.rgba(path: path, of: UInt8.self).pixels.planar()
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 func interleavedRGBA(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[UInt8] = try? PNG.rgba(path: path, of: UInt8.self).pixels.interleaved()
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 
 func structuredVA(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[PNG.VA<UInt8>] = try? PNG.va(path: path, of: UInt8.self).pixels
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 func planarVA(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[UInt8] = try? PNG.va(path: path, of: UInt8.self).pixels.planar()
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 func interleavedVA(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[UInt8] = try? PNG.va(path: path, of: UInt8.self).pixels.interleaved()
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 
 func structuredV(_ path:String) -> Int
 {
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:[UInt8] = try? PNG.v(path: path, of: UInt8.self).pixels
     else
     {
         fatalError("could not open, read, or decode PNG file '\(path)'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 
@@ -122,14 +134,14 @@ func encodeRGBA(_ path:String) -> Int
         fatalError("unreachable")
     }
 
-    let t1:Int = Int(clock())
+    let t1:Int = clock()
     guard let _:Void = try? uncompressed.compress(path: path + ".png")
     else
     {
         fatalError("could not open, write, or encode PNG file '\(path).png'")
     }
 
-    let t:Int = Int(clock()) - t1
+    let t:Int = clock() - t1
     return t
 }
 
