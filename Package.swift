@@ -1,9 +1,9 @@
 // swift-tools-version:4.2
 import PackageDescription
 
-let coreTargets:[Target] 
+let coreTargets:[Target]
 #if os(Linux)
-coreTargets = 
+coreTargets =
 [
     .systemLibrary(name: "zlib", path: "sources/zlib", pkgConfig: "zlib"),
     .target(name: "PNG", dependencies: ["zlib"], path: "sources/png")
@@ -15,10 +15,10 @@ coreTargets =
     .target(name: "PNG", path: "sources/png")
 ]
 
-#else 
+#else
     #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
-    
+
 let package = Package(
     name: "PNG",
     products:
@@ -27,7 +27,7 @@ let package = Package(
         .executable(name: "tests", targets: ["PNGTests"]),
         .executable(name: "benchmarks", targets: ["PNGBenchmarks"])
     ],
-    targets: coreTargets + 
+    targets: coreTargets +
     [
         .target(name: "PNGTests",       dependencies: ["PNG"], path: "tests"),
         .target(name: "PNGBenchmarks",  dependencies: ["PNG"], path: "benchmarks")

@@ -2,7 +2,7 @@ import WorkspaceConfiguration
 
 let configuration:WorkspaceConfiguration = .init()
 
-// General 
+// General
 
 // The project does not appear to support these platforms.
 configuration.supportedOperatingSystems.remove(.iOS)
