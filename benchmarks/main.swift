@@ -1,18 +1,18 @@
 #if os(macOS)
 import func Darwin.clock
-func clock() -> Int 
+func clock() -> Int
 {
     return .init(Darwin.clock())
 }
 
 #elseif os(Linux)
 import func Glibc.clock
-func clock() -> Int 
+func clock() -> Int
 {
     return Glibc.clock()
 }
 
-#else 
+#else
     #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
