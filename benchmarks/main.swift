@@ -13,7 +13,8 @@ func clock() -> Int
 }
 
 #else
-    #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
+    // unreachable (Package.swift)
+    // #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 import PNG
@@ -128,7 +129,7 @@ func encodeRGBA(_ path:String) -> Int
     }
 
     guard let uncompressed:PNG.Data.Uncompressed =
-        .convert(rgba: rgba, size: (x, y), to: .rgba8)
+        try? .convert(rgba: rgba, size: (x, y), to: .rgba8)
     else
     {
         fatalError("unreachable")
