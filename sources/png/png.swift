@@ -4048,7 +4048,7 @@ enum PNG
             {
                 try encode(  rgba: rgba,
                              size: size,
-                               to: code,
+                               as: code,
                         chromaKey: chromaKey,
                       destination: &$0,
                             level: level)

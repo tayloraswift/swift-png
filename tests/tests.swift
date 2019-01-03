@@ -55,9 +55,9 @@ func testEncode(_ name:String) -> String?
         }
 
         // compress image into png
-        try PNG.convert(rgba: rectangular.rgba(of: UInt16.self),
+        try PNG.encode( rgba: rectangular.rgba(of: UInt16.self),
                         size: rectangular.properties.size,
-                          to: rectangular.properties.format.code,
+                          as: rectangular.properties.format.code,
                    chromaKey: rectangular.properties.chromaKey,
                         path: outPath)
     }
