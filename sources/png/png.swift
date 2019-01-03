@@ -1,22 +1,64 @@
 #if os(macOS)
-import Darwin
-func clock() -> Int
-{
-    return .init(Darwin.clock())
-}
+import func Darwin.fopen
+import func Darwin.fread
+import func Darwin.fwrite
+import func Darwin.fclose
+import struct Darwin.FILE
 
 #elseif os(Linux)
-import Glibc
-func clock() -> Int
-{
-    return Glibc.clock()
-}
+import func Glibc.fopen
+import func Glibc.fread
+import func Glibc.fwrite
+import func Glibc.fclose
+import struct Glibc.FILE
 
 #else
     #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 import func zlib.crc32
+
+struct Bitfield<Storage> where Storage:FixedWidthInteger & UnsignedInteger
+{
+    private
+    var storage:Storage
+
+    init()
+    {
+        self.storage = .init()
+    }
+
+    subscript(index:Int) -> Bool
+    {
+        get
+        {
+            return self.storage & (1 << index) != 0
+        }
+
+        set(value)
+        {
+            if value
+            {
+                self.storage |=  (1 &<< index)
+            }
+            else
+            {
+                self.storage &= ~(1 &<< index)
+            }
+        }
+    }
+
+    mutating
+    func testAndSet(_ index:Int) -> Bool
+    {
+        defer
+        {
+            self[index] = true
+        }
+
+        return self[index]
+    }
+}
 
 extension Array where Element == UInt8
 {
@@ -63,224 +105,6 @@ extension Array where Element == UInt8
     {
         self.append(.init(truncatingIfNeeded: bigEndian >> 8))
         self.append(.init(truncatingIfNeeded: bigEndian     ))
-    }
-}
-
-public
-protocol FixedLayoutColor:RandomAccessCollection, Hashable, CustomStringConvertible
-    where Index == Int
-{
-    static
-    var components:Int
-    {
-        get
-    }
-}
-extension FixedLayoutColor
-{
-    @inlinable
-    public
-    var startIndex:Int
-    {
-        return 0
-    }
-    @inlinable
-    public
-    var endIndex:Int
-    {
-        return Self.components
-    }
-}
-
-// `RandomAccessCollection` conformance helps the optimizer speed up a lot of operations
-//  using color types
-extension PNG.VA:FixedLayoutColor 
-{
-    /// A textual representation of this color.
-    public
-    var description:String
-    {
-        return "(\(self.v), \(self.a))"
-    }
-    
-    /// The number of components in this grayscale-alpha color, always 2.
-    @inlinable
-    public static
-    var components:Int
-    {
-        return 2
-    }
-    
-    /// The `index`th component of this color. The 0th component is the grayscale 
-    /// component, and the 1st component is the alpha component.
-    @inlinable
-    public
-    subscript(index:Int) -> Component
-    {
-        switch index
-        {
-            case 0:
-                return self.v
-            case 1:
-                return self.a
-            default:
-                fatalError("(VA) index \(index) out of range")
-        }
-    }
-}
-
-extension PNG.RGBA:FixedLayoutColor
-{
-    /// A textual representation of this color.
-    public
-    var description:String
-    {
-        return "(\(self.r), \(self.g), \(self.b), \(self.a))"
-    }
-
-    @inlinable
-    public static
-    var components:Int
-    {
-        return 4
-    }
-
-    @inlinable
-    public
-    subscript(index:Int) -> Component
-    {
-        switch index
-        {
-            case 0:
-                return self.r
-            case 1:
-                return self.g
-            case 2:
-                return self.b
-            case 3:
-                return self.a
-            default:
-                fatalError("(RGBA) index \(index) out of range")
-        }
-    }
-} 
-
-
-extension Array where Element:FixedLayoutColor
-{
-    /// Converts this array of color values to a palette table and an array of indices.
-    /// 
-    /// - Returns: A tuple containing the indices of the colors in this array, and
-    ///     a table of color palette entries, or `nil` if this array of color values
-    ///     could not be indexed into 256 or fewer palette entries.
-    public
-    func indexPalette() -> (indexed:[UInt8], palette:[Element])?
-    {
-        var indexed:[UInt8]          = [],
-            palette:[Element: UInt8] = [:]
-            indexed.reserveCapacity(self.count)
-            palette.reserveCapacity(1 << UInt8.bitWidth)
-        for color:Element in self
-        {
-            if let index:UInt8 = palette[color]
-            {
-                indexed.append(index)
-            }
-            else
-            {
-                guard let index:UInt8 = UInt8.init(exactly: palette.count)
-                else
-                {
-                    return nil
-                }
-
-                palette[color] = index
-                indexed.append(index)
-            }
-        }
-
-        // invert the palette dictionary
-        let table:[Element] = .init(unsafeUninitializedCapacity: palette.count)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<Element>, count:inout Int) in
-
-            for (color, index):(Element, UInt8) in palette
-            {
-                buffer[Int(index)] = color
-            }
-
-            count = palette.count
-        }
-
-        return (indexed, table)
-    }
-
-    /// Temporarily view this color matrix as a flattened buffer of interleaved
-    /// color components.
-    /// 
-    /// - Parameters:
-    ///     - body: A closure taking a buffer pointer to this color matrix, viewed
-    ///         as a flat buffer of interleaved color components.
-    /// - Returns: The return value of `body`, if it has one.
-    /// 
-    /// - Note: The buffer passed to the closure is only valid for the execution
-    ///     of that closure.
-    @inlinable
-    public
-    func withUnsafeBufferPointerToComponents<Result>(_ body:(UnsafeBufferPointer<Element.Element>) throws -> Result)
-        rethrows -> Result
-    {
-        return try self.withUnsafeBufferPointer
-        {
-            (buffer:UnsafeBufferPointer<Element>) in
-
-            let raw:UnsafeRawBufferPointer = .init(buffer)
-            defer
-            {
-                raw.bindMemory(to: Element.self)
-            }
-            return try body(raw.bindMemory(to: Element.Element.self))
-        }
-    }
-    
-    /// Converts this array of colorvectors into a planar representation. Other 
-    /// frameworks may call this operation “unzip”.
-    /// 
-    /// *Inlinable*.
-    /// 
-    /// - Returns: If the original array contains colorvectors 
-    ///     `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
-    ///     the result will be an array of colorvector components 
-    ///     `[a1, a2, a3, ..., an, b1, b2, b3, ..., bn, c1, c2, c3, ..., cn, ...]`.
-    @inlinable
-    public  
-    func planar() -> [Element.Element]
-    {
-        return (0 ..< Element.components).flatMap 
-        {
-            (ci:Int) in
-            
-            self.map{ $0[ci] }
-        }
-    }
-
-    /// Flattens this array of colorvectors into an unstructured array of their 
-    /// interleaved components.
-    /// 
-    /// *Inlinable*.
-    /// 
-    /// - Returns: If the original array contains colorvectors 
-    ///     `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
-    ///     the result will be an array of colorvector components 
-    ///     `[a1, b1, c1, ..., a2, b2, c2, ..., a3, b3, c3, ..., an, bn, cn, ...]`.
-    /// 
-    /// - Note: In most cases, it is better to temporarily rebind a structured pixel
-    ///     array to a flattened array type than to convert it to interleaved form.
-    @inlinable
-    public  
-    func interleaved() -> [Element.Element]
-    {
-        return self.flatMap{ $0 }
     }
 }
 
@@ -347,6 +171,32 @@ protocol DataDestination
     func write(_ buffer:[UInt8]) -> Void?
 }
 
+public
+protocol FixedLayoutColor:RandomAccessCollection, Hashable, CustomStringConvertible
+    where Index == Int
+{
+    static
+    var components:Int
+    {
+        get
+    }
+}
+extension FixedLayoutColor
+{
+    @inlinable
+    public
+    var startIndex:Int
+    {
+        return 0
+    }
+    @inlinable
+    public
+    var endIndex:Int
+    {
+        return Self.components
+    }
+}
+
 /// A fixed-width integer type which can be packed in groups of four within another
 /// integer type. For example, four `UInt8`s may be packed into a single `UInt32`.
 public
@@ -364,48 +214,6 @@ extension UInt16:FusedVector4Element
 {
     public
     typealias FusedVector4 = UInt64
-}
-
-struct Bitfield<Storage> where Storage:FixedWidthInteger & UnsignedInteger
-{
-    private
-    var storage:Storage
-
-    init()
-    {
-        self.storage = .init()
-    }
-
-    subscript(index:Int) -> Bool
-    {
-        get
-        {
-            return self.storage & (1 << index) != 0
-        }
-
-        set(value)
-        {
-            if value
-            {
-                self.storage |=  (1 &<< index)
-            }
-            else
-            {
-                self.storage &= ~(1 &<< index)
-            }
-        }
-    }
-
-    mutating
-    func testAndSet(_ index:Int) -> Bool
-    {
-        defer
-        {
-            self[index] = true
-        }
-
-        return self[index]
-    }
 }
 
 extension PNG.RGBA where Component:FusedVector4Element
@@ -4267,145 +4075,6 @@ enum PNG
     struct ChunkIterator<DataInterface>
     {
     }
-
-
-    // internal benchmarking functions, to measure module boundary overhead
-    public
-    enum _Benchmarks
-    {
-        public static
-        func _structuredARGBPremultiplied(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[UInt32] = try? argbPremultiplied(path: path, of: UInt8.self).pixels
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _structuredRGBA(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[RGBA<UInt8>] = try? rgba(path: path, of: UInt8.self).pixels
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _planarRGBA(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[UInt8] = try? rgba(path: path, of: UInt8.self).pixels.planar()
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _interleavedRGBA(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[UInt8] = try? rgba(path: path, of: UInt8.self).pixels.interleaved()
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _structuredVA(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[VA<UInt8>] = try? va(path: path, of: UInt8.self).pixels
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _planarVA(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[UInt8] = try? va(path: path, of: UInt8.self).pixels.planar()
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _interleavedVA(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[UInt8] = try? va(path: path, of: UInt8.self).pixels.interleaved()
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-        public static
-        func _structuredV(_ path:String) -> Int
-        {
-            let t1:Int = clock()
-            guard let _:[UInt8] = try? v(path: path, of: UInt8.self).pixels
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-
-        public static
-        func _encodeRGBA(_ path:String) -> Int
-        {
-            guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) =
-                try? PNG.rgba(path: path, of: UInt8.self)
-            else
-            {
-                fatalError("could not open, read, or decode PNG file '\(path)'")
-            }
-
-            guard let uncompressed:PNG.Data.Uncompressed =
-                try? .convert(rgba: rgba, size: (x, y), to: .rgba8)
-            else
-            {
-                fatalError("unreachable")
-            }
-
-            let t1:Int = clock()
-            guard let _:Void = try? uncompressed.compress(path: path + ".png")
-            else
-            {
-                fatalError("could not open, write, or encode PNG file '\(path).png'")
-            }
-
-            let t:Int = clock() - t1
-            return t
-        }
-    }
 }
 
 extension PNG.ChunkIterator where DataInterface:DataSource
@@ -4552,5 +4221,198 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
             return nil
         }
         return ()
+    }
+}
+
+// `RandomAccessCollection` conformance helps the optimizer speed up a lot of operations
+//  using color types
+extension PNG.VA:FixedLayoutColor 
+{
+    /// A textual representation of this color.
+    public
+    var description:String
+    {
+        return "(\(self.v), \(self.a))"
+    }
+    
+    /// The number of components in this grayscale-alpha color, always 2.
+    @inlinable
+    public static
+    var components:Int
+    {
+        return 2
+    }
+    
+    /// The `index`th component of this color. The 0th component is the grayscale 
+    /// component, and the 1st component is the alpha component.
+    @inlinable
+    public
+    subscript(index:Int) -> Component
+    {
+        switch index
+        {
+            case 0:
+                return self.v
+            case 1:
+                return self.a
+            default:
+                fatalError("(VA) index \(index) out of range")
+        }
+    }
+}
+
+extension PNG.RGBA:FixedLayoutColor
+{
+    /// A textual representation of this color.
+    public
+    var description:String
+    {
+        return "(\(self.r), \(self.g), \(self.b), \(self.a))"
+    }
+
+    @inlinable
+    public static
+    var components:Int
+    {
+        return 4
+    }
+
+    @inlinable
+    public
+    subscript(index:Int) -> Component
+    {
+        switch index
+        {
+            case 0:
+                return self.r
+            case 1:
+                return self.g
+            case 2:
+                return self.b
+            case 3:
+                return self.a
+            default:
+                fatalError("(RGBA) index \(index) out of range")
+        }
+    }
+} 
+
+extension Array where Element:FixedLayoutColor
+{
+    /// Converts this array of color values to a palette table and an array of indices.
+    /// 
+    /// - Returns: A tuple containing the indices of the colors in this array, and
+    ///     a table of color palette entries, or `nil` if this array of color values
+    ///     could not be indexed into 256 or fewer palette entries.
+    public
+    func indexPalette() -> (indexed:[UInt8], palette:[Element])?
+    {
+        var indexed:[UInt8]          = [],
+            palette:[Element: UInt8] = [:]
+            indexed.reserveCapacity(self.count)
+            palette.reserveCapacity(1 << UInt8.bitWidth)
+        for color:Element in self
+        {
+            if let index:UInt8 = palette[color]
+            {
+                indexed.append(index)
+            }
+            else
+            {
+                guard let index:UInt8 = UInt8.init(exactly: palette.count)
+                else
+                {
+                    return nil
+                }
+
+                palette[color] = index
+                indexed.append(index)
+            }
+        }
+
+        // invert the palette dictionary
+        let table:[Element] = .init(unsafeUninitializedCapacity: palette.count)
+        {
+            (buffer:inout UnsafeMutableBufferPointer<Element>, count:inout Int) in
+
+            for (color, index):(Element, UInt8) in palette
+            {
+                buffer[Int(index)] = color
+            }
+
+            count = palette.count
+        }
+
+        return (indexed, table)
+    }
+
+    /// Temporarily view this color matrix as a flattened buffer of interleaved
+    /// color components.
+    /// 
+    /// *Inlinable*
+    ///
+    /// - Parameters:
+    ///     - body: A closure taking a buffer pointer to this color matrix, viewed
+    ///         as a flat buffer of interleaved color components.
+    /// - Returns: The return value of `body`, if it has one.
+    /// 
+    /// - Note: The buffer passed to the closure is only valid for the execution
+    ///     of that closure.
+    @inlinable
+    public
+    func withUnsafeBufferPointerToComponents<Result>(_ body:(UnsafeBufferPointer<Element.Element>) throws -> Result)
+        rethrows -> Result
+    {
+        return try self.withUnsafeBufferPointer
+        {
+            (buffer:UnsafeBufferPointer<Element>) in
+
+            let raw:UnsafeRawBufferPointer = .init(buffer)
+            defer
+            {
+                raw.bindMemory(to: Element.self)
+            }
+            return try body(raw.bindMemory(to: Element.Element.self))
+        }
+    }
+    
+    /// Converts this array of colorvectors into a planar representation. Other 
+    /// frameworks may call this operation “unzip”.
+    /// 
+    /// *Inlinable*.
+    /// 
+    /// - Returns: If the original array contains colorvectors 
+    ///     `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
+    ///     the result will be an array of colorvector components 
+    ///     `[a1, a2, a3, ..., an, b1, b2, b3, ..., bn, c1, c2, c3, ..., cn, ...]`.
+    @inlinable
+    public  
+    func planar() -> [Element.Element]
+    {
+        return (0 ..< Element.components).flatMap 
+        {
+            (ci:Int) in
+            
+            self.map{ $0[ci] }
+        }
+    }
+
+    /// Flattens this array of colorvectors into an unstructured array of their 
+    /// interleaved components.
+    /// 
+    /// *Inlinable*.
+    /// 
+    /// - Returns: If the original array contains colorvectors 
+    ///     `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
+    ///     the result will be an array of colorvector components 
+    ///     `[a1, b1, c1, ..., a2, b2, c2, ..., a3, b3, c3, ..., an, bn, cn, ...]`.
+    /// 
+    /// - Note: In most cases, it is better to temporarily rebind a structured pixel
+    ///     array to a flattened array type than to convert it to interleaved form.
+    @inlinable
+    public  
+    func interleaved() -> [Element.Element]
+    {
+        return self.flatMap{ $0 }
     }
 }
