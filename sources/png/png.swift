@@ -13,7 +13,8 @@ func clock() -> Int
 }
 
 #else
-    #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
+    // unreachable (Package.swift)
+    // #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 import func zlib.crc32
