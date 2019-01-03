@@ -247,13 +247,15 @@ extension Array where Element:FixedLayoutColor
         }
     }
     
-    /** Converts this matrix of grayscale-alpha colors into a planar representation.
+    /** Converts this array of colorvectors into a planar representation. Other 
+        frameworks may call this operation “unzip”.
 
         *Inlinable*.
 
-        - Returns: An array of the value components of this matrix, in row-major
-            order, followed by the components samples of this matrix, also in row-major
-            order.
+        - Returns: If the original array contains colorvectors 
+            `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
+            the result will be an array of colorvector components 
+            `[a1, a2, a3, ..., an, b1, b2, b3, ..., bn, c1, c2, c3, ..., cn, ...]`.
     */
     @inlinable
     public  
@@ -267,16 +269,18 @@ extension Array where Element:FixedLayoutColor
         }.flatMap{ $0 }
     }
 
-    /** Flattens this matrix of grayscale-alpha colors into an unstructured array
-        of its interleaved components.
+    /** Flattens this array of colorvectors into an unstructured array of their 
+        interleaved components.
 
         *Inlinable*.
 
-        - Returns: An unstructured array containing interleaved color components
-            in value, alpha order.
+        - Returns: If the original array contains colorvectors 
+            `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
+            the result will be an array of colorvector components 
+            `[a1, b1, c1, ..., a2, b2, c2, ..., a3, b3, c3, ..., an, bn, cn, ...]`.
 
         - Note: In most cases, it is better to temporarily rebind a structured pixel
-            matrix to a flattened array type than to convert it to interleaved form.
+            array to a flattened array type than to convert it to interleaved form.
     */
     @inlinable
     public  
