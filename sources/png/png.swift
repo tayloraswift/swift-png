@@ -70,6 +70,7 @@ extension Array where Element == UInt8
 
 public
 protocol FixedLayoutColor:RandomAccessCollection, Hashable, CustomStringConvertible
+    where Index == Int
 {
     static
     var components:Int
@@ -95,20 +96,7 @@ extension FixedLayoutColor
 
 // `RandomAccessCollection` conformance helps the optimizer speed up a lot of operations
 //  using color types
-public
-protocol VAColor:FixedLayoutColor
-{
-    associatedtype Component:FixedWidthInteger & UnsignedInteger
-    var v:Component
-    {
-        get
-    }
-    var a:Component
-    {
-        get
-    }
-}
-extension VAColor
+extension PNG.VA:FixedLayoutColor 
 {
     /// A textual representation of this color.
     public
@@ -116,14 +104,17 @@ extension VAColor
     {
         return "(\(self.v), \(self.a))"
     }
-
+    
+    /// The number of components in this grayscale-alpha color, always 2.
     @inlinable
     public static
     var components:Int
     {
         return 2
     }
-
+    
+    /// The `index`th component of this color. The 0th component is the grayscale 
+    /// component, and the 1st component is the alpha component.
     @inlinable
     public
     subscript(index:Int) -> Component
@@ -135,33 +126,12 @@ extension VAColor
             case 1:
                 return self.a
             default:
-                fatalError("(_RGBAColor) index \(index) out of range")
+                fatalError("(VA) index \(index) out of range")
         }
     }
 }
 
-public
-protocol RGBAColor:FixedLayoutColor
-{
-    associatedtype Component:FixedWidthInteger & UnsignedInteger
-    var r:Component
-    {
-        get
-    }
-    var g:Component
-    {
-        get
-    }
-    var b:Component
-    {
-        get
-    }
-    var a:Component
-    {
-        get
-    }
-}
-extension RGBAColor
+extension PNG.RGBA:FixedLayoutColor
 {
     /// A textual representation of this color.
     public
@@ -192,10 +162,10 @@ extension RGBAColor
             case 3:
                 return self.a
             default:
-                fatalError("(_RGBAColor) index \(index) out of range")
+                fatalError("(RGBA) index \(index) out of range")
         }
     }
-}
+} 
 
 
 extension Array where Element:FixedLayoutColor
@@ -276,10 +246,7 @@ extension Array where Element:FixedLayoutColor
             return try body(raw.bindMemory(to: Element.Element.self))
         }
     }
-}
-
-extension Array where Element:VAColor
-{
+    
     /** Converts this matrix of grayscale-alpha colors into a planar representation.
 
         *Inlinable*.
@@ -289,20 +256,15 @@ extension Array where Element:VAColor
             order.
     */
     @inlinable
-    public
-    func planar() -> [Element.Component]
+    public  
+    func planar() -> [Element.Element]
     {
-        var planar:[Element.Component] = []
-            planar.reserveCapacity(self.count << 1)
-        for pixel:Element in self
+        return (0 ..< Element.components).map 
         {
-            planar.append(pixel.v)
-        }
-        for pixel:Element in self
-        {
-            planar.append(pixel.a)
-        }
-        return planar
+            (ci:Int) in
+            
+            self.map{ $0[ci] }
+        }.flatMap{ $0 }
     }
 
     /** Flattens this matrix of grayscale-alpha colors into an unstructured array
@@ -317,58 +279,7 @@ extension Array where Element:VAColor
             matrix to a flattened array type than to convert it to interleaved form.
     */
     @inlinable
-    public
-    func interleaved() -> [Element.Element]
-    {
-        return self.flatMap{ $0 }
-    }
-}
-
-extension Array where Element:RGBAColor
-{
-    /** Converts this matrix of RGBA colors into a planar representation.
-
-        - Returns: An array of the red components of this matrix, followed by the
-            green, blue, and alpha components of this matrix, all in row-major order.
-    */
-    @inlinable
-    public
-    func planar() -> [Element.Component]
-    {
-        var planar:[Element.Component] = []
-            planar.reserveCapacity(self.count << 2)
-        for pixel:Element in self
-        {
-            planar.append(pixel.r)
-        }
-        for pixel:Element in self
-        {
-            planar.append(pixel.g)
-        }
-        for pixel:Element in self
-        {
-            planar.append(pixel.b)
-        }
-        for pixel:Element in self
-        {
-            planar.append(pixel.a)
-        }
-        return planar
-    }
-
-    /** Flattens this matrix of RGBA colors into an unstructured array of its
-        interleaved components.
-
-        *Inlinable*.
-
-        - Returns: An unstructured array containing interleaved color components
-            in red, green, blue, alpha order.
-
-        - Note: In most cases, it is better to temporarily rebind a structured pixel
-            matrix to a flattened array type than to convert it to interleaved form.
-    */
-    @inlinable
-    public
+    public  
     func interleaved() -> [Element.Element]
     {
         return self.flatMap{ $0 }
@@ -539,8 +450,7 @@ enum PNG
         as flat buffers containing interleaved components. */
     @_fixed_layout
     public
-    struct VA<Component>:VAColor
-        where Component:FixedWidthInteger & UnsignedInteger
+    struct VA<Component> where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The value component of this color.
         public
@@ -707,8 +617,7 @@ enum PNG
         safely reinterpreted as flat buffers containing interleaved components. */
     @_fixed_layout
     public
-    struct RGBA<Component>:RGBAColor
-        where Component:FixedWidthInteger & UnsignedInteger
+    struct RGBA<Component> where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color.
         public
