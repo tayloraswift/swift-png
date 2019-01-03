@@ -1165,7 +1165,6 @@ enum PNG
 
             }
 
-            // lower byte
             @inlinable
             public
             var code:Code
@@ -1547,7 +1546,7 @@ enum PNG
             The alpha component of this property is ignored by the library.
         */
         public
-        var chromaKey:RGBA<UInt16>? // the alpha sample is ignored by the library
+        var chromaKey:RGBA<UInt16>?
 
         /// The shape of a two-dimensional array containing this PNG image.
         let shape:Data.Shape
@@ -1590,8 +1589,8 @@ enum PNG
             }
         }
 
-        /** The number of bytes needed to store the encoded image data of this PNG
-            image. */
+        /// The number of bytes needed to store the encoded image data of this PNG
+        /// image.
         var byteCount:Int
         {
             switch self.interlacing
@@ -1607,15 +1606,14 @@ enum PNG
             }
         }
 
-        /** Creates a PNG `Properties` record with the given properties.
-
-            - Parameters:
-                - size: A pair of pixel dimensions.
-                - format: A pixel format.
-                - interlaced: A boolean value indicating if an interlacing algorithm
-                    will be used. The default is `false`.
-                - chromaKey: A chroma key, or `nil`. The default is `nil`.
-        */
+        /// Creates a PNG `Properties` record with the given properties.
+        ///
+        /// - Parameters:
+        ///     - size: A pair of pixel dimensions.
+        ///     - format: A pixel format.
+        ///     - interlaced: A boolean value indicating if an interlacing algorithm
+        ///         will be used. The default is `false`.
+        ///     - chromaKey: A chroma key, or `nil`. The default is `nil`.
         public
         init(size:(x:Int, y:Int), format:Format, interlaced:Bool = false,
             chromaKey:RGBA<UInt16>? = nil)
@@ -1672,9 +1670,8 @@ enum PNG
             self.chromaKey = chromaKey
         }
 
-        /** Initializes and returns a PNG `Decoder`.
-            - Returns: An image `Decoder` in its initial state.
-        */
+        /// Initializes and returns a PNG `Decoder`.
+        /// - Returns: An image `Decoder` in its initial state.
         public
         func decoder() throws -> Decoder
         {
@@ -1683,13 +1680,12 @@ enum PNG
             return .init(stride: stride, pitches: self.pitches, inflator: inflator)
         }
 
-        /** Initializes and returns a PNG `Encoder`.
-            - Parameters:
-                - level: The compression level the returned `Encoder` will use.
-                    Must be in the range `0 ... 9`, where 0 is no compression, and
-                    9 is the highest possible amount of compression.
-            - Returns: An image `Encoder` in its initial state.
-        */
+        /// Initializes and returns a PNG `Encoder`.
+        /// - Parameters:
+        ///     - level: The compression level the returned `Encoder` will use.
+        ///         Must be in the range `0 ... 9`, where 0 is no compression, and
+        ///         9 is the highest possible amount of compression.
+        /// - Returns: An image `Encoder` in its initial state.
         public
         func encoder(level:Int) throws -> Encoder
         {
@@ -1698,23 +1694,24 @@ enum PNG
             return .init(stride: stride, pitches: self.pitches, deflator: deflator)
         }
 
-        /** A low level API for receiving and processing decompressed and decoded
-            PNG image data at the scanline level. */
+        /// A low level API for receiving and processing decompressed and decoded
+        /// PNG image data at the scanline level.
         public
         struct Decoder
         {
-            /** The decoded pixels of the previous scanline decoded. Initialized
-                to all zeroes before decoding the first scanline of a (sub-)image. */
+            /// The decoded pixels of the previous scanline decoded. Initialized
+            /// to all zeroes before decoding the first scanline of a (sub-)image.
             private
             var reference:[UInt8]?
-            /** The decoded pixels of the current scanline. Can be partially filled
-                if individual image data blocks do not contain a whole number of
-                scanlines. */
+            
+            /// The decoded pixels of the current scanline. Can be partially filled
+            /// if individual image data blocks do not contain a whole number of
+            /// scanlines.
             private
             var scanline:[UInt8] = []
 
-            /** The filter delay used by this image `Decoder`. This value is computed
-                from the volume of a PNG pixel format, but has no meaning itself. */
+            /// The filter delay used by this image `Decoder`. This value is computed
+            /// from the volume of a PNG pixel format, but has no meaning itself.
             private
             let stride:Int
 
@@ -1737,24 +1734,22 @@ enum PNG
                 self.reference = .init(repeating: 0, count: pitch + 1)
             }
 
-            /** Calls the given closure for each complete scanline decoded from
-                the given compressed image data, passing the decoded contents of
-                the scanline to the closure.
-
-                Individual data blocks can produce incomplete scanlines. These
-                scanlines are stored and will be completed by subsequent data blocks,
-                when they will be passed as full scanlines to the closures given
-                in the later `forEachScanline(decodedFrom:_:)` calls.
-                - Parameters:
-                    - data: Compressed image data.
-                    - body: A closure which takes as an argument a decoded scanline.
-                - Returns: `true` if this `Decoder`’s LZ77 stream expects more input
-                    data, and `false` otherwise.
-
-                - Warning: Do not call this method again on the same instance after
-                    it has returned `false`. Doing so will result in undefined behavior.
-            */
-
+            /// Calls the given closure for each complete scanline decoded from
+            /// the given compressed image data, passing the decoded contents of
+            /// the scanline to the closure.
+            /// 
+            /// Individual data blocks can produce incomplete scanlines. These
+            /// scanlines are stored and will be completed by subsequent data blocks,
+            /// when they will be passed as full scanlines to the closures given
+            /// in the later `forEachScanline(decodedFrom:_:)` calls.
+            /// - Parameters:
+            ///     - data: Compressed image data.
+            ///     - body: A closure which takes as an argument a decoded scanline.
+            /// - Returns: `true` if this `Decoder`’s LZ77 stream expects more input
+            ///     data, and `false` otherwise.
+            /// 
+            /// - Warning: Do not call this method again on the same instance after
+            ///     it has returned `false`. Doing so will result in undefined behavior.
             public mutating
             func forEachScanline(decodedFrom data:[UInt8], _ body:(ArraySlice<UInt8>) throws -> ())
                 throws -> Bool
@@ -1809,21 +1804,20 @@ enum PNG
                 return try self.inflator.test()
             }
 
-            /** Defilters the given filtered scanline in-place, using the given
-                reference scanline.
-
-                - Parameters:
-                    - scanline: The scanline to defilter in-place. The first byte
-                        of the scanline is interpreted as the filter byte, and this
-                        byte is set to 0 upon defiltering.
-                    - reference: The defiltered scanline assumed to be immediately
-                        above the given filtered scanline. This scanline should
-                        contain all zeroes if the filtered scanline is logically
-                        the first scanline in its (sub-)image. The first byte of
-                        this scanline should always be a bogus padding byte corresponding
-                        to the filter byte of a filtered scanline, such that
-                        `reference.count == scanline.count`.
-            */
+            /// Defilters the given filtered scanline in-place, using the given
+            /// reference scanline.
+            /// 
+            /// - Parameters:
+            ///     - scanline: The scanline to defilter in-place. The first byte
+            ///         of the scanline is interpreted as the filter byte, and this
+            ///         byte is set to 0 upon defiltering.
+            ///     - reference: The defiltered scanline assumed to be immediately
+            ///         above the given filtered scanline. This scanline should
+            ///         contain all zeroes if the filtered scanline is logically
+            ///         the first scanline in its (sub-)image. The first byte of
+            ///         this scanline should always be a bogus padding byte corresponding
+            ///         to the filter byte of a filtered scanline, such that
+            ///         `reference.count == scanline.count`.
             private
             func defilter(_ scanline:inout [UInt8], reference:[UInt8])
             {
@@ -1879,21 +1873,21 @@ enum PNG
             }
         }
 
-        /** A low level API for filtering and compressing PNG image data at the
-            scanline level. */
+        /// A low level API for filtering and compressing PNG image data at the
+        /// scanline level.
         public
         struct Encoder
         {
             // unlike the `Decoder`, here, it’s more efficient for `reference` to
             // *not* contain the filter byte prefix
 
-            /** The unfiltered pixels of the previous scanline encoded. Initialized
-                to all zeroes before encoding the first scanline of a (sub-)image. */
+            /// The unfiltered pixels of the previous scanline encoded. Initialized
+            /// to all zeroes before encoding the first scanline of a (sub-)image.
             private
             var reference:[UInt8]?
 
-            /** The filter delay used by this image `Encoder`. This value is computed
-                from the volume of a PNG pixel format, but has no meaning itself. */
+            /// The filter delay used by this image `Encoder`. This value is computed
+            /// from the volume of a PNG pixel format, but has no meaning itself.
             private
             let stride:Int
 
@@ -1916,27 +1910,26 @@ enum PNG
                 self.reference = .init(repeating: 0, count: pitch)
             }
 
-            /** Filters and compresses scanlines returned by the given closure,
-                appending the compressed data to the given data buffer.
-
-                *Specialized* for `RAC` types `[UInt8]`, `ArraySlice<UInt8>`, `UnsafeBufferPointer<UInt8>`,
-                `Slice<UnsafeBufferPointer<UInt8>>`, and `Slice<UnsafeMutableBufferPointer<UInt8>>`.
-
-                - Parameters:
-                    - data: A data buffer to append compressed scanline data to.
-                    - capacity: The maximum size `data` is allowed to reach before
-                        this method will stop outputting data to it.
-                    - generator: A closure which, when called repeatedly, returns
-                        scanlines to filter and compress, and `nil` when there
-                        are no more scanlines to encode.
-
-                - Returns: `true` if `data.count` was filled to the specified capacity,
-                    or if `generator` returned `nil`. `false` if this `Encoder`
-                    is finished encoding data. Once this method returns `false`,
-                    it should not be called again on the same instance.
-                - Throws: `EncodingError.bufferCount`, if `generator` returns a scanline
-                    that does not have the expected size.
-            */
+            /// Filters and compresses scanlines returned by the given closure,
+            /// appending the compressed data to the given data buffer.
+            /// 
+            /// *Specialized* for `RAC` types `[UInt8]`, `ArraySlice<UInt8>`, `UnsafeBufferPointer<UInt8>`,
+            /// `Slice<UnsafeBufferPointer<UInt8>>`, and `Slice<UnsafeMutableBufferPointer<UInt8>>`.
+            /// 
+            /// - Parameters:
+            ///     - data: A data buffer to append compressed scanline data to.
+            ///     - capacity: The maximum size `data` is allowed to reach before
+            ///         this method will stop outputting data to it.
+            ///     - generator: A closure which, when called repeatedly, returns
+            ///         scanlines to filter and compress, and `nil` when there
+            ///         are no more scanlines to encode.
+            /// 
+            /// - Returns: `true` if `data.count` was filled to the specified capacity,
+            ///     or if `generator` returned `nil`. `false` if this `Encoder`
+            ///     is finished encoding data. Once this method returns `false`,
+            ///     it should not be called again on the same instance.
+            /// - Throws: `EncodingError.bufferCount`, if `generator` returns a scanline
+            ///     that does not have the expected size.
             @_specialize(where RAC == [UInt8])
             @_specialize(where RAC == ArraySlice<UInt8>)
             @_specialize(where RAC == UnsafeBufferPointer<UInt8>)
@@ -1996,21 +1989,20 @@ enum PNG
                 return try self.deflator.finish(extending: &data, capacity: capacity)
             }
 
-            /** Returns the given scanline filtered based on the given reference
-                scanline, with a filter chosen by heuristic to optimize compressibility.
-
-                - Parameters:
-                    - current: A scanline to filter. This scanline is *not* prefixed
-                        by a bogus filter byte.
-                    - reference: The unfiltered scanline assumed to be immediately
-                        above the given filtered scanline. This scanline should
-                        contain all zeroes if the scanline to be filtered is logically
-                        the first scanline in its (sub-)image. This scanline is
-                        *not* prefixed by a bogus filter byte. `reference.count`
-                        must be equal to `scanline.count`.
-                - Returns: The filtered scanline, prefixed by a filter byte indicating
-                    the filter chosen by the library.
-            */
+            /// Returns the given scanline filtered based on the given reference
+            /// scanline, with a filter chosen by heuristic to optimize compressibility.
+            /// 
+            /// - Parameters:
+            ///     - current: A scanline to filter. This scanline is *not* prefixed
+            ///         by a bogus filter byte.
+            ///     - reference: The unfiltered scanline assumed to be immediately
+            ///         above the given filtered scanline. This scanline should
+            ///         contain all zeroes if the scanline to be filtered is logically
+            ///         the first scanline in its (sub-)image. This scanline is
+            ///         *not* prefixed by a bogus filter byte. `reference.count`
+            ///         must be equal to `scanline.count`.
+            /// - Returns: The filtered scanline, prefixed by a filter byte indicating
+            ///     the filter chosen by the library.
             private
             func filter<S>(_ current:S, reference:[UInt8]) -> [UInt8]
                 where S:Sequence, S.Element == UInt8
@@ -2098,13 +2090,12 @@ enum PNG
                 }
             }
 
-            /** Scores the compressibility of the given filtered scanline candidate.
-
-                - Parameters:
-                    - filtered: A filtered scanline to score.
-                - Returns: A score rating the compressibility of the given filtered
-                    scanline candidate. A higher score indicates less compressibility.
-            */
+            /// Scores the compressibility of the given filtered scanline candidate.
+            /// 
+            /// - Parameters:
+            ///     - filtered: A filtered scanline to score.
+            /// - Returns: A score rating the compressibility of the given filtered
+            ///     scanline candidate. A higher score indicates less compressibility.
             private static
             func score<S>(_ filtered:S) -> Int
                 where S:Sequence, S.Element == UInt8
@@ -2116,12 +2107,11 @@ enum PNG
             }
         }
 
-        /** Encodes the header fields of this `Properties` record as the chunk data
-            of an IHDR chunk.
-
-            - Returns: An array containing IHDR chunk data. The chunk header, length,
-                and crc32 tail are not included.
-        */
+        /// Encodes the header fields of this `Properties` record as the chunk data
+        /// of an IHDR chunk.
+        /// 
+        /// - Returns: An array containing IHDR chunk data. The chunk header, length,
+        ///     and crc32 tail are not included.
         public
         func encodeIHDR() -> [UInt8]
         {
@@ -2134,18 +2124,17 @@ enum PNG
             return header
         }
 
-        /** Encodes this PNG’s palette as the chunk data of a PLTE chunk, if it
-            has one.
-
-            This method always returns valid PLTE chunk data. If this `Properties`
-            record has more palette entries than can be encoded with its color depth,
-            only the first `1 << format.depth` entries are encoded. This method
-            does not remove palette entries from this metatada record itself.
-
-            - Returns: An array containing PLTE chunk data, or `nil` if this PNG
-                does not have a palette. The chunk header, length,
-                and crc32 tail are not included.
-        */
+        /// Encodes this PNG’s palette as the chunk data of a PLTE chunk, if it
+        /// has one.
+        /// 
+        /// This method always returns valid PLTE chunk data. If this `Properties`
+        /// record has more palette entries than can be encoded with its color depth,
+        /// only the first `1 << format.depth` entries are encoded. This method
+        /// does not remove palette entries from this metatada record itself.
+        /// 
+        /// - Returns: An array containing PLTE chunk data, or `nil` if this PNG
+        ///     does not have a palette. The chunk header, length,
+        ///     and crc32 tail are not included.
         public
         func encodePLTE() -> [UInt8]?
         {
@@ -2155,27 +2144,26 @@ enum PNG
             }
         }
 
-        /** Encodes this PNG’s transparency information as the chunk data of a tRNS
-            chunk, if it has any.
-
-            This method always returns valid tRNS chunk data. If this PNG has an
-            indexed pixel format, and this `Properties` record has more palette entries
-            than can be encoded with its color depth, then only the first `1 << format.depth`
-            transparency values are encoded. This method does not remove palette
-            entries from this `Properties` record itself.
-
-            - Returns: An array containing tRNS chunk data, or `nil` if this PNG
-                does not have an transparency information. The chunk header, length,
-                and crc32 tail are not included. The chunk data consists of a single
-                grayscale chroma key value, narrowed to this PNG’s color depth,
-                if it has an opaque grayscale pixel format, an RGB chroma key triple,
-                narrowed to this PNG’s color depth, if it has an opaque RGB pixel
-                format, and the transparency values in this PNG’s color palette,
-                if it has an indexed color format. In the indexed color case, trailing
-                opaque palette entries are trimmed from the outputted sequence of
-                transparency values. If all palette entries are opaque, or this
-                `Properties` record has not been assigned a palette, `nil` is returned.
-        */
+        /// Encodes this PNG’s transparency information as the chunk data of a tRNS
+        /// chunk, if it has any.
+        /// 
+        /// This method always returns valid tRNS chunk data. If this PNG has an
+        /// indexed pixel format, and this `Properties` record has more palette entries
+        /// than can be encoded with its color depth, then only the first `1 << format.depth`
+        /// transparency values are encoded. This method does not remove palette
+        /// entries from this `Properties` record itself.
+        /// 
+        /// - Returns: An array containing tRNS chunk data, or `nil` if this PNG
+        ///     does not have an transparency information. The chunk header, length,
+        ///     and crc32 tail are not included. The chunk data consists of a single
+        ///     grayscale chroma key value, narrowed to this PNG’s color depth,
+        ///     if it has an opaque grayscale pixel format, an RGB chroma key triple,
+        ///     narrowed to this PNG’s color depth, if it has an opaque RGB pixel
+        ///     format, and the transparency values in this PNG’s color palette,
+        ///     if it has an indexed color format. In the indexed color case, trailing
+        ///     opaque palette entries are trimmed from the outputted sequence of
+        ///     transparency values. If all palette entries are opaque, or this
+        ///     `Properties` record has not been assigned a palette, `nil` is returned.
         public
         func encodetRNS() -> [UInt8]?
         {
@@ -2243,22 +2231,22 @@ enum PNG
             /// The global image `Properties` of this PNG image.
             public
             let properties:Properties
-            /** The buffer containing this PNG’s decoded, but not necessarily
-                deinterlaced, image data. */
+            
+            /// The buffer containing this PNG’s decoded, but not necessarily
+            /// deinterlaced, image data.
             public
             let data:[UInt8]
 
-            /** Creates an uncompressed PNG image with the given pixel buffer and
-                `Properties` record.
-
-                - Parameters:
-                    - data: A pixel buffer.
-                    - properties: A `Properties` record.
-                - Returns: An uncompressed PNG image, if the size of the given
-                    pixel buffer is consistent with the size and format information
-                    in the given `properties`, and the given `properties` contains
-                    a palette, if needed, and `nil` otherwise.
-            */
+            /// Creates an uncompressed PNG image with the given pixel buffer and
+            /// `Properties` record.
+            /// 
+            /// - Parameters:
+            ///     - data: A pixel buffer.
+            ///     - properties: A `Properties` record.
+            /// - Returns: An uncompressed PNG image, if the size of the given
+            ///     pixel buffer is consistent with the size and format information
+            ///     in the given `properties`, and the given `properties` contains
+            ///     a palette, if needed, and `nil` otherwise.
             public
             init?(_ data:[UInt8], properties:Properties)
             {
@@ -2280,12 +2268,11 @@ enum PNG
                 self.data       = _data
             }
 
-            /** Decomposes this uncompressed image into its constituent sub-images,
-                if this image is interlaced.
-
-                - Returns: The seven sub-images making up this image, if it uses
-                    the Adam7 interlacing algorithm, and `nil` otherwise.
-            */
+            /// Decomposes this uncompressed image into its constituent sub-images,
+            /// if this image is interlaced.
+            /// 
+            /// - Returns: The seven sub-images making up this image, if it uses
+            ///     the Adam7 interlacing algorithm, and `nil` otherwise.
             public
             func decomposed() -> [Rectangular]?
             {
@@ -2309,15 +2296,14 @@ enum PNG
                 }
             }
 
-            /** Returns the pixels of this uncompressed image, organized into a
-                rectangular row-major pixel matrix.
-
-                This method deinterlaces the pixel data from this uncompressed image,
-                if it uses an interlacing algorithm. Otherwise, it simply repackages
-                this image’s already-rectangular `data`.
-
-                - Returns: A rectangular row-major pixel matrix.
-            */
+            /// Returns the pixels of this uncompressed image, organized into a
+            /// rectangular row-major pixel matrix.
+            /// 
+            /// This method deinterlaces the pixel data from this uncompressed image,
+            /// if it uses an interlacing algorithm. Otherwise, it simply repackages
+            /// this image’s already-rectangular `data`.
+            ///
+            /// - Returns: A rectangular row-major pixel matrix.
             public
             func deinterlaced() -> Rectangular
             {
@@ -2472,23 +2458,21 @@ enum PNG
                 try _next(.IEND)
             }
 
-            /** Compresses this image, and outputs the compressed PNG file to the given
-                data destination.
-
-                Excessively small chunk sizes may harm image compression. Higher
-                compression levels produce smaller PNG files, but take longer to
-                run.
-
-                - Parameters:
-                    - destination: A data destination to write the contents of the
-                        compressed file to.
-                    - chunkSize: The maximum IDAT chunk size to use. The default
-                        is 65536 bytes.
-                    - level: The level of LZ77 compression to use. Must be in the
-                        range `0 ... 9`, where 0 is no compression, and 9 is maximal
-                        compression.
-
-            */
+            /// Compresses this image, and outputs the compressed PNG file to the given
+            /// data destination.
+            /// 
+            /// Excessively small chunk sizes may harm image compression. Higher
+            /// compression levels produce smaller PNG files, but take longer to
+            /// run.
+            /// 
+            /// - Parameters:
+            ///     - destination: A data destination to write the contents of the
+            ///         compressed file to.
+            ///     - chunkSize: The maximum IDAT chunk size to use. The default
+            ///         is 65536 bytes.
+            ///     - level: The level of LZ77 compression to use. Must be in the
+            ///         range `0 ... 9`, where 0 is no compression, and 9 is maximal
+            ///         compression.
             public
             func compress<Destination>(to destination:inout Destination,
                 chunkSize:Int = 1 << 16, level:Int = 9) throws
@@ -2500,6 +2484,7 @@ enum PNG
                                 chunkSize: chunkSize,
                                     level: level)
             }
+            
             private
             enum DecompressionStage
             {
@@ -2509,13 +2494,13 @@ enum PNG
                 case iv(properties:Properties, decoder:Properties.Decoder) // IDAT sighted
                 case v(properties:Properties)      // IDAT ended
             }
-            /** Decompresses a PNG file from the given data source, and returns
-                it as an `Uncompressed` image.
-
-                - Parameters:
-                    - source: A data source yielding a PNG file.
-                - Returns: An uncompressed PNG image.
-            */
+            
+            /// Decompresses a PNG file from the given data source, and returns
+            /// it as an `Uncompressed` image.
+            /// 
+            /// - Parameters:
+            ///     - source: A data source yielding a PNG file.
+            /// - Returns: An uncompressed PNG image.
             public static
             func decompress<Source>(from source:inout Source) throws -> Uncompressed
                 where Source:DataSource
@@ -2764,21 +2749,20 @@ enum PNG
                 }
             }
 
-            /** Compresses and saves this PNG image at the given file path.
-
-                Excessively small chunk sizes may harm image compression. Higher
-                compression levels produce smaller PNG files, but take longer to
-                run.
-
-                - Parameters:
-                    - outputPath: A file path.
-                    - chunkSize: The maximum IDAT chunk size to use. The default
-                        is 65536 bytes.
-                    - level: The level of LZ77 compression to use. Must be in the
-                        range `0 ... 9`, where 0 is no compression, and 9 is maximal
-                        compression.
-                - Returns: `nil` if the given file could not be opened.
-            */
+            /// Compresses and saves this PNG image at the given file path.
+            /// 
+            /// Excessively small chunk sizes may harm image compression. Higher
+            /// compression levels produce smaller PNG files, but take longer to
+            /// run.
+            /// 
+            /// - Parameters:
+            ///     - outputPath: A file path.
+            ///     - chunkSize: The maximum IDAT chunk size to use. The default
+            ///         is 65536 bytes.
+            ///     - level: The level of LZ77 compression to use. Must be in the
+            ///         range `0 ... 9`, where 0 is no compression, and 9 is maximal
+            ///         compression.
+            /// - Returns: `nil` if the given file could not be opened.
             public
             func compress(path outputPath:String, chunkSize:Int = 1 << 16, level:Int = 9) throws
             {
@@ -2795,14 +2779,13 @@ enum PNG
                 }
             }
 
-            /** Decompresses a PNG file at the given file path, and returns
-                it as an `Uncompressed` image.
-
-                - Parameters:
-                    - inputPath: A path to a PNG file.
-                - Returns: An uncompressed PNG image, or `nil` if the given file
-                    could not be opened.
-            */
+            /// Decompresses a PNG file at the given file path, and returns it as 
+            /// an `Uncompressed` image.
+            /// 
+            /// - Parameters:
+            ///     - inputPath: A path to a PNG file.
+            /// - Returns: An uncompressed PNG image, or `nil` if the given file
+            ///     could not be opened.
             public static
             func decompress(path inputPath:String) throws -> Uncompressed
             {
@@ -2829,9 +2812,16 @@ enum PNG
             public static
             func convert<Component>(rgba:[RGBA<Component>],
                 size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
-                -> Uncompressed?
+                throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
             {
+                // make sure pixel array is correct size
+                guard rgba.count == Math.vol(size) 
+                else 
+                {
+                    throw ConversionError.pixelCount
+                }
+                
                 let properties:Properties
                 var data:[UInt8]
 
@@ -2980,7 +2970,7 @@ enum PNG
                             palette.count <= 1 << code.depth
                         else
                         {
-                            return nil
+                            throw ConversionError.paletteOverflow
                         }
 
                         switch code
@@ -4104,13 +4094,8 @@ enum PNG
                     fallthrough
                 }
             default:
-                guard let uncompressed:Data.Uncompressed =
-                    .convert(rgba: rgba, size: size, to: code, chromaKey: chromaKey)
-                else
-                {
-                    throw EncodingError.paletteOverflow
-                }
-
+                let uncompressed:Data.Uncompressed = 
+                    try .convert(rgba: rgba, size: size, to: code, chromaKey: chromaKey)
                 try uncompressed.compress(to: &destination, level: level)
         }
     }
@@ -4319,6 +4304,15 @@ enum PNG
         /// A prerequisite PNG chunk is missing.
         case missingChunk(Chunk)
     }
+    
+    public 
+    enum ConversionError:Error 
+    {
+        /// An input pixel array has the wrong size 
+        case pixelCount
+        /// An image being encoded has too many colors to index.
+        case paletteOverflow
+    }
 
     /// Errors that can occur while writing, compressing, or encoding PNG files.
     public
@@ -4328,9 +4322,6 @@ enum PNG
         case notAcceptingData
         /// An input scanline has the wrong size.
         case bufferCount
-
-        /// An image being encoded has too many colors to index.
-        case paletteOverflow
     }
 
     // empty struct to namespace our chunk iteration methods. we can’t store the
@@ -4464,7 +4455,7 @@ enum PNG
             }
 
             guard let uncompressed:PNG.Data.Uncompressed =
-                .convert(rgba: rgba, size: (x, y), to: .rgba8)
+                try? .convert(rgba: rgba, size: (x, y), to: .rgba8)
             else
             {
                 fatalError("unreachable")
