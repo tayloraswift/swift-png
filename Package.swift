@@ -16,9 +16,7 @@ coreTargets =
 ]
 
 #else
-    // #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
-    // swiftsyntax does not support `#error` statement
-    fatalError("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
+    #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 let package = Package(

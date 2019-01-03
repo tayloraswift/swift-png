@@ -13,22 +13,20 @@ func clock() -> Int
 }
 
 #else
-    // unreachable (Package.swift)
-    // #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
+    #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 import func zlib.crc32
 
 extension Array where Element == UInt8
 {
-    /** Loads a misaligned big-endian integer value from the given byte offset
-        and casts it to a desired format.
-        - Parameters:
-            - bigEndian: The size and type to interpret the data to load as.
-            - type: The type to cast the read integer value to.
-            - byte: The byte offset to load the big-endian integer from.
-        - Returns: The read integer value, cast to `U`.
-    */
+    /// Loads a misaligned big-endian integer value from the given byte offset
+    /// and casts it to a desired format.
+    /// - Parameters:
+    ///     - bigEndian: The size and type to interpret the data to load as.
+    ///     - type: The type to cast the read integer value to.
+    ///     - byte: The byte offset to load the big-endian integer from.
+    /// - Returns: The read integer value, cast to `U`.
     fileprivate
     func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U
         where T:FixedWidthInteger, U:BinaryInteger
@@ -36,13 +34,12 @@ extension Array where Element == UInt8
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
 
-    /** Decomposes the given integer value into its constituent bytes, in big-endian order.
-        - Parameters:
-            - value: The integer value to decompose.
-            - type: The big-endian format `T` to store the given `value` as. The given
-                    `value` is truncated to fit in a `T`.
-        - Returns: An array containing the bytes of the given `value`, in big-endian order.
-    */
+    /// Decomposes the given integer value into its constituent bytes, in big-endian order.
+    /// - Parameters:
+    ///     - value: The integer value to decompose.
+    ///     - type: The big-endian format `T` to store the given `value` as. The given
+    ///             `value` is truncated to fit in a `T`.
+    /// - Returns: An array containing the bytes of the given `value`, in big-endian order.
     fileprivate static
     func store<U, T>(_ value:U, asBigEndian type:T.Type) -> [UInt8]
         where U:BinaryInteger, T:FixedWidthInteger
@@ -171,12 +168,11 @@ extension PNG.RGBA:FixedLayoutColor
 
 extension Array where Element:FixedLayoutColor
 {
-    /** Converts this array of color values to a palette table and an array of indices.
-
-        - Returns: A tuple containing the indices of the colors in this array, and
-            a table of color palette entries, or `nil` if this array of color values
-            could not be indexed into 256 or fewer palette entries.
-    */
+    /// Converts this array of color values to a palette table and an array of indices.
+    /// 
+    /// - Returns: A tuple containing the indices of the colors in this array, and
+    ///     a table of color palette entries, or `nil` if this array of color values
+    ///     could not be indexed into 256 or fewer palette entries.
     public
     func indexPalette() -> (indexed:[UInt8], palette:[Element])?
     {
@@ -219,17 +215,16 @@ extension Array where Element:FixedLayoutColor
         return (indexed, table)
     }
 
-    /** Temporarily view this color matrix as a flattened buffer of interleaved
-        color components.
-
-        - Parameters:
-            - body: A closure taking a buffer pointer to this color matrix, viewed
-                as a flat buffer of interleaved color components.
-        - Returns: The return value of `body`, if it has one.
-
-        - Note: The buffer passed to the closure is only valid for the execution
-            of that closure.
-    */
+    /// Temporarily view this color matrix as a flattened buffer of interleaved
+    /// color components.
+    /// 
+    /// - Parameters:
+    ///     - body: A closure taking a buffer pointer to this color matrix, viewed
+    ///         as a flat buffer of interleaved color components.
+    /// - Returns: The return value of `body`, if it has one.
+    /// 
+    /// - Note: The buffer passed to the closure is only valid for the execution
+    ///     of that closure.
     @inlinable
     public
     func withUnsafeBufferPointerToComponents<Result>(_ body:(UnsafeBufferPointer<Element.Element>) throws -> Result)
@@ -248,41 +243,39 @@ extension Array where Element:FixedLayoutColor
         }
     }
     
-    /** Converts this array of colorvectors into a planar representation. Other 
-        frameworks may call this operation “unzip”.
-
-        *Inlinable*.
-
-        - Returns: If the original array contains colorvectors 
-            `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
-            the result will be an array of colorvector components 
-            `[a1, a2, a3, ..., an, b1, b2, b3, ..., bn, c1, c2, c3, ..., cn, ...]`.
-    */
+    /// Converts this array of colorvectors into a planar representation. Other 
+    /// frameworks may call this operation “unzip”.
+    /// 
+    /// *Inlinable*.
+    /// 
+    /// - Returns: If the original array contains colorvectors 
+    ///     `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
+    ///     the result will be an array of colorvector components 
+    ///     `[a1, a2, a3, ..., an, b1, b2, b3, ..., bn, c1, c2, c3, ..., cn, ...]`.
     @inlinable
     public  
     func planar() -> [Element.Element]
     {
-        return (0 ..< Element.components).map 
+        return (0 ..< Element.components).flatMap 
         {
             (ci:Int) in
             
             self.map{ $0[ci] }
-        }.flatMap{ $0 }
+        }
     }
 
-    /** Flattens this array of colorvectors into an unstructured array of their 
-        interleaved components.
-
-        *Inlinable*.
-
-        - Returns: If the original array contains colorvectors 
-            `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
-            the result will be an array of colorvector components 
-            `[a1, b1, c1, ..., a2, b2, c2, ..., a3, b3, c3, ..., an, bn, cn, ...]`.
-
-        - Note: In most cases, it is better to temporarily rebind a structured pixel
-            array to a flattened array type than to convert it to interleaved form.
-    */
+    /// Flattens this array of colorvectors into an unstructured array of their 
+    /// interleaved components.
+    /// 
+    /// *Inlinable*.
+    /// 
+    /// - Returns: If the original array contains colorvectors 
+    ///     `[(a1, b1, c1, ...), (a2, b2, c2, ...), (a3, b3, c3, ...), ..., (an, bn, cn, ...)]`, 
+    ///     the result will be an array of colorvector components 
+    ///     `[a1, b1, c1, ..., a2, b2, c2, ..., a3, b3, c3, ..., an, bn, cn, ...]`.
+    /// 
+    /// - Note: In most cases, it is better to temporarily rebind a structured pixel
+    ///     array to a flattened array type than to convert it to interleaved form.
     @inlinable
     public  
     func interleaved() -> [Element.Element]
@@ -293,13 +286,12 @@ extension Array where Element:FixedLayoutColor
 
 extension ArraySlice where Element == UInt8
 {
-    /** Loads this array slice as a misaligned big-endian integer value,
-        and casts it to a desired format.
-        - Parameters:
-            - bigEndian: The size and type to interpret this array slice as.
-            - type: The type to cast the read integer value to.
-        - Returns: The read integer value, cast to `U`.
-    */
+    /// Loads this array slice as a misaligned big-endian integer value,
+    /// and casts it to a desired format.
+    /// - Parameters:
+    ///     - bigEndian: The size and type to interpret this array slice as.
+    ///     - type: The type to cast the read integer value to.
+    /// - Returns: The read integer value, cast to `U`.
     fileprivate
     func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U
         where T:FixedWidthInteger, U:BinaryInteger
@@ -329,36 +321,34 @@ extension ArraySlice where Element == UInt8
     }
 }
 
-/** An abstract data source. To provide a custom data source to the library, conform
-    your type to this protocol by implementing the `read(count:)` method. */
+/// An abstract data source. To provide a custom data source to the library, conform
+/// your type to this protocol by implementing the `read(count:)` method.
 public
 protocol DataSource
 {
-    /** Read the specified number of bytes from this data source.
-        - Parameters:
-            - count: The number of bytes to read.
-        - Returns: An array of size `count`, if `count` bytes could be read, and
-            `nil` otherwise.
-    */
+    /// Read the specified number of bytes from this data source.
+    /// - Parameters:
+    ///     - count: The number of bytes to read.
+    /// - Returns: An array of size `count`, if `count` bytes could be read, and
+    ///     `nil` otherwise.
     mutating
     func read(count:Int) -> [UInt8]?
 }
-/** An abstract data destination. To specify a custom data destination for the library,
-    conform your type to this protocol by implementing the `write(_:)` method. */
+/// An abstract data destination. To specify a custom data destination for the library,
+/// conform your type to this protocol by implementing the `write(_:)` method.
 public
 protocol DataDestination
 {
-    /** Write the given data buffer to this data destination.
-        - Parameters:
-            - buffer: The data to write.
-        - Returns: `()` on success, and `nil` otherwise.
-    */
+    /// Write the given data buffer to this data destination.
+    /// - Parameters:
+    ///     - buffer: The data to write.
+    /// - Returns: `()` on success, and `nil` otherwise.
     mutating
     func write(_ buffer:[UInt8]) -> Void?
 }
 
-/** A fixed-width integer type which can be packed in groups of four within another
-    integer type. For example, four `UInt8`s may be packed into a single `UInt32`. */
+/// A fixed-width integer type which can be packed in groups of four within another
+/// integer type. For example, four `UInt8`s may be packed into a single `UInt32`.
 public
 protocol FusedVector4Element:FixedWidthInteger & UnsignedInteger
 {
@@ -420,10 +410,10 @@ struct Bitfield<Storage> where Storage:FixedWidthInteger & UnsignedInteger
 
 extension PNG.RGBA where Component:FusedVector4Element
 {
-    /** The components of this pixel value packed into a single unsigned integer in
-        ARGB order, with the alpha component in the high bits.
-
-        *Inlinable*. */
+    /// The components of this pixel value packed into a single unsigned integer in
+    /// ARGB order, with the alpha component in the high bits.
+    /// 
+    /// *Inlinable*.
     @inlinable
     public
     var argb:Component.FusedVector4
@@ -449,10 +439,10 @@ enum PNG
     private static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
 
-    /** A two-component color value, with components stored in the grayscale-alpha
-        color model. This structure has fixed layout, with the value component first,
-        then alpha. Buffers containing instances of this type may be safely reinterpreted
-        as flat buffers containing interleaved components. */
+    /// A two-component color value, with components stored in the grayscale-alpha
+    /// color model. This structure has fixed layout, with the value component first,
+    /// then alpha. Buffers containing instances of this type may be safely reinterpreted
+    /// as flat buffers containing interleaved components.
     @_fixed_layout
     public
     struct VA<Component> where Component:FixedWidthInteger & UnsignedInteger
@@ -464,14 +454,13 @@ enum PNG
         public
         let a:Component
 
-        /** Creates an opaque grayscale color with the value component set to the
-            given value sample, and the alpha component set to `Component.max`.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - value: The value to initialize the value component to.
-        */
+        /// Creates an opaque grayscale color with the value component set to the
+        /// given value sample, and the alpha component set to `Component.max`.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - value: The value to initialize the value component to.
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
         @_specialize(exported: true, where Component == UInt32)
@@ -483,15 +472,14 @@ enum PNG
             self.init(value, Component.max)
         }
 
-        /** Creates a grayscale color with the value component set to the given
-            value sample, and the alpha component set to the given alpha sample.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - value: The value to initialize the value component to.
-                - alpha: The value to initialize the alpha component to.
-        */
+        /// Creates a grayscale color with the value component set to the given
+        /// value sample, and the alpha component set to the given alpha sample.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - value: The value to initialize the value component to.
+        ///     - alpha: The value to initialize the alpha component to.
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
         @_specialize(exported: true, where Component == UInt32)
@@ -504,22 +492,20 @@ enum PNG
             self.a = alpha
         }
 
-        /** Returns a copy of this color with the alpha component set to the given sample.
-            - Parameters:
-                - a: An alpha sample.
-            - Returns: This color with the alpha component set to the given sample.
-        */
+        /// Returns a copy of this color with the alpha component set to the given sample.
+        /// - Parameters:
+        ///     - a: An alpha sample.
+        /// - Returns: This color with the alpha component set to the given sample.
         func withAlpha(_ a:Component) -> VA<Component>
         {
             return .init(self.v, a)
         }
 
-        /** The color obtained by premultiplying the value component of this color
-            with its alpha component. The resulting component values are accurate
-            to within 1 `Component` unit.
-
-            *Inlinable*.
-        */
+        /// The color obtained by premultiplying the value component of this color
+        /// with its alpha component. The resulting component values are accurate
+        /// to within 1 `Component` unit.
+        /// 
+        /// *Inlinable*.
         @inlinable
         public
         var premultiplied:VA<Component>
@@ -528,16 +514,15 @@ enum PNG
         }
 
 
-        /** Returns the given color sample premultiplied with the given alpha sample.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - color: A color sample.
-                - alpha: An alpha sample.
-            - Returns: The product of the given color sample and the given alpha
-                sample. The resulting value is accurate to within 1 `Component` unit.
-        */
+        /// Returns the given color sample premultiplied with the given alpha sample.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - color: A color sample.
+        ///     - alpha: An alpha sample.
+        /// - Returns: The product of the given color sample and the given alpha
+        ///     sample. The resulting value is accurate to within 1 `Component` unit.
         @usableFromInline
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
@@ -559,15 +544,14 @@ enum PNG
         }
 
 
-        /** Returns the size of one unit in a component of the given depth, in units of
-            this color’s `Component` type.
-            - Parameters:
-                - depth: A bit depth less than or equal to `Component.bitWidth`.
-            - Returns: The size of one unit in a component of the given bit depth,
-                in units of `Component`. Multiplying this value with the scalar
-                integer value of a component of bit depth `depth` will renormalize
-                it to the range of `Component`.
-        */
+        /// Returns the size of one unit in a component of the given depth, in units of
+        /// this color’s `Component` type.
+        /// - Parameters:
+        ///     - depth: A bit depth less than or equal to `Component.bitWidth`.
+        /// - Returns: The size of one unit in a component of the given bit depth,
+        ///     in units of `Component`. Multiplying this value with the scalar
+        ///     integer value of a component of bit depth `depth` will renormalize
+        ///     it to the range of `Component`.
         @inline(__always)
         static
         func quantum(depth:Int) -> Component
@@ -576,15 +560,14 @@ enum PNG
         }
 
 
-        /** Returns this color with its components widened to the given type, preserving
-            their normalized values.
-
-            `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
-            - Parameters:
-                - type: The type of the components of the new color.
-            - Returns: A new color, with the values of its components taken from
-                this color, and normalized to the range of `T`.
-        */
+        /// Returns this color with its components widened to the given type, preserving
+        /// their normalized values.
+        /// 
+        /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+        /// - Parameters:
+        ///     - type: The type of the components of the new color.
+        /// - Returns: A new color, with the values of its components taken from
+        ///     this color, and normalized to the range of `T`.
         @inline(__always)
         func upscale<T>(to type:T.Type) -> VA<T> where T:FixedWidthInteger & UnsignedInteger
         {
@@ -595,15 +578,14 @@ enum PNG
             return .init(v, a)
         }
 
-        /** Returns this color with its components narrowed to the given type, preserving
-            their normalized values.
-
-            `T.bitWidth` must be less than or equal to `Component.bitWidth`.
-            - Parameters:
-                - type: The type of the components of the new color.
-            - Returns: A new color, with the values of its components taken from
-                this color, and normalized to the range of `T`.
-        */
+        /// Returns this color with its components narrowed to the given type, preserving
+        /// their normalized values.
+        /// 
+        /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+        /// - Parameters:
+        ///     - type: The type of the components of the new color.
+        /// - Returns: A new color, with the values of its components taken from
+        ///     this color, and normalized to the range of `T`.
         @inline(__always)
         func downscale<T>(to type:T.Type) -> VA<T> where T:FixedWidthInteger & UnsignedInteger
         {
@@ -616,10 +598,10 @@ enum PNG
         }
     }
 
-    /** A four-component color value, with components stored in the RGBA color model.
-        This structure has fixed layout, with the red component first, then green,
-        then blue, then alpha. Buffers containing instances of this type may be
-        safely reinterpreted as flat buffers containing interleaved components. */
+    /// A four-component color value, with components stored in the RGBA color model.
+    /// This structure has fixed layout, with the red component first, then green,
+    /// then blue, then alpha. Buffers containing instances of this type may be
+    /// safely reinterpreted as flat buffers containing interleaved components.
     @_fixed_layout
     public
     struct RGBA<Component> where Component:FixedWidthInteger & UnsignedInteger
@@ -637,14 +619,13 @@ enum PNG
         public
         let a:Component
 
-        /** Creates an opaque grayscale color with all color components set to the given
-            value sample, and the alpha component set to `Component.max`.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - value: The value to initialize all color components to.
-        */
+        /// Creates an opaque grayscale color with all color components set to the given
+        /// value sample, and the alpha component set to `Component.max`.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - value: The value to initialize all color components to.
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
         @_specialize(exported: true, where Component == UInt32)
@@ -656,15 +637,14 @@ enum PNG
             self.init(value, value, value, Component.max)
         }
 
-        /** Creates a grayscale color with all color components set to the given
-            value sample, and the alpha component set to the given alpha sample.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - value: The value to initialize all color components to.
-                - alpha: The value to initialize the alpha component to.
-        */
+        /// Creates a grayscale color with all color components set to the given
+        /// value sample, and the alpha component set to the given alpha sample.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - value: The value to initialize all color components to.
+        ///     - alpha: The value to initialize the alpha component to.
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
         @_specialize(exported: true, where Component == UInt32)
@@ -676,16 +656,15 @@ enum PNG
             self.init(value, value, value, alpha)
         }
 
-        /** Creates an opaque color with the given color samples, and the alpha
-            component set to `Component.max`.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - red: The value to initialize the red component to.
-                - green: The value to initialize the green component to.
-                - blue: The value to initialize the blue component to.
-        */
+        /// Creates an opaque color with the given color samples, and the alpha
+        /// component set to `Component.max`.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - red: The value to initialize the red component to.
+        ///     - green: The value to initialize the green component to.
+        ///     - blue: The value to initialize the blue component to.
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
         @_specialize(exported: true, where Component == UInt32)
@@ -697,16 +676,15 @@ enum PNG
             self.init(red, green, blue, Component.max)
         }
 
-        /** Creates an opaque color with the given color and alpha samples.
-
-            *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-                and `UInt`.
-            - Parameters:
-                - red: The value to initialize the red component to.
-                - green: The value to initialize the green component to.
-                - blue: The value to initialize the blue component to.
-                - alpha: The value to initialize the alpha component to.
-        */
+        /// Creates an opaque color with the given color and alpha samples.
+        /// 
+        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+        ///     and `UInt`.
+        /// - Parameters:
+        ///     - red: The value to initialize the red component to.
+        ///     - green: The value to initialize the green component to.
+        ///     - blue: The value to initialize the blue component to.
+        ///     - alpha: The value to initialize the alpha component to.
         @_specialize(exported: true, where Component == UInt8)
         @_specialize(exported: true, where Component == UInt16)
         @_specialize(exported: true, where Component == UInt32)
@@ -721,12 +699,11 @@ enum PNG
             self.a = alpha
         }
 
-        /** The color obtained by premultiplying the red, green, and blue components
-            of this color with its alpha component. The resulting component values
-            are accurate to within 1 `Component` unit.
-
-            *Inlinable*.
-        */
+        /// The color obtained by premultiplying the red, green, and blue components
+        /// of this color with its alpha component. The resulting component values
+        /// are accurate to within 1 `Component` unit.
+        /// 
+        /// *Inlinable*.
         @inlinable
         public
         var premultiplied:RGBA<Component>
@@ -737,11 +714,10 @@ enum PNG
                          self.a)
         }
 
-        /** The red, and alpha components of this color, stored as a grayscale-alpha
-            color.
-
-            *Inlinable*.
-        */
+        /// The red, and alpha components of this color, stored as a grayscale-alpha
+        /// color.
+        /// 
+        /// *Inlinable*.
         @inlinable
         public
         var va:VA<Component>
@@ -749,38 +725,35 @@ enum PNG
             return .init(self.r, self.a)
         }
 
-        /** Returns a copy of this color with the alpha component set to the given sample.
-            - Parameters:
-                - a: An alpha sample.
-            - Returns: This color with the alpha component set to the given sample.
-        */
+        /// Returns a copy of this color with the alpha component set to the given sample.
+        /// - Parameters:
+        ///     - a: An alpha sample.
+        /// - Returns: This color with the alpha component set to the given sample.
         func withAlpha(_ a:Component) -> RGBA<Component>
         {
             return .init(self.r, self.g, self.b, a)
         }
 
-        /** Returns a boolean value indicating whether the color components of this
-            color are equal to the color components of the given color, ignoring
-            the alpha components.
-            - Parameters:
-                - other: Another color.
-            - Returns: `true` if the red, green, and blue components of this color
-                and `other` are equal, `false` otherwise.
-        */
+        /// Returns a boolean value indicating whether the color components of this
+        /// color are equal to the color components of the given color, ignoring
+        /// the alpha components.
+        /// - Parameters:
+        ///     - other: Another color.
+        /// - Returns: `true` if the red, green, and blue components of this color
+        ///     and `other` are equal, `false` otherwise.
         func equals(opaque other:RGBA<Component>) -> Bool
         {
             return self.r == other.r && self.g == other.g && self.b == other.b
         }
 
-        /** Returns this color with its components widened to the given type, preserving
-            their normalized values.
-
-            `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
-            - Parameters:
-                - type: The type of the components of the new color.
-            - Returns: A new color, with the values of its components taken from
-                this color, and normalized to the range of `T`.
-        */
+        /// Returns this color with its components widened to the given type, preserving
+        /// their normalized values.
+        /// 
+        /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+        /// - Parameters:
+        ///     - type: The type of the components of the new color.
+        /// - Returns: A new color, with the values of its components taken from
+        ///     this color, and normalized to the range of `T`.
         @inline(__always)
         func upscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
@@ -793,15 +766,14 @@ enum PNG
             return .init(r, g, b, a)
         }
 
-        /** Returns this color with its components narrowed to the given type, preserving
-            their normalized values.
-
-            `T.bitWidth` must be less than or equal to `Component.bitWidth`.
-            - Parameters:
-                - type: The type of the components of the new color.
-            - Returns: A new color, with the values of its components taken from
-                this color, and normalized to the range of `T`.
-        */
+        /// Returns this color with its components narrowed to the given type, preserving
+        /// their normalized values.
+        /// 
+        /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+        /// - Parameters:
+        ///     - type: The type of the components of the new color.
+        /// - Returns: A new color, with the values of its components taken from
+        ///     this color, and normalized to the range of `T`.
         @inline(__always)
         func downscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
         {
@@ -840,22 +812,21 @@ enum PNG
             private
             let descriptor:Descriptor
 
-            /** Calls a closure with an interface for reading from the specified file.
-
-                This method automatically closes the file when its function argument returns.
-                - Parameters:
-                    - path: A path to the file to open.
-                    - body: A closure with a `Source` parameter from which data in
-                        the specified file can be read. This interface is only valid
-                        for the duration of the method’s execution. The closure is
-                        only executed if the specified file could be successfully
-                        opened, otherwise `nil` is returned. If `body` has a return
-                        value and the specified file could be opened, its return
-                        value is returned as the return value of the `open(path:body:)`
-                        method.
-                - Returns: `nil` if the specified file could not be opened, or the
-                    return value of the function argument otherwise.
-            */
+            /// Calls a closure with an interface for reading from the specified file.
+            /// 
+            /// This method automatically closes the file when its function argument returns.
+            /// - Parameters:
+            ///     - path: A path to the file to open.
+            ///     - body: A closure with a `Source` parameter from which data in
+            ///         the specified file can be read. This interface is only valid
+            ///         for the duration of the method’s execution. The closure is
+            ///         only executed if the specified file could be successfully
+            ///         opened, otherwise `nil` is returned. If `body` has a return
+            ///         value and the specified file could be opened, its return
+            ///         value is returned as the return value of the `open(path:body:)`
+            ///         method.
+            /// - Returns: `nil` if the specified file could not be opened, or the
+            ///     return value of the function argument otherwise.
             public static
             func open<Result>(path:String, _ body:(inout Source) throws -> Result)
                 rethrows -> Result?
@@ -875,16 +846,15 @@ enum PNG
                 return try body(&file)
             }
 
-            /** Read the specified number of bytes from this file interface.
-
-                This method only returns an array if the exact number of bytes
-                specified could be read. This method advances the file pointer.
-
-                - Parameters:
-                    - capacity: The number of bytes to read.
-                - Returns: An array containing the read data, or `nil` if the specified
-                    number of bytes could not be read.
-            */
+            /// Read the specified number of bytes from this file interface.
+            /// 
+            /// This method only returns an array if the exact number of bytes
+            /// specified could be read. This method advances the file pointer.
+            /// 
+            /// - Parameters:
+            ///     - capacity: The number of bytes to read.
+            /// - Returns: An array containing the read data, or `nil` if the specified
+            ///     number of bytes could not be read.
             public
             func read(count capacity:Int) -> [UInt8]?
             {
@@ -913,22 +883,21 @@ enum PNG
             private
             let descriptor:Descriptor
 
-            /** Calls a closure with an interface for writing to the specified file.
-
-                This method automatically closes the file when its function argument returns.
-                - Parameters:
-                    - path: A path to the file to open.
-                    - body: A closure with a `Destination` parameter representing
-                        the specified file to which data can be written to. This
-                        interface is only valid for the duration of the method’s
-                        execution. The closure is only executed if the specified
-                        file could be successfully opened, otherwise `nil` is returned.
-                        If `body` has a return value and the specified file could
-                        be opened, its return value is returned as the return value
-                        of the `open(path:body:)` method.
-                - Returns: `nil` if the specified file could not be opened, or the
-                    return value of the function argument otherwise.
-            */
+            /// Calls a closure with an interface for writing to the specified file.
+            /// 
+            /// This method automatically closes the file when its function argument returns.
+            /// - Parameters:
+            ///     - path: A path to the file to open.
+            ///     - body: A closure with a `Destination` parameter representing
+            ///         the specified file to which data can be written to. This
+            ///         interface is only valid for the duration of the method’s
+            ///         execution. The closure is only executed if the specified
+            ///         file could be successfully opened, otherwise `nil` is returned.
+            ///         If `body` has a return value and the specified file could
+            ///         be opened, its return value is returned as the return value
+            ///         of the `open(path:body:)` method.
+            /// - Returns: `nil` if the specified file could not be opened, or the
+            ///     return value of the function argument otherwise.
             public static
             func open<Result>(path:String, body:(inout Destination) throws -> Result)
                 rethrows -> Result?
@@ -948,16 +917,15 @@ enum PNG
                 return try body(&file)
             }
 
-            /** Write the bytes in the given array to this file interface.
-
-                This method only returns `()` if the entire array argument could
-                be written. This method advances the file pointer.
-
-                - Parameters:
-                    - buffer: The data to write.
-                - Returns: `()` if the entire array argument could be written, or
-                    `nil` otherwise.
-            */
+            /// Write the bytes in the given array to this file interface.
+            /// 
+            /// This method only returns `()` if the entire array argument could
+            /// be written. This method advances the file pointer.
+            /// 
+            /// - Parameters:
+            ///     - buffer: The data to write.
+            /// - Returns: `()` if the entire array argument could be written, or
+            ///     `nil` otherwise.
             public
             func write(_ buffer:[UInt8]) -> Void?
             {
@@ -1004,36 +972,33 @@ enum PNG
     public
     struct Properties
     {
-        /** A pixel format used to encode the color values of a PNG.
-
-            Pixel formats consist of a color format, and a color depth.
-
-            Color formats can have multiple components, one for each independent
-            dimension pixel values encoded in this format have. A grayscale format,
-            for example, has one component (value), while an RGBA format has four
-            (red, green, blue, alpha).
-
-            Components are separate from channels, which are the independent values
-            needed to *encode*a pixel value in a PNG image. An indexed pixel format,
-            for example, has only one channel — a scalar index into a palette table —
-            but has three components, as the entries in the palette table encode
-            red, green, and blue components.
-
-            Color depth refers to the number of bits of precision used to encode
-            each channel.
-
-            Not all combinations of color formats and color depths are allowed.
-
-            | *depth* |  indexed   |   grayscale   | grayscale-alpha |   RGB   |   RGBA   |
-            | ------- | ---------- | ------------- | --------------- | ------- | -------- |
-            |    1    | `indexed1` | `v1`          |
-            |    2    | `indexed2` | `v2`          |
-            |    4    | `indexed4` | `v4`          |
-            |    8    | `indexed8` | `v8`          | `va8`           | `rgb8`  | `rgba8`  |
-            |    16   |            | `v16`         | `va16`          | `rgb16` | `rgba16` |
-
-        */
-
+        /// A pixel format used to encode the color values of a PNG.
+        /// 
+        /// Pixel formats consist of a color format, and a color depth.
+        /// 
+        /// Color formats can have multiple components, one for each independent
+        /// dimension pixel values encoded in this format have. A grayscale format,
+        /// for example, has one component (value), while an RGBA format has four
+        /// (red, green, blue, alpha).
+        /// 
+        /// Components are separate from channels, which are the independent values
+        /// needed to *encode*a pixel value in a PNG image. An indexed pixel format,
+        /// for example, has only one channel — a scalar index into a palette table —
+        /// but has three components, as the entries in the palette table encode
+        /// red, green, and blue components.
+        /// 
+        /// Color depth refers to the number of bits of precision used to encode
+        /// each channel.
+        /// 
+        /// Not all combinations of color formats and color depths are allowed.
+        /// 
+        /// | *depth* |  indexed   |   grayscale   | grayscale-alpha |   RGB   |   RGBA   |
+        /// | ------- | ---------- | ------------- | --------------- | ------- | -------- |
+        /// |    1    | `indexed1` | `v1`          |
+        /// |    2    | `indexed2` | `v2`          |
+        /// |    4    | `indexed4` | `v4`          |
+        /// |    8    | `indexed8` | `v8`          | `va8`           | `rgb8`  | `rgba8`  |
+        /// |    16   |            | `v16`         | `va16`          | `rgb16` | `rgba16` |
         public
         enum Format
         {
@@ -1072,7 +1037,6 @@ enum PNG
                         rgba8       = 0x08_06,
                         rgba16      = 0x10_06
 
-                // upper byte
                 /// The bit depth of each channel of this pixel format.
                 @inlinable
                 public
@@ -1081,11 +1045,10 @@ enum PNG
                     return .init(self.rawValue >> 8)
                 }
 
-                /** A boolean value indicating if this pixel format has indexed color.
-
-                    `true` if `self` is `indexed1`, `indexed2`, `indexed4`, or `indexed8`.
-                    `false` otherwise.
-                */
+                /// A boolean value indicating if this pixel format has indexed color.
+                /// 
+                /// `true` if `self` is `indexed1`, `indexed2`, `indexed4`, or `indexed8`.
+                /// `false` otherwise.
                 @inlinable
                 public
                 var isIndexed:Bool
@@ -1093,12 +1056,11 @@ enum PNG
                     return self.rawValue & 1 != 0
                 }
 
-                /** A boolean value indicating if this pixel format has at least three
-                    color components.
-
-                    `true` if `self` is `indexed1`, `indexed2`, `indexed4`, `indexed8`,
-                    `rgb8`, `rgb16`, `rgba8`, or `rgba16`. `false` otherwise.
-                */
+                /// A boolean value indicating if this pixel format has at least three
+                /// color components.
+                /// 
+                /// `true` if `self` is `indexed1`, `indexed2`, `indexed4`, `indexed8`,
+                /// `rgb8`, `rgb16`, `rgba8`, or `rgba16`. `false` otherwise.
                 @inlinable
                 public
                 var hasColor:Bool
@@ -1106,11 +1068,10 @@ enum PNG
                     return self.rawValue & 2 != 0
                 }
 
-                /** A boolean value indicating if this pixel format has an alpha channel.
-
-                    `true` if `self` is `va8`, `va16`, `rgba8`, or
-                    `rgba16`. `false` otherwise.
-                */
+                /// A boolean value indicating if this pixel format has an alpha channel.
+                /// 
+                /// `true` if `self` is `va8`, `va16`, `rgba8`, or
+                /// `rgba16`. `false` otherwise.
                 @inlinable
                 public
                 var hasAlpha:Bool
@@ -1137,8 +1098,8 @@ enum PNG
                     }
                 }
 
-                /** The total number of bits needed to encode all channels of this pixel
-                    format. */
+                /// The total number of bits needed to encode all channels of this pixel
+                /// format.
                 @inlinable
                 var volume:Int
                 {
@@ -1154,8 +1115,8 @@ enum PNG
                     return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
                 }
 
-                /** Returns the shape of a buffer just large enough to contain an image
-                    of the given size, stored in this color format. */
+                /// Returns the shape of a buffer just large enough to contain an image
+                /// of the given size, stored in this color format.
                 func shape(from size:Math<Int>.V2) -> Data.Shape
                 {
                     let scanlineBitCount:Int = size.x * self.channels * self.depth
@@ -1163,7 +1124,6 @@ enum PNG
                     let pitch:Int = scanlineBitCount >> 3 + (scanlineBitCount & 7 == 0 ? 0 : 1)
                     return .init(pitch: pitch, size: size)
                 }
-
             }
 
             @inlinable
@@ -1236,9 +1196,9 @@ enum PNG
             {
                 /// The shape of a two-dimensional array containing this sub-image.
                 let shape:Data.Shape
-                /** Two sequences of two-dimensional coordinates representing the
-                    logical positions of each pixel in this sub-image, when deinterlaced
-                    with its other sub-images. */
+                /// Two sequences of two-dimensional coordinates representing the
+                /// logical positions of each pixel in this sub-image, when deinterlaced
+                /// with its other sub-images.
                 let strider:Math<StrideTo<Int>>.V2
             }
 
@@ -1247,9 +1207,9 @@ enum PNG
             /// [Adam7](https://en.wikipedia.org/wiki/Adam7_algorithm) interlacing.
             case adam7([SubImage])
 
-            /** Returns the index ranges containing each Adam7 sub-image when all
-                sub-images are packed back-to-back in a single buffer, starting
-                with the smallest sub-image. */
+            /// Returns the index ranges containing each Adam7 sub-image when all
+            /// sub-images are packed back-to-back in a single buffer, starting
+            /// with the smallest sub-image.
             static
             func computeAdam7Ranges(_ subImages:[SubImage]) -> [Range<Int>]
             {
@@ -1277,12 +1237,11 @@ enum PNG
             var f:Int         = 0,
                 scanlines:Int = 0
 
-            /** Creates the pitch sequence for an Adam7 interlaced PNG with the
-                given sub-images.
-
-                - Parameters:
-                    - subImages: The sub-images of an interlaced image.
-            */
+            /// Creates the pitch sequence for an Adam7 interlaced PNG with the
+            /// given sub-images.
+            /// 
+            /// - Parameters:
+            ///     - subImages: The sub-images of an interlaced image.
             init(subImages:[Interlacing.SubImage])
             {
                 self.footprints = subImages.map
@@ -1291,26 +1250,24 @@ enum PNG
                 }
             }
 
-            /** Creates the pitch sequence for a non-interlaced PNG with the given
-                shape.
-
-                - Parameters:
-                    - shape: The shape of a non-interlaced image.
-            */
+            /// Creates the pitch sequence for a non-interlaced PNG with the given
+            /// shape.
+            /// 
+            /// - Parameters:
+            ///     - shape: The shape of a non-interlaced image.
             init(shape:Data.Shape)
             {
                 self.footprints = [(shape.pitch, shape.size.y)]
             }
 
-            /** Returns the pitch of the next scanline, if it is different from
-                the pitch of the previous scanline.
-
-                - Returns: The pitch of the next scanline, if it is different from
-                    that of the previous scanline, `nil` in the inner optional if
-                    it is the same as that of the previous scanline, and `nil` in
-                    the outer optional if there should be no more scanlines left
-                    in the image.
-            */
+            /// Returns the pitch of the next scanline, if it is different from
+            /// the pitch of the previous scanline.
+            /// 
+            /// - Returns: The pitch of the next scanline, if it is different from
+            ///     that of the previous scanline, `nil` in the inner optional if
+            ///     it is the same as that of the previous scanline, and `nil` in
+            ///     the outer optional if there should be no more scanlines left
+            ///     in the image.
             mutating
             func next() -> Int??
             {
@@ -1350,16 +1307,15 @@ enum PNG
             public
             let interlaced:Bool
 
-            /** Decodes the data of an IHDR chunk as a `Properties` record.
-
-                - Parameters:
-                    - data: IHDR chunk data.
-                - Returns: A `Properties` object containing the information encoded by
-                    the given IHDR chunk.
-                - Throws:
-                    - DecodingError.invalidChunk: If any of the IHDR chunk fields contain
-                        an invalid value.
-            */
+            /// Decodes the data of an IHDR chunk as a `Properties` record.
+            /// 
+            /// - Parameters:
+            ///     - data: IHDR chunk data.
+            /// - Returns: A `Properties` object containing the information encoded by
+            ///     the given IHDR chunk.
+            /// - Throws:
+            ///     - DecodingError.invalidChunk: If any of the IHDR chunk fields contain
+            ///         an invalid value.
             public static
             func decodeIHDR(_ data:[UInt8]) throws -> Header
             {
@@ -1405,19 +1361,18 @@ enum PNG
                 return .init(size: (width, height), code: code, interlaced: interlaced)
             }
 
-            /** Decodes the data of a PLTE chunk, validates, and returns it as an
-                array of `PNG.RGBA<UInt8>` entries.
-
-                - Parameters:
-                    - data: PLTE chunk data. Must not contain more entries than this
-                        PNG’s color depth can uniquely encode.
-                - Throws:
-                    - DecodingError.invalidChunk: If the given palette data does not contain
-                        a whole number of palette entries, or if it contains more than
-                        `1 << format.depth` entries
-                    - DecodingError.unexpectedChunk: If this PNG does not have
-                        a three-color format.
-            */
+            /// Decodes the data of a PLTE chunk, validates, and returns it as an
+            /// array of `PNG.RGBA<UInt8>` entries.
+            /// 
+            /// - Parameters:
+            ///     - data: PLTE chunk data. Must not contain more entries than this
+            ///         PNG’s color depth can uniquely encode.
+            /// - Throws:
+            ///     - DecodingError.invalidChunk: If the given palette data does not contain
+            ///         a whole number of palette entries, or if it contains more than
+            ///         `1 << format.depth` entries
+            ///     - DecodingError.unexpectedChunk: If this PNG does not have
+            ///         a three-color format.
             public
             func decodePLTE(_ data:[UInt8]) throws -> [RGBA<UInt8>]
             {
@@ -1450,20 +1405,19 @@ enum PNG
                 }
             }
 
-            /** Decodes the data of a tRNS chunk, validates, and modifies the given
-                palette table.
-
-                This method should only be called if the PNG has an indexed pixel format.
-
-                - Parameters:
-                    - data: tRNS chunk data. It must not contain more transparency
-                        values than the PNG’s color depth can uniquely encode.
-                - Throws:
-                    - DecodingError.invalidChunk: If the given transparency data
-                        contains more than `palette.count` trasparency values.
-                    - DecodingError.unexpectedChunk: If the PNG does not have an
-                        indexed color format.
-            */
+            /// Decodes the data of a tRNS chunk, validates, and modifies the given
+            /// palette table.
+            /// 
+            /// This method should only be called if the PNG has an indexed pixel format.
+            /// 
+            /// - Parameters:
+            ///     - data: tRNS chunk data. It must not contain more transparency
+            ///         values than the PNG’s color depth can uniquely encode.
+            /// - Throws:
+            ///     - DecodingError.invalidChunk: If the given transparency data
+            ///         contains more than `palette.count` trasparency values.
+            ///     - DecodingError.unexpectedChunk: If the PNG does not have an
+            ///         indexed color format.
             public
             func decodetRNS(_ data:[UInt8], palette:inout [RGBA<UInt8>]) throws
             {
@@ -1487,21 +1441,20 @@ enum PNG
                 palette.dropFirst(data.count)
             }
 
-            /** Decodes the data of a tRNS chunk, validates, and returns a chroma key.
-
-                This method should only be called if the PNG has an RGB or grayscale
-                pixel format.
-
-                - Parameters:
-                    - data: tRNS chunk data. If this PNG has a grayscale pixel format,
-                        it must contain one value sample. If this PNG has an RGB pixel
-                        format, it must contain three samples, red, green, and blue.
-                - Throws:
-                    - DecodingError.invalidChunk: If the given transparency data does not
-                        contain the correct number of samples.
-                    - DecodingError.unexpectedChunk: If the PNG does not have an
-                        opaque color format.
-            */
+            /// Decodes the data of a tRNS chunk, validates, and returns a chroma key.
+            /// 
+            /// This method should only be called if the PNG has an RGB or grayscale
+            /// pixel format.
+            /// 
+            /// - Parameters:
+            ///     - data: tRNS chunk data. If this PNG has a grayscale pixel format,
+            ///         it must contain one value sample. If this PNG has an RGB pixel
+            ///         format, it must contain three samples, red, green, and blue.
+            /// - Throws:
+            ///     - DecodingError.invalidChunk: If the given transparency data does not
+            ///         contain the correct number of samples.
+            ///     - DecodingError.unexpectedChunk: If the PNG does not have an
+            ///         opaque color format.
             public
             func decodetRNS(_ data:[UInt8]) throws -> RGBA<UInt16>
             {
@@ -1542,10 +1495,9 @@ enum PNG
         public
         let format:Format
 
-        /** The chroma key of this PNG image, if it has one.
-
-            The alpha component of this property is ignored by the library.
-        */
+        /// The chroma key of this PNG image, if it has one.
+        /// 
+        /// The alpha component of this property is ignored by the library.
         public
         var chromaKey:RGBA<UInt16>?
 
@@ -3039,32 +2991,32 @@ enum PNG
             }
         }
 
-        /** A PNG image that has been deinterlaced, but may still have multiple
-            pixels packed per byte, or indirect (indexed) pixels. */
+        /// A PNG image that has been deinterlaced, but may still have multiple
+        /// pixels packed per byte, or indirect (indexed) pixels.
         public
         struct Rectangular
         {
             /// The global image `Properties` of this PNG image.
             public
             let properties:Properties
-            /** A rectangular row-major matrix containing this PNG’s pixel data.
-                This buffer is untyped, and each byte may contain multiple, or
-                fractional, pixels. Logical image scanlines are padded to a whole
-                number of bytes. */
+            
+            /// A rectangular row-major matrix containing this PNG’s pixel data.
+            /// This buffer is untyped, and each byte may contain multiple, or
+            /// fractional, pixels. Logical image scanlines are padded to a whole
+            /// number of bytes.
             public
             let data:[UInt8]
 
-            /** Creates a fully decoded PNG image with the given pixel matrix and
-                `Properties` record.
-
-                - Parameters:
-                    - data: An untyped, padded data buffer containing a row-major
-                        pixel matrix.
-                    - properties: A `Properties` record.
-                - Returns: A fully decoded PNG image. The size of the given pixel
-                    matrix must be consistent with the size and format information
-                    in the given image `properties`.
-            */
+            /// Creates a fully decoded PNG image with the given pixel matrix and
+            /// `Properties` record.
+            /// 
+            /// - Parameters:
+            ///     - data: An untyped, padded data buffer containing a row-major
+            ///         pixel matrix.
+            ///     - properties: A `Properties` record.
+            /// - Returns: A fully decoded PNG image. The size of the given pixel
+            ///     matrix must be consistent with the size and format information
+            ///     in the given image `properties`.
             init(_ data:[UInt8], properties:Properties)
             {
                 assert(!properties.interlaced)
@@ -3074,30 +3026,28 @@ enum PNG
                 self.data       = data
             }
 
-            /** Decompresses and deinterlaces a PNG file at the given file path,
-                and returns it as a `Rectangular` row-major pixel matrix.
-
-                If the PNG file is not interlaced, no deinterlacing is performed.
-
-                - Parameters:
-                    - inputPath: A path to a PNG file.
-                - Returns: A rectangular row-major pixel matrix, or `nil` if the
-                    given file could not be opened.
-            */
+            /// Decompresses and deinterlaces a PNG file at the given file path,
+            /// and returns it as a `Rectangular` row-major pixel matrix.
+            /// 
+            /// If the PNG file is not interlaced, no deinterlacing is performed.
+            /// 
+            /// - Parameters:
+            ///     - inputPath: A path to a PNG file.
+            /// - Returns: A rectangular row-major pixel matrix, or `nil` if the
+            ///     given file could not be opened.
             public static
             func decompress(path inputPath:String) throws -> Rectangular
             {
                 return try Uncompressed.decompress(path: inputPath).deinterlaced()
             }
 
-            /** Checks if the given integer type has enough bits to represent the
-                channels of this image.
-
-                - Parameters:
-                    - type: An integer type.
-                - Returns: `true` if `Sample` has enough bits to represent the channels
-                    of this image, `false` otherwise.
-            */
+            /// Checks if the given integer type has enough bits to represent the
+            /// channels of this image.
+            /// 
+            /// - Parameters:
+            ///     - type: An integer type.
+            /// - Returns: `true` if `Sample` has enough bits to represent the channels
+            ///     of this image, `false` otherwise.
             @inline(__always)
             private
             func checkWidth<Sample>(of type:Sample.Type) -> Bool
@@ -3106,23 +3056,22 @@ enum PNG
                 return Sample.bitWidth >= self.properties.format.code.depth
             }
 
-            /** Calls the given closure on each single-channel pixel in this
-                PNG image.
-
-                The given closure is not called if this image does not have
-                exactly one channel, or `Sample` does not have enough bits to represent
-                its channel. The samples passed to the closure are raw, unnormalized
-                scalars, cast to the inferred integer type.
-
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - body: A closure that takes one channel of one pixel.
-
-                - Returns: An array of the return values of the given closure, or
-                    `nil`, if this PNG image has more than one channel, or `Sample`
-                    does not have enough bits to represent its channel.
-            */
+            /// Calls the given closure on each single-channel pixel in this PNG 
+            /// image.
+            /// 
+            /// The given closure is not called if this image does not have
+            /// exactly one channel, or `Sample` does not have enough bits to represent
+            /// its channel. The samples passed to the closure are raw, unnormalized
+            /// scalars, cast to the inferred integer type.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - body: A closure that takes one channel of one pixel.
+            /// 
+            /// - Returns: An array of the return values of the given closure, or
+            ///     `nil`, if this PNG image has more than one channel, or `Sample`
+            ///     does not have enough bits to represent its channel.
             @_specialize(exported: true, kind: partial, where Sample == UInt8)
             @_specialize(exported: true, kind: partial, where Sample == UInt16)
             @_specialize(exported: true, kind: partial, where Sample == UInt32)
@@ -3155,26 +3104,25 @@ enum PNG
                 }
             }
 
-            /** Calls the given closure on the normalized intensity of each
-                single-channel pixel in this PNG image.
-
-                The given closure is not called if this image does not have
-                exactly one channel. The samples passed to the closure are normalized
-                values in the range `0 ... Sample.max`.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - body: A closure that takes one normalized channel of one pixel.
-
-                - Returns: An array of the return values of the given closure, or
-                    `nil`, if this PNG image has more than one channel.
-            */
+            /// Calls the given closure on the normalized intensity of each
+            /// single-channel pixel in this PNG image.
+            /// 
+            /// The given closure is not called if this image does not have
+            /// exactly one channel. The samples passed to the closure are normalized
+            /// values in the range `0 ... Sample.max`.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - body: A closure that takes one normalized channel of one pixel.
+            /// 
+            /// - Returns: An array of the return values of the given closure, or
+            ///     `nil`, if this PNG image has more than one channel.
             @_specialize(exported: true, kind: partial, where Sample == UInt8)
             @_specialize(exported: true, kind: partial, where Sample == UInt16)
             @_specialize(exported: true, kind: partial, where Sample == UInt32)
@@ -3201,26 +3149,25 @@ enum PNG
                 }
             }
 
-            /** Calls the given closure on the normalized intensity of each
-                two-channel pixel in this PNG image.
-
-                The given closure is not called if this image does not have
-                exactly two channels. The samples passed to the closure are normalized
-                values in the range `0 ... Sample.max`.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - body: A closure that takes two normalized channels of one pixel.
-
-                - Returns: An array of the return values of the given closure, or
-                    `nil`, if this PNG image does not have exactly two channels.
-            */
+            /// Calls the given closure on the normalized intensity of each
+            /// two-channel pixel in this PNG image.
+            /// 
+            /// The given closure is not called if this image does not have
+            /// exactly two channels. The samples passed to the closure are normalized
+            /// values in the range `0 ... Sample.max`.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - body: A closure that takes two normalized channels of one pixel.
+            /// 
+            /// - Returns: An array of the return values of the given closure, or
+            ///     `nil`, if this PNG image does not have exactly two channels.
             @_specialize(exported: true, kind: partial, where Sample == UInt8)
             @_specialize(exported: true, kind: partial, where Sample == UInt16)
             @_specialize(exported: true, kind: partial, where Sample == UInt32)
@@ -3243,27 +3190,26 @@ enum PNG
                 }
             }
 
-            /** Calls the given closure on the normalized intensity of each
-                three-channel pixel in this PNG image.
-
-                The given closure is not called if this PNG image does not have
-                exactly three channels. The samples passed to the closure are normalized
-                values in the range `0 ... Sample.max`.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - body: A closure that takes three normalized channels of one
-                        pixel.
-
-                - Returns: An array of the return values of the given closure, or
-                    `nil`, if this PNG image does not have exactly three channels.
-            */
+            /// Calls the given closure on the normalized intensity of each
+            /// three-channel pixel in this PNG image.
+            /// 
+            /// The given closure is not called if this PNG image does not have
+            /// exactly three channels. The samples passed to the closure are normalized
+            /// values in the range `0 ... Sample.max`.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - body: A closure that takes three normalized channels of one
+            ///         pixel.
+            /// 
+            /// - Returns: An array of the return values of the given closure, or
+            ///     `nil`, if this PNG image does not have exactly three channels.
             @_specialize(exported: true, kind: partial, where Sample == UInt8)
             @_specialize(exported: true, kind: partial, where Sample == UInt16)
             @_specialize(exported: true, kind: partial, where Sample == UInt32)
@@ -3286,27 +3232,26 @@ enum PNG
                 }
             }
 
-            /** Calls the given closure on the normalized intensity of each
-                four-channel pixel in this PNG image.
-
-                The given closure is not called if this image does not have
-                exactly four channels. The samples passed to the closure are normalized
-                values in the range `0 ... Sample.max`.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - body: A closure that takes four normalized channels of one
-                        pixel.
-
-                - Returns: An array of the return values of the given closure, or
-                    `nil`, if this PNG image does not have exactly four channels.
-            */
+            /// Calls the given closure on the normalized intensity of each
+            /// four-channel pixel in this PNG image.
+            /// 
+            /// The given closure is not called if this image does not have
+            /// exactly four channels. The samples passed to the closure are normalized
+            /// values in the range `0 ... Sample.max`.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - body: A closure that takes four normalized channels of one
+            ///         pixel.
+            /// 
+            /// - Returns: An array of the return values of the given closure, or
+            ///     `nil`, if this PNG image does not have exactly four channels.
             @_specialize(exported: true, kind: partial, where Sample == UInt8)
             @_specialize(exported: true, kind: partial, where Sample == UInt16)
             @_specialize(exported: true, kind: partial, where Sample == UInt32)
@@ -3329,29 +3274,28 @@ enum PNG
                 }
             }
 
-            /** Returns a row-major matrix of the first components of all the pixels
-                in this PNG image, normalized to the range of the given component type.
-
-                If this image has more than one component per pixel, the first
-                component of each pixel is returned. If this image has indexed color,
-                the components returned are the first components of the RGB palette
-                colors of those pixels. This method ignores the transparency and
-                chroma keys of this image.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
-                `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - type: An integer type.
-                - Returns: A row-major matrix of pixel values, normalized to its
-                    `Component` type, or `nil` if this image requires a palette, and
-                    it does not have one.
-            */
+            /// Returns a row-major matrix of the first components of all the pixels
+            /// in this PNG image, normalized to the range of the given component type.
+            /// 
+            /// If this image has more than one component per pixel, the first
+            /// component of each pixel is returned. If this image has indexed color,
+            /// the components returned are the first components of the RGB palette
+            /// colors of those pixels. This method ignores the transparency and
+            /// chroma keys of this image.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
+            /// `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - type: An integer type.
+            /// - Returns: A row-major matrix of pixel values, normalized to its
+            ///     `Component` type, or `nil` if this image requires a palette, and
+            ///     it does not have one.
             @_specialize(exported: true, where Component == UInt8)
             @_specialize(exported: true, where Component == UInt16)
             @_specialize(exported: true, where Component == UInt32)
@@ -3433,15 +3377,14 @@ enum PNG
                 }
             }
 
-            /** Returns the given color with its alpha component set to 0 if its
-                color value matches this PNG image’s chroma key, and the given color
-                unchanged otherwise.
-
-                - Parameters:
-                    - color: An RGBA color to test.
-                - Returns: The given color, with its alpha component set to 0 if its
-                        color value matches this PNG image’s chroma key.
-            */
+            /// Returns the given color with its alpha component set to 0 if its
+            /// color value matches this PNG image’s chroma key, and the given color
+            /// unchanged otherwise.
+            /// 
+            /// - Parameters:
+            ///     - color: An RGBA color to test.
+            /// - Returns: The given color, with its alpha component set to 0 if its
+            ///         color value matches this PNG image’s chroma key.
             @inline(__always)
             private
             func greenscreen<Component>(_ color:RGBA<Component>) -> RGBA<Component>
@@ -3473,15 +3416,14 @@ enum PNG
                 return self.greenscreen(.init(r, g, b))
             }
 
-            /** Returns the given color as a grayscale-alpha color with its alpha
-                component set to 0 if its RGB color value matches this PNG image’s
-                chroma key, and `Component.max` otherwise.
-
-                - Parameters:
-                    - color: A grayscale-alpha color to test.
-                - Returns: The given color, with its alpha component set to 0 if its
-                        color value matches this PNG image’s chroma key.
-            */
+            /// Returns the given color as a grayscale-alpha color with its alpha
+            /// component set to 0 if its RGB color value matches this PNG image’s
+            /// chroma key, and `Component.max` otherwise.
+            /// 
+            /// - Parameters:
+            ///     - color: A grayscale-alpha color to test.
+            /// - Returns: The given color, with its alpha component set to 0 if its
+            ///         color value matches this PNG image’s chroma key.
             @inline(__always)
             private
             func greenscreen<Component>(_ color:RGBA<Component>) -> VA<Component>
@@ -3513,31 +3455,30 @@ enum PNG
                 return self.greenscreen(.init(r, g, b))
             }
 
-            /** Returns a row-major matrix of the grayscale-alpha color values represented
-                by all the pixels in this PNG image, normalized to the range of
-                the given component type.
-
-                If this image has grayscale color, the grayscale-alpha colors returned
-                share the value component, and have `Component.max` in the alpha
-                component. If this image has RGB color, the grayscale-alpha colors
-                have the red component in the value component, and have `Component.max`
-                in the alpha component. If this image has RGBA color, the grayscale-alpha
-                colors share the alpha component in addition.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
-                `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - type: An integer type.
-                - Returns: A row-major matrix of grayscale-alpha pixel colors, normalized
-                    to the given `Component` type, or `nil` if this image requires
-                    a palette, and it does not have one.
-            */
+            /// Returns a row-major matrix of the grayscale-alpha color values represented
+            /// by all the pixels in this PNG image, normalized to the range of
+            /// the given component type.
+            /// 
+            /// If this image has grayscale color, the grayscale-alpha colors returned
+            /// share the value component, and have `Component.max` in the alpha
+            /// component. If this image has RGB color, the grayscale-alpha colors
+            /// have the red component in the value component, and have `Component.max`
+            /// in the alpha component. If this image has RGBA color, the grayscale-alpha
+            /// colors share the alpha component in addition.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
+            /// `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - type: An integer type.
+            /// - Returns: A row-major matrix of grayscale-alpha pixel colors, normalized
+            ///     to the given `Component` type, or `nil` if this image requires
+            ///     a palette, and it does not have one.
             @_specialize(exported: true, where Component == UInt8)
             @_specialize(exported: true, where Component == UInt16)
             @_specialize(exported: true, where Component == UInt32)
@@ -3603,31 +3544,30 @@ enum PNG
                 }
             }
 
-            /** Returns a row-major matrix of the RGBA color values represented
-                by all the pixels in this PNG image, normalized to the range of
-                the given component type.
-
-                If this image has grayscale color, the RGBA colors returned have
-                the value component in the red, green, and blue components, and
-                `Component.max` in the alpha component. If this image has grayscale-alpha
-                color, the RGBA colors returned share the alpha component in addition.
-                If this image has RGB color, the RGBA colors share the red, green,
-                and blue components, and have `Component.max` in the alpha component.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
-                `UInt64`, and `UInt`.
-
-                - Parameters:
-                    - type: An integer type.
-                - Returns: A row-major matrix of RGBA pixel colors, normalized to
-                    the given `Component` type, or `nil` if this image requires
-                    a palette, and it does not have one.
-            */
+            /// Returns a row-major matrix of the RGBA color values represented
+            /// by all the pixels in this PNG image, normalized to the range of
+            /// the given component type.
+            /// 
+            /// If this image has grayscale color, the RGBA colors returned have
+            /// the value component in the red, green, and blue components, and
+            /// `Component.max` in the alpha component. If this image has grayscale-alpha
+            /// color, the RGBA colors returned share the alpha component in addition.
+            /// If this image has RGB color, the RGBA colors share the red, green,
+            /// and blue components, and have `Component.max` in the alpha component.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`,
+            /// `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - type: An integer type.
+            /// - Returns: A row-major matrix of RGBA pixel colors, normalized to
+            ///     the given `Component` type, or `nil` if this image requires
+            ///     a palette, and it does not have one.
             @_specialize(exported: true, where Component == UInt8)
             @_specialize(exported: true, where Component == UInt16)
             @_specialize(exported: true, where Component == UInt32)
@@ -3691,43 +3631,42 @@ enum PNG
                 }
             }
 
-            /** Returns a row-major matrix of the RGBA color values represented
-                by all the pixels in this PNG image, normalized to the range of
-                the given component type and encoded as integer slugs containing
-                four components in ARGB order. The alpha components are premultiplied
-                into the colors.
-
-                If this image has grayscale color, the RGBA colors returned have
-                the value component in the red, green, and blue components, and
-                `Component.max` in the alpha component. If this image has grayscale-alpha
-                color, the RGBA colors returned share the alpha component in addition.
-                If this image has RGB color, the RGBA colors share the red, green,
-                and blue components, and have `Component.max` in the alpha component.
-                The RGBA colors are packed into four-component integer slugs of a
-                type large enough to hold four instances of the given type, if one
-                exists. The color components are packed in ARGB order, with alpha
-                in the high bits.
-
-                Allowed `Component` types by default are `UInt8`, and `UInt16`.
-                Custom `Component` types can be used by conforming them to the
-                `FusedVector4Element` protocol and supplying the `FusedVector4`
-                associatedtype. This type must satisfy `Self.bitWidth == Component.bitWidth << 2`.
-
-                To avoid information loss, you may want to check if this image’s
-                component type has too many bits to be represented by the destination
-                component type. This method should not be called using an integer
-                type less than 8 bits wide.
-
-                *Specialized* for `Component` types `UInt8` and `UInt16`.
-                (`Component.FusedVector4` types `UInt32` and `UInt64`.)
-
-                - Parameters:
-                    - type: An integer type.
-                - Returns: A row-major matrix of RGBA pixel colors, normalized to
-                    the given `Component` type, and encoded as four-component integer
-                    slugs, or `nil` if this image requires a palette, and
-                    it does not have one.
-            */
+            /// Returns a row-major matrix of the RGBA color values represented
+            /// by all the pixels in this PNG image, normalized to the range of
+            /// the given component type and encoded as integer slugs containing
+            /// four components in ARGB order. The alpha components are premultiplied
+            /// into the colors.
+            /// 
+            /// If this image has grayscale color, the RGBA colors returned have
+            /// the value component in the red, green, and blue components, and
+            /// `Component.max` in the alpha component. If this image has grayscale-alpha
+            /// color, the RGBA colors returned share the alpha component in addition.
+            /// If this image has RGB color, the RGBA colors share the red, green,
+            /// and blue components, and have `Component.max` in the alpha component.
+            /// The RGBA colors are packed into four-component integer slugs of a
+            /// type large enough to hold four instances of the given type, if one
+            /// exists. The color components are packed in ARGB order, with alpha
+            /// in the high bits.
+            /// 
+            /// Allowed `Component` types by default are `UInt8`, and `UInt16`.
+            /// Custom `Component` types can be used by conforming them to the
+            /// `FusedVector4Element` protocol and supplying the `FusedVector4`
+            /// associatedtype. This type must satisfy `Self.bitWidth == Component.bitWidth << 2`.
+            /// 
+            /// To avoid information loss, you may want to check if this image’s
+            /// component type has too many bits to be represented by the destination
+            /// component type. This method should not be called using an integer
+            /// type less than 8 bits wide.
+            /// 
+            /// *Specialized* for `Component` types `UInt8` and `UInt16`.
+            /// (`Component.FusedVector4` types `UInt32` and `UInt64`.)
+            /// 
+            /// - Parameters:
+            ///     - type: An integer type.
+            /// - Returns: A row-major matrix of RGBA pixel colors, normalized to
+            ///     the given `Component` type, and encoded as four-component integer
+            ///     slugs, or `nil` if this image requires a palette, and
+            ///     it does not have one.
             @_specialize(exported: true, where Component == UInt8)
             @_specialize(exported: true, where Component == UInt16)
             public
@@ -3914,26 +3853,25 @@ enum PNG
 
     // single stage functions
 
-    /** Returns a row-major matrix of the first components of all the pixels
-        in this PNG file, normalized to the range of the given component type.
-
-        If this image has more than one component per pixel, the first
-        component of each pixel is returned. If this image has indexed color,
-        the components returned are the first components of the RGB palette
-        colors of those pixels. This method ignores the transparency and
-        chroma keys of this image.
-
-        To avoid information loss, you may want to check if this image’s
-        component type has too many bits to be represented by the destination
-        component type. This method should not be called using an integer
-        type less than 8 bits wide.
-
-        - Parameters:
-            - path: A path to a PNG file.
-            - type: An integer type.
-        - Returns: A tuple containing a row-major matrix of pixel components, normalized
-            to its `Component` type, and the logical pixel dimensions of the matrix.
-    */
+    /// Returns a row-major matrix of the first components of all the pixels
+    /// in this PNG file, normalized to the range of the given component type.
+    /// 
+    /// If this image has more than one component per pixel, the first
+    /// component of each pixel is returned. If this image has indexed color,
+    /// the components returned are the first components of the RGB palette
+    /// colors of those pixels. This method ignores the transparency and
+    /// chroma keys of this image.
+    /// 
+    /// To avoid information loss, you may want to check if this image’s
+    /// component type has too many bits to be represented by the destination
+    /// component type. This method should not be called using an integer
+    /// type less than 8 bits wide.
+    /// 
+    /// - Parameters:
+    ///     - path: A path to a PNG file.
+    ///     - type: An integer type.
+    /// - Returns: A tuple containing a row-major matrix of pixel components, normalized
+    ///     to its `Component` type, and the logical pixel dimensions of the matrix.
     public static
     func v<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[Component], size:(x:Int, y:Int))
@@ -3948,28 +3886,27 @@ enum PNG
         return (image.v(of: Component.self), image.properties.size)
     }
 
-    /** Returns a row-major matrix of the grayscale-alpha color values represented
-        by all the pixels in this PNG file, normalized to the range of
-        the given component type.
-
-        If this image has grayscale color, the grayscale-alpha colors returned
-        share the value component, and have `Component.max` in the alpha
-        component. If this image has RGB color, the grayscale-alpha colors
-        have the red component in the value component, and have `Component.max`
-        in the alpha component. If this image has RGBA color, the grayscale-alpha
-        colors share the alpha component in addition.
-
-        To avoid information loss, you may want to check if this image’s
-        component type has too many bits to be represented by the destination
-        component type. This method should not be called using an integer
-        type less than 8 bits wide.
-
-        - Parameters:
-            - path: A path to a PNG file.
-            - type: An integer type.
-        - Returns: A tuple containing a row-major matrix of pixel components, normalized
-            to its `Component` type, and the logical pixel dimensions of the matrix.
-    */
+    /// Returns a row-major matrix of the grayscale-alpha color values represented
+    /// by all the pixels in this PNG file, normalized to the range of
+    /// the given component type.
+    /// 
+    /// If this image has grayscale color, the grayscale-alpha colors returned
+    /// share the value component, and have `Component.max` in the alpha
+    /// component. If this image has RGB color, the grayscale-alpha colors
+    /// have the red component in the value component, and have `Component.max`
+    /// in the alpha component. If this image has RGBA color, the grayscale-alpha
+    /// colors share the alpha component in addition.
+    /// 
+    /// To avoid information loss, you may want to check if this image’s
+    /// component type has too many bits to be represented by the destination
+    /// component type. This method should not be called using an integer
+    /// type less than 8 bits wide.
+    /// 
+    /// - Parameters:
+    ///     - path: A path to a PNG file.
+    ///     - type: An integer type.
+    /// - Returns: A tuple containing a row-major matrix of pixel components, normalized
+    ///     to its `Component` type, and the logical pixel dimensions of the matrix.
     public static
     func va<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[VA<Component>], size:(x:Int, y:Int))
@@ -3984,28 +3921,27 @@ enum PNG
         return (image.va(of: Component.self), image.properties.size)
     }
 
-    /** Returns a row-major matrix of the RGBA color values represented
-        by all the pixels in this PNG file, normalized to the range of
-        the given component type.
-
-        If this image has grayscale color, the RGBA colors returned have
-        the value component in the red, green, and blue components, and
-        `Component.max` in the alpha component. If this image has grayscale-alpha
-        color, the RGBA colors returned share the alpha component in addition.
-        If this image has RGB color, the RGBA colors share the red, green,
-        and blue components, and have `Component.max` in the alpha component.
-
-        To avoid information loss, you may want to check if this image’s
-        component type has too many bits to be represented by the destination
-        component type. This method should not be called using an integer
-        type less than 8 bits wide.
-
-        - Parameters:
-            - path: A path to a PNG file.
-            - type: An integer type.
-        - Returns: A tuple containing a row-major matrix of pixel components, normalized
-            to its `Component` type, and the logical pixel dimensions of the matrix.
-    */
+    /// Returns a row-major matrix of the RGBA color values represented
+    /// by all the pixels in this PNG file, normalized to the range of
+    /// the given component type.
+    /// 
+    /// If this image has grayscale color, the RGBA colors returned have
+    /// the value component in the red, green, and blue components, and
+    /// `Component.max` in the alpha component. If this image has grayscale-alpha
+    /// color, the RGBA colors returned share the alpha component in addition.
+    /// If this image has RGB color, the RGBA colors share the red, green,
+    /// and blue components, and have `Component.max` in the alpha component.
+    /// 
+    /// To avoid information loss, you may want to check if this image’s
+    /// component type has too many bits to be represented by the destination
+    /// component type. This method should not be called using an integer
+    /// type less than 8 bits wide.
+    /// 
+    /// - Parameters:
+    ///     - path: A path to a PNG file.
+    ///     - type: An integer type.
+    /// - Returns: A tuple containing a row-major matrix of pixel components, normalized
+    ///     to its `Component` type, and the logical pixel dimensions of the matrix.
     public static
     func rgba<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[RGBA<Component>], size:(x:Int, y:Int))
@@ -4020,40 +3956,39 @@ enum PNG
         return (image.rgba(of: Component.self), image.properties.size)
     }
 
-    /** Returns a row-major matrix of the RGBA color values represented
-        by all the pixels in this PNG file, normalized to the range of
-        the given component type and encoded as integer slugs containing
-        four components in ARGB order. The alpha components are premultiplied
-        into the colors.
-
-        If this image has grayscale color, the RGBA colors returned have
-        the value component in the red, green, and blue components, and
-        `Component.max` in the alpha component. If this image has grayscale-alpha
-        color, the RGBA colors returned share the alpha component in addition.
-        If this image has RGB color, the RGBA colors share the red, green,
-        and blue components, and have `Component.max` in the alpha component.
-        The RGBA colors are packed into four-component integer slugs of a
-        type large enough to hold four instances of the given type, if one
-        exists. The color components are packed in ARGB order, with alpha
-        in the high bits.
-
-        Allowed `Component` types by default are `UInt8`, and `UInt16`.
-        Custom `Component` types can be used by conforming them to the
-        `FusedVector4Element` protocol and supplying the `FusedVector4`
-        associatedtype. This type must satisfy `Self.bitWidth == Component.bitWidth << 2`.
-
-        To avoid information loss, you may want to check if this image’s
-        component type has too many bits to be represented by the destination
-        component type. This method should not be called using an integer
-        type less than 8 bits wide.
-
-        - Parameters:
-            - path: A path to a PNG file.
-            - type: An integer type.
-        - Returns: A tuple containing a row-major matrix of pixel components, normalized
-            to its `Component` type, and encoded as four-component integer slugs,
-            and the logical pixel dimensions of the matrix.
-    */
+    /// Returns a row-major matrix of the RGBA color values represented
+    /// by all the pixels in this PNG file, normalized to the range of
+    /// the given component type and encoded as integer slugs containing
+    /// four components in ARGB order. The alpha components are premultiplied
+    /// into the colors.
+    /// 
+    /// If this image has grayscale color, the RGBA colors returned have
+    /// the value component in the red, green, and blue components, and
+    /// `Component.max` in the alpha component. If this image has grayscale-alpha
+    /// color, the RGBA colors returned share the alpha component in addition.
+    /// If this image has RGB color, the RGBA colors share the red, green,
+    /// and blue components, and have `Component.max` in the alpha component.
+    /// The RGBA colors are packed into four-component integer slugs of a
+    /// type large enough to hold four instances of the given type, if one
+    /// exists. The color components are packed in ARGB order, with alpha
+    /// in the high bits.
+    /// 
+    /// Allowed `Component` types by default are `UInt8`, and `UInt16`.
+    /// Custom `Component` types can be used by conforming them to the
+    /// `FusedVector4Element` protocol and supplying the `FusedVector4`
+    /// associatedtype. This type must satisfy `Self.bitWidth == Component.bitWidth << 2`.
+    /// 
+    /// To avoid information loss, you may want to check if this image’s
+    /// component type has too many bits to be represented by the destination
+    /// component type. This method should not be called using an integer
+    /// type less than 8 bits wide.
+    /// 
+    /// - Parameters:
+    ///     - path: A path to a PNG file.
+    ///     - type: An integer type.
+    /// - Returns: A tuple containing a row-major matrix of pixel components, normalized
+    ///     to its `Component` type, and encoded as four-component integer slugs,
+    ///     and the logical pixel dimensions of the matrix.
     public static
     func argbPremultiplied<Component>(path:String, of type:Component.Type) throws
         -> (pixels:[Component.FusedVector4], size:(x:Int, y:Int))
@@ -4069,8 +4004,8 @@ enum PNG
     }
 
     static
-    func convert<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
-        to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+    func encode<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
         destination:inout Destination, level:Int = 9) throws
         where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
     {
@@ -4102,8 +4037,8 @@ enum PNG
     }
 
     public static
-    func convert<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
-        to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+    func encode<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
         path outputPath:String, level:Int = 9) throws
         where Component:FixedWidthInteger & UnsignedInteger
     {
@@ -4111,7 +4046,7 @@ enum PNG
         (
             try File.Destination.open(path: outputPath)
             {
-                try convert( rgba: rgba,
+                try encode(  rgba: rgba,
                              size: size,
                                to: code,
                         chromaKey: chromaKey,
@@ -4146,15 +4081,14 @@ enum PNG
             self.name = (a, p, r, c)
         }
 
-        /** Creates the chunk type with the given name bytes, if they are valid.
-            Returns `nil` if the ancillary bit (in byte 0) is set or the reserved
-            bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`,
-            `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`,
-            `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
-
-            - Parameters:
-                - name: The four bytes of this PNG chunk type’s name.
-        */
+        /// Creates the chunk type with the given name bytes, if they are valid.
+        /// Returns `nil` if the ancillary bit (in byte 0) is set or the reserved
+        /// bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`,
+        /// `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`,
+        /// `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
+        /// 
+        /// - Parameters:
+        ///     - name: The four bytes of this PNG chunk type’s name.
         public
         init?(_ name:(UInt8, UInt8, UInt8, UInt8))
         {
@@ -4182,28 +4116,26 @@ enum PNG
             }
         }
 
-        /** Returns a Boolean value indicating whether two PNG chunk types are equal.
-
-            Equality is the inverse of inequality. For any values `a` and `b`, `a == b`
-            implies that `a != b` is `false`.
-
-            - Parameters:
-                - lhs: A value to compare.
-                - rhs: Another value to compare.
-        */
+        /// Returns a Boolean value indicating whether two PNG chunk types are equal.
+        /// 
+        /// Equality is the inverse of inequality. For any values `a` and `b`, `a == b`
+        /// implies that `a != b` is `false`.
+        /// 
+        /// - Parameters:
+        ///     - lhs: A value to compare.
+        ///     - rhs: Another value to compare.
         public static
         func == (a:Chunk, b:Chunk) -> Bool
         {
             return a.name == b.name
         }
 
-        /** Hashes the name of this PNG chunk type by feeding it into the given
-            hasher.
-
-            - Parameters:
-                - hasher: The hasher to use when combining the components of this
-                    instance.
-        */
+        /// Hashes the name of this PNG chunk type by feeding it into the given
+        /// hasher.
+        /// 
+        /// - Parameters:
+        ///     - hasher: The hasher to use when combining the components of this
+        ///         instance.
         public
         func hash(into hasher:inout Hasher)
         {
@@ -4328,8 +4260,9 @@ enum PNG
     // empty struct to namespace our chunk iteration methods. we can’t store the
     // data source as it may have reference semantics even though implemented as
     // a struct
-    /** A low-level API for deconstructing a PNG file into its constituent untyped
-        chunks, or constructing a PNG file out of a sequence of typed chunks. */
+    
+    /// A low-level API for deconstructing a PNG file into its constituent untyped
+    /// chunks, or constructing a PNG file out of a sequence of typed chunks.
     public
     struct ChunkIterator<DataInterface>
     {
@@ -4477,17 +4410,16 @@ enum PNG
 
 extension PNG.ChunkIterator where DataInterface:DataSource
 {
-    /** Begins the process of loading untyped PNG chunks from the given data source.
-
-        The main operation performed this method is checking for the PNG magic file
-        signature. This method will pull 8 bytes of data from the given data source.
-
-        - Parameters:
-            - source: A data source yielding a PNG file. The source is assumed to
-                pointing to the very beginning of the PNG file.
-        - Returns: A chunk iterator, if the PNG magic signature was read from the
-            given data source, and `nil` otherwise.
-    */
+    /// Begins the process of loading untyped PNG chunks from the given data source.
+    /// 
+    /// The main operation performed this method is checking for the PNG magic file
+    /// signature. This method will pull 8 bytes of data from the given data source.
+    /// 
+    /// - Parameters:
+    ///     - source: A data source yielding a PNG file. The source is assumed to
+    ///         pointing to the very beginning of the PNG file.
+    /// - Returns: A chunk iterator, if the PNG magic signature was read from the
+    ///     given data source, and `nil` otherwise.
     public static
     func begin(source:inout DataInterface) -> PNG.ChunkIterator<DataInterface>?
     {
@@ -4501,28 +4433,27 @@ extension PNG.ChunkIterator where DataInterface:DataSource
         return .init()
     }
 
-    /** Loads the an untyped PNG chunk from the given data source.
-
-        This method performs no chunk name validation, nor does it interpret the chunk.
-        This method does, however, perform crc32 validation on the chunk, as this
-        is universal to all PNG chunks.
-
-        To aid diagnostics, the name bytes of the chunk are returned even if the
-        chunk’s data is corrupted.
-
-        This method pulls 12 bytes from the given data source, plus the length encoded
-        in the chunk header.
-
-        - Parameters:
-            - source: A data source yielding a PNG file.
-        - Returns: A tuple containing the name bytes of the read chunk and its data,
-            or `nil` if enough data could not be pulled from the given data source.
-            The chunk `data` field of the tuple is `nil` if the chunk’s data could
-            be successfully read, but failed to match the chunk’s crc32 checksum.
-
-        - Note: Some chunks may have a length of 0, and such produce an empty `data`
-            array. This is not an error.
-    */
+    /// Loads the an untyped PNG chunk from the given data source.
+    /// 
+    /// This method performs no chunk name validation, nor does it interpret the chunk.
+    /// This method does, however, perform crc32 validation on the chunk, as this
+    /// is universal to all PNG chunks.
+    /// 
+    /// To aid diagnostics, the name bytes of the chunk are returned even if the
+    /// chunk’s data is corrupted.
+    /// 
+    /// This method pulls 12 bytes from the given data source, plus the length encoded
+    /// in the chunk header.
+    /// 
+    /// - Parameters:
+    ///     - source: A data source yielding a PNG file.
+    /// - Returns: A tuple containing the name bytes of the read chunk and its data,
+    ///     or `nil` if enough data could not be pulled from the given data source.
+    ///     The chunk `data` field of the tuple is `nil` if the chunk’s data could
+    ///     be successfully read, but failed to match the chunk’s crc32 checksum.
+    /// 
+    /// - Note: Some chunks may have a length of 0, and such produce an empty `data`
+    ///     array. This is not an error.
     public mutating
     func next(source:inout DataInterface) -> (name:(UInt8, UInt8, UInt8, UInt8), data:[UInt8]?)?
     {
@@ -4561,16 +4492,15 @@ extension PNG.ChunkIterator where DataInterface:DataSource
 
 extension PNG.ChunkIterator where DataInterface:DataDestination
 {
-    /** Begins the process of storing untyped PNG chunks into the given data destination.
-
-        The main operation performed this method is writing the PNG magic file signature.
-        This method will push 8 bytes of data to the given data destination.
-
-        - Parameters:
-            - source: A data destination to write a PNG file to. The destination
-                is assumed to pointing to the very beginning of the file.
-        - Returns: A chunk iterator, or `nil` if the signature could not be written.
-    */
+    /// Begins the process of storing untyped PNG chunks into the given data destination.
+    /// 
+    /// The main operation performed this method is writing the PNG magic file signature.
+    /// This method will push 8 bytes of data to the given data destination.
+    /// 
+    /// - Parameters:
+    ///     - source: A data destination to write a PNG file to. The destination
+    ///         is assumed to pointing to the very beginning of the file.
+    /// - Returns: A chunk iterator, or `nil` if the signature could not be written.
     public static
     func begin(destination:inout DataInterface) -> PNG.ChunkIterator<DataInterface>?
     {
@@ -4583,22 +4513,21 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
         return .init()
     }
 
-    /** Serializes a PNG chunk of the given type and with the given raw data, and
-        stores it into the given data destination.
-
-        This method does not interpret the given chunk data. This method automatically
-        computes its crc32 checksum, and chunk length, and stores them in its serialized
-        in-file representation.
-
-        This method pushes 12 bytes to the given data destination, plus the given
-        `data` array.
-
-        - Parameters:
-            - name: A chunk type.
-            - data: An array containing chunk data. The default is `[]`.
-            - source: A data destination to write a PNG file to.
-        - Returns: `nil` if the chunk could not be written.
-    */
+    /// Serializes a PNG chunk of the given type and with the given raw data, and
+    /// stores it into the given data destination.
+    /// 
+    /// This method does not interpret the given chunk data. This method automatically
+    /// computes its crc32 checksum, and chunk length, and stores them in its serialized
+    /// in-file representation.
+    /// 
+    /// This method pushes 12 bytes to the given data destination, plus the given
+    /// `data` array.
+    /// 
+    /// - Parameters:
+    ///     - name: A chunk type.
+    ///     - data: An array containing chunk data. The default is `[]`.
+    ///     - source: A data destination to write a PNG file to.
+    /// - Returns: `nil` if the chunk could not be written.
     public mutating
     func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface)
         -> Void?

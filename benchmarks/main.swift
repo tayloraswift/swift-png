@@ -13,8 +13,7 @@ func clock() -> Int
 }
 
 #else
-    // unreachable (Package.swift)
-    // #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
+    #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
 import PNG
