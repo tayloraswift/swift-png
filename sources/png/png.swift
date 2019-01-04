@@ -246,7 +246,232 @@ enum PNG
 {
     private static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
+    
+    /// Returns the size of one unit in a component of the given depth, in units of
+    /// this color’s `Component` type.
+    /// - Parameters:
+    ///     - depth: A bit depth less than or equal to `Component.bitWidth`.
+    /// - Returns: The size of one unit in a component of the given bit depth,
+    ///     in units of `Component`. Multiplying this value with the scalar
+    ///     integer value of a component of bit depth `depth` will renormalize
+    ///     it to the range of `Component`.
+    @inline(__always)
+    static
+    func quantum<Component>(depth:Int) -> Component 
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        return Component.max / (Component.max &>> (Component.bitWidth - depth))
+    }
+    
+    /// Returns the given color sample premultiplied with the given alpha sample.
+    /// 
+    /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
+    ///     and `UInt`.
+    /// - Parameters:
+    ///     - color: A color sample.
+    ///     - alpha: An alpha sample.
+    /// - Returns: The product of the given color sample and the given alpha
+    ///     sample. The resulting value is accurate to within 1 `Component` unit.
+    @usableFromInline
+    @_specialize(exported: true, where Component == UInt8)
+    @_specialize(exported: true, where Component == UInt16)
+    @_specialize(exported: true, where Component == UInt32)
+    @_specialize(exported: true, where Component == UInt64)
+    @_specialize(exported: true, where Component == UInt)
+    static
+    func premultiply<Component>(color:Component, alpha:Component) -> Component 
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
+        let (high, low):(Component, Component.Magnitude) = color.multipliedFullWidth(by: alpha)
+        // divide by 255 using this one neat trick!1!!!
+        // value /. 255 == (value + 128 + (value >> 8)) >> 8
+        let carries:(Bool, Bool),
+            partialValue:Component.Magnitude
+        (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
+                       carries.1  = partialValue.addingReportingOverflow(Component.Magnitude.max >> 1 + 1).overflow
+        return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
+    }
+    
+    /// Returns the given component widened to the given type, preserving its normalized 
+    /// value.
+    /// 
+    /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+    /// - Parameters:
+    ///     - component: The component to upscale.
+    ///     - type: The destination type.
+    /// - Returns: The given component, normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func upscale<Component, T>(_ component:Component, to type:T.Type) -> T 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        assert(T.bitWidth >= Component.bitWidth)
+        return .init(truncatingIfNeeded: component) * quantum(depth: Component.bitWidth)
+    }
 
+    /// Returns the given component narrowed to the given type, preserving its normalized 
+    /// value.
+    /// 
+    /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+    /// - Parameters:
+    ///     - component: The component to downscale.
+    ///     - type: The destination type.
+    /// - Returns: The given component, normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func downscale<Component, T>(_ component:Component, to type:T.Type) -> T 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        assert(T.bitWidth <= Component.bitWidth)
+        return .init(truncatingIfNeeded: component &>> (Component.bitWidth - T.bitWidth))
+    }
+    
+    /// Returns the given component scaled to the given type, preserving its normalized 
+    /// value.
+    /// 
+    /// - Parameters:
+    ///     - component: The component to rescale.
+    ///     - type: The destination type.
+    /// - Returns: The given component, normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func rescale<Component, T>(_ component:Component, to type:T.Type) -> T 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        // this branch should be gone in specialized form. it seems to be
+        // effectively free.
+        if T.bitWidth > Component.bitWidth
+        {
+            return upscale(component, to: T.self)
+        }
+        else
+        {
+            return downscale(component, to: T.self)
+        }
+    }
+    
+    
+    /// Returns the given color with its components widened to the given type, preserving
+    /// their normalized values.
+    /// 
+    /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+    /// - Parameters:
+    ///     - va: A grayscale-alpha color.
+    ///     - type: The type of the components of the new color.
+    /// - Returns: A new color, with the values of its components taken from
+    ///     the given color, and normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func upscale<Component, T>(_ va:VA<Component>, to type:T.Type) -> VA<T> 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        return .init(upscale(va.v, to: T.self), upscale(va.a, to: T.self))
+    }
+    
+    /// Returns the given color with its components narrowed to the given type, preserving
+    /// their normalized values.
+    /// 
+    /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+    /// - Parameters:
+    ///     - va: A grayscale-alpha color.
+    ///     - type: The type of the components of the new color.
+    /// - Returns: A new color, with the values of its components taken from
+    ///     the given color, and normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func downscale<Component, T>(_ va:VA<Component>, to type:T.Type) -> VA<T> 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        return .init(downscale(va.v, to: T.self), downscale(va.a, to: T.self))
+    }
+    
+    /// Returns the given color with its components scaled to the given type, preserving
+    /// their normalized values.
+    /// 
+    /// - Parameters:
+    ///     - va: A grayscale-alpha color.
+    ///     - type: The type of the components of the new color.
+    /// - Returns: A new color, with the values of its components taken from
+    ///     the given color, and normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func rescale<Component, T>(_ va:VA<Component>, to type:T.Type) -> VA<T> 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        if T.bitWidth > Component.bitWidth
+        {
+            return upscale(va, to: T.self)
+        }
+        else
+        {
+            return downscale(va, to: T.self)
+        }
+    }
+    
+    
+    /// Returns the given color with its components narrowed to the given type, preserving
+    /// their normalized values.
+    /// 
+    /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
+    /// - Parameters:
+    ///     - type: The type of the components of the new color.
+    /// - Returns: A new color, with the values of its components taken from
+    ///     the given color, and normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func downscale<Component, T>(_ rgba:RGBA<Component>, to type:T.Type) -> RGBA<T> 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        return .init(   downscale(rgba.r, to: T.self), 
+                        downscale(rgba.g, to: T.self),
+                        downscale(rgba.b, to: T.self),
+                        downscale(rgba.a, to: T.self))
+    }
+    
+    /// Returns the given color with its components widened to the given type, preserving
+    /// their normalized values.
+    /// 
+    /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
+    /// - Parameters:
+    ///     - type: The type of the components of the new color.
+    /// - Returns: A new color, with the values of its components taken from
+    ///     the given color, and normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func upscale<Component, T>(_ rgba:RGBA<Component>, to type:T.Type) -> RGBA<T> 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        return .init(   upscale(rgba.r, to: T.self), 
+                        upscale(rgba.g, to: T.self),
+                        upscale(rgba.b, to: T.self),
+                        upscale(rgba.a, to: T.self))
+    }
+    
+    /// Returns the given color with its components scaled to the given type, preserving
+    /// their normalized values.
+    /// 
+    /// - Parameters:
+    ///     - rgba: An RGBA color.
+    ///     - type: The type of the components of the new color.
+    /// - Returns: A new color, with the values of its components taken from
+    ///     the given color, and normalized to the range of `T`.
+    @inline(__always)
+    static 
+    func rescale<Component, T>(_ rgba:RGBA<Component>, to type:T.Type) -> RGBA<T> 
+        where Component:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        if T.bitWidth > Component.bitWidth
+        {
+            return upscale(rgba, to: T.self)
+        }
+        else
+        {
+            return downscale(rgba, to: T.self)
+        }
+    }
+    
+    
     /// A two-component color value, with components stored in the grayscale-alpha
     /// color model. This structure has fixed layout, with the value component first,
     /// then alpha. Buffers containing instances of this type may be safely reinterpreted
@@ -318,91 +543,7 @@ enum PNG
         public
         var premultiplied:VA<Component>
         {
-            return .init(VA.premultiply(color: self.v, alpha: self.a), self.a)
-        }
-
-
-        /// Returns the given color sample premultiplied with the given alpha sample.
-        /// 
-        /// *Specialized* for `Component` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-        ///     and `UInt`.
-        /// - Parameters:
-        ///     - color: A color sample.
-        ///     - alpha: An alpha sample.
-        /// - Returns: The product of the given color sample and the given alpha
-        ///     sample. The resulting value is accurate to within 1 `Component` unit.
-        @usableFromInline
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
-        static
-        func premultiply(color:Component, alpha:Component) -> Component
-        {
-            // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
-            let (high, low):(Component, Component.Magnitude) = color.multipliedFullWidth(by: alpha)
-            // divide by 255 using this one neat trick!1!!!
-            // value /. 255 == (value + 128 + (value >> 8)) >> 8
-            let carries:(Bool, Bool),
-                partialValue:Component.Magnitude
-            (partialValue, carries.0) = low.addingReportingOverflow(high.magnitude)
-                           carries.1  = partialValue.addingReportingOverflow(Component.Magnitude.max >> 1 + 1).overflow
-            return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
-        }
-
-
-        /// Returns the size of one unit in a component of the given depth, in units of
-        /// this color’s `Component` type.
-        /// - Parameters:
-        ///     - depth: A bit depth less than or equal to `Component.bitWidth`.
-        /// - Returns: The size of one unit in a component of the given bit depth,
-        ///     in units of `Component`. Multiplying this value with the scalar
-        ///     integer value of a component of bit depth `depth` will renormalize
-        ///     it to the range of `Component`.
-        @inline(__always)
-        static
-        func quantum(depth:Int) -> Component
-        {
-            return Component.max / (Component.max &>> (Component.bitWidth - depth))
-        }
-
-
-        /// Returns this color with its components widened to the given type, preserving
-        /// their normalized values.
-        /// 
-        /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
-        /// - Parameters:
-        ///     - type: The type of the components of the new color.
-        /// - Returns: A new color, with the values of its components taken from
-        ///     this color, and normalized to the range of `T`.
-        @inline(__always)
-        func upscale<T>(to type:T.Type) -> VA<T> where T:FixedWidthInteger & UnsignedInteger
-        {
-            assert(T.bitWidth >= Component.bitWidth)
-            let quantum:T = VA<T>.quantum(depth: Component.bitWidth),
-                v:T = .init(truncatingIfNeeded: self.v) * quantum,
-                a:T = .init(truncatingIfNeeded: self.a) * quantum
-            return .init(v, a)
-        }
-
-        /// Returns this color with its components narrowed to the given type, preserving
-        /// their normalized values.
-        /// 
-        /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
-        /// - Parameters:
-        ///     - type: The type of the components of the new color.
-        /// - Returns: A new color, with the values of its components taken from
-        ///     this color, and normalized to the range of `T`.
-        @inline(__always)
-        func downscale<T>(to type:T.Type) -> VA<T> where T:FixedWidthInteger & UnsignedInteger
-        {
-            assert(T.bitWidth <= Component.bitWidth)
-            let shift:Int = Component.bitWidth - T.bitWidth,
-                v:T       = .init(truncatingIfNeeded: self.v &>> shift),
-                a:T       = .init(truncatingIfNeeded: self.a &>> shift)
-
-            return .init(v, a)
+            return .init(premultiply(color: self.v, alpha: self.a), self.a)
         }
     }
 
@@ -506,6 +647,11 @@ enum PNG
             self.b = blue
             self.a = alpha
         }
+        
+        init(_ va:VA<Component>)
+        {
+            self.init(va.v, va.a)
+        }
 
         /// The color obtained by premultiplying the red, green, and blue components
         /// of this color with its alpha component. The resulting component values
@@ -516,10 +662,10 @@ enum PNG
         public
         var premultiplied:RGBA<Component>
         {
-            return .init(VA.premultiply(color: self.r, alpha: self.a),
-                         VA.premultiply(color: self.g, alpha: self.a),
-                         VA.premultiply(color: self.b, alpha: self.a),
-                         self.a)
+            return .init(   premultiply(color: self.r, alpha: self.a),
+                            premultiply(color: self.g, alpha: self.a),
+                            premultiply(color: self.b, alpha: self.a),
+                            self.a)
         }
 
         /// The red, and alpha components of this color, stored as a grayscale-alpha
@@ -552,47 +698,6 @@ enum PNG
         func equals(opaque other:RGBA<Component>) -> Bool
         {
             return self.r == other.r && self.g == other.g && self.b == other.b
-        }
-
-        /// Returns this color with its components widened to the given type, preserving
-        /// their normalized values.
-        /// 
-        /// `T.bitWidth` must be greater than or equal to `Component.bitWidth`.
-        /// - Parameters:
-        ///     - type: The type of the components of the new color.
-        /// - Returns: A new color, with the values of its components taken from
-        ///     this color, and normalized to the range of `T`.
-        @inline(__always)
-        func upscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
-        {
-            assert(T.bitWidth >= Component.bitWidth)
-            let quantum:T = VA<T>.quantum(depth: Component.bitWidth),
-                r:T = .init(truncatingIfNeeded: self.r) * quantum,
-                g:T = .init(truncatingIfNeeded: self.g) * quantum,
-                b:T = .init(truncatingIfNeeded: self.b) * quantum,
-                a:T = .init(truncatingIfNeeded: self.a) * quantum
-            return .init(r, g, b, a)
-        }
-
-        /// Returns this color with its components narrowed to the given type, preserving
-        /// their normalized values.
-        /// 
-        /// `T.bitWidth` must be less than or equal to `Component.bitWidth`.
-        /// - Parameters:
-        ///     - type: The type of the components of the new color.
-        /// - Returns: A new color, with the values of its components taken from
-        ///     this color, and normalized to the range of `T`.
-        @inline(__always)
-        func downscale<T>(to type:T.Type) -> RGBA<T> where T:FixedWidthInteger & UnsignedInteger
-        {
-            assert(T.bitWidth <= Component.bitWidth)
-            let shift:Int = Component.bitWidth - T.bitWidth,
-                r:T       = .init(truncatingIfNeeded: self.r &>> shift),
-                g:T       = .init(truncatingIfNeeded: self.g &>> shift),
-                b:T       = .init(truncatingIfNeeded: self.b &>> shift),
-                a:T       = .init(truncatingIfNeeded: self.a &>> shift)
-
-            return .init(r, g, b, a)
         }
     }
 
@@ -1275,8 +1380,8 @@ enum PNG
                             throw DecodingError.invalidChunk(message: "grayscale chroma key has wrong size (\(data.count) bytes, expected 2 bytes)")
                         }
 
-                        let quantum:UInt16 = VA<UInt16>.quantum(depth: self.code.depth),
-                            v:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+                        let q:UInt16 = quantum(depth: self.code.depth),
+                            v:UInt16 = q * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
                         return .init(v)
 
                     case .rgb8, .rgb16:
@@ -1286,10 +1391,10 @@ enum PNG
                             throw DecodingError.invalidChunk(message: "rgb chroma key has wrong size (\(data.count) bytes, expected 6 bytes)")
                         }
 
-                        let quantum:UInt16 = VA<UInt16>.quantum(depth: self.code.depth),
-                            r:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
-                            g:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
-                            b:UInt16   = quantum * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+                        let q:UInt16 = quantum(depth: self.code.depth),
+                            r:UInt16 = q * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
+                            g:UInt16 = q * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
+                            b:UInt16 = q * data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
                         return .init(r, g, b)
 
                     default:
@@ -2564,6 +2669,382 @@ enum PNG
 
                 return uncompressed
             }
+            
+            public static
+            func convert(indices:[Int], palette:[RGBA<UInt8>], 
+                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                throws -> Uncompressed
+            {
+                // make sure pixel array is correct size
+                guard indices.count == Math.vol(size) 
+                else 
+                {
+                    throw ConversionError.pixelCount
+                }
+                
+                guard indices.max() ?? 0 <= palette.count 
+                else 
+                {
+                    throw ConversionError.indexOutOfRange
+                }
+
+                if code.isIndexed 
+                {
+                    let properties:Properties, 
+                        data:[UInt8]
+                    
+                    guard palette.count <= 1 << code.depth
+                    else
+                    {
+                        throw ConversionError.paletteOverflow
+                    }
+                    
+                    let iu8:[UInt8] = indices.map(UInt8.init(truncatingIfNeeded:))
+                    
+                    switch code
+                    {
+                        case .indexed1:
+                            properties  = .init(size: size, format: .indexed1(palette))
+                            data        = compact(iu8, size: size, code: code)
+                        case .indexed2:
+                            properties  = .init(size: size, format: .indexed2(palette))
+                            data        = compact(iu8, size: size, code: code)
+                        case .indexed4:
+                            properties  = .init(size: size, format: .indexed4(palette))
+                            data        = compact(iu8, size: size, code: code)
+                        case .indexed8:
+                            properties  = .init(size: size, format: .indexed8(palette))
+                            data        = iu8
+                        default:
+                            fatalError("unreachable")
+                    }
+                    
+                    return .init(_data: data, properties: properties)
+                }
+                else 
+                {
+                    let image:[RGBA<UInt8>] = indices.map{ palette[$0] }
+                    return try convert(rgba: image, size: size, to: code, chromaKey: chromaKey)
+                }
+            }
+            
+            @_specialize(exported: true, where Component == UInt8)
+            @_specialize(exported: true, where Component == UInt16)
+            @_specialize(exported: true, where Component == UInt32)
+            @_specialize(exported: true, where Component == UInt64)
+            @_specialize(exported: true, where Component == UInt)
+            public static
+            func convert<Component>(v:[Component],
+                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                throws -> Uncompressed
+                where Component:FixedWidthInteger & UnsignedInteger
+            {
+                // make sure pixel array is correct size
+                guard v.count == Math.vol(size) 
+                else 
+                {
+                    throw ConversionError.pixelCount
+                }
+                
+                let properties:Properties
+                var data:[UInt8]
+
+                let shift:Int = Component.bitWidth - code.depth
+                switch code
+                {
+                    case .v1:
+                        properties = .init(size: size, format: .v1, chromaKey: chromaKey)
+                        data  = compact(v.map{ .init(truncatingIfNeeded: $0 &>> shift) },
+                                        size: size,
+                                        code: code
+                                        )
+                    case .v2:
+                        properties = .init(size: size, format: .v2, chromaKey: chromaKey)
+                        data  = compact(v.map{ .init(truncatingIfNeeded: $0 &>> shift) },
+                                        size: size,
+                                        code: code
+                                        )
+                    case .v4:
+                        properties = .init(size: size, format: .v4, chromaKey: chromaKey)
+                        data  = compact(v.map{ .init(truncatingIfNeeded: $0 &>> shift) },
+                                        size: size,
+                                        code: code
+                                        )
+                    case .v8:
+                        properties = .init(size: size, format: .v8, chromaKey: chromaKey)
+                        data = v.map{ .init(truncatingIfNeeded: $0 &>> shift) }
+
+                    case .v16:
+                        properties = .init(size: size, format: .v16, chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:UInt16 = rescale(pixel, to: UInt16.self)
+                            data.append(bigEndian: s)
+                        }
+
+                    case .va8:
+                        properties = .init(size: size, format: .va8)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:VA<UInt8> = .init(downscale(pixel, to: UInt8.self))
+                            data.append(s.v)
+                            data.append(s.a)
+                        }
+
+                    case .va16:
+                        properties = .init(size: size, format: .va16)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:VA<UInt16> = .init(rescale(pixel, to: UInt16.self))
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.a)
+                        }
+
+                    case .rgb8:
+                        properties = .init(size: size, format: .rgb8(nil), chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:UInt8 = downscale(pixel, to: UInt8.self)
+                            data.append(s)
+                            data.append(s)
+                            data.append(s)
+                        }
+
+                    case .rgb16:
+                        properties = .init(size: size, format: .rgb16(nil), chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:UInt16 = rescale(pixel, to: UInt16.self)
+                            data.append(bigEndian: s)
+                            data.append(bigEndian: s)
+                            data.append(bigEndian: s)
+                        }
+
+                    case .rgba8:
+                        properties = .init(size: size, format: .rgba8(nil))
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:VA<UInt8> = .init(downscale(pixel, to: UInt8.self))
+                            data.append(s.v)
+                            data.append(s.v)
+                            data.append(s.v)
+                            data.append(s.a)
+                        }
+
+                    case .rgba16:
+                        properties = .init(size: size, format: .rgba16(nil))
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:Component in v
+                        {
+                            let s:VA<UInt16> = .init(rescale(pixel, to: UInt16.self))
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.a)
+                        }
+
+                    case .indexed8, .indexed4, .indexed2, .indexed1:
+                        guard let (indexed, palette):([UInt8], [RGBA<UInt8>]) =
+                            (v.map{ .init(downscale($0, to: UInt8.self)) }.indexPalette()),
+                            palette.count <= 1 << code.depth
+                        else
+                        {
+                            throw ConversionError.paletteOverflow
+                        }
+                        
+                        switch code
+                        {
+                            case .indexed1:
+                                properties  = .init(size: size, format: .indexed1(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed2:
+                                properties  = .init(size: size, format: .indexed2(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed4:
+                                properties  = .init(size: size, format: .indexed4(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed8:
+                                properties  = .init(size: size, format: .indexed8(palette))
+                                data        = indexed
+                            default:
+                                fatalError("unreachable")
+                        }
+                }
+                
+                return .init(_data: data, properties: properties)
+            }
+            
+            @_specialize(exported: true, where Component == UInt8)
+            @_specialize(exported: true, where Component == UInt16)
+            @_specialize(exported: true, where Component == UInt32)
+            @_specialize(exported: true, where Component == UInt64)
+            @_specialize(exported: true, where Component == UInt)
+            public static
+            func convert<Component>(va:[VA<Component>],
+                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                throws -> Uncompressed
+                where Component:FixedWidthInteger & UnsignedInteger
+            {
+                // make sure pixel array is correct size
+                guard va.count == Math.vol(size) 
+                else 
+                {
+                    throw ConversionError.pixelCount
+                }
+                
+                let properties:Properties
+                var data:[UInt8]
+
+                let shift:Int = Component.bitWidth - code.depth
+                switch code
+                {
+                    case .v1:
+                        properties = .init(size: size, format: .v1, chromaKey: chromaKey)
+                        data  = compact(va.map{ .init(truncatingIfNeeded: $0.v &>> shift) },
+                                        size: size,
+                                        code: code
+                                        )
+                    case .v2:
+                        properties = .init(size: size, format: .v2, chromaKey: chromaKey)
+                        data  = compact(va.map{ .init(truncatingIfNeeded: $0.v &>> shift) },
+                                        size: size,
+                                        code: code
+                                        )
+                    case .v4:
+                        properties = .init(size: size, format: .v4, chromaKey: chromaKey)
+                        data  = compact(va.map{ .init(truncatingIfNeeded: $0.v &>> shift) },
+                                        size: size,
+                                        code: code
+                                        )
+                    case .v8:
+                        properties = .init(size: size, format: .v8, chromaKey: chromaKey)
+                        data = va.map{ .init(truncatingIfNeeded: $0.v &>> shift) }
+
+                    case .v16:
+                        properties = .init(size: size, format: .v16, chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:UInt16 = rescale(pixel.v, to: UInt16.self)
+                            data.append(bigEndian: s)
+                        }
+
+                    case .va8:
+                        properties = .init(size: size, format: .va8)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:VA<UInt8> = downscale(pixel, to: UInt8.self)
+                            data.append(s.v)
+                            data.append(s.a)
+                        }
+
+                    case .va16:
+                        properties = .init(size: size, format: .va16)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:VA<UInt16> = rescale(pixel, to: UInt16.self)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.a)
+                        }
+
+                    case .rgb8:
+                        properties = .init(size: size, format: .rgb8(nil), chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:UInt8 = downscale(pixel.v, to: UInt8.self)
+                            data.append(s)
+                            data.append(s)
+                            data.append(s)
+                        }
+
+                    case .rgb16:
+                        properties = .init(size: size, format: .rgb16(nil), chromaKey: chromaKey)
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:UInt16 = rescale(pixel.v, to: UInt16.self)
+                            data.append(bigEndian: s)
+                            data.append(bigEndian: s)
+                            data.append(bigEndian: s)
+                        }
+
+                    case .rgba8:
+                        properties = .init(size: size, format: .rgba8(nil))
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:VA<UInt8> = downscale(pixel, to: UInt8.self)
+                            data.append(s.v)
+                            data.append(s.v)
+                            data.append(s.v)
+                            data.append(s.a)
+                        }
+
+                    case .rgba16:
+                        properties = .init(size: size, format: .rgba16(nil))
+                        data = []
+                        data.reserveCapacity(properties.byteCount)
+                        for pixel:VA<Component> in va
+                        {
+                            let s:VA<UInt16> = rescale(pixel, to: UInt16.self)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.a)
+                        }
+
+                    case .indexed8, .indexed4, .indexed2, .indexed1:
+                        guard let (indexed, palette):([UInt8], [RGBA<UInt8>]) =
+                            (va.map{ .init(downscale($0, to: UInt8.self)) }.indexPalette()),
+                            palette.count <= 1 << code.depth
+                        else
+                        {
+                            throw ConversionError.paletteOverflow
+                        }
+                        
+                        switch code
+                        {
+                            case .indexed1:
+                                properties  = .init(size: size, format: .indexed1(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed2:
+                                properties  = .init(size: size, format: .indexed2(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed4:
+                                properties  = .init(size: size, format: .indexed4(palette))
+                                data        = compact(indexed, size: size, code: code)
+                            case .indexed8:
+                                properties  = .init(size: size, format: .indexed8(palette))
+                                data        = indexed
+                            default:
+                                fatalError("unreachable")
+                        }
+                }
+                
+                return .init(_data: data, properties: properties)
+            }
 
             @_specialize(exported: true, where Component == UInt8)
             @_specialize(exported: true, where Component == UInt16)
@@ -2617,16 +3098,8 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:VA<UInt16>
-                            if Component.bitWidth >= UInt16.bitWidth
-                            {
-                                scaled = pixel.va.downscale(to: UInt16.self)
-                            }
-                            else
-                            {
-                                scaled = pixel.va.upscale(to: UInt16.self)
-                            }
-                            data.append(bigEndian: scaled.v)
+                            let s:UInt16 = rescale(pixel.r, to: UInt16.self)
+                            data.append(bigEndian: s)
                         }
 
                     case .va8:
@@ -2635,9 +3108,9 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:VA<UInt8> = pixel.va.downscale(to: UInt8.self)
-                            data.append(scaled.v)
-                            data.append(scaled.a)
+                            let s:VA<UInt8> = downscale(pixel.va, to: UInt8.self)
+                            data.append(s.v)
+                            data.append(s.a)
                         }
 
                     case .va16:
@@ -2646,17 +3119,9 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:VA<UInt16>
-                            if Component.bitWidth >= UInt16.bitWidth
-                            {
-                                scaled = pixel.va.downscale(to: UInt16.self)
-                            }
-                            else
-                            {
-                                scaled = pixel.va.upscale(to: UInt16.self)
-                            }
-                            data.append(bigEndian: scaled.v)
-                            data.append(bigEndian: scaled.a)
+                            let s:VA<UInt16> = rescale(pixel.va, to: UInt16.self)
+                            data.append(bigEndian: s.v)
+                            data.append(bigEndian: s.a)
                         }
 
                     case .rgb8:
@@ -2665,10 +3130,10 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
-                            data.append(scaled.r)
-                            data.append(scaled.g)
-                            data.append(scaled.b)
+                            let s:RGBA<UInt8> = downscale(pixel, to: UInt8.self)
+                            data.append(s.r)
+                            data.append(s.g)
+                            data.append(s.b)
                         }
 
                     case .rgb16:
@@ -2677,15 +3142,7 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:RGBA<UInt16>
-                            if Component.bitWidth >= UInt16.bitWidth
-                            {
-                                scaled = pixel.downscale(to: UInt16.self)
-                            }
-                            else
-                            {
-                                scaled = pixel.upscale(to: UInt16.self)
-                            }
+                            let scaled:RGBA<UInt16> = rescale(pixel, to: UInt16.self)
                             data.append(bigEndian: scaled.r)
                             data.append(bigEndian: scaled.g)
                             data.append(bigEndian: scaled.b)
@@ -2697,7 +3154,7 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:RGBA<UInt8> = pixel.downscale(to: UInt8.self)
+                            let scaled:RGBA<UInt8> = downscale(pixel, to: UInt8.self)
                             data.append(scaled.r)
                             data.append(scaled.g)
                             data.append(scaled.b)
@@ -2710,15 +3167,7 @@ enum PNG
                         data.reserveCapacity(properties.byteCount)
                         for pixel:RGBA<Component> in rgba
                         {
-                            let scaled:RGBA<UInt16>
-                            if Component.bitWidth >= UInt16.bitWidth
-                            {
-                                scaled = pixel.downscale(to: UInt16.self)
-                            }
-                            else
-                            {
-                                scaled = pixel.upscale(to: UInt16.self)
-                            }
+                            let scaled:RGBA<UInt16> = rescale(pixel, to: UInt16.self)
                             data.append(bigEndian: scaled.r)
                             data.append(bigEndian: scaled.g)
                             data.append(bigEndian: scaled.b)
@@ -2727,7 +3176,7 @@ enum PNG
 
                     case .indexed8, .indexed4, .indexed2, .indexed1:
                         guard let (indexed, palette):([UInt8], [RGBA<UInt8>]) =
-                            (rgba.map{ $0.downscale(to: UInt8.self) }.indexPalette()),
+                            (rgba.map{ downscale($0, to: UInt8.self) }.indexPalette()),
                             palette.count <= 1 << code.depth
                         else
                         {
@@ -3171,7 +3620,7 @@ enum PNG
                             // palette component type is always UInt8 so all Swift
                             // unsigned integer types can be used as an unscaling
                             // target
-                            return palette[index].upscale(to: Component.self).r
+                            return upscale(palette[index].r, to: Component.self)
                         }
 
                     case    .indexed8(let palette):
@@ -3180,7 +3629,7 @@ enum PNG
                         {
                             (index:Int) in
 
-                            return palette[index].upscale(to: Component.self).r
+                            return upscale(palette[index].r, to: Component.self)
                         }
                 }
             }
@@ -3199,8 +3648,8 @@ enum PNG
             {
                 // hope this gets inlined
                 guard let key:RGBA<Component> = Component.bitWidth > 16 ?
-                    self.properties.chromaKey?.upscale(  to: Component.self) :
-                    self.properties.chromaKey?.downscale(to: Component.self)
+                    (self.properties.chromaKey.map{ upscale(  $0, to: Component.self) }) :
+                    (self.properties.chromaKey.map{ downscale($0, to: Component.self) })
                 else
                 {
                     return color
@@ -3238,8 +3687,8 @@ enum PNG
             {
                 // hope this gets inlined
                 guard let key:RGBA<Component> = Component.bitWidth > 16 ?
-                    self.properties.chromaKey?.upscale(  to: Component.self) :
-                    self.properties.chromaKey?.downscale(to: Component.self)
+                    (self.properties.chromaKey.map{ upscale(  $0, to: Component.self) }) :
+                    (self.properties.chromaKey.map{ downscale($0, to: Component.self) })
                 else
                 {
                     return color.va
@@ -3339,7 +3788,7 @@ enum PNG
                         return self.mapBits
                         {
                             (index:Int) in
-                            return palette[index].va.upscale(to: Component.self)
+                            return upscale(palette[index].va, to: Component.self)
                         }
 
                     case    .indexed8(let palette):
@@ -3347,7 +3796,7 @@ enum PNG
                         {
                             (index:Int) in
 
-                            return palette[index].va.upscale(to: Component.self)
+                            return upscale(palette[index].va, to: Component.self)
                         }
                 }
             }
@@ -3425,7 +3874,7 @@ enum PNG
                             // palette component type is always UInt8 so all Swift
                             // unsigned integer types can be used as an unscaling
                             // target
-                            return palette[index].upscale(to: Component.self)
+                            return upscale(palette[index], to: Component.self)
                         }
 
                     case    .indexed8(let palette):
@@ -3434,7 +3883,7 @@ enum PNG
                         {
                             (index:Int) in
 
-                            return palette[index].upscale(to: Component.self)
+                            return upscale(palette[index], to: Component.self)
                         }
                 }
             }
@@ -3522,18 +3971,7 @@ enum PNG
             func scale<T, Sample>(bigEndian:T.Type, at index:Int, to _:Sample.Type) -> Sample
                 where T:FixedWidthInteger & UnsignedInteger, Sample:FixedWidthInteger & UnsignedInteger
             {
-                // this branch should be gone in specialized form. it seems to be
-                // effectively free.
-                if Sample.bitWidth > T.bitWidth
-                {
-                    let scalar:Sample = self.load(bigEndian: T.self, at: index, as: Sample.self)
-                    return scalar * VA<Sample>.quantum(depth: self.properties.format.code.depth)
-                }
-                else
-                {
-                    let scalar:T = self.load(bigEndian: T.self, at: index, as: T.self)
-                    return .init(truncatingIfNeeded: scalar &>> (T.bitWidth - Sample.bitWidth))
-                }
+                return rescale(self.load(bigEndian: T.self, at: index, as: T.self), to: Sample.self)
             }
 
             private
@@ -3580,7 +4018,7 @@ enum PNG
                 assert(Sample.bitWidth >= 8)
                 return self.mapBits
                 {
-                    return body($0 * VA<Sample>.quantum(depth: self.properties.format.code.depth))
+                    return body($0 * quantum(depth: self.properties.format.code.depth))
                 }
             }
 
@@ -4053,6 +4491,8 @@ enum PNG
         case pixelCount
         /// An image being encoded has too many colors to index.
         case paletteOverflow
+        /// An indexed pixel references a palette entry that doesn’t exist.
+        case indexOutOfRange
     }
 
     /// Errors that can occur while writing, compressing, or encoding PNG files.
