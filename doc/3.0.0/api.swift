@@ -561,11 +561,10 @@ enum PNG
             /// - Parameters:
             ///     - data: A pixel buffer.
             ///     - properties: A `Properties` record.
-            /// - Returns: An uncompressed PNG image, if the size of the given
-            ///     pixel buffer is consistent with the size and format information
-            ///     in the given `properties`, and the given `properties` contains
-            ///     a palette, if needed, and `nil` otherwise.
-            init?(_ data:[UInt8], properties:Properties)
+            /// - Returns: An uncompressed PNG image. If the size of the given
+            ///     pixel buffer is not consistent with the size and format information
+            ///     in the given `properties`, a fatal error will occur.
+            init(rawData data:[UInt8], properties:Properties)
 
             /// Decomposes this uncompressed image into its constituent sub-images,
             /// if this image is interlaced.
@@ -703,6 +702,18 @@ enum PNG
             /// fractional, pixels. Logical image scanlines are padded to a whole
             /// number of bytes.
             let data:[UInt8]
+            
+            /// Creates a fully decoded PNG image with the given pixel matrix and
+            /// `Properties` record.
+            /// 
+            /// - Parameters:
+            ///     - data: An untyped, padded data buffer containing a row-major
+            ///         pixel matrix.
+            ///     - properties: A `Properties` record.
+            /// - Returns: A fully decoded PNG image. The size of the given pixel
+            ///     matrix must be consistent with the size and format information
+            ///     in the given image `properties`.
+            init(rawData data:[UInt8], properties:Properties)
 
             /// Decompresses and deinterlaces a PNG file at the given file path,
             /// and returns it as a `Rectangular` row-major pixel matrix.

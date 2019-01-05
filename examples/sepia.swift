@@ -12,15 +12,17 @@ func lerp(_ a:UInt16, _ b:UInt16, by t:UInt16) -> UInt16
 
 func sepia(input inputPath:String, output outputPath:String) 
 {
-    guard let input:PNG.Data.Rectangular = try? .decompress(path: inputPath) 
+    guard let input:PNG.Data.Uncompressed = try? .decompress(path: inputPath) 
     else 
     {
         print("failed to decode '\(inputPath)'")
         return 
     }
     
+    let rectangular:PNG.Data.Rectangular = input.deinterlaced()
+    
     // make sure we’re using a grayscale png 
-    let format:PNG.Properties.Format = input.properties.format
+    let format:PNG.Properties.Format = rectangular.properties.format
     guard !format.code.hasColor
     else 
     {
@@ -28,10 +30,11 @@ func sepia(input inputPath:String, output outputPath:String)
         return 
     }
     
+    // define the black- and white-stops of the color ramp
     let black:PNG.RGBA<UInt16> = .init(12000, 5000, 6000, .max), 
         white:PNG.RGBA<UInt16> = .init(.max, .max, .max, .max)
     
-    let sepia:[PNG.RGBA<UInt16>] = input.v(of: UInt16.self).map 
+    let sepia:[PNG.RGBA<UInt16>] = rectangular.v(of: UInt16.self).map 
     {
         (value:UInt16) in 
         
@@ -42,7 +45,7 @@ func sepia(input inputPath:String, output outputPath:String)
     }
     
     guard let output:PNG.Data.Uncompressed = 
-        try? .convert(rgba: sepia, size: input.properties.size, to: .rgb16)
+        try? .convert(rgba: sepia, size: rectangular.properties.size, to: .rgb16)
     else 
     {
         print("failed to convert '\(inputPath)'")
