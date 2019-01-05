@@ -125,7 +125,7 @@ Its variant functions operate on similar principles, though in some cases, pixel
 
 *Example output*
 
-The full code for this example can be found at [`examples/luminance.swift`](examples/luminance.swift).
+The full code for this example can be found at [`examples/luminance.swift`](../../examples/luminance.swift).
 
 ## Apply a color ramp to a grayscale image
 
@@ -257,4 +257,4 @@ These protocols can be used, for example, to implement reading and writing PNG f
 
 *Example output*
 
-The full code for this example can be found at [`examples/sepia.swift`](examples/sepia.swift).
+The full code for this example can be found at [`examples/sepia.swift`](../../examples/sepia.swift).
