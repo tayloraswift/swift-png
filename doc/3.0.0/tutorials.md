@@ -210,7 +210,7 @@ While using `Data.Uncompressed` and `Data.Rectangular` is more verbose than usin
 
 > Warning: An image can be visually monochrome, and still be encoded in an RGB or RGBA color format, simply by having the same component values in all three color channels. In that case, the above guard statement will reject the image.
 
-We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. 
+We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:)` can throw, but if you stick with the non-indexed color formats, the only possible error is `PNG.ConversionError.pixelCount`.
 
 The `chunkSize:` argument is optional and by default is set to 2<sup>16</sup> bytes. It specifies the size of the internal data blocks in the compressed PNG file, and there is rarely a good reason to change it. At the default, the library will emit 20–30 chunks for a “normal” size image (“1K” resolution).
 
@@ -258,3 +258,162 @@ These protocols can be used, for example, to implement reading and writing PNG f
 *Example output*
 
 The full code for this example can be found at [`examples/sepia.swift`](../../examples/sepia.swift).
+
+## Posterize a color image to indexed format
+
+<img src="../../examples/example-indexing-input.png" alt="indexing example input" style="width: 512px;"/>
+
+*Example input: *Chucho Valdés & The Afro-Cuban Messengers*, [Carlos Delgado / CC-BY-SA](https://commons.wikimedia.org/wiki/File:Chucho_Vald%C3%A9s_%26_The_Afro-Cuban_Messengers_-_29.jpg)*
+
+In this example, we will write the following function, `indexing(input:output:)`, which reduce the input image to a fixed set of predefined palette colors. 
+
+```swift 
+func indexing(input inputPath:String, output outputPath:String)
+```
+
+We’re not really doing anything special with the image loading, so we’re just going to use `rgba(path:of:)` with a component type of `UInt8`.
+
+```swift 
+    guard let (rgba, (x, y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) = 
+        try? PNG.rgba(path: inputPath, of: UInt8.self) 
+    else 
+    {
+        print("failed to decode '\(inputPath)'")
+        return 
+    }
+```
+
+There are algorithms that can compute an optimal palette for any input image, but that’s out of the scope of this tutorial, so we’ll just hardcode a thirteen-color palette.
+
+```swift 
+    let palette:[PNG.RGBA<UInt8>] = 
+    [
+        .init(  0,   0,  45), 
+        .init(  0,   0,  82), 
+        .init(  0,   0, 135), 
+        .init( 35,   0,  72),
+        .init( 72,  18,  98), 
+        .init(133,  63, 125), 
+        .init(153,   0, 106), 
+        .init(153,  16, 142), 
+        .init(255,  46, 154), 
+        
+        .init(254,   1, 137),
+        .init(250, 130, 147),
+        .init(254, 157, 168),
+        .init(255, 195, 198),
+        .init(240, 227, 227)
+    ]
+```
+
+The next thing we need is a function that, given an arbitrary color, returns the index of the palette element that most closely matches it. A simple way to do this is to just compare euclidian distances within the RGB space. 
+
+```swift 
+func nearest(to color:PNG.RGBA<UInt8>, in palette:[PNG.RGBA<UInt8>]) -> Int
+{
+    guard let (i, _):(Int, PNG.RGBA<UInt8>) = 
+    (
+        zip(palette.indices, palette).min 
+        {
+            let dr1:Int = .init($0.1.r) - .init(color.r), 
+                dg1:Int = .init($0.1.g) - .init(color.g), 
+                db1:Int = .init($0.1.b) - .init(color.b)
+            let dr2:Int = .init($1.1.r) - .init(color.r), 
+                dg2:Int = .init($1.1.g) - .init(color.g), 
+                db2:Int = .init($1.1.b) - .init(color.b)
+            
+            let d1:Int = dr1 * dr1 + dg1 * dg1 + db1 * db1, 
+                d2:Int = dr2 * dr2 + dg2 * dg2 + db2 * db2
+            
+            return d1 < d2
+        }
+    )
+    else 
+    {
+        fatalError("empty palette")
+    }
+    
+    return i
+}
+```
+
+Then, we just compute palette indices for each pixel in the image. 
+
+```swift 
+    let indices:[Int] = rgba.map 
+    {
+        nearest(to: $0, in: palette)
+    } 
+```
+
+Notice that while in previous examples, we transformed pixels to pixels, like `RGBA<UInt8>`, `VA<UInt8>`, or `UInt8`, here, we are transforming pixels to regular Swift `Int`s. These `Int`s are indices into the color palette we defined, and we can pass them, along with the palette, to the indexed variant of the `encode()` function. (There is also an indexed variant of the `Data.Uncompressed.convert()` function.)
+
+```swift 
+    guard let _:Void = 
+        try? PNG.encode(indices: indices, palette: palette, size: (x, y), 
+                            as: .indexed4, path: outputPath)
+    else 
+    {
+        print("failed to encode '\(outputPath)'")
+        return 
+    }
+```
+
+We picked `.indexed4` as the format target because it uses 4 bits per pixel to index palette entries, so it supports palettes up to 16 entries long. (Ours has 13 entries.) We could have used `.indexed8`, which supports up to 256 palette entries, but that would be a waste of space. Also available are `.indexed2` and `.indexed1`, but if we try to use them with this palette, we will get a `PNG.ConversionError.paletteOverflow` error. If any of the supplied indices are out of the range of `palette.indices`, we will also get a `PNG.ConversionError.indexOutOfRange` error, even if the index is within the allowed range for that format target.
+
+Note that `.v1`, `.v2`, …, `.rgba16` are all still valid format targets for `encode(indices:palette:size:as:chromaKey:path:level:)`. In such a case, the library will simply flatten the indexed representation and treat the image like any other `RGBA<T>` input.
+
+### `encode(indices:palette: :::::)`
+
+| Format | (R, G, B, A) → *Encoding* | Bit depth | Max palette entries 
+| --- | --- | --- | 
+| `.indexed1` | `(R, G, B, A)` | 8 | 2
+| `.indexed2` | `(R, G, B, A)` | 8 | 4
+| `.indexed4` | `(R, G, B, A)` | 8 | 16
+| `.indexed8` | `(R, G, B, A)` | 8 | 256
+| `.v1` | `R` | 1 | `Int.max`
+| `.v2` | `R` | 2 | `Int.max`
+| `.v4` | `R` | 4 | `Int.max`
+| `.v8` | `R` | 8 | `Int.max`
+| `.v16` | `R` | 16 | `Int.max`
+| `.va8` | `(R, A)` | 8 | `Int.max`
+| `.va16` | `(R, A)` | 16 | `Int.max`
+| `.rgb8` | `(R, G, B)` | 8 | `Int.max`
+| `.rgb16` | `(R, G, B)` | 16 | `Int.max`
+| `.rgba8` | `(R, G, B, A)` | 8 | `Int.max`
+| `.rgba16` | `(R, G, B, A)` | 16 | `Int.max`
+
+As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets for the non-indexed `encode()` and `convert()` APIs. In these cases, the library will attempt to index the input image for you. However, if the input contains too many distinct colors for the given indexed format, you will get a `PNG.ConversionError.paletteOverflow` error. These APIs will never throw `PNG.ConversionError.indexOutOfRange` however, because no indices were ever supplied.
+
+### `encode(v: :::::)`
+
+| Format | (V) → *Encoding* | Bit depth | Max distinct colors 
+| --- | --- | --- |
+| `.indexed1` | `(V, V, V, UInt8.max)` | 8 | 2
+| `.indexed2` | `(V, V, V, UInt8.max)` | 8 | 4
+| `.indexed4` | `(V, V, V, UInt8.max)` | 8 | 16
+| `.indexed8` | `(V, V, V, UInt8.max)` | 8 | 256
+
+### `encode(va: :::::)`
+
+| Format | (V, A) → *Encoding* | Bit depth | Max distinct colors 
+| --- | --- | --- |
+| `.indexed1` | `(V, V, V, A)` | 8 | 2
+| `.indexed2` | `(V, V, V, A)` | 8 | 4
+| `.indexed4` | `(V, V, V, A)` | 8 | 16
+| `.indexed8` | `(V, V, V, A)` | 8 | 256
+
+### `encode(rgba: :::::)`
+
+| Format | (R, G, B, A) → *Encoding* | Bit depth | Max distinct colors 
+| --- | --- | --- |
+| `.indexed1` | `(R, G, B, A)` | 8 | 2
+| `.indexed2` | `(R, G, B, A)` | 8 | 4
+| `.indexed4` | `(R, G, B, A)` | 8 | 16
+| `.indexed8` | `(R, G, B, A)` | 8 | 256
+
+<img src="../../examples/example-indexing-output.png" alt="indexing example output" style="width: 512px;"/>
+
+*Example output*
+
+The full code for this example can be found at [`examples/indexing.swift`](../../examples/indexing.swift).
