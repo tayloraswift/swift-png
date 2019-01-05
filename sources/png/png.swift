@@ -2109,29 +2109,20 @@ enum PNG
             /// - Parameters:
             ///     - data: A pixel buffer.
             ///     - properties: A `Properties` record.
-            /// - Returns: An uncompressed PNG image, if the size of the given
-            ///     pixel buffer is consistent with the size and format information
-            ///     in the given `properties`, and the given `properties` contains
-            ///     a palette, if needed, and `nil` otherwise.
+            /// - Returns: An uncompressed PNG image. If the size of the given
+            ///     pixel buffer is not consistent with the size and format information
+            ///     in the given `properties`, a fatal error will occur.
             public
-            init?(_ data:[UInt8], properties:Properties)
+            init(rawData data:[UInt8], properties:Properties)
             {
                 guard data.count == properties.byteCount
                 else
                 {
-                    return nil
+                    fatalError("rawData array count doesn’t match dimensions given by properties parameter")
                 }
 
-                self.init(_data: data, properties: properties)
-            }
-
-            private
-            init(_data:[UInt8], properties:Properties)
-            {
-                assert(_data.count == properties.byteCount)
-
                 self.properties = properties
-                self.data       = _data
+                self.data       = data
             }
 
             /// Decomposes this uncompressed image into its constituent sub-images,
@@ -2158,7 +2149,7 @@ enum PNG
                                                     format: self.properties.format,
                                                 interlaced: false)
 
-                    return .init(.init(self.data[range]), properties: properties)
+                    return .init(rawData: .init(self.data[range]), properties: properties)
                 }
             }
 
@@ -2177,7 +2168,7 @@ enum PNG
                 else
                 {
                     // image is not interlaced at all, return it transparently
-                    return .init(self.data, properties: self.properties)
+                    return .init(rawData: self.data, properties: self.properties)
                 }
 
                 let properties:Properties = .init(size: self.properties.shape.size,
@@ -2247,7 +2238,7 @@ enum PNG
                     count = properties.byteCount
                 }
 
-                return .init(deinterlaced, properties: properties)
+                return .init(rawData: deinterlaced, properties: properties)
             }
 
             /// Compresses this image, and outputs the compressed PNG file to the given
@@ -2501,15 +2492,14 @@ enum PNG
                             throw DecodingError.unexpectedChunk(chunk)
 
                         case    (.IEND, .v(let properties)):
-                            guard let uncompressed:Uncompressed =
-                                Uncompressed.init(data, properties: properties)
+                            guard data.count == properties.byteCount
                             else
                             {
                                 // not enough data
                                 throw DecodingError.inconsistentMetadata
                             }
 
-                            return uncompressed
+                            return .init(rawData: data, properties: properties)
 
                         case    (.IEND, .ii),
                                 (.IEND, .iii):
@@ -2714,7 +2704,7 @@ enum PNG
                             fatalError("unreachable")
                     }
                     
-                    return .init(_data: data, properties: properties)
+                    return .init(rawData: data, properties: properties)
                 }
                 else 
                 {
@@ -2879,7 +2869,7 @@ enum PNG
                         }
                 }
                 
-                return .init(_data: data, properties: properties)
+                return .init(rawData: data, properties: properties)
             }
             
             @_specialize(exported: true, where Component == UInt8)
@@ -3038,7 +3028,7 @@ enum PNG
                         }
                 }
                 
-                return .init(_data: data, properties: properties)
+                return .init(rawData: data, properties: properties)
             }
 
             @_specialize(exported: true, where Component == UInt8)
@@ -3197,7 +3187,7 @@ enum PNG
                         }
                 }
 
-                return .init(_data: data, properties: properties)
+                return .init(rawData: data, properties: properties)
             }
 
             private static
@@ -3269,10 +3259,19 @@ enum PNG
             /// - Returns: A fully decoded PNG image. The size of the given pixel
             ///     matrix must be consistent with the size and format information
             ///     in the given image `properties`.
-            init(_ data:[UInt8], properties:Properties)
+            public 
+            init(rawData data:[UInt8], properties:Properties)
             {
-                assert(!properties.interlaced)
-                assert(data.count == properties.byteCount)
+                guard !properties.interlaced
+                else
+                {
+                    fatalError("can’t make Rectangular image with interlacing, use Uncompressed type instead")
+                }
+                guard data.count == properties.byteCount
+                else
+                {
+                    fatalError("rawData array count doesn’t match dimensions given by properties parameter")
+                }
 
                 self.properties = properties
                 self.data       = data
