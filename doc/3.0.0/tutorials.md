@@ -366,7 +366,7 @@ Note that `.v1`, `.v2`, …, `.rgba16` are all still valid format targets for `e
 ### `encode(indices:palette: :::::)`
 
 | Format | (R, G, B, A) → *Encoding* | Bit depth | Max palette entries 
-| --- | --- | --- | 
+| --- | --- | --- | --- |
 | `.indexed1` | `(R, G, B, A)` | 8 | 2
 | `.indexed2` | `(R, G, B, A)` | 8 | 4
 | `.indexed4` | `(R, G, B, A)` | 8 | 16
@@ -388,7 +388,7 @@ As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets
 ### `encode(v: :::::)`
 
 | Format | (V) → *Encoding* | Bit depth | Max distinct colors 
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `.indexed1` | `(V, V, V, UInt8.max)` | 8 | 2
 | `.indexed2` | `(V, V, V, UInt8.max)` | 8 | 4
 | `.indexed4` | `(V, V, V, UInt8.max)` | 8 | 16
@@ -397,7 +397,7 @@ As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets
 ### `encode(va: :::::)`
 
 | Format | (V, A) → *Encoding* | Bit depth | Max distinct colors 
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `.indexed1` | `(V, V, V, A)` | 8 | 2
 | `.indexed2` | `(V, V, V, A)` | 8 | 4
 | `.indexed4` | `(V, V, V, A)` | 8 | 16
@@ -406,7 +406,7 @@ As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets
 ### `encode(rgba: :::::)`
 
 | Format | (R, G, B, A) → *Encoding* | Bit depth | Max distinct colors 
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `.indexed1` | `(R, G, B, A)` | 8 | 2
 | `.indexed2` | `(R, G, B, A)` | 8 | 4
 | `.indexed4` | `(R, G, B, A)` | 8 | 16
