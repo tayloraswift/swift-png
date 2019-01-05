@@ -478,7 +478,7 @@ enum PNG
     /// as flat buffers containing interleaved components.
     @_fixed_layout
     public
-    struct VA<Component> where Component:FixedWidthInteger & UnsignedInteger
+    struct VA<Component>:Hashable where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The value component of this color.
         public
@@ -553,7 +553,7 @@ enum PNG
     /// safely reinterpreted as flat buffers containing interleaved components.
     @_fixed_layout
     public
-    struct RGBA<Component> where Component:FixedWidthInteger & UnsignedInteger
+    struct RGBA<Component>:Hashable where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color.
         public

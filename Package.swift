@@ -25,12 +25,14 @@ let package = Package(
     [
         .library(name: "PNG", targets: ["PNG"]),
         .executable(name: "tests", targets: ["PNGTests"]),
-        .executable(name: "benchmarks", targets: ["PNGBenchmarks"])
+        .executable(name: "benchmarks", targets: ["PNGBenchmarks"]), 
+        .executable(name: "examples", targets: ["PNGExamples"])
     ],
     targets: coreTargets +
     [
         .target(name: "PNGTests",       dependencies: ["PNG"], path: "tests"),
-        .target(name: "PNGBenchmarks",  dependencies: ["PNG"], path: "benchmarks")
+        .target(name: "PNGBenchmarks",  dependencies: ["PNG"], path: "benchmarks"), 
+        .target(name: "PNGExamples",    dependencies: ["PNG"], path: "examples")
     ],
     swiftLanguageVersions: [.v4_2]
 )
