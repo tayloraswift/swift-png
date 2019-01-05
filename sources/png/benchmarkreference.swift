@@ -128,7 +128,7 @@ extension PNG
         }
 
         public static
-        func _encodeRGBA(_ path:String) -> Int
+        func _convertRGBA(_ path:String) -> Int
         {
             guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) =
                 try? PNG.rgba(path: path, of: UInt8.self)
@@ -146,6 +146,27 @@ extension PNG
 
             let t1:Int = clock()
             guard let _:Void = try? uncompressed.compress(path: path + ".png")
+            else
+            {
+                fatalError("could not open, write, or encode PNG file '\(path).png'")
+            }
+
+            let t:Int = clock() - t1
+            return t
+        }
+        
+        public static
+        func _encodeRGBA(_ path:String) -> Int
+        {
+            guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) =
+                try? PNG.rgba(path: path, of: UInt8.self)
+            else
+            {
+                fatalError("could not open, read, or decode PNG file '\(path)'")
+            }
+            
+            let t1:Int = clock()
+            guard let _:Void = try? encode(rgba: rgba, size: (x, y), as: .rgba8, path: path + ".png", level: 9)
             else
             {
                 fatalError("could not open, write, or encode PNG file '\(path).png'")

@@ -118,7 +118,7 @@ func structuredV(_ path:String) -> Int
 }
 
 
-func encodeRGBA(_ path:String) -> Int
+func convertRGBA(_ path:String) -> Int
 {
     guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) =
         try? PNG.rgba(path: path, of: UInt8.self)
@@ -145,6 +145,25 @@ func encodeRGBA(_ path:String) -> Int
     return t
 }
 
+func encodeRGBA(_ path:String) -> Int
+{
+    guard let (rgba, (x: x, y: y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) =
+        try? PNG.rgba(path: path, of: UInt8.self)
+    else
+    {
+        fatalError("could not open, read, or decode PNG file '\(path)'")
+    }
+    
+    let t1:Int = clock()
+    guard let _:Void = try? PNG.encode(rgba: rgba, size: (x, y), as: .rgba8, path: path + ".png", level: 9)
+    else
+    {
+        fatalError("could not open, write, or encode PNG file '\(path).png'")
+    }
+
+    let t:Int = clock() - t1
+    return t
+}
 
 func benchmark(_ name:String, function:(String) -> Int)
 {

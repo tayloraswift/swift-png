@@ -2250,80 +2250,6 @@ enum PNG
                 return .init(deinterlaced, properties: properties)
             }
 
-            static
-            func compress<RAC, Destination>(_ data:RAC, properties:Properties,
-                to destination:inout Destination, chunkSize:Int, level:Int) throws
-                where RAC:RandomAccessCollection, RAC.Element == UInt8, Destination:DataDestination
-            {
-                precondition(chunkSize >= 1, "chunk size must be positive")
-
-                guard var iterator:ChunkIterator<Destination> =
-                    ChunkIterator.begin(destination: &destination)
-                else
-                {
-                    throw EncodingError.notAcceptingData
-                }
-
-                @inline(__always)
-                func _next(_ chunk:Chunk, _ contents:[UInt8] = []) throws
-                {
-                    guard let _:Void = iterator.next(chunk, contents, destination: &destination)
-                    else
-                    {
-                        throw EncodingError.notAcceptingData
-                    }
-                }
-
-                try _next(.IHDR, properties.encodeIHDR())
-                try properties.encodePLTE().map
-                {
-                    try _next(.PLTE, $0)
-                }
-                try properties.encodetRNS().map
-                {
-                    try _next(.tRNS, $0)
-                }
-
-                var pitches:Properties.Pitches = properties.pitches,
-                encoder:Properties.Encoder = try properties.encoder(level: level)
-
-                var pitch:Int?,
-                base:RAC.Index = data.startIndex
-                while true
-                {
-                    var output:[UInt8] = []
-                    let more:Bool = try encoder.consolidate(extending: &output, capacity: chunkSize)
-                    {
-                        () -> RAC.SubSequence? in
-
-                        guard   let update:Int? = pitches.next(),
-                                let count:Int   = update ?? pitch
-                        else
-                        {
-                            return nil
-                        }
-
-                        let end:RAC.Index      = data.index(base, offsetBy: count),
-                        range:Range<RAC.Index> = base ..< end
-
-                        base  = end
-                        pitch = count
-
-                        return data[range]
-                    }
-
-                    try _next(.IDAT, output)
-
-                    guard more
-                    else
-                    {
-                        break
-                    }
-                }
-
-                try _next(.IEND)
-            }
-
             /// Compresses this image, and outputs the compressed PNG file to the given
             /// data destination.
             /// 
@@ -2344,11 +2270,73 @@ enum PNG
                 chunkSize:Int = 1 << 16, level:Int = 9) throws
                 where Destination:DataDestination
             {
-                try Uncompressed.compress( self.data,
-                               properties: self.properties,
-                                       to: &destination,
-                                chunkSize: chunkSize,
-                                    level: level)
+                precondition(chunkSize >= 1, "chunk size must be positive")
+
+                guard var iterator:ChunkIterator<Destination> =
+                    ChunkIterator.begin(destination: &destination)
+                else
+                {
+                    throw EncodingError.notAcceptingData
+                }
+
+                @inline(__always)
+                func _next(_ chunk:Chunk, _ contents:[UInt8] = []) throws
+                {
+                    guard let _:Void = iterator.next(chunk, contents, destination: &destination)
+                    else
+                    {
+                        throw EncodingError.notAcceptingData
+                    }
+                }
+
+                try _next(.IHDR, self.properties.encodeIHDR())
+                try self.properties.encodePLTE().map
+                {
+                    try _next(.PLTE, $0)
+                }
+                try self.properties.encodetRNS().map
+                {
+                    try _next(.tRNS, $0)
+                }
+
+                var pitches:Properties.Pitches = self.properties.pitches,
+                encoder:Properties.Encoder = try self.properties.encoder(level: level)
+
+                var pitch:Int?,
+                base:Int = self.data.startIndex
+                while true
+                {
+                    var output:[UInt8] = []
+                    let more:Bool = try encoder.consolidate(extending: &output, capacity: chunkSize)
+                    {
+                        () -> ArraySlice<UInt8>? in
+
+                        guard   let update:Int? = pitches.next(),
+                                let count:Int   = update ?? pitch
+                        else
+                        {
+                            return nil
+                        }
+
+                        let end:Int      = self.data.index(base, offsetBy: count),
+                        range:Range<Int> = base ..< end
+
+                        base  = end
+                        pitch = count
+
+                        return self.data[range]
+                    }
+
+                    try _next(.IDAT, output)
+
+                    guard more
+                    else
+                    {
+                        break
+                    }
+                }
+
+                try _next(.IEND)
             }
             
             private
@@ -2670,10 +2658,16 @@ enum PNG
                 return uncompressed
             }
             
+            @_specialize(exported: true, where Component == UInt8)
+            @_specialize(exported: true, where Component == UInt16)
+            @_specialize(exported: true, where Component == UInt32)
+            @_specialize(exported: true, where Component == UInt64)
+            @_specialize(exported: true, where Component == UInt)
             public static
-            func convert(indices:[Int], palette:[RGBA<UInt8>], 
+            func convert<Component>(indices:[Int], palette:[RGBA<Component>], 
                 size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
-                throws -> Uncompressed
+                throws -> Uncompressed 
+                where Component:FixedWidthInteger & UnsignedInteger
             {
                 // make sure pixel array is correct size
                 guard indices.count == Math.vol(size) 
@@ -2699,21 +2693,22 @@ enum PNG
                         throw ConversionError.paletteOverflow
                     }
                     
-                    let iu8:[UInt8] = indices.map(UInt8.init(truncatingIfNeeded:))
+                    let iu8:[UInt8]      = indices.map(UInt8.init(truncatingIfNeeded:)), 
+                        p8:[RGBA<UInt8>] = palette.map{ downscale($0, to: UInt8.self) }
                     
                     switch code
                     {
                         case .indexed1:
-                            properties  = .init(size: size, format: .indexed1(palette))
+                            properties  = .init(size: size, format: .indexed1(p8))
                             data        = compact(iu8, size: size, code: code)
                         case .indexed2:
-                            properties  = .init(size: size, format: .indexed2(palette))
+                            properties  = .init(size: size, format: .indexed2(p8))
                             data        = compact(iu8, size: size, code: code)
                         case .indexed4:
-                            properties  = .init(size: size, format: .indexed4(palette))
+                            properties  = .init(size: size, format: .indexed4(p8))
                             data        = compact(iu8, size: size, code: code)
                         case .indexed8:
-                            properties  = .init(size: size, format: .indexed8(palette))
+                            properties  = .init(size: size, format: .indexed8(p8))
                             data        = iu8
                         default:
                             fatalError("unreachable")
@@ -2723,7 +2718,7 @@ enum PNG
                 }
                 else 
                 {
-                    let image:[RGBA<UInt8>] = indices.map{ palette[$0] }
+                    let image:[RGBA<Component>] = indices.map{ palette[$0] }
                     return try convert(rgba: image, size: size, to: code, chromaKey: chromaKey)
                 }
             }
@@ -4250,38 +4245,145 @@ enum PNG
     }
 
     static
-    func encode<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
+    func encode<Component, Destination>(indices:[Int], palette:[RGBA<Component>], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
-        destination:inout Destination, level:Int = 9) throws
+        destination:inout Destination, level:Int) throws
         where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
     {
-        switch code
-        {
-            // take fast path if possible
-            case .rgba8:
-                let properties:Properties = .init(size: size, format: .rgba8(nil))
-                if let rgba8:[RGBA<UInt8>] = rgba as? [RGBA<UInt8>]
-                {
-                    try rgba8.withUnsafeBufferPointerToComponents
-                    {
-                        try Data.Uncompressed.compress(    $0,
-                                               properties: properties,
-                                                       to: &destination,
-                                                chunkSize: 1 << 16,
-                                                    level: level)
-                    }
-                }
-                else
-                {
-                    fallthrough
-                }
-            default:
-                let uncompressed:Data.Uncompressed = 
-                    try .convert(rgba: rgba, size: size, to: code, chromaKey: chromaKey)
-                try uncompressed.compress(to: &destination, level: level)
-        }
+        let uncompressed:Data.Uncompressed = 
+            try .convert(indices: indices, palette: palette, size: size, to: code, chromaKey: chromaKey)
+        try uncompressed.compress(to: &destination, level: level)
+    }
+    
+    static
+    func encode<Component, Destination>(v:[Component], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        destination:inout Destination, level:Int) throws
+        where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
+    {
+        let uncompressed:Data.Uncompressed = 
+            try .convert(v: v, size: size, to: code, chromaKey: chromaKey)
+        try uncompressed.compress(to: &destination, level: level)
     }
 
+    static
+    func encode<Component, Destination>(va:[VA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        destination:inout Destination, level:Int) throws
+        where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
+    {
+        let uncompressed:Data.Uncompressed = 
+            try .convert(va: va, size: size, to: code, chromaKey: chromaKey)
+        try uncompressed.compress(to: &destination, level: level)
+    }
+
+    static
+    func encode<Component, Destination>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        destination:inout Destination, level:Int) throws
+        where Component:FixedWidthInteger & UnsignedInteger, Destination:DataDestination
+    {
+        // we used to have a fast-path for RGBA<UInt8>, but the fast path turned out 
+        // to be slower than the unified path
+        let uncompressed:PNG.Data.Uncompressed = 
+            try .convert(rgba: rgba, size: size, to: code, chromaKey: chromaKey)
+        try uncompressed.compress(to: &destination, level: level)
+    }
+    
+    
+    @_specialize(exported: true, where Component == UInt8)
+    @_specialize(exported: true, where Component == UInt16)
+    @_specialize(exported: true, where Component == UInt32)
+    @_specialize(exported: true, where Component == UInt64)
+    @_specialize(exported: true, where Component == UInt)
+    public static
+    func encode<Component>(indices:[Int], palette:[RGBA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let _:Void =
+        (
+            try File.Destination.open(path: outputPath)
+            {
+                try encode(  indices: indices, 
+                             palette: palette, 
+                                size: size,
+                                  as: code,
+                           chromaKey: chromaKey,
+                         destination: &$0,
+                               level: level)
+            }
+        )
+        else
+        {
+            throw File.Error.couldNotOpen
+        }
+    }
+    
+    @_specialize(exported: true, where Component == UInt8)
+    @_specialize(exported: true, where Component == UInt16)
+    @_specialize(exported: true, where Component == UInt32)
+    @_specialize(exported: true, where Component == UInt64)
+    @_specialize(exported: true, where Component == UInt)
+    public static
+    func encode<Component>(v:[Component], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let _:Void =
+        (
+            try File.Destination.open(path: outputPath)
+            {
+                try encode(v: v,
+                        size: size,
+                          as: code,
+                   chromaKey: chromaKey,
+                 destination: &$0,
+                       level: level)
+            }
+        )
+        else
+        {
+            throw File.Error.couldNotOpen
+        }
+    }
+    
+    @_specialize(exported: true, where Component == UInt8)
+    @_specialize(exported: true, where Component == UInt16)
+    @_specialize(exported: true, where Component == UInt32)
+    @_specialize(exported: true, where Component == UInt64)
+    @_specialize(exported: true, where Component == UInt)
+    public static
+    func encode<Component>(va:[VA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+    {
+        guard let _:Void =
+        (
+            try File.Destination.open(path: outputPath)
+            {
+                try encode(   va: va,
+                            size: size,
+                              as: code,
+                       chromaKey: chromaKey,
+                     destination: &$0,
+                           level: level)
+            }
+        )
+        else
+        {
+            throw File.Error.couldNotOpen
+        }
+    }
+    
+    @_specialize(exported: true, where Component == UInt8)
+    @_specialize(exported: true, where Component == UInt16)
+    @_specialize(exported: true, where Component == UInt32)
+    @_specialize(exported: true, where Component == UInt64)
+    @_specialize(exported: true, where Component == UInt)
     public static
     func encode<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
@@ -4292,12 +4394,12 @@ enum PNG
         (
             try File.Destination.open(path: outputPath)
             {
-                try encode(  rgba: rgba,
-                             size: size,
-                               as: code,
-                        chromaKey: chromaKey,
-                      destination: &$0,
-                            level: level)
+                try encode( rgba: rgba,
+                            size: size,
+                              as: code,
+                       chromaKey: chromaKey,
+                     destination: &$0,
+                           level: level)
             }
         )
         else
