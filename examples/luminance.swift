@@ -14,6 +14,7 @@ func luminance(input inputPath:String, output outputPath:String)
     {
         (c:PNG.RGBA<UInt8>) in 
         
+        // widen components to avoid overflow
         let r:UInt = .init(c.r), 
             g:UInt = .init(c.g), 
             b:UInt = .init(c.b)
