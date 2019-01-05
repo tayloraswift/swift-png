@@ -1198,6 +1198,8 @@ enum PNG
         case pixelCount
         /// An image being encoded has too many colors to index.
         case paletteOverflow
+        /// An indexed pixel references a palette entry that doesn’t exist.
+        case indexOutOfRange
     }
 
     /// Errors that can occur while writing, compressing, or encoding PNG files.

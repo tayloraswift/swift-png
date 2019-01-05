@@ -223,7 +223,7 @@ extension PNG
 
             init(level:Int) throws
             {
-                assert(0 ..< 10 ~= level)
+                precondition(0 ..< 10 ~= level)
                 self.stream = try Deflator.createStream
                 {
                     deflateInit_($0, Int32(level), ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))

@@ -48,6 +48,8 @@ let (pixels, (x: width, y: height)) = try PNG.v(path: "example.png", of: UInt8.s
 // height: Int
 ````
 
+[**Tutorials**](doc/3.0.0/tutorials.md)
+
 ---
 
 TODO: section needs updating
