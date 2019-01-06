@@ -4,7 +4,7 @@
 
 <img src="../../examples/example-luminance-input.png" alt="luminance example input" style="width: 512px;"/>
 
-*Example input: *Spiral staircase of the Exhibition Hall of the German Historical Museum*, by [Ansgar Koreng / CC BY-SA 3.0 (DE)](https://commons.wikimedia.org/wiki/File:Treppenturm,_Deutsches_Historisches_Museum,_Berlin,_150118,_ako.jpg)*
+*Example input: *Spiral staircase of the Exhibition Hall of the German Historical Museum*, [Ansgar Koreng / CC BY-SA 3.0 (DE)](https://commons.wikimedia.org/wiki/File:Treppenturm,_Deutsches_Historisches_Museum,_Berlin,_150118,_ako.jpg)*
 
 We will write the following function, `luminance(input:output:)`, which will load a PNG image from the given path, convert it to grayscale using a natural luminance formula, and save it at the given destination.
 
@@ -51,7 +51,7 @@ The pixel array can be transformed like any other Swift array. Here we apply a s
 
 The easiest way to save the output is to use the `encode(v:size:as:chromaKey:path:level:)` function. The first argument is an array of scalar pixel values, which is generic over all [`FixedWidthInteger`](https://developer.apple.com/documentation/swift/fixedwidthinteger) and [`UnsignedInteger`](https://developer.apple.com/documentation/swift/unsignedinteger) types. Like `rgba(path:of:)`, it has specializations for all the default unsigned Swift integer types. This function also has three variants, `encode(va:size:as:chromaKey:path:level:)`, `encode(rgba:size:as:chromaKey:path:level:)`, and `encode(indices:palette:size:as:chromaKey:path:level:)`, which take `VA<T>` grayscale–alpha pairs, `RGBA<T>` color quadruples, and indexed palette colors, respectively.
 
-The second argument specifies the size of the output image, which in this example, remains unchanged. Supplying a `size` that disagrees with the pixel array `count` will result in a `PNG.ConversionError.pixelCount` error.
+The second argument specifies the size of the output image, which in this example, remains unchanged. Supplying a `size` that disagrees with the pixel array `count` will result in a `ConversionError.pixelCount` error.
 
 The third argument specifies the format of the output image. The `.v8` argument means we are creating an 8-bit PNG with one (grayscale) color channel.
 
@@ -196,9 +196,9 @@ func lerp(_ a:UInt16, _ b:UInt16, by t:UInt16) -> UInt16
 }
 ```
 
-You might notice we are using 16-bit color with `UInt16.self` as the argument to the `v(of:)` function’s metatype parameter. We are doing this to increase the precision in the linear interpolation, so that distinct pixel values in the input image will get distinct pixel values in the output image. (Though no one could probably tell the difference.) The input PNG file is actually an 8-bit image, so pixels with the value `255` (pure white, `UInt8.max`) will be seen as `65535` (`UInt16.max`) by our program. We could also have chosen `UInt32.self` or `UInt64.self` if we wanted even more precision.
+You might notice we are using 16-bit color with `UInt16.self` as the argument to the `v(of:)` function’s metatype parameter. We are doing this to increase the precision of the linear interpolation, so that distinct pixel values in the input image will get distinct pixel values in the output image. (Though no one could probably tell the difference.) The input PNG file is actually an 8-bit image, so pixels with the value `255` (pure white, `UInt8.max`) will be seen as `65535` (`UInt16.max`) by our program. We could also have chosen `UInt32.self` or `UInt64.self` if we wanted even more precision.
 
-While using `Data.Uncompressed` and `Data.Rectangular` is more verbose than using the single-stage `v`/`va`/`rgba(path:of:)` APIs, the image data types give us access to the image metadata through the `properties` member. This structure has type (`PNG.`)`Properties`, and contains information like the size, interlacing algorithm, palette, chroma key, and color format of the image. We can, for example, assert that our input image has a grayscale color format (including grayscale–alpha), since it wouldn’t make sense to apply a color ramp to a multi-color image.
+While using `Data.Uncompressed` and `Data.Rectangular` is more verbose than using the single-stage `v`/`va`/`rgba(path:of:)` APIs, the image data types give us access to the image metadata through their `properties` members. This structure has type `Properties`, and contains information like the size, interlacing algorithm, palette, chroma key, and color format of the image. We can, for example, assert that our input image has a grayscale color format (including grayscale–alpha), since it wouldn’t make sense to apply a color ramp to a multi-color image.
 
 ```swift 
     let format:PNG.Properties.Format = rectangular.properties.format
@@ -212,11 +212,11 @@ While using `Data.Uncompressed` and `Data.Rectangular` is more verbose than usin
 
 > Warning: An image can be visually monochrome, and still be encoded in an RGB or RGBA color format, simply by having the same component values in all three color channels. In that case, the above guard statement will reject the image.
 
-We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:)` function can throw, but if you stick with the non-indexed color formats, the only possible error is `PNG.ConversionError.pixelCount`.
+We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:)` function can throw, but if you stick with the non-indexed color formats, the only possible error is `ConversionError.pixelCount`.
 
-The `chunkSize:` argument is optional and by default is set to 2<sup>16</sup> bytes. It specifies the size of the internal data blocks in the compressed PNG file, and there is rarely a good reason to change it. At the default, the library will emit 20–30 chunks for a “normal” size image (“1K” resolution).
+The `chunkSize:` argument is optional and by default is set to 2<sup>16</sup> bytes. It specifies the size of the internal data blocks in the compressed PNG file, and there is rarely a good reason to change it. At the default, the library will emit 20–30ish chunks for a “normal” size image (“1K” resolution).
 
-The `level:` argument is also optional, and by default it’s set to 9 (just like the `encode` functions), but here we’ve set it to 8, for no reason other than to show that compression levels other than 9 work.
+The `level:` argument is also optional, and by default it’s set to 9 (just like for the `encode` functions), but here we’ve set it to 8, for no reason other than to show that compression levels other than 9 work.
 
 ```swift 
     guard let output:PNG.Data.Uncompressed = 
@@ -235,9 +235,9 @@ The `level:` argument is also optional, and by default it’s set to 9 (just lik
     }
 ```
 
-The above code is, of course, equivalent to a single call to `PNG.encode(rgba: sepia, size: rectangular.properties.size, as: .rgb16, path: outputPath, level: 8)`.
+The above code is, of course, equivalent to a single call to `encode(rgba: sepia, size: rectangular.properties.size, as: .rgb16, path: outputPath, level: 8)`.
 
-You might wonder why the `Data.Uncompressed` API even exists, if the namespace-level APIs are so much more convenient. The answer is that the `Data.Uncompressed` API is much more flexible. The `compress(path:chunkSize:level:)` and `decompress(path:)` methods have generic variants `compress<Destination>(to:chunkSize:level:)` and `decompress<Source>(from:)` which take source and destination arguments which conform to the protocols `DataSource` and `DataDestination`, respectively.
+You might wonder why the `Data.Uncompressed` API even exists, if the namespace-level APIs are so much more convenient. The answer is that the `Data.Uncompressed` API is much more flexible. The `compress(path:chunkSize:level:)` and `decompress(path:)` methods have generic variants `compress<Destination>(to:chunkSize:level:)` and `decompress<Source>(from:)` which take source and destination arguments that conform to the protocols `DataSource` and `DataDestination`, respectively.
 
 ```swift 
 protocol DataSource
@@ -267,7 +267,7 @@ The full code for this example can be found at [`examples/sepia.swift`](../../ex
 
 *Example input: *Chucho Valdés & The Afro-Cuban Messengers*, [Carlos Delgado / CC-BY-SA](https://commons.wikimedia.org/wiki/File:Chucho_Vald%C3%A9s_%26_The_Afro-Cuban_Messengers_-_29.jpg)*
 
-In this example, we will write the following function, `indexing(input:output:)`, which reduce the input image to a fixed set of predefined palette colors. 
+In this example, we will write the following function, `indexing(input:output:)`, which reduces the input image to a fixed set of predefined palette colors. 
 
 ```swift 
 func indexing(input inputPath:String, output outputPath:String)
@@ -339,7 +339,7 @@ func nearest(to color:PNG.RGBA<UInt8>, in palette:[PNG.RGBA<UInt8>]) -> Int
 }
 ```
 
-Then, we just compute palette indices for each pixel in the image. 
+Then, we compute palette indices for each pixel in the image. 
 
 ```swift 
     let indices:[Int] = rgba.map 
@@ -348,7 +348,7 @@ Then, we just compute palette indices for each pixel in the image.
     } 
 ```
 
-Notice that while in previous examples, we transformed pixels to pixels, like `RGBA<UInt8>`, `VA<UInt8>`, or `UInt8`, here, we are transforming pixels to regular Swift `Int`s. These `Int`s are indices into the color palette we defined, and we can pass them, along with the palette, to the indexed variant of the `encode()` function. (There is also an indexed variant of the `Data.Uncompressed.convert()` function.)
+Notice that in previous examples, we transformed pixels to pixels, like `RGBA<UInt8>`, `VA<UInt8>`, or `UInt8`; here, we are transforming pixels to regular Swift `Int`s. These `Int`s are indices into the color palette we defined, and we can pass them, along with the palette, to the indexed variant of the `encode()` function. (There is also an indexed variant of the `Data.Uncompressed.convert()` function.)
 
 ```swift 
     guard let _:Void = 
@@ -361,7 +361,7 @@ Notice that while in previous examples, we transformed pixels to pixels, like `R
     }
 ```
 
-We picked `.indexed4` as the format target because it uses 4 bits per pixel to index palette entries, so it supports palettes up to 16 entries long. (Ours has 13 entries.) We could have used `.indexed8`, which supports up to 256 palette entries, but that would be a waste of space. Also available are `.indexed2` and `.indexed1`, but if we try to use them with this palette, we will get a `PNG.ConversionError.paletteOverflow` error. If any of the supplied indices are out of the range of `palette.indices`, we will also get a `PNG.ConversionError.indexOutOfRange` error, even if the index is within the allowed range for that format target.
+We picked `.indexed4` as the format target because it uses 4 bits per pixel to index palette entries, so it supports palettes up to 16 entries long. (Ours has 13 entries.) We could have used `.indexed8`, which supports up to 256 palette entries, but that would be a waste of space. Also available are `.indexed2` and `.indexed1`, but if we try to use them with this palette, we will get a `ConversionError.paletteOverflow` error. If any of the supplied indices are out of the range of `palette.indices`, we will also get a `ConversionError.indexOutOfRange` error, even if the index is within the allowed range for that format target.
 
 Note that `.v1`, `.v2`, …, `.rgba16` are all still valid format targets for `encode(indices:palette:size:as:chromaKey:path:level:)`. In such a case, the library will simply flatten the indexed representation and treat the image like any other `RGBA<T>` input.
 
@@ -385,7 +385,7 @@ Note that `.v1`, `.v2`, …, `.rgba16` are all still valid format targets for `e
 | `.rgba8` | `(R, G, B, A)` | 8 | `Int.max`
 | `.rgba16` | `(R, G, B, A)` | 16 | `Int.max`
 
-As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets for the non-indexed `encode()` and `convert()` APIs. In these cases, the library will attempt to index the input image for you. However, if the input contains too many distinct colors for the given indexed format, you will get a `PNG.ConversionError.paletteOverflow` error. These APIs will never throw `PNG.ConversionError.indexOutOfRange` however, because no indices were ever supplied.
+As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets for the non-indexed `encode()` and `convert()` APIs. In these cases, the library will attempt to index the input image for you. However, if the input contains too many distinct colors for the given indexed format, you will get a `ConversionError.paletteOverflow` error. These APIs will never throw `ConversionError.indexOutOfRange` however, because no indices were ever supplied.
 
 ### `encode(v: :::::)`
 
@@ -501,7 +501,7 @@ We do the same thing for the bottom, left, and right sides of the image.
     }
 ```
 
-We do a sanity check to make sure there will stll be an image after the crop. 
+We do a sanity check to make sure there will still be an image after the crop. 
 
 ```swift 
     guard   top  < bottom, 
@@ -611,7 +611,7 @@ enum Format
 
 This type is *not* the same as the type of the format code `enum`s (`Properties.Format.Code`) we pass to functions like `convert(rgba:size:to:)`, which do not carry palettes, but there is a one-to-one correspondence between their cases, and the codes can be accessed from the formats through the `Format.code` instance property.
 
-We can select some of the most saturated swatches in the palette by scoring the palette entries by their ‘redness’. 
+We can select some of the most saturated swatches in the palette by scoring the palette entries by their “redness”. 
 
 ```swift
     // sort palette entries by redness
