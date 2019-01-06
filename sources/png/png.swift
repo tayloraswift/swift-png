@@ -1302,7 +1302,7 @@ enum PNG
                 guard self.code.hasColor
                 else
                 {
-                    throw DecodingError.unexpectedChunk(.PLTE)
+                    throw DecodingError.unexpectedChunk(.core(.palette))
                 }
 
                 guard data.count.isMultiple(of: 3)
@@ -1347,7 +1347,7 @@ enum PNG
                 guard self.code.isIndexed
                 else
                 {
-                    throw DecodingError.unexpectedChunk(.tRNS)
+                    throw DecodingError.unexpectedChunk(.core(.transparency))
                 }
 
                 guard data.count <= palette.count
@@ -1408,7 +1408,7 @@ enum PNG
                         return .init(r, g, b)
 
                     default:
-                        throw DecodingError.unexpectedChunk(.tRNS)
+                        throw DecodingError.unexpectedChunk(.core(.transparency))
                 }
             }
         }
@@ -2283,21 +2283,21 @@ enum PNG
                 @inline(__always)
                 func _next(_ chunk:Chunk, _ contents:[UInt8] = []) throws
                 {
-                    guard let _:Void = iterator.next(chunk, contents, destination: &destination)
+                    guard let _:Void = iterator.next(chunk.tag, contents, destination: &destination)
                     else
                     {
                         throw EncodingError.notAcceptingData
                     }
                 }
 
-                try _next(.IHDR, self.properties.encodeIHDR())
+                try _next(.core(.header), self.properties.encodeIHDR())
                 try self.properties.encodePLTE().map
                 {
-                    try _next(.PLTE, $0)
+                    try _next(.core(.palette), $0)
                 }
                 try self.properties.encodetRNS().map
                 {
-                    try _next(.tRNS, $0)
+                    try _next(.core(.transparency), $0)
                 }
 
                 var pitches:Properties.Pitches = self.properties.pitches,
@@ -2328,7 +2328,7 @@ enum PNG
                         return self.data[range]
                     }
 
-                    try _next(.IDAT, output)
+                    try _next(.core(.data), output)
 
                     guard more
                     else
@@ -2337,7 +2337,7 @@ enum PNG
                     }
                 }
 
-                try _next(.IEND)
+                try _next(.core(.end))
             }
             
             private
@@ -2377,11 +2377,13 @@ enum PNG
                         throw DecodingError.dataUnavailable
                     }
 
-                    guard let chunk:Chunk = Chunk.init(name)
+                    guard let tag:Chunk.Tag = Chunk.Tag.init(name)
                     else
                     {
                         throw DecodingError.invalidName(name)
                     }
+                    
+                    let chunk:Chunk = .init(tag)
 
                     guard let contents:[UInt8] = data
                     else
@@ -2402,21 +2404,20 @@ enum PNG
                 {
                     switch (chunk, stage)
                     {
-                        case    (.IHDR, .i):
+                        case    (.core(.header), .i):
                             stage   = .ii(header: try .decodeIHDR(contents))
                             seen[0] = true
                         case    (_, .i):
-                            throw DecodingError.missingChunk(.IHDR)
+                            throw DecodingError.missingChunk(.header)
 
-                        case    (.PLTE, .ii(let header)):
+                        case    (.core(.palette), .ii(let header)):
                             // call will throw if header does not have a color format
                             stage = .iii(header: header, palette: try header.decodePLTE(contents))
-                        // case    (.PLTE, .iii):
-                        //     throw DecodingError.duplicateChunk(.PLTE)
-                        case    (.PLTE, .iv):
-                            throw DecodingError.unexpectedChunk(.PLTE)
+                        
+                        case    (.core(.palette), .iv):
+                            throw DecodingError.unexpectedChunk(.core(.palette))
 
-                        case    (.IDAT, .ii(let header)):
+                        case    (.core(.data), .ii(let header)):
                             let format:Properties.Format
                             switch header.code
                             {
@@ -2435,7 +2436,7 @@ enum PNG
                                 case .rgb16:
                                     format = .rgb16(nil)
                                 case .indexed1, .indexed2, .indexed4, .indexed8:
-                                    throw DecodingError.missingChunk(.PLTE)
+                                    throw DecodingError.missingChunk(.palette)
                                 case .va8:
                                     format = .va8
                                 case .va16:
@@ -2455,7 +2456,7 @@ enum PNG
                             stage = .iv(properties: properties, decoder: try properties.decoder())
                             continue
 
-                        case    (.IDAT, .iii(let header, let palette)):
+                        case    (.core(.data), .iii(let header, let palette)):
                             let format:Properties.Format
                             switch header.code
                             {
@@ -2488,7 +2489,7 @@ enum PNG
                             stage = .iv(properties: properties, decoder: try properties.decoder())
                             continue
 
-                        case    (.IDAT, .iv(let properties, var decoder)):
+                        case    (.core(.data), .iv(let properties, var decoder)):
                             let streamContinue:Bool = try decoder.forEachScanline(decodedFrom: contents)
                             {
                                 data.append(contentsOf: $0)
@@ -2501,7 +2502,7 @@ enum PNG
                         case    (_, .iv):
                             throw DecodingError.unexpectedChunk(chunk)
 
-                        case    (.IEND, .v(let properties)):
+                        case    (.core(.end), .v(let properties)):
                             guard data.count == properties.byteCount
                             else
                             {
@@ -2511,48 +2512,48 @@ enum PNG
 
                             return .init(rawData: data, properties: properties)
 
-                        case    (.IEND, .ii),
-                                (.IEND, .iii):
-                            throw DecodingError.missingChunk(.IDAT)
+                        case    (.core(.end), .ii),
+                                (.core(.end), .iii):
+                            throw DecodingError.missingChunk(.data)
 
-                        case    (.tRNS, .ii(let header)):
+                        case    (.core(.transparency), .ii(let header)):
                             // call will throw if header does not have a v or rgb format
                             chromaKey = try header.decodetRNS(contents)
-                        case    (.tRNS, .iii(let header, var palette)):
+                        case    (.core(.transparency), .iii(let header, var palette)):
                             // call will throw if header does not have a v or rgb format
                             try header.decodetRNS(contents, palette: &palette)
                             stage = .iii(header: header, palette: palette)
 
-                        case    (.bKGD, .ii(let header)):
+                        case    (.unique(.background), .ii(let header)):
                             guard !header.code.isIndexed
                             else
                             {
-                                throw DecodingError.missingChunk(.PLTE)
+                                throw DecodingError.missingChunk(.palette)
                             }
 
-                        case    (.hIST, .ii):
-                            throw DecodingError.missingChunk(.PLTE)
+                        case    (.unique(.histogram),           .ii):
+                            throw DecodingError.missingChunk(.palette)
 
-                        case    (.IHDR, .iii),
-                                (.cHRM, .iii),
-                                (.gAMA, .iii),
-                                (.iCCP, .iii),
-                                (.sRGB, .iii),
+                        case    (.core(.header),                .iii),
+                                (.unique(.chromaticity),        .iii),
+                                (.unique(.gamma),               .iii),
+                                (.unique(.profile),             .iii),
+                                (.unique(.srgb),                .iii),
 
-                                (.IHDR, .v),
-                                (.PLTE, .v),
-                                (.IDAT, .v),
-                                (.cHRM, .v),
-                                (.gAMA, .v),
-                                (.iCCP, .v),
-                                (.sRGB, .v),
+                                (.core(.header),                .v),
+                                (.core(.palette),               .v),
+                                (.core(.data),                  .v),
+                                (.unique(.chromaticity),        .v),
+                                (.unique(.gamma),               .v),
+                                (.unique(.profile),             .v),
+                                (.unique(.srgb),                .v),
 
-                                (.pHYs, .v),
-                                (.sPLT, .v),
+                                (.unique(.physicalDimensions),  .v),
+                                (.repeatable(.suggestedPalette),.v),
 
-                                (.bKGD, .v),
-                                (.hIST, .v),
-                                (.tRNS, .v):
+                                (.unique(.background),          .v),
+                                (.unique(.histogram),           .v),
+                                (.core(.transparency),          .v):
                             throw DecodingError.unexpectedChunk(chunk)
 
                         default:
@@ -2565,31 +2566,31 @@ enum PNG
                     let index:Int
                     switch chunk
                     {
-                        case .IHDR:
+                        case .core(.header):
                             index = 0
-                        case .PLTE:
+                        case .core(.palette):
                             index = 1
-                        case .IEND:
+                        case .core(.end):
                             index = 2
-                        case .cHRM:
+                        case .unique(.chromaticity):
                             index = 3
-                        case .gAMA:
+                        case .unique(.gamma):
                             index = 4
-                        case .iCCP:
+                        case .unique(.profile):
                             index = 5
-                        case .sBIT:
+                        case .unique(.significantBits):
                             index = 6
-                        case .sRGB:
+                        case .unique(.srgb):
                             index = 7
-                        case .bKGD:
+                        case .unique(.background):
                             index = 8
-                        case .hIST:
+                        case .unique(.histogram):
                             index = 9
-                        case .tRNS:
+                        case .core(.transparency):
                             index = 10
-                        case .pHYs:
+                        case .unique(.physicalDimensions):
                             index = 11
-                        case .tIME:
+                        case .unique(.time):
                             index = 12
                         default:
                             continue
@@ -4417,150 +4418,369 @@ enum PNG
             throw File.Error.couldNotOpen
         }
     }
-
-    /// A four-byte PNG chunk type identifier.
-    public
-    struct Chunk:Hashable, Equatable, CustomStringConvertible
+    
+    /// A PNG chunk type.
+    public 
+    enum Chunk 
     {
-        /// The four-byte name of this PNG chunk type.
-        let name:Math<UInt8>.V4
-
-        /// A string displaying the ASCII representation of this PNG chunk type’s name.
-        public
-        var description:String
+        /// A PNG chunk type recognized and parsed by the library.
+        public 
+        enum Core 
         {
-            return .init( decoding: [self.name.0, self.name.1, self.name.2, self.name.3],
-                                as: Unicode.ASCII.self)
-        }
-
-        private
-        init(_ a:UInt8, _ p:UInt8, _ r:UInt8, _ c:UInt8)
-        {
-            self.name = (a, p, r, c)
-        }
-
-        /// Creates the chunk type with the given name bytes, if they are valid.
-        /// Returns `nil` if the ancillary bit (in byte 0) is set or the reserved
-        /// bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`,
-        /// `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`,
-        /// `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
-        /// 
-        /// - Parameters:
-        ///     - name: The four bytes of this PNG chunk type’s name.
-        public
-        init?(_ name:(UInt8, UInt8, UInt8, UInt8))
-        {
-            self.name = name
-            switch self
+            case    header, 
+                    palette, 
+                    data, 
+                    end, 
+                    transparency 
+            
+            var tag:Tag 
             {
-                // legal public chunks
-                case .IHDR, .PLTE, .IDAT, .IEND,
-                     .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS,
-                     .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXt:
-                    break
-
-                default:
-                    guard name.0 & 0x20 != 0
-                    else
-                    {
-                        return nil
-                    }
-
-                    guard name.2 & 0x20 == 0
-                    else
-                    {
-                        return nil
-                    }
+                switch self 
+                {
+                    case .header:
+                        return .IHDR 
+                    case .palette:
+                        return .PLTE 
+                    case .data:
+                        return .IDAT 
+                    case .end:
+                        return .IEND 
+                    case .transparency:
+                        return .tRNS
+                }
             }
         }
-
-        /// Returns a Boolean value indicating whether two PNG chunk types are equal.
-        /// 
-        /// Equality is the inverse of inequality. For any values `a` and `b`, `a == b`
-        /// implies that `a != b` is `false`.
-        /// 
-        /// - Parameters:
-        ///     - lhs: A value to compare.
-        ///     - rhs: Another value to compare.
-        public static
-        func == (a:Chunk, b:Chunk) -> Bool
+        
+        /// A PNG chunk type not parsed by the library, which can only occur 
+        /// once in a PNG file.
+        public 
+        enum Unique 
         {
-            return a.name == b.name
+            case    chromaticity, 
+                    gamma, 
+                    profile, 
+                    significantBits, 
+                    srgb, 
+                    background, 
+                    histogram, 
+                    physicalDimensions, 
+                    time 
+            
+            var tag:Tag 
+            {
+                switch self 
+                {
+                    case .chromaticity:
+                        return .cHRM
+                    case .gamma:
+                        return .gAMA
+                    case .profile:
+                        return .iCCP
+                    case .significantBits:
+                        return .sBIT
+                    case .srgb:
+                        return .sRGB
+                    case .background:
+                        return .bKGD
+                    case .histogram:
+                        return .hIST
+                    case .physicalDimensions:
+                        return .pHYs
+                    case .time:
+                        return .tIME
+                }
+            }
         }
-
-        /// Hashes the name of this PNG chunk type by feeding it into the given
-        /// hasher.
+        
+        /// A PNG chunk type not parsed by the library, which can occur multiple 
+        /// times in a PNG file.
+        public 
+        enum Repeatable 
+        {
+            case    suggestedPalette, 
+                    textUTF8, 
+                    textLatin1, 
+                    textLatin1Compressed, 
+                    other(Other) 
+            
+            /// A non-standard private PNG chunk type.
+            public 
+            struct Other 
+            {
+                /// This chunk’s tag 
+                public 
+                let tag:Tag 
+                
+                /// Creates a private PNG chunk type identifier from the given 
+                /// tag bytes. 
+                /// 
+                /// This initializer will trap if the given bytes do not form 
+                /// a valid chunk tag, or if the tag represents a chunk type 
+                /// defined by the library. To handle these situations, use the 
+                /// `Chunk(_:)` initializer and switch on its enumeration cases 
+                /// instead.
+                /// 
+                /// - Parameters:
+                ///     - name: The four bytes of this PNG chunk type’s name.
+                public 
+                init(_ name:(UInt8, UInt8, UInt8, UInt8)) 
+                {
+                    guard let tag:Tag = Tag.init(name) 
+                    else 
+                    {
+                        let string:String = .init(decoding: [name.0, name.1, name.2, name.3],
+                                                        as: Unicode.ASCII.self)
+                        fatalError("'\(string)' is not a valid chunk tag")
+                    }
+                    
+                    switch Chunk.init(tag) 
+                    {
+                        case .repeatable(.other(let instance)):
+                            self = instance 
+                        
+                        default:
+                            fatalError("'\(tag)' is a reserved chunk tag")
+                    }
+                }
+                
+                init(_tag tag:Tag) 
+                {
+                    self.tag = tag
+                }
+            }
+            
+            var tag:Tag 
+            {
+                switch self 
+                {
+                    case .suggestedPalette:
+                        return .sPLT
+                    case .textUTF8:
+                        return .iTXt
+                    case .textLatin1:
+                        return .tEXt
+                    case .textLatin1Compressed:
+                        return .zTXt
+                    case .other(let other):
+                        return other.tag
+                }
+            }
+        }
+        
+        case    core(Core), 
+                unique(Unique), 
+                repeatable(Repeatable)
+        
+        var tag:Tag 
+        {
+            switch self 
+            {
+                case .core(let core):
+                    return core.tag 
+                case .unique(let unique):
+                    return unique.tag 
+                case .repeatable(let repeatable):
+                    return repeatable.tag
+            }
+        }
+        
+        /// Classifies the given chunk tag. 
         /// 
         /// - Parameters:
-        ///     - hasher: The hasher to use when combining the components of this
-        ///         instance.
+        ///     - tag: A PNG chunk tag.
+        public 
+        init(_ tag:Tag) 
+        {
+            switch tag 
+            {
+                case .IHDR: 
+                    self = .core(.header)
+                case .PLTE:
+                    self = .core(.palette)
+                case .IDAT:
+                    self = .core(.data)
+                case .IEND:
+                    self = .core(.end)
+                case .tRNS:
+                    self = .core(.transparency)
+                
+                case .cHRM:
+                    self = .unique(.chromaticity)
+                case .gAMA:
+                    self = .unique(.gamma)
+                case .iCCP:
+                    self = .unique(.profile)
+                case .sBIT:
+                    self = .unique(.significantBits)
+                case .sRGB:
+                    self = .unique(.srgb)
+                case .bKGD:
+                    self = .unique(.background)
+                case .hIST:
+                    self = .unique(.histogram)
+                case .pHYs:
+                    self = .unique(.physicalDimensions)
+                case .tIME:
+                    self = .unique(.time)
+                
+                case .sPLT:
+                    self = .repeatable(.suggestedPalette)
+                case .iTXt:
+                    self = .repeatable(.textUTF8)
+                case .tEXt:
+                    self = .repeatable(.textLatin1)
+                case .zTXt:
+                    self = .repeatable(.textLatin1Compressed)
+                
+                default:
+                    self = .repeatable(.other(.init(_tag: tag)))
+            }
+        }
+        
+        /// A four-byte PNG chunk type identifier.
         public
-        func hash(into hasher:inout Hasher)
+        struct Tag:Hashable, Equatable, CustomStringConvertible
         {
-            hasher.combine( self.name.0 << 24 |
-                            self.name.1 << 16 |
-                            self.name.2 <<  8 |
-                            self.name.3)
+            /// The four-byte name of this PNG chunk type.
+            let name:Math<UInt8>.V4
+
+            /// A string displaying the ASCII representation of this PNG chunk type’s name.
+            public
+            var description:String
+            {
+                return .init( decoding: [self.name.0, self.name.1, self.name.2, self.name.3],
+                                    as: Unicode.ASCII.self)
+            }
+
+            private
+            init(_ a:UInt8, _ p:UInt8, _ r:UInt8, _ c:UInt8)
+            {
+                self.name = (a, p, r, c)
+            }
+
+            /// Creates the chunk type with the given name bytes, if they are valid.
+            /// Returns `nil` if the ancillary bit (in byte 0) is set or the reserved
+            /// bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`,
+            /// `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`,
+            /// `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
+            /// 
+            /// - Parameters:
+            ///     - name: The four bytes of this PNG chunk type’s name.
+            public
+            init?(_ name:(UInt8, UInt8, UInt8, UInt8))
+            {
+                self.name = name
+                switch self
+                {
+                    // legal public chunks
+                    case .IHDR, .PLTE, .IDAT, .IEND,
+                         .cHRM, .gAMA, .iCCP, .sBIT, .sRGB, .bKGD, .hIST, .tRNS,
+                         .pHYs, .sPLT, .tIME, .iTXt, .tEXt, .zTXt:
+                        break
+
+                    default:
+                        guard name.0 & 0x20 != 0
+                        else
+                        {
+                            return nil
+                        }
+
+                        guard name.2 & 0x20 == 0
+                        else
+                        {
+                            return nil
+                        }
+                }
+            }
+
+            /// Returns a Boolean value indicating whether two PNG chunk types are equal.
+            /// 
+            /// Equality is the inverse of inequality. For any values `a` and `b`, `a == b`
+            /// implies that `a != b` is `false`.
+            /// 
+            /// - Parameters:
+            ///     - lhs: A value to compare.
+            ///     - rhs: Another value to compare.
+            public static
+            func == (a:Tag, b:Tag) -> Bool
+            {
+                return a.name == b.name
+            }
+
+            /// Hashes the name of this PNG chunk type by feeding it into the given
+            /// hasher.
+            /// 
+            /// - Parameters:
+            ///     - hasher: The hasher to use when combining the components of this
+            ///         instance.
+            public
+            func hash(into hasher:inout Hasher)
+            {
+                hasher.combine( self.name.0 << 24 |
+                                self.name.1 << 16 |
+                                self.name.2 <<  8 |
+                                self.name.3)
+            }
+
+            /// The PNG header chunk type.
+            public static
+            let IHDR:Tag = .init(73, 72, 68, 82)
+            /// The PNG palette chunk type.
+            public static
+            let PLTE:Tag = .init(80, 76, 84, 69)
+            /// The PNG image data chunk type.
+            public static
+            let IDAT:Tag = .init(73, 68, 65, 84)
+            /// The PNG image end chunk type.
+            public static
+            let IEND:Tag = .init(73, 69, 78, 68)
+
+            /// The PNG chromaticity chunk type.
+            public static
+            let cHRM:Tag = .init(99, 72, 82, 77)
+            /// The PNG gamma chunk type.
+            public static
+            let gAMA:Tag = .init(103, 65, 77, 65)
+            /// The PNG embedded ICC chunk type.
+            public static
+            let iCCP:Tag = .init(105, 67, 67, 80)
+            /// The PNG significant bits chunk type.
+            public static
+            let sBIT:Tag = .init(115, 66, 73, 84)
+            /// The PNG *s*RGB chunk type.
+            public static
+            let sRGB:Tag = .init(115, 82, 71, 66)
+            /// The PNG background chunk type.
+            public static
+            let bKGD:Tag = .init(98, 75, 71, 68)
+            /// The PNG histogram chunk type.
+            public static
+            let hIST:Tag = .init(104, 73, 83, 84)
+            /// The PNG transparency chunk type.
+            public static
+            let tRNS:Tag = .init(116, 82, 78, 83)
+
+            /// The PNG physical dimensions chunk type.
+            public static
+            let pHYs:Tag = .init(112, 72, 89, 115)
+
+            /// The PNG suggested palette chunk type.
+            public static
+            let sPLT:Tag = .init(115, 80, 76, 84)
+            /// The PNG time chunk type.
+            public static
+            let tIME:Tag = .init(116, 73, 77, 69)
+
+            /// The PNG UTF-8 text chunk type.
+            public static
+            let iTXt:Tag = .init(105, 84, 88, 116)
+            /// The PNG Latin-1 text chunk type.
+            public static
+            let tEXt:Tag = .init(116, 69, 88, 116)
+            /// The PNG compressed Latin-1 text chunk type.
+            public static
+            let zTXt:Tag = .init(122, 84, 88, 116)
         }
-
-        /// The PNG header chunk type.
-        public static
-        let IHDR:Chunk = .init(73, 72, 68, 82)
-        /// The PNG palette chunk type.
-        public static
-        let PLTE:Chunk = .init(80, 76, 84, 69)
-        /// The PNG image data chunk type.
-        public static
-        let IDAT:Chunk = .init(73, 68, 65, 84)
-        /// The PNG image end chunk type.
-        public static
-        let IEND:Chunk = .init(73, 69, 78, 68)
-
-        /// The PNG chromaticity chunk type.
-        public static
-        let cHRM:Chunk = .init(99, 72, 82, 77)
-        /// The PNG gamma chunk type.
-        public static
-        let gAMA:Chunk = .init(103, 65, 77, 65)
-        /// The PNG embedded ICC chunk type.
-        public static
-        let iCCP:Chunk = .init(105, 67, 67, 80)
-        /// The PNG significant bits chunk type.
-        public static
-        let sBIT:Chunk = .init(115, 66, 73, 84)
-        /// The PNG *s*RGB chunk type.
-        public static
-        let sRGB:Chunk = .init(115, 82, 71, 66)
-        /// The PNG background chunk type.
-        public static
-        let bKGD:Chunk = .init(98, 75, 71, 68)
-        /// The PNG histogram chunk type.
-        public static
-        let hIST:Chunk = .init(104, 73, 83, 84)
-        /// The PNG transparency chunk type.,
-        public static
-        let tRNS:Chunk = .init(116, 82, 78, 83)
-
-        /// The PNG physical dimensions chunk type.
-        public static
-        let pHYs:Chunk = .init(112, 72, 89, 115)
-
-        /// The PNG suggested palette chunk type.
-        public static
-        let sPLT:Chunk = .init(115, 80, 76, 84)
-        /// The PNG time chunk type.
-        public static
-        let tIME:Chunk = .init(116, 73, 77, 69)
-
-        /// The PNG UTF-8 text chunk type.
-        public static
-        let iTXt:Chunk = .init(105, 84, 88, 116)
-        /// The PNG Latin-1 text chunk type.
-        public static
-        let tEXt:Chunk = .init(116, 69, 88, 116)
-        /// The PNG compressed Latin-1 text chunk type.
-        public static
-        let zTXt:Chunk = .init(122, 84, 88, 116)
     }
 
     /// Errors that can occur while reading, decompressing, or decoding PNG files.
@@ -4593,7 +4813,7 @@ enum PNG
         /// in the same PNG file.
         case duplicateChunk(Chunk)
         /// A prerequisite PNG chunk is missing.
-        case missingChunk(Chunk)
+        case missingChunk(Chunk.Core)
     }
     
     public 
@@ -4745,17 +4965,17 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
     /// `data` array.
     /// 
     /// - Parameters:
-    ///     - name: A chunk type.
+    ///     - tag: A chunk tag.
     ///     - data: An array containing chunk data. The default is `[]`.
     ///     - source: A data destination to write a PNG file to.
     /// - Returns: `nil` if the chunk could not be written.
     public mutating
-    func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface)
+    func next(_ tag:PNG.Chunk.Tag, _ data:[UInt8] = [], destination:inout DataInterface)
         -> Void?
     {
         let header:[UInt8] = .store(data.count, asBigEndian: UInt32.self)
         +
-        [name.name.0, name.name.1, name.name.2, name.name.3]
+        [tag.name.0, tag.name.1, tag.name.2, tag.name.3]
 
         let partial:UInt = header.suffix(4).withUnsafeBufferPointer
         {
