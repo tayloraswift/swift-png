@@ -55,7 +55,9 @@ The second argument specifies the size of the output image, which in this exampl
 
 The third argument specifies the format of the output image. The `.v8` argument means we are creating an 8-bit PNG with one (grayscale) color channel.
 
-The fourth argument is optional, and allows us to supply a chroma key for the output image. A PNG chroma key indicates to viewers to display all pixels that match it as transparent, though not all viewers support it. However, if a PNG file contains a valid chroma key, *PNG* functions like `rgba(path:of:)` will honor it. Chroma keys are only meaningful for PNGs with a color format that lacks transparency, for example, RGB, as opposed to RGBA.
+The fourth argument is optional, and allows us to supply a chroma key for the output image. A PNG chroma key indicates to viewers to display all pixels that match it as transparent, though not all viewers support it. However, if a PNG file contains a valid chroma key, *PNG* functions like `rgba(path:of:)` will honor it, by setting the alpha component of all matching pixels to 0. Chroma keys are only meaningful for PNGs with a color format that lacks transparency, for example, RGB, as opposed to RGBA.
+
+> Note: By default, *PNG* does not use premultiplied alpha, so its chroma key substitutions are non-destructive.
 
 The fifth argument specifies the file path where the encoded PNG file will be written to. The sixth argument is optional, and allows us to specify a compression level in the range `0 ... 9`. By default, its value is `9`, which is the most aggressive level of compression. Giving a value outside the valid range will result in a precondition failure.
 
@@ -548,7 +550,7 @@ The full code for this example can be found at [`examples/crop.swift`](../../exa
 In this example, we will write the following function, `border(input:output:)`, which will add a colored border around the outside of the indexed input image, using colors already present in the PNG. 
 
 ```swift 
-func indexing(input inputPath:String, output outputPath:String)
+func border(input inputPath:String, output outputPath:String)
 ```
 
 We’ll use the `Data.Rectangular` API since we will need to access the image’s color palette. 
