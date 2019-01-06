@@ -417,3 +417,124 @@ As you might expect, `.indexed1`, …, `.indexed8` are also valid format targets
 *Example output*
 
 The full code for this example can be found at [`examples/indexing.swift`](../../examples/indexing.swift).
+
+## Detect and crop borders from an image
+
+<img src="../../examples/example-crop-input.png" alt="crop example input" style="width: 512px;"/>
+
+*Example input: *Valeska Steiner of *Boy* at the Schlachthof Wiesbaden*, [Martin Kraft / CC-BY-SA 3.0](https://commons.wikimedia.org/wiki/File:MJK04043_BOY_Valeska_Steiner.jpg)*
+
+Cropping borders from images is not especially difficult, but it seems to be a recurring question, so here’s an example `crop(input:output:)` which will detect and remove the white borders from the above example image.
+
+We can use the `rgba(path:of:)` function to load the image as an `RGBA<UInt8>` pixel array. Nothing new here.
+
+```swift 
+    guard let (rgba, (x, y)):([PNG.RGBA<UInt8>], (x:Int, y:Int)) = 
+        try? PNG.rgba(path: inputPath, of: UInt8.self) 
+    else 
+    {
+        print("failed to decode '\(inputPath)'")
+        return 
+    }
+```
+
+We scan the image from top to bottom, counting the number of vertical lines that contain nothing but solid white pixels. When we see a line that has image content, we stop. We can do a comparison with `==`, since `RGBA<T>` conforms to [`Hashable`](https://developer.apple.com/documentation/swift/hashable), and therefore [`Equatable`](https://developer.apple.com/documentation/swift/equatable). 
+
+```swift 
+    // remove solid white borders
+    let border:PNG.RGBA<UInt8> = .init(.max, .max, .max)
+
+    var top:Int = 0 
+    for i:Int in 0 ..< y 
+    {
+        guard (rgba[i * x ..< (i + 1) * x].allSatisfy{ $0 == border }) 
+        else 
+        {
+            break 
+        }
+        
+        top += 1
+    }
+```
+
+> Warning: Comparing `RGBA<T>` colors with `==` also compares the alpha components. If you want to ignore the alpha components, compare the red, green, and blue components separately.
+
+We do the same thing for the bottom, left, and right sides of the image. 
+
+```swift 
+    var bottom:Int = y 
+    for i:Int in (0 ..< y).reversed()
+    {
+        guard (rgba[i * x ..< (i + 1) * x].allSatisfy{ $0 == border }) 
+        else 
+        {
+            break 
+        }
+        
+        bottom -= 1
+    }
+
+    var left:Int = 0 
+    for j:Int in 0 ..< x 
+    {
+        guard ((0 ..< y).map{ rgba[$0 * x + j] }.allSatisfy{ $0 == border }) 
+        else 
+        {
+            break 
+        }
+        
+        left += 1
+    }
+
+    var right:Int = x 
+    for j:Int in (0 ..< x).reversed()
+    {
+        guard ((0 ..< y).map{ rgba[$0 * x + j] }.allSatisfy{ $0 == border }) 
+        else 
+        {
+            break 
+        }
+        
+        right -= 1
+    }
+```
+
+We do a sanity check to make sure there will stll be an image after the crop. 
+
+```swift 
+    guard   top  < bottom, 
+            left < right 
+    else 
+    {
+        print("image '\(inputPath)' is entirely borders")
+        return 
+    }
+```
+
+And finally, we crop and save it. 
+
+```swift 
+    let cropped:[PNG.RGBA<UInt8>] = (top ..< bottom).flatMap 
+    {
+        rgba[$0 * x + left ..< $0 * x + right]
+    }
+
+    guard let _:Void = 
+        try? PNG.encode(  rgba: cropped, size: (right - left, bottom - top), 
+                            as: .rgb8, path: outputPath)
+    else 
+    {
+        print("failed to encode '\(outputPath)'")
+        return 
+    }
+```
+
+One thing to keep in mind is that we are saving the cropped image as a `.rgb8` image, which will discard any transparency information the original image had. This can occur even if we assume the input image had an opaque color format, since it could still have had a chroma key. To preserve the chroma key, use the `Data.Rectangular` (or `Data.Uncompressed`) API, get it from the image `properties` structure, and pass it along to the `encode()` function. If we save to an `.rgba8` format, chroma keys are not needed. (In fact, they will be ignored.)
+
+Another potential source of data loss is bit depth narrowing, which can occur since we used `UInt8` as our component type. 16-bit PNGs are rare outside of professional photography and scientific contexts (and few screens can display their full color depth), so `UInt8` is good for most purposes. However, no PNG color format supports more than 16-bit precision, so a `UInt16` component type will never result in bit depth narrowing.
+
+<img src="../../examples/example-crop-output.png" alt="crop example output" style="width: 512px;"/>
+
+*Example output*
+
+The full code for this example can be found at [`examples/crop.swift`](../../examples/crop.swift).
