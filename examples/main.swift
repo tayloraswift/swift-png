@@ -9,3 +9,6 @@ indexing(    input: "examples/example-indexing-input.png",
 
 crop(        input: "examples/example-crop-input.png", 
             output: "examples/example-crop-output.png")
+
+border(      input: "examples/example-border-input.png", 
+            output: "examples/example-border-output.png")

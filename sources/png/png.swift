@@ -3315,7 +3315,7 @@ enum PNG
             /// its channel. The samples passed to the closure are raw, unnormalized
             /// scalars, cast to the inferred integer type.
             /// 
-            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, `UInt`, and `Int`.
             /// 
             /// - Parameters:
             ///     - body: A closure that takes one channel of one pixel.
@@ -3328,6 +3328,7 @@ enum PNG
             @_specialize(exported: true, kind: partial, where Sample == UInt32)
             @_specialize(exported: true, kind: partial, where Sample == UInt64)
             @_specialize(exported: true, kind: partial, where Sample == UInt)
+            @_specialize(exported: true, kind: partial, where Sample ==  Int)
             public
             func map<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger
