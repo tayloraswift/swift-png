@@ -1024,8 +1024,18 @@ enum PNG
                 public
                 var components:Int
                 {
-                    //        base +     2 × colored     +    alpha
-                    return .init(1 + (self.rawValue & 2) + (self.rawValue & 4) >> 2)
+                    switch self
+                    {
+                    case .v1, .v2, .v4, .v8, .v16:
+                        return 1
+                    case .va8, .va16:
+                        return 2
+                    case .rgb8, .rgb16:
+                        return 3
+                    case .rgba8, .rgba16,
+                        .indexed1, .indexed2, .indexed4, .indexed8:
+                        return 4
+                    }
                 }
 
                 /// Returns the shape of a buffer just large enough to contain an image

@@ -210,7 +210,7 @@ While using `Data.Uncompressed` and `Data.Rectangular` is more verbose than usin
 
 > Warning: An image can be visually monochrome, and still be encoded in an RGB or RGBA color format, simply by having the same component values in all three color channels. In that case, the above guard statement will reject the image.
 
-We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:)` can throw, but if you stick with the non-indexed color formats, the only possible error is `PNG.ConversionError.pixelCount`.
+We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:)` function can throw, but if you stick with the non-indexed color formats, the only possible error is `PNG.ConversionError.pixelCount`.
 
 The `chunkSize:` argument is optional and by default is set to 2<sup>16</sup> bytes. It specifies the size of the internal data blocks in the compressed PNG file, and there is rarely a good reason to change it. At the default, the library will emit 20–30 chunks for a “normal” size image (“1K” resolution).
 
@@ -538,3 +538,193 @@ Another potential source of data loss is bit depth narrowing, which can occur si
 *Example output*
 
 The full code for this example can be found at [`examples/crop.swift`](../../examples/crop.swift).
+
+## Add pixels to an indexed image
+
+<img src="../../examples/example-border-input.png" alt="border example input" style="width: 512px;"/>
+
+*Example input: *May 1st*, [Alexander Petrowitsch Apsit / PD](https://commons.wikimedia.org/wiki/File:%D0%90%D0%BF%D1%81%D0%B8%D1%82._1_%D0%9C%D0%B0%D1%8F.jpg)*
+
+In this example, we will write the following function, `border(input:output:)`, which will add a colored border around the outside of the indexed input image, using colors already present in the PNG. 
+
+```swift 
+func indexing(input inputPath:String, output outputPath:String)
+```
+
+We’ll use the `Data.Rectangular` API since we will need to access the image’s color palette. 
+
+```swift 
+    guard let input:PNG.Data.Rectangular = try? .decompress(path: inputPath) 
+    else 
+    {
+        print("failed to decode '\(inputPath)'")
+        return 
+    }
+```
+
+Color palettes are stored directly within the enumeration payloads of `Properties.Format` cases. 
+
+```swift 
+    // extract palette 
+    let format:PNG.Properties.Format = input.properties.format, 
+        palette:[PNG.RGBA<UInt8>]
+    switch format 
+    {
+        case    .indexed1(let _palette), 
+                .indexed2(let _palette), 
+                .indexed4(let _palette), 
+                .indexed8(let _palette):
+            palette = _palette
+        
+        default:
+            print("input image is not indexed (color format '\(format.code)')")
+            return 
+    }
+```
+
+Alternatively, we could have checked for an indexed format using the `Format.code.isIndexed` instance property, and retrieved the palette using the `Format.palette` optional instance property. Note that we would need to check that the image specifically has an indexed color format, since other color formats can optionally have color palettes as well. (These color palettes serve as “suggested quantization palettes”, and are not used by the library.)
+
+The case declarations of the `Properties.Format` enumeration are as follows.
+
+```swift 
+enum Format
+{
+    case    v1,
+            v2,
+            v4,
+            v8,
+            v16,
+            rgb8(_ palette:[RGBA<UInt8>]?),
+            rgb16(_ palette:[RGBA<UInt8>]?),
+            indexed1(_ palette:[RGBA<UInt8>]),
+            indexed2(_ palette:[RGBA<UInt8>]),
+            indexed4(_ palette:[RGBA<UInt8>]),
+            indexed8(_ palette:[RGBA<UInt8>]),
+            va8,
+            va16,
+            rgba8(_ palette:[RGBA<UInt8>]?),
+            rgba16(_ palette:[RGBA<UInt8>]?)
+}
+```
+
+This type is *not* the same as the type of the format code `enum`s (`Properties.Format.Code`) we pass to functions like `convert(rgba:size:to:)`, which do not carry palettes, but there is a one-to-one correspondence between their cases, and the codes can be accessed from the formats through the `Format.code` instance property.
+
+We can select some of the most saturated swatches in the palette by scoring the palette entries by their ‘redness’. 
+
+```swift
+    // sort palette entries by redness
+    let reddest:[Int] = palette.indices.sorted 
+    {        
+        return redness(palette[$0]) < redness(palette[$1])
+    }
+    // select the 16 reddest colors in the palette 
+    let borderColors:ArraySlice = reddest.suffix(16)
+```
+
+A useful scoring formula is `R^2 / (2 G + B + 1)`.
+
+```swift 
+func redness(_ c:PNG.RGBA<UInt8>) -> Int 
+{
+    // score ‘redness’ by formula: R^2 / (2G + B + 1)
+    return .init(c.r) * .init(c.r) / (2 * .init(c.g) + .init(c.b) + 1)
+}
+```
+
+The next step is to get the index scalars from the input image. We can’t use `v(of:)`, `va(of:)`, or `rgba(of:)`, since those methods would look up the indices in the color palette, and return the color values, whereas we want the indices themselves. Instead we use the `map(_:)` method, which transforms the unprocessed scalar values encoded directly in the image. Note that this `map(_:)` is an instance method on `Data.Rectangular`, not a regular Swift `Array.map(_:)`, though it works on similar principles.
+
+```swift 
+    let image:[Int] = input.map{ $0 }!
+```
+
+Like many *PNG* APIs, `map(_:)` is generic over all types that conform to [`FixedWidthInteger`](https://developer.apple.com/documentation/swift/fixedwidthinteger). Unlike many *PNG* APIs, [`UnsignedInteger`](https://developer.apple.com/documentation/swift/unsignedinteger) is not a requirement. The `map(_:)` invocation above has been inferred to map over `Int`s. The full signature of the method is:
+
+```swift 
+func map<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
+    where Sample:FixedWidthInteger
+```
+
+It has specializations for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, `UInt`, and `Int`.
+
+Unlike `v(of:)`, `va(of:)`, `rgba(of:)`, and many other *PNG* APIs, `map(_:)` *does not scale pixel values to the range of its integer type parameter*. If `v(of: UInt8.self)` sees the value `255` for a given pixel, `v(of: UInt16.self)` will see the value `65535` for the same pixel, and `v(of: UInt32.self)` will see the value `4294967295`. However, `map(_:)` will see the same integer value in all three cases, and will only *cast* the pixel values to the integer type of its closure argument’s argument. Along with not dereferencing palette indices, `map(_:)` also does not perform chroma key substitutions. 
+
+Because `map(_:)` transforms scalars, calling it only makes sense on images with one color channel, so it will return `nil` when called on any image that doesn’t have a ‘`v`’ or ‘`indexed`’ color format. (Indexed images have four components, but only one channel, because while the palette entries are RGBA quadruples, the indices are scalars.) We already verified this six code blocks ago though, so we’ll just [go ahead](https://twitter.com/ericasadun/status/638502420696305664?lang=en) with a force-unwrap.
+
+The `map(_:)` method also has a variant, `mapIntensity(_:)`, which doesn’t dereference indices or perform chroma key substitutions, but *does* scale pixel values to the range of its type parameter. It has four overloads that correspond to ‘`v`’ or ‘`indexed`’ (1-channel), ‘`va`’ (2-channel), ‘`rgb`’ (3-channel), and ‘`rgba`’ (4-channel) images. Their type signatures are as follows.
+
+```swift 
+func mapIntensity<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
+    where Sample:FixedWidthInteger & UnsignedInteger
+
+func mapIntensity<Sample, Result>(_ body:(Sample, Sample) -> Result) -> [Result]?
+    where Sample:FixedWidthInteger & UnsignedInteger
+
+func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample) -> Result) -> [Result]?
+    where Sample:FixedWidthInteger & UnsignedInteger
+
+func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result]?
+    where Sample:FixedWidthInteger & UnsignedInteger
+```
+
+Note that the first overload *will* work on images with indexed color formats, since they have one channel, but there is probably never a reason to actually use it on such images, since normalizing an index doesn’t make any sense at all.
+
+The next step in our example is to build the pixel array for the image with a red border added to it. We fill in the border pixels with random indices pointing to the reddest entries in the image’s palette to give it some texture. 
+
+```swift 
+    // new dimensions 
+    let (xp, yp):(Int, Int) = (x + 2 * borderWidth, y + 2 * borderWidth)
+
+    var output:[Int] = [] 
+        output.reserveCapacity(xp * yp)
+    
+    guard !borderColors.isEmpty 
+    else 
+    {
+        print("empty palette (corrupt PNG)")
+    }
+        
+    // top border 
+    for _ in 0 ..< xp * borderWidth 
+    {
+        output.append(borderColors.randomElement()!)
+    }
+    // left and right borders 
+    for i:Int in 0 ..< y 
+    {
+        for _ in 0 ..< borderWidth 
+        {
+            output.append(borderColors.randomElement()!)
+        }
+        
+        output.append(contentsOf: image[i * x ..< (i + 1) * x])
+        
+        for _ in 0 ..< borderWidth 
+        {
+            output.append(borderColors.randomElement()!)
+        }
+    }
+    // bottom border 
+    for _ in 0 ..< xp * borderWidth 
+    {
+        output.append(borderColors.randomElement()!)
+    }
+```
+
+Finally, we save the new indexed image. Since we don’t know (didn’t check) exactly how many palette entries the original image had, but do know that we didn’t add any new ones, we can just reuse the original image’s color format, since we know we won’t need extra bits to reference the palette entries. 
+
+```swift 
+    guard let _:Void = 
+        try? PNG.encode(indices: output, palette: palette, size: (xp, yp), 
+                            as: format.code, path: outputPath)
+    else 
+    {
+        print("failed to encode '\(outputPath)'")
+        return 
+    }
+```
+
+<img src="../../examples/example-border-output.png" alt="border example output" style="width: 544px;"/>
+
+*Example output*
+
+The full code for this example can be found at [`examples/border.swift`](../../examples/border.swift).

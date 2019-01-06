@@ -36,8 +36,10 @@ func border(input inputPath:String, output outputPath:String)
     {        
         return redness(palette[$0]) < redness(palette[$1])
     }
-    // select the 3 reddest colors in the palette 
+    // select the 16 reddest colors in the palette 
     let borderColors:ArraySlice = reddest.suffix(16)
+    
+    let image:[Int] = input.map{ $0 }!
     
     let borderWidth:Int     = 16, 
         (x, y):(Int, Int)   = input.properties.size
@@ -45,9 +47,14 @@ func border(input inputPath:String, output outputPath:String)
     // new dimensions 
     let (xp, yp):(Int, Int) = (x + 2 * borderWidth, y + 2 * borderWidth)
     
-    let image:[Int] = input.map{ $0 }!
     var output:[Int] = [] 
         output.reserveCapacity(xp * yp)
+    
+    guard !borderColors.isEmpty 
+    else 
+    {
+        print("empty palette (corrupt PNG)")
+    }
     
     // top border 
     for _ in 0 ..< xp * borderWidth 
