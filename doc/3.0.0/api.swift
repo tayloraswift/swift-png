@@ -1076,100 +1076,169 @@ enum PNG
         path outputPath:String, level:Int = 9) throws
         where Component:FixedWidthInteger & UnsignedInteger
 
-    /// A four-byte PNG chunk type identifier.
-    struct Chunk:Hashable, Equatable, CustomStringConvertible
+    /// A PNG chunk type.
+    enum Chunk 
     {
-        /// A string displaying the ASCII representation of this PNG chunk type’s name.
-        var description:String
-
-        /// Creates the chunk type with the given name bytes, if they are valid.
-        /// Returns `nil` if the ancillary bit (in byte 0) is set or the reserved
-        /// bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`,
-        /// `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`,
-        /// `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
+        /// A PNG chunk type recognized and parsed by the library.
+        enum Core 
+        {
+            case    header, 
+                    palette, 
+                    data, 
+                    end, 
+                    transparency 
+        }
+        
+        /// A PNG chunk type not parsed by the library, which can only occur 
+        /// once in a PNG file.
+        enum Unique 
+        {
+            case    chromaticity, 
+                    gamma, 
+                    profile, 
+                    significantBits, 
+                    srgb, 
+                    background, 
+                    histogram, 
+                    physicalDimensions, 
+                    time 
+        }
+        
+        /// A PNG chunk type not parsed by the library, which can occur multiple 
+        /// times in a PNG file.
+        enum Repeatable 
+        {
+            case    suggestedPalette, 
+                    textUTF8, 
+                    textLatin1, 
+                    textLatin1Compressed, 
+                    other(Other) 
+            
+            /// A non-standard private PNG chunk type.
+            struct Other 
+            {
+                /// This chunk’s tag
+                let tag:Tag 
+                
+                /// Creates a private PNG chunk type identifier from the given 
+                /// tag bytes. 
+                /// 
+                /// This initializer will trap if the given bytes do not form 
+                /// a valid chunk tag, or if the tag represents a chunk type 
+                /// defined by the library. To handle these situations, use the 
+                /// `Chunk(_:)` initializer and switch on its enumeration cases 
+                /// instead.
+                /// 
+                /// - Parameters:
+                ///     - name: The four bytes of this PNG chunk type’s name.
+                init(_ name:(UInt8, UInt8, UInt8, UInt8)) 
+            }
+        }
+        
+        case    core(Core), 
+                unique(Unique), 
+                repeatable(Repeatable)
+        
+        /// Classifies the given chunk tag. 
         /// 
         /// - Parameters:
-        ///     - name: The four bytes of this PNG chunk type’s name.
-        init?(_ name:(UInt8, UInt8, UInt8, UInt8))
+        ///     - tag: A PNG chunk tag.
+        init(_ tag:Tag) 
+        
+        /// A four-byte PNG chunk type identifier.
+        struct Tag:Hashable, Equatable, CustomStringConvertible
+        {
+            /// A string displaying the ASCII representation of this PNG chunk type’s name.
+            var description:String
 
-        /// Returns a Boolean value indicating whether two PNG chunk types are equal.
-        /// 
-        /// Equality is the inverse of inequality. For any values `a` and `b`, `a == b`
-        /// implies that `a != b` is `false`.
-        /// 
-        /// - Parameters:
-        ///     - lhs: A value to compare.
-        ///     - rhs: Another value to compare.
-        static
-        func == (a:Chunk, b:Chunk) -> Bool
+            /// Creates the chunk type with the given name bytes, if they are valid.
+            /// Returns `nil` if the ancillary bit (in byte 0) is set or the reserved
+            /// bit (in byte 2) is set, and the ASCII name is not one of `IHDR`, `PLTE`,
+            /// `IDAT`, `IEND`, `cHRM`, `gAMA`, `iCCP`, `sBIT`, `sRGB`, `bKGD`, `hIST`,
+            /// `tRNS`, `pHYs`, `sPLT`, `tIME`, `iTXt`, `tEXt`, or `zTXt`.
+            /// 
+            /// - Parameters:
+            ///     - name: The four bytes of this PNG chunk type’s name.
+            init?(_ name:(UInt8, UInt8, UInt8, UInt8))
 
-        /// Hashes the name of this PNG chunk type by feeding it into the given
-        /// hasher.
-        /// 
-        /// - Parameters:
-        ///     - hasher: The hasher to use when combining the components of this
-        ///         instance.
-        func hash(into hasher:inout Hasher)
+            /// Returns a Boolean value indicating whether two PNG chunk types are equal.
+            /// 
+            /// Equality is the inverse of inequality. For any values `a` and `b`, `a == b`
+            /// implies that `a != b` is `false`.
+            /// 
+            /// - Parameters:
+            ///     - lhs: A value to compare.
+            ///     - rhs: Another value to compare.
+            static
+            func == (a:Tag, b:Tag) -> Bool
 
-        /// The PNG header chunk type.
-        static
-        let IHDR:Chunk
-        /// The PNG palette chunk type.
-        static
-        let PLTE:Chunk
-        /// The PNG image data chunk type.
-        static
-        let IDAT:Chunk
-        /// The PNG image end chunk type.
-        static
-        let IEND:Chunk
+            /// Hashes the name of this PNG chunk type by feeding it into the given
+            /// hasher.
+            /// 
+            /// - Parameters:
+            ///     - hasher: The hasher to use when combining the components of this
+            ///         instance.
+            func hash(into hasher:inout Hasher)
 
-        /// The PNG chromaticity chunk type.
-        static
-        let cHRM:Chunk
-        /// The PNG gamma chunk type.
-        static
-        let gAMA:Chunk
-        /// The PNG embedded ICC chunk type.
-        static
-        let iCCP:Chunk
-        /// The PNG significant bits chunk type.
-        static
-        let sBIT:Chunk
-        /// The PNG *s*RGB chunk type.
-        static
-        let sRGB:Chunk
-        /// The PNG background chunk type.
-        static
-        let bKGD:Chunk
-        /// The PNG histogram chunk type.
-        static
-        let hIST:Chunk
-        /// The PNG transparency chunk type.,
-        static
-        let tRNS:Chunk
+            /// The PNG header chunk type.
+            static
+            let IHDR:Tag
+            /// The PNG palette chunk type.
+            static 
+            let PLTE:Tag
+            /// The PNG image data chunk type.
+            static
+            let IDAT:Tag
+            /// The PNG image end chunk type.
+            static
+            let IEND:Tag
 
-        /// The PNG physical dimensions chunk type.
-        static
-        let pHYs:Chunk
+            /// The PNG chromaticity chunk type.
+            static
+            let cHRM:Tag
+            /// The PNG gamma chunk type.
+            static
+            let gAMA:Tag
+            /// The PNG embedded ICC chunk type.
+            static
+            let iCCP:Tag
+            /// The PNG significant bits chunk type.
+            static
+            let sBIT:Tag
+            /// The PNG *s*RGB chunk type.
+            static
+            let sRGB:Tag
+            /// The PNG background chunk type.
+            static
+            let bKGD:Tag
+            /// The PNG histogram chunk type.
+            static
+            let hIST:Tag
+            /// The PNG transparency chunk type.
+            static
+            let tRNS:Tag
 
-        /// The PNG suggested palette chunk type.
-        static
-        let sPLT:Chunk
-        /// The PNG time chunk type.
-        static
-        let tIME:Chunk
+            /// The PNG physical dimensions chunk type.
+            static
+            let pHYs:Tag
 
-        /// The PNG UTF-8 text chunk type.
-        static
-        let iTXt:Chunk
-        /// The PNG Latin-1 text chunk type.
-        static
-        let tEXt:Chunk
-        /// The PNG compressed Latin-1 text chunk type.
-        static
-        let zTXt:Chunk
-    }
+            /// The PNG suggested palette chunk type.
+            static
+            let sPLT:Tag
+            /// The PNG time chunk type.
+            static
+            let tIME:Tag
+
+            /// The PNG UTF-8 text chunk type.
+            static
+            let iTXt:Tag
+            /// The PNG Latin-1 text chunk type.
+            static
+            let tEXt:Tag
+            /// The PNG compressed Latin-1 text chunk type.
+            static
+            let zTXt:Tag
+        }
 
     /// Errors that can occur while reading, decompressing, or decoding PNG files.
     enum DecodingError:Error
@@ -1200,7 +1269,7 @@ enum PNG
         /// in the same PNG file.
         case duplicateChunk(Chunk)
         /// A prerequisite PNG chunk is missing.
-        case missingChunk(Chunk)
+        case missingChunk(Chunk.Core)
     }
      
     enum ConversionError:Error 
@@ -1294,12 +1363,12 @@ extension PNG.ChunkIterator where DataInterface:DataDestination
     /// `data` array.
     /// 
     /// - Parameters:
-    ///     - name: A chunk type.
+    ///     - tag: A chunk tag.
     ///     - data: An array containing chunk data. The default is `[]`.
     ///     - source: A data destination to write a PNG file to.
     /// - Returns: `nil` if the chunk could not be written.
     mutating
-    func next(_ name:PNG.Chunk, _ data:[UInt8] = [], destination:inout DataInterface)
+    func next(_ tag:PNG.Chunk.Tag, _ data:[UInt8] = [], destination:inout DataInterface)
         -> Void?
 }
 

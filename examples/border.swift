@@ -54,6 +54,7 @@ func border(input inputPath:String, output outputPath:String)
     else 
     {
         print("empty palette (corrupt PNG)")
+        return 
     }
     
     // top border 
