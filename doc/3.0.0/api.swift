@@ -634,19 +634,6 @@ enum PNG
             ///         compression.
             /// - Returns: `nil` if the given file could not be opened.
             func compress(path outputPath:String, chunkSize:Int = 1 << 16, level:Int = 9) throws
-            {
-                guard let _:Void =
-                (
-                    try File.Destination.open(path: outputPath)
-                    {
-                        try self.compress(to: &$0, chunkSize: chunkSize, level: level)
-                    }
-                )
-                else
-                {
-                    throw File.Error.couldNotOpen
-                }
-            }
 
             /// Decompresses a PNG file at the given file path, and returns it as 
             /// an `Uncompressed` image.
@@ -657,42 +644,127 @@ enum PNG
             ///     could not be opened.
             static
             func decompress(path inputPath:String) throws -> Uncompressed
-            {
-                guard let uncompressed:Uncompressed =
-                (
-                    try File.Source.open(path: inputPath)
-                    {
-                        try self.decompress(from: &$0)
-                    }
-                )
-                else
-                {
-                    throw File.Error.couldNotOpen
-                }
-
-                return uncompressed
-            }
             
+            /// Converts the given indexed-representation RGBA image to the specified 
+            /// target format.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - indices: An array of indices into the given `palette`, representing 
+            ///         an image. No index may be greater than `palette.count`.
+            ///     - palette: A palette of RGBA colors. 
+            ///     - size: The size of the given image. The value `size.x * size.y` 
+            ///         must be the same as `indices.count`.
+            ///     - code: The color format to convert the input image to. All 
+            ///         cases are valid, but some may result in data narrowing.
+            ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+            ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+            ///         by default.
+            ///
+            /// - Returns: An `Uncompressed` image of the given color format.
+            /// 
+            /// - Throws: 
+            ///     - ConversionError.pixelCount: if the `indices` array is the 
+            ///         wrong size.
+            ///     - ConversionError.indexOutOfRange: if a pixel index references 
+            ///         a nonexistent palette entry.
+            ///     - ConversionError.paletteOverflow: if the provided `palette` 
+            ///         contains too many entries to be encoded in a specified 
+            ///         indexing format.
             static
-            func convert(indices:[Int], palette:[RGBA<UInt8>], 
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
-                throws -> Uncompressed
+            func convert<Component>(indices:[Int], palette:[RGBA<Component>], 
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
+                throws -> Uncompressed 
+                where Component:FixedWidthInteger & UnsignedInteger
             
+            /// Converts the given grayscale image to the specified target format.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - v: An array of grayscale pixel values, representing 
+            ///         an image.
+            ///     - size: The size of the given image. The value `size.x * size.y` 
+            ///         must be the same as `v.count`.
+            ///     - code: The color format to convert the input image to. All 
+            ///         cases are valid, but some may result in data narrowing.
+            ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+            ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+            ///         by default.
+            ///
+            /// - Returns: An `Uncompressed` image of the given color format.
+            /// 
+            /// - Throws: 
+            ///     - ConversionError.pixelCount: if the `v` array is the wrong
+            ///         size.
+            ///     - ConversionError.paletteOverflow: if the provided image contains
+            ///         too many distinct colors to be encoded in a specified 
+            ///         indexing format.
             static
             func convert<Component>(v:[Component],
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
             
+            /// Converts the given grayscale–alpha image to the specified target format.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - va: An array of grayscale–alpha pixel values, representing 
+            ///         an image.
+            ///     - size: The size of the given image. The value `size.x * size.y` 
+            ///         must be the same as `va.count`.
+            ///     - code: The color format to convert the input image to. All 
+            ///         cases are valid, but some may result in data narrowing.
+            ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+            ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+            ///         by default.
+            ///
+            /// - Returns: An `Uncompressed` image of the given color format.
+            /// 
+            /// - Throws: 
+            ///     - ConversionError.pixelCount: if the `va` array is the wrong
+            ///         size.
+            ///     - ConversionError.paletteOverflow: if the provided image contains
+            ///         too many distinct colors to be encoded in a specified 
+            ///         indexing format.
             static
             func convert<Component>(va:[VA<Component>],
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
             
+            /// Converts the given RGBA image to the specified target format.
+            /// 
+            /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+            /// 
+            /// - Parameters:
+            ///     - rgba: An array of RGBA pixel values, representing an image.
+            ///     - size: The size of the given image. The value `size.x * size.y` 
+            ///         must be the same as `rgba.count`.
+            ///     - code: The color format to convert the input image to. All 
+            ///         cases are valid, but some may result in data narrowing.
+            ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+            ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+            ///         by default.
+            ///
+            /// - Returns: An `Uncompressed` image of the given color format.
+            /// 
+            /// - Throws: 
+            ///     - ConversionError.pixelCount: if the `rgba` array is the wrong
+            ///         size.
+            ///     - ConversionError.paletteOverflow: if the provided image contains
+            ///         too many distinct colors to be encoded in a specified 
+            ///         indexing format.
             static
             func convert<Component>(rgba:[RGBA<Component>],
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
         }
@@ -1082,12 +1154,129 @@ enum PNG
         -> (pixels:[Component.FusedVector4], size:(x:Int, y:Int))
         where Component:FusedVector4Element
 
+    /// Encodes the given indexed-representation RGBA image in the specified 
+    /// target format.
+    /// 
+    /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+    /// 
+    /// - Parameters:
+    ///     - indices: An array of indices into the given `palette`, representing 
+    ///         an image. No index may be greater than `palette.count`.
+    ///     - palette: A palette of RGBA colors. 
+    ///     - size: The size of the given image. The value `size.x * size.y` 
+    ///         must be the same as `indices.count`.
+    ///     - code: The color format to convert the input image to. All 
+    ///         cases are valid, but some may result in data narrowing.
+    ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+    ///     - path: A file path to write the encoded PNG file to.
+    ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+    ///         by default.
+    ///
+    /// - Throws: 
+    ///     - ConversionError.pixelCount: if the `indices` array is the 
+    ///         wrong size.
+    ///     - ConversionError.indexOutOfRange: if a pixel index references 
+    ///         a nonexistent palette entry.
+    ///     - ConversionError.paletteOverflow: if the provided `palette` 
+    ///         contains too many entries to be encoded in a specified 
+    ///         indexing format.
+    ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
+    ///         be found or opened.
+    static
+    func encode<Component>(indices:[Int], palette:[RGBA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+
+    /// Encodes the given grayscale image in the specified target format.
+    /// 
+    /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+    /// 
+    /// - Parameters:
+    ///     - v: An array of grayscale pixel values, representing 
+    ///         an image.
+    ///     - size: The size of the given image. The value `size.x * size.y` 
+    ///         must be the same as `v.count`.
+    ///     - code: The color format to convert the input image to. All 
+    ///         cases are valid, but some may result in data narrowing.
+    ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+    ///     - path: A file path to write the encoded PNG file to.
+    ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+    ///         by default.
+    /// 
+    /// - Throws: 
+    ///     - ConversionError.pixelCount: if the `v` array is the wrong
+    ///         size.
+    ///     - ConversionError.paletteOverflow: if the provided image contains
+    ///         too many distinct colors to be encoded in a specified 
+    ///         indexing format.
+    ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
+    ///         be found or opened.
+    static
+    func encode<Component>(v:[Component], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+        
+    /// Converts the given grayscale–alpha image to the specified target format.
+    /// 
+    /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+    /// 
+    /// - Parameters:
+    ///     - va: An array of grayscale–alpha pixel values, representing 
+    ///         an image.
+    ///     - size: The size of the given image. The value `size.x * size.y` 
+    ///         must be the same as `va.count`.
+    ///     - code: The color format to convert the input image to. All 
+    ///         cases are valid, but some may result in data narrowing.
+    ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+    ///     - path: A file path to write the encoded PNG file to.
+    ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+    ///         by default.
+    /// 
+    /// - Throws: 
+    ///     - ConversionError.pixelCount: if the `va` array is the wrong
+    ///         size.
+    ///     - ConversionError.paletteOverflow: if the provided image contains
+    ///         too many distinct colors to be encoded in a specified 
+    ///         indexing format.
+    ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
+    ///         be found or opened.
+    static
+    func encode<Component>(va:[VA<Component>], size:(x:Int, y:Int),
+        as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
+        path outputPath:String, level:Int = 9) throws
+        where Component:FixedWidthInteger & UnsignedInteger
+    
+    /// Converts the given RGBA image to the specified target format.
+    /// 
+    /// *Specialized* for `Sample` types `UInt8`, `UInt16`, `UInt32`, `UInt64`, and `UInt`.
+    /// 
+    /// - Parameters:
+    ///     - rgba: An array of RGBA pixel values, representing an image.
+    ///     - size: The size of the given image. The value `size.x * size.y` 
+    ///         must be the same as `rgba.count`.
+    ///     - code: The color format to convert the input image to. All 
+    ///         cases are valid, but some may result in data narrowing.
+    ///     - chromaKey: A chroma key, or `nil`. The default is `nil`. 
+    ///     - path: A file path to write the encoded PNG file to.
+    ///     - ancillaries: Extra PNG chunks to include in the image. Empty 
+    ///         by default.
+    /// 
+    /// - Throws: 
+    ///     - ConversionError.pixelCount: if the `rgba` array is the wrong
+    ///         size.
+    ///     - ConversionError.paletteOverflow: if the provided image contains
+    ///         too many distinct colors to be encoded in a specified 
+    ///         indexing format.
+    ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
+    ///         be found or opened.
     static
     func encode<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
         path outputPath:String, level:Int = 9) throws
         where Component:FixedWidthInteger & UnsignedInteger
-
+    
     /// A PNG chunk type.
     enum Chunk 
     {
