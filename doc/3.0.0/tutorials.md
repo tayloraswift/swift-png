@@ -212,7 +212,45 @@ While using `Data.Uncompressed` and `Data.Rectangular` is more verbose than usin
 
 > Warning: An image can be visually monochrome, and still be encoded in an RGB or RGBA color format, simply by having the same component values in all three color channels. In that case, the above guard statement will reject the image.
 
-We can then use the `convert(rgba:size:to:)` static method to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:)` function can throw, but if you stick with the non-indexed color formats, the only possible error is `ConversionError.pixelCount`.
+The `convert(rgba:size:to:chromaKey:ancillaries:)` function does the same thing as the first half of the `encode(rgba:size:as:chromaKey:path:level:)`, but also gives us the option to supply additional PNG metadata chunks, called “ancillary chunks”, to the output image through the `ancillaries:` argument. This parameter takes a tuple containing a `Dictionary` of non-repeatable ancillary chunks, and an `Array` of repeatable ancillary chunks. 
+
+We can access the ancillary chunks in the original image through the `ancillaries` instance property on the `Data.Uncompressed` structure. The same property also exists on `Data.Rectangular`. If we print it out to the terminal we can see our input image has four ancillary chunks:
+
+```swift
+(
+    unique: 
+    [
+        // 39,370 x 39,370 pixels per square meter (1,000 pixels per inch)
+        PNG.PNG.Chunk.Unique.physicalDimensions: [0, 0, 153, 202, 0, 0, 153, 202, 1], 
+        // 2019-1-5 at 4:02:18 UTC
+        PNG.PNG.Chunk.Unique.time: [7, 227, 1, 5, 4, 2, 18], 
+        // (255), a.k.a. solid white
+        PNG.PNG.Chunk.Unique.background: [0, 255]
+    ], 
+    repeatable: 
+    [
+        // “Comment: Created with GIMP”
+        (PNG.PNG.Chunk.Repeatable.textUTF8, 
+        [67, 111, 109, 109, 101, 110, 116, 0, 0, 0, 0, 0, 67, 114, 101, 97, 116, 
+         101, 100, 32, 119, 105, 116, 104, 32, 71, 73, 77, 80])
+    ]
+)
+```
+
+According to the PNG standard, not all ancillary chunks should be copied over the the output image after editing. We can query each chunk type to find out if it should be preserved using the `safeToCopy` property.
+
+```swift 
+    // preserve some of the ancillary chunks 
+    let ancillaries:PNG.Data.Ancillaries = 
+    (
+        rectangular.ancillaries.unique.filter{ $0.key.safeToCopy }, 
+        rectangular.ancillaries.repeatable.filter{ $0.0.safeToCopy } 
+    )
+```
+
+The `Data.Ancillaries` type is a typealias for `(unique:[Chunk.Unique: [UInt8]], repeatable:[(Chunk.Repeatable, [UInt8])])`.
+
+We can now use `convert(rgba:size:to:chromaKey:ancillaries:)` to pack the output pixels back into a `Data.Uncompressed` byte buffer, and the `compress(path:chunkSize:level:)` instance method to encode it and save it to disk. The `convert(rgba:size:to:chromaKey:ancillaries:)` function can throw, but if you stick with the non-indexed color formats, the only possible error is `ConversionError.pixelCount`.
 
 The `chunkSize:` argument is optional and by default is set to 2<sup>16</sup> bytes. It specifies the size of the internal data blocks in the compressed PNG file, and there is rarely a good reason to change it. At the default, the library will emit 20–30ish chunks for a “normal” size image (“1K” resolution).
 
@@ -220,7 +258,8 @@ The `level:` argument is also optional, and by default it’s set to 9 (just lik
 
 ```swift 
     guard let output:PNG.Data.Uncompressed = 
-        try? .convert(rgba: sepia, size: rectangular.properties.size, to: .rgb16)
+        try? .convert(rgba: sepia, size: rectangular.properties.size, to: .rgb16, 
+                ancillaries: ancillaries)
     else 
     {
         print("failed to convert '\(inputPath)'")
@@ -235,9 +274,9 @@ The `level:` argument is also optional, and by default it’s set to 9 (just lik
     }
 ```
 
-The above code is, of course, equivalent to a single call to `encode(rgba: sepia, size: rectangular.properties.size, as: .rgb16, path: outputPath, level: 8)`.
+The above code is, of course, equivalent to a single call to `encode(rgba: sepia, size: rectangular.properties.size, as: .rgb16, path: outputPath, level: 8)`, though `encode` will strip the ancillary chunks from the output image.
 
-You might wonder why the `Data.Uncompressed` API even exists, if the namespace-level APIs are so much more convenient. The answer is that the `Data.Uncompressed` API is much more flexible. The `compress(path:chunkSize:level:)` and `decompress(path:)` methods have generic variants `compress<Destination>(to:chunkSize:level:)` and `decompress<Source>(from:)` which take source and destination arguments that conform to the protocols `DataSource` and `DataDestination`, respectively.
+You might wonder why the `Data.Uncompressed` API even exists, if the namespace-level APIs are so much more convenient. The answer is that the `Data.Uncompressed` API is much more flexible. Aside from supporting ancillary chunks and custom data chunking intervals, the `compress(path:chunkSize:level:)` and `decompress(path:)` methods have generic variants `compress<Destination>(to:chunkSize:level:)` and `decompress<Source>(from:)` which take source and destination arguments that conform to the protocols `DataSource` and `DataDestination`, respectively.
 
 ```swift 
 protocol DataSource

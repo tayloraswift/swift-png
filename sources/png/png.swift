@@ -2188,7 +2188,9 @@ enum PNG
                 else
                 {
                     // image is not interlaced at all, return it transparently
-                    return .init(rawData: self.data, properties: self.properties)
+                    return .init(   rawData: self.data, 
+                                 properties: self.properties, 
+                                ancillaries: self.ancillaries)
                 }
 
                 let properties:Properties = .init(size: self.properties.shape.size,

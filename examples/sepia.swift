@@ -44,8 +44,16 @@ func sepia(input inputPath:String, output outputPath:String)
         return .init(r, g, b)
     }
     
+    // preserve some of the ancillary chunks 
+    let ancillaries:PNG.Data.Ancillaries = 
+    (
+        rectangular.ancillaries.unique.filter{ $0.key.safeToCopy }, 
+        rectangular.ancillaries.repeatable.filter{ $0.0.safeToCopy } 
+    )
+    
     guard let output:PNG.Data.Uncompressed = 
-        try? .convert(rgba: sepia, size: rectangular.properties.size, to: .rgb16)
+        try? .convert(rgba: sepia, size: rectangular.properties.size, to: .rgb16, 
+                ancillaries: ancillaries)
     else 
     {
         print("failed to convert '\(inputPath)'")
