@@ -2100,6 +2100,9 @@ enum PNG
     public
     enum Data
     {
+        public 
+        typealias Ancillaries = (unique:[Chunk.Unique: [UInt8]], repeatable:[(Chunk.Repeatable, [UInt8])])
+        
         /// A PNG image that has been decompressed, but not necessarily deinterlaced.
         public
         struct Uncompressed
@@ -2112,6 +2115,10 @@ enum PNG
             /// deinterlaced, image data.
             public
             let data:[UInt8]
+            
+            /// Additional chunks not parsed by the library.
+            public 
+            let ancillaries:Ancillaries 
 
             /// Creates an uncompressed PNG image with the given pixel buffer and
             /// `Properties` record.
@@ -2119,11 +2126,13 @@ enum PNG
             /// - Parameters:
             ///     - data: A pixel buffer.
             ///     - properties: A `Properties` record.
+            ///     - ancillaries: Additional chunks to include in the image. Empty 
+            ///         by default.
             /// - Returns: An uncompressed PNG image. If the size of the given
             ///     pixel buffer is not consistent with the size and format information
             ///     in the given `properties`, a fatal error will occur.
             public
-            init(rawData data:[UInt8], properties:Properties)
+            init(rawData data:[UInt8], properties:Properties, ancillaries:Ancillaries = ([:], []))
             {
                 guard data.count == properties.byteCount
                 else
@@ -2131,8 +2140,9 @@ enum PNG
                     fatalError("rawData array count doesn’t match dimensions given by properties parameter")
                 }
 
-                self.properties = properties
-                self.data       = data
+                self.properties     = properties
+                self.data           = data
+                self.ancillaries    = ancillaries
             }
 
             /// Decomposes this uncompressed image into its constituent sub-images,
@@ -2248,7 +2258,9 @@ enum PNG
                     count = properties.byteCount
                 }
 
-                return .init(rawData: deinterlaced, properties: properties)
+                return .init(   rawData: deinterlaced, 
+                             properties: properties, 
+                            ancillaries: self.ancillaries)
             }
 
             /// Compresses this image, and outputs the compressed PNG file to the given
@@ -2272,7 +2284,27 @@ enum PNG
                 where Destination:DataDestination
             {
                 precondition(chunkSize >= 1, "chunk size must be positive")
-
+                
+                // partition ancillary chunks 
+                // before PLTE
+                var leaders:[(Chunk, [UInt8])]  = self.ancillaries.repeatable.map 
+                {
+                    (.repeatable($0.0), $0.1)
+                } 
+                // after PLTE (before IDAT)
+                var trailers:[(Chunk, [UInt8])] = [] 
+                for (unique, contents):(Chunk.Unique, [UInt8]) in self.ancillaries.unique 
+                {
+                    switch unique  
+                    {
+                        case .background, .histogram: 
+                            trailers.append((.unique(unique), contents)) 
+                        
+                        default:
+                            leaders.append((.unique(unique), contents))
+                    }
+                }
+                
                 guard var iterator:ChunkIterator<Destination> =
                     ChunkIterator.begin(destination: &destination)
                 else
@@ -2289,20 +2321,37 @@ enum PNG
                         throw EncodingError.notAcceptingData
                     }
                 }
-
+                
+                // IHDR
                 try _next(.core(.header), self.properties.encodeIHDR())
+                
+                // [leaders...]
+                for (chunk, contents):(Chunk, [UInt8]) in leaders 
+                {
+                    try _next(chunk, contents)
+                }
+                
+                // PLTE
                 try self.properties.encodePLTE().map
                 {
                     try _next(.core(.palette), $0)
                 }
+                // tRNS
                 try self.properties.encodetRNS().map
                 {
                     try _next(.core(.transparency), $0)
                 }
-
+                
+                // [trailers...]
+                for (chunk, contents):(Chunk, [UInt8]) in trailers 
+                {
+                    try _next(chunk, contents)
+                }
+                
+                // [IDAT...]
                 var pitches:Properties.Pitches = self.properties.pitches,
                 encoder:Properties.Encoder = try self.properties.encoder(level: level)
-
+                
                 var pitch:Int?,
                 base:Int = self.data.startIndex
                 while true
@@ -2395,7 +2444,8 @@ enum PNG
                 }
 
                 var chromaKey:RGBA<UInt16>? = nil,
-                    data:[UInt8] = []
+                    data:[UInt8]            = [], 
+                    ancillaries:Ancillaries = ([:], [])
 
                 var (chunk, contents):(Chunk, [UInt8])  = try _next(),
                     stage:DecompressionStage            = .i,
@@ -2510,7 +2560,7 @@ enum PNG
                                 throw DecodingError.inconsistentMetadata
                             }
 
-                            return .init(rawData: data, properties: properties)
+                            return .init(rawData: data, properties: properties, ancillaries: ancillaries)
 
                         case    (.core(.end), .ii),
                                 (.core(.end), .iii):
@@ -2559,7 +2609,18 @@ enum PNG
                         default:
                             break
                     }
-
+                    
+                    // record unrecognized ancillary chunks 
+                    switch chunk 
+                    {
+                        case .core:
+                            break 
+                        case .unique(let unique):
+                            ancillaries.unique[unique] = contents 
+                        case .repeatable(let repeatable):
+                            ancillaries.repeatable.append((repeatable, contents))
+                    }
+                    
                     (chunk, contents) = try _next()
 
                     // make sure certain chunks don’t duplicate
@@ -2666,7 +2727,8 @@ enum PNG
             @_specialize(exported: true, where Component == UInt)
             public static
             func convert<Component>(indices:[Int], palette:[RGBA<Component>], 
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed 
                 where Component:FixedWidthInteger & UnsignedInteger
             {
@@ -2715,12 +2777,13 @@ enum PNG
                             fatalError("unreachable")
                     }
                     
-                    return .init(rawData: data, properties: properties)
+                    return .init(rawData: data, properties: properties, ancillaries: ancillaries)
                 }
                 else 
                 {
                     let image:[RGBA<Component>] = indices.map{ palette[$0] }
-                    return try convert(rgba: image, size: size, to: code, chromaKey: chromaKey)
+                    return try convert(rgba: image, size: size, to: code, 
+                        chromaKey: chromaKey, ancillaries: ancillaries)
                 }
             }
             
@@ -2731,7 +2794,8 @@ enum PNG
             @_specialize(exported: true, where Component == UInt)
             public static
             func convert<Component>(v:[Component],
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
             {
@@ -2880,7 +2944,7 @@ enum PNG
                         }
                 }
                 
-                return .init(rawData: data, properties: properties)
+                return .init(rawData: data, properties: properties, ancillaries: ancillaries)
             }
             
             @_specialize(exported: true, where Component == UInt8)
@@ -2890,7 +2954,8 @@ enum PNG
             @_specialize(exported: true, where Component == UInt)
             public static
             func convert<Component>(va:[VA<Component>],
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
             {
@@ -3039,7 +3104,7 @@ enum PNG
                         }
                 }
                 
-                return .init(rawData: data, properties: properties)
+                return .init(rawData: data, properties: properties, ancillaries: ancillaries)
             }
 
             @_specialize(exported: true, where Component == UInt8)
@@ -3049,7 +3114,8 @@ enum PNG
             @_specialize(exported: true, where Component == UInt)
             public static
             func convert<Component>(rgba:[RGBA<Component>],
-                size:(x:Int, y:Int), to code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil)
+                size:(x:Int, y:Int), to code:Properties.Format.Code, 
+                chromaKey:RGBA<UInt16>? = nil, ancillaries:Ancillaries = ([:], []))
                 throws -> Uncompressed
                 where Component:FixedWidthInteger & UnsignedInteger
             {
@@ -3198,7 +3264,7 @@ enum PNG
                         }
                 }
 
-                return .init(rawData: data, properties: properties)
+                return .init(rawData: data, properties: properties, ancillaries: ancillaries)
             }
 
             private static
@@ -3259,6 +3325,10 @@ enum PNG
             /// number of bytes.
             public
             let data:[UInt8]
+            
+            /// Additional chunks not parsed by the library.
+            public 
+            let ancillaries:Ancillaries 
 
             /// Creates a fully decoded PNG image with the given pixel matrix and
             /// `Properties` record.
@@ -3267,11 +3337,13 @@ enum PNG
             ///     - data: An untyped, padded data buffer containing a row-major
             ///         pixel matrix.
             ///     - properties: A `Properties` record.
+            ///     - ancillaries: Additional chunks to include in the image. Empty 
+            ///         by default.
             /// - Returns: A fully decoded PNG image. The size of the given pixel
             ///     matrix must be consistent with the size and format information
             ///     in the given image `properties`.
             public 
-            init(rawData data:[UInt8], properties:Properties)
+            init(rawData data:[UInt8], properties:Properties, ancillaries:Ancillaries = ([:], []))
             {
                 guard !properties.interlaced
                 else
@@ -3284,8 +3356,9 @@ enum PNG
                     fatalError("rawData array count doesn’t match dimensions given by properties parameter")
                 }
 
-                self.properties = properties
-                self.data       = data
+                self.properties     = properties
+                self.data           = data
+                self.ancillaries    = ancillaries
             }
 
             /// Decompresses and deinterlaces a PNG file at the given file path,
@@ -4490,6 +4563,20 @@ enum PNG
                         return .tIME
                 }
             }
+            
+            /// Whether or not this chunk is safe to copy over if image data has 
+            /// been modified.
+            public 
+            var safeToCopy:Bool 
+            {
+                switch self 
+                {
+                    case .physicalDimensions: 
+                        return true 
+                    default:
+                        return false
+                }
+            }
         }
         
         /// A PNG chunk type not parsed by the library, which can occur multiple 
@@ -4563,6 +4650,22 @@ enum PNG
                         return .zTXt
                     case .other(let other):
                         return other.tag
+                }
+            }
+            
+            /// Whether or not this chunk is safe to copy over if image data has 
+            /// been modified.
+            public 
+            var safeToCopy:Bool 
+            {
+                switch self 
+                {
+                    case .textUTF8, .textLatin1, .textLatin1Compressed: 
+                        return true 
+                    case .other(let other):
+                        return other.tag.name.3 & (1 << 5) != 0
+                    case .suggestedPalette:
+                        return false
                 }
             }
         }

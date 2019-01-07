@@ -545,6 +545,8 @@ enum PNG
     /// A namespace for PNG image data container types.
     enum Data
     {
+        typealias Ancillaries = (unique:[Chunk.Unique: [UInt8]], repeatable:[(Chunk.Repeatable, [UInt8])])
+        
         /// A PNG image that has been decompressed, but not necessarily deinterlaced.
         struct Uncompressed
         {
@@ -554,17 +556,22 @@ enum PNG
             /// The buffer containing this PNG’s decoded, but not necessarily
             /// deinterlaced, image data.
             let data:[UInt8]
-
+            
+            /// Additional chunks not parsed by the library.
+            let ancillaries:Ancillaries 
+            
             /// Creates an uncompressed PNG image with the given pixel buffer and
             /// `Properties` record.
             /// 
             /// - Parameters:
             ///     - data: A pixel buffer.
             ///     - properties: A `Properties` record.
+            ///     - ancillaries: Additional chunks to include in the image. Empty 
+            ///         by default.
             /// - Returns: An uncompressed PNG image. If the size of the given
             ///     pixel buffer is not consistent with the size and format information
             ///     in the given `properties`, a fatal error will occur.
-            init(rawData data:[UInt8], properties:Properties)
+            init(rawData data:[UInt8], properties:Properties, ancillaries:Ancillaries = ([:], []))
 
             /// Decomposes this uncompressed image into its constituent sub-images,
             /// if this image is interlaced.
@@ -703,6 +710,9 @@ enum PNG
             /// number of bytes.
             let data:[UInt8]
             
+            /// Additional chunks not parsed by the library.
+            let ancillaries:Ancillaries 
+            
             /// Creates a fully decoded PNG image with the given pixel matrix and
             /// `Properties` record.
             /// 
@@ -710,10 +720,12 @@ enum PNG
             ///     - data: An untyped, padded data buffer containing a row-major
             ///         pixel matrix.
             ///     - properties: A `Properties` record.
+            ///     - ancillaries: Additional chunks to include in the image. Empty 
+            ///         by default.
             /// - Returns: A fully decoded PNG image. The size of the given pixel
             ///     matrix must be consistent with the size and format information
             ///     in the given image `properties`.
-            init(rawData data:[UInt8], properties:Properties)
+            init(rawData data:[UInt8], properties:Properties, ancillaries:Ancillaries = ([:], []))
 
             /// Decompresses and deinterlaces a PNG file at the given file path,
             /// and returns it as a `Rectangular` row-major pixel matrix.
@@ -1102,6 +1114,10 @@ enum PNG
                     histogram, 
                     physicalDimensions, 
                     time 
+            
+            /// Whether or not this chunk is safe to copy over if image data has 
+            /// been modified.
+            var safeToCopy:Bool 
         }
         
         /// A PNG chunk type not parsed by the library, which can occur multiple 
@@ -1133,6 +1149,10 @@ enum PNG
                 ///     - name: The four bytes of this PNG chunk type’s name.
                 init(_ name:(UInt8, UInt8, UInt8, UInt8)) 
             }
+            
+            /// Whether or not this chunk is safe to copy over if image data has 
+            /// been modified.
+            var safeToCopy:Bool 
         }
         
         case    core(Core), 
