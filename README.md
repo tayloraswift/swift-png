@@ -1,6 +1,6 @@
 # PNG
 
-[![Platforms](https://img.shields.io/badge/platform-linux-lightgrey.svg)](https://swift.org)
+[![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20osx-lightgrey.svg)](https://swift.org)
 [![Release tag](https://img.shields.io/github/release/kelvin13/png.svg)](https://github.com/kelvin13/png/releases)
 [![Build](https://travis-ci.org/kelvin13/png.svg?branch=master)](https://travis-ci.org/kelvin13/png)
 [![Issues](https://img.shields.io/github/issues/kelvin13/png.svg)](https://github.com/kelvin13/png/issues?state=open)

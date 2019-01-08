@@ -482,10 +482,10 @@ enum PNG
     {
         /// The value component of this color.
         public
-        let v:Component
+        var v:Component
         /// The alpha component of this color.
         public
-        let a:Component
+        var a:Component
 
         /// Creates an opaque grayscale color with the value component set to the
         /// given value sample, and the alpha component set to `Component.max`.
@@ -557,16 +557,16 @@ enum PNG
     {
         /// The red component of this color.
         public
-        let r:Component
+        var r:Component
         /// The green component of this color.
         public
-        let g:Component
+        var g:Component
         /// The blue component of this color.
         public
-        let b:Component
+        var b:Component
         /// The alpha component of this color.
         public
-        let a:Component
+        var a:Component
 
         /// Creates an opaque grayscale color with all color components set to the given
         /// value sample, and the alpha component set to `Component.max`.
