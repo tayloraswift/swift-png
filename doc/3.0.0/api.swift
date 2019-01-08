@@ -59,9 +59,9 @@ enum PNG
     struct VA<Component> where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The value component of this color.
-        let v:Component
+        var v:Component
         /// The alpha component of this color.
-        let a:Component
+        var a:Component
 
         /// Creates an opaque grayscale color with the value component set to the
         /// given value sample, and the alpha component set to `Component.max`.
@@ -98,13 +98,13 @@ enum PNG
     struct RGBA<Component> where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color.
-        let r:Component
+        var r:Component
         /// The green component of this color.
-        let g:Component
+        var g:Component
         /// The blue component of this color.
-        let b:Component
+        var b:Component
         /// The alpha component of this color.
-        let a:Component
+        var a:Component
 
         /// Creates an opaque grayscale color with all color components set to the given
         /// value sample, and the alpha component set to `Component.max`.
