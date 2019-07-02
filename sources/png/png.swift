@@ -187,23 +187,23 @@ extension FixedLayoutColor
     public
     var startIndex:Int
     {
-        return 0
+        0
     }
     @inlinable
     public
     var endIndex:Int
     {
-        return Self.components
+        Self.components
     }
 }
 
 /// A fixed-width integer type which can be packed in groups of four within another
 /// integer type. For example, four `UInt8`s may be packed into a single `UInt32`.
 public
-protocol FusedVector4Element:FixedWidthInteger & UnsignedInteger
+protocol FusedVector4Element:FixedWidthInteger & UnsignedInteger & SIMDScalar
 {
     /// A fixed-width integer type which can hold four instances of `Self`.
-    associatedtype FusedVector4:FixedWidthInteger & UnsignedInteger
+    associatedtype FusedVector4:FixedWidthInteger & UnsignedInteger & SIMDScalar
 }
 extension UInt8:FusedVector4Element
 {
@@ -226,17 +226,10 @@ extension PNG.RGBA where Component:FusedVector4Element
     public
     var argb:Component.FusedVector4
     {
-        let a:Math<Component.FusedVector4>.V4 =
-            Math.cast((self.a, self.r, self.g, self.b), as: Component.FusedVector4.self)
-
-        let x:Math<Component.FusedVector4>.V4
-
-        x.0 = a.0 << (Component.bitWidth << 1 | Component.bitWidth)
-        x.1 = a.1 << (Component.bitWidth << 1)
-        x.2 = a.2 << (Component.bitWidth)
-        x.3 = a.3
-
-        return x.0 | x.1 | x.2 | x.3
+        .init(self.a) << (Component.bitWidth * 3) | 
+        .init(self.r) << (Component.bitWidth * 2) | 
+        .init(self.g) << (Component.bitWidth    ) | 
+        .init(self.b) 
     }
 }
 
@@ -543,7 +536,7 @@ enum PNG
         public
         var premultiplied:VA<Component>
         {
-            return .init(premultiply(color: self.v, alpha: self.a), self.a)
+            .init(premultiply(color: self.v, alpha: self.a), self.a)
         }
     }
 
@@ -662,10 +655,10 @@ enum PNG
         public
         var premultiplied:RGBA<Component>
         {
-            return .init(   premultiply(color: self.r, alpha: self.a),
-                            premultiply(color: self.g, alpha: self.a),
-                            premultiply(color: self.b, alpha: self.a),
-                            self.a)
+            .init(  premultiply(color: self.r, alpha: self.a),
+                    premultiply(color: self.g, alpha: self.a),
+                    premultiply(color: self.b, alpha: self.a),
+                    self.a)
         }
 
         /// The red, and alpha components of this color, stored as a grayscale-alpha
@@ -676,7 +669,7 @@ enum PNG
         public
         var va:VA<Component>
         {
-            return .init(self.r, self.a)
+            .init(self.r, self.a)
         }
 
         /// Returns a copy of this color with the alpha component set to the given sample.
@@ -863,15 +856,15 @@ enum PNG
     private static
     func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     {
-        let v:Math<Int16>.V3 = Math.cast((a, b, c), as: Int16.self),
-            p:Int16          = v.x + v.y - v.z
-        let d:Math<Int16>.V3 = Math.abs(Math.sub((p, p, p), v))
+        let v:SIMD3<Int16> = .init(truncatingIfNeeded: .init(a, b, c)),
+            d:SIMD3<Int16> = v.x + v.y - v.z &- v
+        let f:(x:Int16, y:Int16, z:Int16) = (abs(d.x), abs(d.y), abs(d.z))
 
-        if d.x <= d.y && d.x <= d.z
+        if f.x <= f.y && f.x <= f.z
         {
             return a
         }
-        else if d.y <= d.z
+        else if f.y <= f.z
         {
             return b
         }
@@ -955,7 +948,7 @@ enum PNG
                 public
                 var depth:Int
                 {
-                    return .init(self.rawValue >> 8)
+                    .init(self.rawValue >> 8)
                 }
 
                 /// A boolean value indicating if this pixel format has indexed color.
@@ -966,7 +959,7 @@ enum PNG
                 public
                 var isIndexed:Bool
                 {
-                    return self.rawValue & 1 != 0
+                    self.rawValue & 1 != 0
                 }
 
                 /// A boolean value indicating if this pixel format has at least three
@@ -978,7 +971,7 @@ enum PNG
                 public
                 var hasColor:Bool
                 {
-                    return self.rawValue & 2 != 0
+                    self.rawValue & 2 != 0
                 }
 
                 /// A boolean value indicating if this pixel format has an alpha channel.
@@ -989,7 +982,7 @@ enum PNG
                 public
                 var hasAlpha:Bool
                 {
-                    return self.rawValue & 4 != 0
+                    self.rawValue & 4 != 0
                 }
 
                 /// The number of channels encoded by this pixel format.
@@ -1016,7 +1009,7 @@ enum PNG
                 @inlinable
                 var volume:Int
                 {
-                    return self.depth * self.channels
+                    self.depth * self.channels
                 }
 
                 /// The number of components represented by this pixel format.
@@ -1040,7 +1033,7 @@ enum PNG
 
                 /// Returns the shape of a buffer just large enough to contain an image
                 /// of the given size, stored in this color format.
-                func shape(from size:Math<Int>.V2) -> Data.Shape
+                func shape(from size:(x:Int, y:Int)) -> Data.Shape
                 {
                     let scanlineBitCount:Int = size.x * self.channels * self.depth
                                                     // ceil(scanlineBitCount / 8)
@@ -1122,7 +1115,7 @@ enum PNG
                 /// Two sequences of two-dimensional coordinates representing the
                 /// logical positions of each pixel in this sub-image, when deinterlaced
                 /// with its other sub-images.
-                let strider:Math<StrideTo<Int>>.V2
+                let strider:(x:StrideTo<Int>, y:StrideTo<Int>)
             }
 
             /// No interlacing.
@@ -1449,7 +1442,7 @@ enum PNG
         public
         var size:(x:Int, y:Int)
         {
-            return self.shape.size
+            self.shape.size
         }
 
         /// The scanline iterator for this PNG image.
@@ -1507,7 +1500,7 @@ enum PNG
                 // 4: (w + 1) >> 1 , (h + 1) >> 2
                 // 5: (w) >> 1     , (h + 1) >> 1
                 // 6: (w)          , (h) >> 1
-                let sizes:[Math<Int>.V2] =
+                let sizes:[(Int, Int)] =
                 [
                     ((size.x + 7) >> 3, (size.y + 7) >> 3),
                     ((size.x + 3) >> 3, (size.y + 7) >> 3),
@@ -1518,7 +1511,7 @@ enum PNG
                     ( size.x      >> 0,  size.y      >> 1)
                 ]
 
-                let striders:[Math<StrideTo<Int>>.V2] =
+                let striders:[(StrideTo<Int>, StrideTo<Int>)] =
                 [
                     (stride(from: 0, to: size.x, by: 8), stride(from: 0, to: size.y, by: 8)),
                     (stride(from: 4, to: size.x, by: 8), stride(from: 0, to: size.y, by: 8)),
@@ -1531,7 +1524,7 @@ enum PNG
 
                 let subImages:[Interlacing.SubImage] = zip(sizes, striders).map
                 {
-                    (size:Math<Int>.V2, strider:Math<StrideTo<Int>>.V2) in
+                    (size:(Int, Int), strider:(StrideTo<Int>, StrideTo<Int>)) in
 
                     return .init(shape: format.code.shape(from: size), strider: strider)
                 }
@@ -2761,7 +2754,7 @@ enum PNG
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 // make sure pixel array is correct size
-                guard indices.count == Math.vol(size) 
+                guard indices.count == size.x * size.y
                 else 
                 {
                     throw ConversionError.pixelCount
@@ -2851,7 +2844,7 @@ enum PNG
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 // make sure pixel array is correct size
-                guard v.count == Math.vol(size) 
+                guard v.count == size.x * size.y
                 else 
                 {
                     throw ConversionError.pixelCount
@@ -3034,7 +3027,7 @@ enum PNG
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 // make sure pixel array is correct size
-                guard va.count == Math.vol(size) 
+                guard va.count == size.x * size.y
                 else 
                 {
                     throw ConversionError.pixelCount
@@ -3216,7 +3209,7 @@ enum PNG
                 where Component:FixedWidthInteger & UnsignedInteger
             {
                 // make sure pixel array is correct size
-                guard rgba.count == Math.vol(size) 
+                guard rgba.count == size.x * size.y
                 else 
                 {
                     throw ConversionError.pixelCount
@@ -4180,7 +4173,7 @@ enum PNG
             {
                 assert(self.properties.format.code.depth == Atom.bitWidth)
 
-                return (0 ..< Math.vol(self.properties.shape.size)).map
+                return (0 ..< self.properties.shape.count).map
                 {
                     return body(self.load(bigEndian: Atom.self, at: $0, as: Sample.self))
                 }
@@ -4204,7 +4197,7 @@ enum PNG
             {
                 assert(self.properties.format.code.depth == Atom.bitWidth)
 
-                return (0 ..< Math.vol(self.properties.shape.size)).map
+                return (0 ..< self.properties.shape.count).map
                 {
                     return body(self.scale(bigEndian: Atom.self, at: $0, to: Sample.self))
                 }
@@ -4217,7 +4210,7 @@ enum PNG
             {
                 assert(self.properties.format.code.depth == Atom.bitWidth)
 
-                return (0 ..< Math.vol(self.properties.shape.size)).map
+                return (0 ..< self.properties.shape.count).map
                 {
                     return body(
                         self.scale(bigEndian: Atom.self, at: $0 << 1,     to: Sample.self),
@@ -4232,7 +4225,7 @@ enum PNG
             {
                 assert(self.properties.format.code.depth == Atom.bitWidth)
 
-                return (0 ..< Math.vol(self.properties.shape.size)).map
+                return (0 ..< self.properties.shape.count).map
                 {
                     return body(
                         self.scale(bigEndian: Atom.self, at: $0 * 3,      to: Sample.self),
@@ -4248,7 +4241,7 @@ enum PNG
             {
                 assert(self.properties.format.code.depth == Atom.bitWidth)
 
-                return (0 ..< Math.vol(self.properties.shape.size)).map
+                return (0 ..< self.properties.shape.count).map
                 {
                     return body(
                         self.scale(bigEndian: Atom.self, at: $0 << 2,      to: Sample.self),
@@ -4267,7 +4260,12 @@ enum PNG
 
             var byteCount:Int
             {
-                return self.pitch * self.size.y
+                self.pitch * self.size.y
+            }
+            
+            var count:Int 
+            {
+                self.size.x * self.size.y
             }
         }
     }
@@ -4939,14 +4937,14 @@ enum PNG
         struct Tag:Hashable, Equatable, CustomStringConvertible
         {
             /// The four-byte name of this PNG chunk type.
-            let name:Math<UInt8>.V4
+            let name:(UInt8, UInt8, UInt8, UInt8)
 
             /// A string displaying the ASCII representation of this PNG chunk type’s name.
             public
             var description:String
             {
-                return .init( decoding: [self.name.0, self.name.1, self.name.2, self.name.3],
-                                    as: Unicode.ASCII.self)
+                .init(decoding: [self.name.0, self.name.1, self.name.2, self.name.3],
+                            as: Unicode.ASCII.self)
             }
 
             private
@@ -5202,7 +5200,7 @@ extension PNG.ChunkIterator where DataInterface:DataSource
         }
 
         let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self),
-            name:Math<UInt8>.V4 = (header[4], header[5], header[6], header[7])
+            name:(UInt8, UInt8, UInt8, UInt8) = (header[4], header[5], header[6], header[7])
 
         guard var data:[UInt8] = source.read(count: length + MemoryLayout<UInt32>.size)
         else
@@ -5301,7 +5299,7 @@ extension PNG.VA:FixedLayoutColor
     public
     var description:String
     {
-        return "(\(self.v), \(self.a))"
+        "(\(self.v), \(self.a))"
     }
     
     /// The number of components in this grayscale-alpha color, always 2.
@@ -5309,7 +5307,7 @@ extension PNG.VA:FixedLayoutColor
     public static
     var components:Int
     {
-        return 2
+        2
     }
     
     /// The `index`th component of this color. The 0th component is the grayscale 
@@ -5336,14 +5334,14 @@ extension PNG.RGBA:FixedLayoutColor
     public
     var description:String
     {
-        return "(\(self.r), \(self.g), \(self.b), \(self.a))"
+        "(\(self.r), \(self.g), \(self.b), \(self.a))"
     }
 
     @inlinable
     public static
     var components:Int
     {
-        return 4
+        4
     }
 
     @inlinable

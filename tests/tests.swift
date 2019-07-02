@@ -91,7 +91,7 @@ func testDecode(png pngPath:String, rgba rgbaPath:String) -> String?
         guard let result:[PNG.RGBA<UInt16>]? =
         (PNG.File.Source.open(path: rgbaPath)
         {
-            let pixels:Int = Math.vol(rectangular.properties.size),
+            let pixels:Int = rectangular.properties.size.x * rectangular.properties.size.y,
                 bytes:Int  = pixels * MemoryLayout<PNG.RGBA<UInt16>>.stride
 
             guard let data:[UInt8] = $0.read(count: bytes)
