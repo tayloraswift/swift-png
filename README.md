@@ -4,7 +4,7 @@
 [![Release tag](https://img.shields.io/github/release/kelvin13/png.svg)](https://github.com/kelvin13/png/releases)
 [![Build](https://travis-ci.org/kelvin13/png.svg?branch=master)](https://travis-ci.org/kelvin13/png)
 [![Issues](https://img.shields.io/github/issues/kelvin13/png.svg)](https://github.com/kelvin13/png/issues?state=open)
-[![Language](https://img.shields.io/badge/version-swift_4-ffa020.svg)](https://swift.org)
+[![Language](https://img.shields.io/badge/version-swift_5-ffa020.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/png/blob/master/COPYING)
 [![KK26](https://img.shields.io/badge/Foundation-nil-e030ff.svg)](https://www.google.com/search?q=no+Foundation+import)
 

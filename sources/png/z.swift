@@ -116,25 +116,30 @@ extension LZ77Stream
     func pull(extending destination:inout [UInt8], capacity:Int,
         from body:(UnsafeMutablePointer<z_stream>) -> Int32) throws -> Bool
     {
-        return try destination.withUnsafeMutableBufferPointerToStorage(capacity: capacity)
+        var status:Int32 = Z_OK
+        let pulled:[UInt8] = .init(unsafeUninitializedCapacity: capacity - destination.count) 
         {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
-
-            self.stream.pointee.next_out  = buffer.baseAddress.map{ $0 + count }
-            self.stream.pointee.avail_out = UInt32(capacity - count)
-
-            let status:Int32 = self.input.withUnsafeBufferPointer
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            self.stream.pointee.next_out  = buffer.baseAddress 
+            self.stream.pointee.avail_out = .init(buffer.count)
+            
+            status = self.input.withUnsafeBufferPointer
             {
                 let offset:Int              = self.input.count - self.unprocessedCount
                 self.stream.pointee.next_in = $0.baseAddress.map{ .init(mutating: $0 + offset) }
 
                 return body(self.stream)
             }
-
-            count = capacity - Int(self.stream.pointee.avail_out)
-
-            return try self.check(status: status)
+            
+            count = buffer.count - .init(self.stream.pointee.avail_out)
         }
+        
+        defer 
+        {
+            destination.append(contentsOf: pulled)
+        }
+        return try self.check(status: status)
     }
 
     // used to test for Z_STREAM_END. THIS FUNCTION CLOBBERS THE LZ77 STREAM.
@@ -180,7 +185,8 @@ extension PNG
             /// The `Z_MEM_ERROR` error occured.
             case memory
         }
-
+        
+        final
         class Inflator:LZ77Stream
         {
             var stream:UnsafeMutablePointer<z_stream>,
@@ -215,7 +221,8 @@ extension PNG
                 }
             }
         }
-
+        
+        final
         class Deflator:LZ77Stream
         {
             var stream:UnsafeMutablePointer<z_stream>,
