@@ -1,4 +1,4 @@
-// swift-tools-version:4.2
+// swift-tools-version:5.0
 import PackageDescription
 
 let coreTargets:[Target]
@@ -34,5 +34,5 @@ let package = Package(
         .target(name: "PNGBenchmarks",  dependencies: ["PNG"], path: "benchmarks"), 
         .target(name: "PNGExamples",    dependencies: ["PNG"], path: "examples")
     ],
-    swiftLanguageVersions: [.v4_2]
+    swiftLanguageVersions: [.v4_2, .v5]
 )
