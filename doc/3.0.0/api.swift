@@ -55,7 +55,7 @@ enum PNG
     /// color model. This structure has fixed layout, with the value component first,
     /// then alpha. Buffers containing instances of this type may be safely reinterpreted
     /// as flat buffers containing interleaved components.
-    @_fixed_layout
+    @frozen
     struct VA<Component> where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The value component of this color.
@@ -94,7 +94,7 @@ enum PNG
     /// This structure has fixed layout, with the red component first, then green,
     /// then blue, then alpha. Buffers containing instances of this type may be
     /// safely reinterpreted as flat buffers containing interleaved components.
-    @_fixed_layout
+    @frozen
     struct RGBA<Component> where Component:FixedWidthInteger & UnsignedInteger
     {
         /// The red component of this color.
