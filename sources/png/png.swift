@@ -1636,7 +1636,6 @@ enum PNG
                 {
                     let streamContinue:Bool = try self.inflator.pull(  extending: &self.scanline,
                                                                         capacity: reference.count)
-
                     if self.scanline.count == reference.count
                     {
                         self.defilter(&self.scanline, reference: reference)
