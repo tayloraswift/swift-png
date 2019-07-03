@@ -2,16 +2,18 @@ language: generic
 matrix:
   include:
   - os: osx
-    env:
-    - JOB="macOS + Swift Package Manager"
     osx_image: xcode10.2
-    script:
-    - swift run -c release tests
+    env:
+    - JOB="MacOS"
   - os: linux
     env:
     - JOB="Linux"
     dist: trusty
-    script:
-    - export SWIFT_VERSION=5.0.1
-    - eval "$(curl -sL https://gist.githubusercontent.com/kylef/5c0475ff02b7c7671d2a/raw/9f442512a46d7a2af7b850d65a7e9bd31edfb09b/swiftenv-install.sh)"
-    - swift run -c release tests
+script:
+- export SWIFT_VERSION=DEVELOPMENT-SNAPSHOT-2019-07-01-a
+- git clone --depth 1 https://github.com/kylef/swiftenv.git ~/.swiftenv
+- export SWIFTENV_ROOT="$HOME/.swiftenv"
+- export PATH="$SWIFTENV_ROOT/bin:$SWIFTENV_ROOT/shims:$PATH"
+- swiftenv install $SWIFT_VERSION
+- swiftenv rehash
+- swift run -c release tests
