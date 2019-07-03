@@ -12,13 +12,7 @@
 
 A pure Swift PNG library. Enjoy fast PNG encoding and decoding with strong data types, strict validation, and a safe, expressive, and Swifty API.
 
-### versions 
-
-| release | xcode | swift |
-| --- | --- | --- |
-| `master` | `11` | `trunk` |
-| [`3.0.0`](https://github.com/kelvin13/png/releases/tag/v3.0.0) | `10.1` | `4.2.1` |
-| [`2.0.1`](https://github.com/kelvin13/png/releases/tag/v2.0.1) | — | `3.1.1` |
+---
 
 ### getting started
 
@@ -72,6 +66,14 @@ let (pixels, (x: width, y: height)) = try PNG.v(path: "example.png", of: UInt8.s
 * No Foundation imports and one system dependency, zlib
 * Tested on MacOS and Linux
 * Thorough API documentation
+
+### versions 
+
+| release | xcode | swift |
+| --- | --- | --- |
+| `master` | `11` | `trunk` |
+| [`3.0.0`](https://github.com/kelvin13/png/releases/tag/v3.0.0) | `10.1` | `4.2.1` |
+| [`2.0.1`](https://github.com/kelvin13/png/releases/tag/v2.0.1) | — | `3.1.1` |
 
 ### faq
 

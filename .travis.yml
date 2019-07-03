@@ -1,10 +1,10 @@
 language: generic
 matrix:
   include:
-  - os: osx
-    osx_image: xcode10.2
-    env:
-    - JOB="MacOS"
+  # - os: osx
+  #   osx_image: xcode10.2
+  #   env:
+  #   - JOB="MacOS"
   - os: linux
     env:
     - JOB="Linux"
