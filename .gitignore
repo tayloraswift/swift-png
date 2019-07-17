@@ -1,13 +1,8 @@
+.swift-version
 .DS_Store
 /.build
 /Packages
 Package.resolved
 /*.xcodeproj
 /tests/*.png
-doc.json
-typemanifest.txt
 /benchmarks/*.png.png
-
-Validate (Linux).sh
-Validate (macOS).command
-# CI needs the “Refresh” scripts.
