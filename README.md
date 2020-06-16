@@ -73,7 +73,8 @@ let (pixels, (x: width, y: height)) = try PNG.v(path: "example.png", of: UInt8.s
 
 | release | xcode | swift |
 | --- | --- | --- |
-| `master` | `11` | `trunk` |
+| `master` | `11.5` | `5.2` |
+| [`3.0.1`](https://github.com/kelvin13/png/releases/tag/v3.0.1) | `11.5` | `5.2` |
 | [`3.0.0`](https://github.com/kelvin13/png/releases/tag/v3.0.0) | `10.1` | `4.2.1` |
 | [`2.0.1`](https://github.com/kelvin13/png/releases/tag/v2.0.1) | — | `3.1.1` |
 
