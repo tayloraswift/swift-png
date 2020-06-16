@@ -5,11 +5,14 @@
 [![build](https://img.shields.io/github/workflow/status/kelvin13/png/build/master)](https://github.com/kelvin13/png/actions?query=workflow%3Abuild)
 [![issues](https://img.shields.io/github/issues/kelvin13/png)](https://github.com/kelvin13/png/issues?state=open)
 [![language](https://img.shields.io/badge/version-swift_5-ffa020.svg)](https://swift.org)
-[![license](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/png/blob/master/COPYING)
+[![license](https://img.shields.io/badge/license-MPL2-ff3079.svg)](https://github.com/kelvin13/png/blob/master/LICENSE)
 
 <img align="right" src="logo.svg.png">
 
 A pure Swift PNG library. Enjoy fast PNG encoding and decoding with strong data types, strict validation, and a safe, expressive, and Swifty API.
+
+
+Swift *PNG* is available under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/). The [example programs](examples/) are public domain and can be adapted freely.
 
 ---
 
