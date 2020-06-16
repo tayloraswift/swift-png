@@ -13,10 +13,14 @@ jobs:
     - uses: actions/checkout@v2
     # reads .swift-version
     - uses: YOCKOW/Action-setup-swift@master
-    - run:  swift run -c release tests
+    - run:  | 
+        swift run             unit-test 
+        swift run -c release  integration-test 
   build-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: YOCKOW/Action-setup-swift@master
-    - run:  swift run -c release tests
+    - run:  | 
+        swift run             unit-test 
+        swift run -c release  integration-test 
