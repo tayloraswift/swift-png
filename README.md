@@ -1,12 +1,11 @@
-# PNG
+# png
 
-[![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20osx-lightgrey.svg)](https://swift.org)
-[![Release tag](https://img.shields.io/github/release/kelvin13/png.svg)](https://github.com/kelvin13/png/releases)
-[![Build](https://travis-ci.org/kelvin13/png.svg?branch=master)](https://travis-ci.org/kelvin13/png)
-[![Issues](https://img.shields.io/github/issues/kelvin13/png.svg)](https://github.com/kelvin13/png/issues?state=open)
-[![Language](https://img.shields.io/badge/version-swift_5-ffa020.svg)](https://swift.org)
-[![License](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/png/blob/master/COPYING)
-[![KK26](https://img.shields.io/badge/Foundation-nil-e030ff.svg)](https://www.google.com/search?q=no+Foundation+import)
+[![platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos-lightgrey.svg)](https://swift.org)
+[![releases](https://img.shields.io/github/v/release/kelvin13/png)](https://github.com/kelvin13/png/releases)
+[![build](https://img.shields.io/github/workflow/status/kelvin13/png/build/master)](https://github.com/kelvin13/png/actions?query=workflow%3Abuild)
+[![issues](https://img.shields.io/github/issues/kelvin13/png)](https://github.com/kelvin13/png/issues?state=open)
+[![language](https://img.shields.io/badge/version-swift_5-ffa020.svg)](https://swift.org)
+[![license](https://img.shields.io/badge/license-GPL3-ff3079.svg)](https://github.com/kelvin13/png/blob/master/COPYING)
 
 <img align="right" src="logo.svg.png">
 
@@ -105,3 +104,7 @@ No. Gamma is meant to be applied at the image *display* stage. *PNG* only gives 
 
 ### building
 Build *PNG* with the swift package manager, `swift build` (`-c release`). Make sure you have the `zlib` headers on your computer (`sudo apt-get install libz-dev`).
+
+### see also 
+
+* [Swift *JPEG*](https://github.com/kelvin13/jpeg)
