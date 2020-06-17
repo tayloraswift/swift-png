@@ -270,11 +270,11 @@ enum PNG
     /// - Returns: The product of the given color sample and the given alpha
     ///     sample. The resulting value is accurate to within 1 `Component` unit.
     @usableFromInline
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
+    @_specialize(where Component == UInt8)
+    @_specialize(where Component == UInt16)
+    @_specialize(where Component == UInt32)
+    @_specialize(where Component == UInt64)
+    @_specialize(where Component == UInt)
     static
     func premultiply<Component>(color:Component, alpha:Component) -> Component 
         where Component:FixedWidthInteger & UnsignedInteger
@@ -491,11 +491,11 @@ enum PNG
         ///     and `UInt`.
         /// - Parameters:
         ///     - value: The value to initialize the value component to.
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        @_specialize(where Component == UInt32)
+        @_specialize(where Component == UInt64)
+        @_specialize(where Component == UInt)
         public
         init(_ value:Component)
         {
@@ -510,11 +510,11 @@ enum PNG
         /// - Parameters:
         ///     - value: The value to initialize the value component to.
         ///     - alpha: The value to initialize the alpha component to.
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        @_specialize(where Component == UInt32)
+        @_specialize(where Component == UInt64)
+        @_specialize(where Component == UInt)
         public
         init(_ value:Component, _ alpha:Component)
         {
@@ -572,11 +572,11 @@ enum PNG
         ///     and `UInt`.
         /// - Parameters:
         ///     - value: The value to initialize all color components to.
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        @_specialize(where Component == UInt32)
+        @_specialize(where Component == UInt64)
+        @_specialize(where Component == UInt)
         public
         init(_ value:Component)
         {
@@ -591,11 +591,11 @@ enum PNG
         /// - Parameters:
         ///     - value: The value to initialize all color components to.
         ///     - alpha: The value to initialize the alpha component to.
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        @_specialize(where Component == UInt32)
+        @_specialize(where Component == UInt64)
+        @_specialize(where Component == UInt)
         public
         init(_ value:Component, _ alpha:Component)
         {
@@ -611,11 +611,11 @@ enum PNG
         ///     - red: The value to initialize the red component to.
         ///     - green: The value to initialize the green component to.
         ///     - blue: The value to initialize the blue component to.
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        @_specialize(where Component == UInt32)
+        @_specialize(where Component == UInt64)
+        @_specialize(where Component == UInt)
         public
         init(_ red:Component, _ green:Component, _ blue:Component)
         {
@@ -631,11 +631,11 @@ enum PNG
         ///     - green: The value to initialize the green component to.
         ///     - blue: The value to initialize the blue component to.
         ///     - alpha: The value to initialize the alpha component to.
-        @_specialize(exported: true, where Component == UInt8)
-        @_specialize(exported: true, where Component == UInt16)
-        @_specialize(exported: true, where Component == UInt32)
-        @_specialize(exported: true, where Component == UInt64)
-        @_specialize(exported: true, where Component == UInt)
+        @_specialize(where Component == UInt8)
+        @_specialize(where Component == UInt16)
+        @_specialize(where Component == UInt32)
+        @_specialize(where Component == UInt64)
+        @_specialize(where Component == UInt)
         public
         init(_ red:Component, _ green:Component, _ blue:Component, _ alpha:Component)
         {
@@ -2745,11 +2745,11 @@ enum PNG
             ///     - ConversionError.paletteOverflow: if the provided `palette` 
             ///         contains too many entries to be encoded in a specified 
             ///         indexing format.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public static
             func convert<Component>(indices:[Int], palette:[RGBA<Component>], 
                 size:(x:Int, y:Int), to code:Properties.Format.Code, 
@@ -2835,11 +2835,11 @@ enum PNG
             ///     - ConversionError.paletteOverflow: if the provided image contains
             ///         too many distinct colors to be encoded in a specified 
             ///         indexing format.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public static
             func convert<Component>(v:[Component],
                 size:(x:Int, y:Int), to code:Properties.Format.Code, 
@@ -3018,11 +3018,11 @@ enum PNG
             ///     - ConversionError.paletteOverflow: if the provided image contains
             ///         too many distinct colors to be encoded in a specified 
             ///         indexing format.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public static
             func convert<Component>(va:[VA<Component>],
                 size:(x:Int, y:Int), to code:Properties.Format.Code, 
@@ -3200,11 +3200,11 @@ enum PNG
             ///     - ConversionError.paletteOverflow: if the provided image contains
             ///         too many distinct colors to be encoded in a specified 
             ///         indexing format.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public static
             func convert<Component>(rgba:[RGBA<Component>],
                 size:(x:Int, y:Int), to code:Properties.Format.Code, 
@@ -3500,12 +3500,12 @@ enum PNG
             /// - Returns: An array of the return values of the given closure, or
             ///     `nil`, if this PNG image has more than one channel, or `Sample`
             ///     does not have enough bits to represent its channel.
-            @_specialize(exported: true, kind: partial, where Sample == UInt8)
-            @_specialize(exported: true, kind: partial, where Sample == UInt16)
-            @_specialize(exported: true, kind: partial, where Sample == UInt32)
-            @_specialize(exported: true, kind: partial, where Sample == UInt64)
-            @_specialize(exported: true, kind: partial, where Sample == UInt)
-            @_specialize(exported: true, kind: partial, where Sample ==  Int)
+            @_specialize(kind: partial, where Sample == UInt8)
+            @_specialize(kind: partial, where Sample == UInt16)
+            @_specialize(kind: partial, where Sample == UInt32)
+            @_specialize(kind: partial, where Sample == UInt64)
+            @_specialize(kind: partial, where Sample == UInt)
+            @_specialize(kind: partial, where Sample ==  Int)
             public
             func map<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger
@@ -3552,11 +3552,11 @@ enum PNG
             /// 
             /// - Returns: An array of the return values of the given closure, or
             ///     `nil`, if this PNG image has more than one channel.
-            @_specialize(exported: true, kind: partial, where Sample == UInt8)
-            @_specialize(exported: true, kind: partial, where Sample == UInt16)
-            @_specialize(exported: true, kind: partial, where Sample == UInt32)
-            @_specialize(exported: true, kind: partial, where Sample == UInt64)
-            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            @_specialize(kind: partial, where Sample == UInt8)
+            @_specialize(kind: partial, where Sample == UInt16)
+            @_specialize(kind: partial, where Sample == UInt32)
+            @_specialize(kind: partial, where Sample == UInt64)
+            @_specialize(kind: partial, where Sample == UInt)
             public
             func mapIntensity<Sample, Result>(_ body:(Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -3597,11 +3597,11 @@ enum PNG
             /// 
             /// - Returns: An array of the return values of the given closure, or
             ///     `nil`, if this PNG image does not have exactly two channels.
-            @_specialize(exported: true, kind: partial, where Sample == UInt8)
-            @_specialize(exported: true, kind: partial, where Sample == UInt16)
-            @_specialize(exported: true, kind: partial, where Sample == UInt32)
-            @_specialize(exported: true, kind: partial, where Sample == UInt64)
-            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            @_specialize(kind: partial, where Sample == UInt8)
+            @_specialize(kind: partial, where Sample == UInt16)
+            @_specialize(kind: partial, where Sample == UInt32)
+            @_specialize(kind: partial, where Sample == UInt64)
+            @_specialize(kind: partial, where Sample == UInt)
             public
             func mapIntensity<Sample, Result>(_ body:(Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -3639,11 +3639,11 @@ enum PNG
             /// 
             /// - Returns: An array of the return values of the given closure, or
             ///     `nil`, if this PNG image does not have exactly three channels.
-            @_specialize(exported: true, kind: partial, where Sample == UInt8)
-            @_specialize(exported: true, kind: partial, where Sample == UInt16)
-            @_specialize(exported: true, kind: partial, where Sample == UInt32)
-            @_specialize(exported: true, kind: partial, where Sample == UInt64)
-            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            @_specialize(kind: partial, where Sample == UInt8)
+            @_specialize(kind: partial, where Sample == UInt16)
+            @_specialize(kind: partial, where Sample == UInt32)
+            @_specialize(kind: partial, where Sample == UInt64)
+            @_specialize(kind: partial, where Sample == UInt)
             public
             func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -3681,11 +3681,11 @@ enum PNG
             /// 
             /// - Returns: An array of the return values of the given closure, or
             ///     `nil`, if this PNG image does not have exactly four channels.
-            @_specialize(exported: true, kind: partial, where Sample == UInt8)
-            @_specialize(exported: true, kind: partial, where Sample == UInt16)
-            @_specialize(exported: true, kind: partial, where Sample == UInt32)
-            @_specialize(exported: true, kind: partial, where Sample == UInt64)
-            @_specialize(exported: true, kind: partial, where Sample == UInt)
+            @_specialize(kind: partial, where Sample == UInt8)
+            @_specialize(kind: partial, where Sample == UInt16)
+            @_specialize(kind: partial, where Sample == UInt32)
+            @_specialize(kind: partial, where Sample == UInt64)
+            @_specialize(kind: partial, where Sample == UInt)
             public
             func mapIntensity<Sample, Result>(_ body:(Sample, Sample, Sample, Sample) -> Result) -> [Result]?
                 where Sample:FixedWidthInteger & UnsignedInteger
@@ -3725,11 +3725,11 @@ enum PNG
             /// - Returns: A row-major matrix of pixel values, normalized to its
             ///     `Component` type, or `nil` if this image requires a palette, and
             ///     it does not have one.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public
             func v<Component>(of type:Component.Type) -> [Component]
                 where Component:FixedWidthInteger & UnsignedInteger
@@ -3908,11 +3908,11 @@ enum PNG
             /// - Returns: A row-major matrix of grayscale-alpha pixel colors, normalized
             ///     to the given `Component` type, or `nil` if this image requires
             ///     a palette, and it does not have one.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public
             func va<Component>(of type:Component.Type) -> [VA<Component>]
                 where Component:FixedWidthInteger & UnsignedInteger
@@ -3997,11 +3997,11 @@ enum PNG
             /// - Returns: A row-major matrix of RGBA pixel colors, normalized to
             ///     the given `Component` type, or `nil` if this image requires
             ///     a palette, and it does not have one.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
-            @_specialize(exported: true, where Component == UInt32)
-            @_specialize(exported: true, where Component == UInt64)
-            @_specialize(exported: true, where Component == UInt)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
+            @_specialize(where Component == UInt32)
+            @_specialize(where Component == UInt64)
+            @_specialize(where Component == UInt)
             public
             func rgba<Component>(of type:Component.Type) -> [RGBA<Component>]
                 where Component:FixedWidthInteger & UnsignedInteger
@@ -4096,8 +4096,8 @@ enum PNG
             ///     the given `Component` type, and encoded as four-component integer
             ///     slugs, or `nil` if this image requires a palette, and
             ///     it does not have one.
-            @_specialize(exported: true, where Component == UInt8)
-            @_specialize(exported: true, where Component == UInt16)
+            @_specialize(where Component == UInt8)
+            @_specialize(where Component == UInt16)
             public
             func argbPremultiplied<Component>(of type:Component.Type)
                 -> [Component.FusedVector4] where Component:FusedVector4Element
@@ -4500,11 +4500,11 @@ enum PNG
     ///         indexing format.
     ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
     ///         be found or opened.
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
+    @_specialize(where Component == UInt8)
+    @_specialize(where Component == UInt16)
+    @_specialize(where Component == UInt32)
+    @_specialize(where Component == UInt64)
+    @_specialize(where Component == UInt)
     public static
     func encode<Component>(indices:[Int], palette:[RGBA<Component>], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
@@ -4554,11 +4554,11 @@ enum PNG
     ///         indexing format.
     ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
     ///         be found or opened.
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
+    @_specialize(where Component == UInt8)
+    @_specialize(where Component == UInt16)
+    @_specialize(where Component == UInt32)
+    @_specialize(where Component == UInt64)
+    @_specialize(where Component == UInt)
     public static
     func encode<Component>(v:[Component], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
@@ -4607,11 +4607,11 @@ enum PNG
     ///         indexing format.
     ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
     ///         be found or opened.
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
+    @_specialize(where Component == UInt8)
+    @_specialize(where Component == UInt16)
+    @_specialize(where Component == UInt32)
+    @_specialize(where Component == UInt64)
+    @_specialize(where Component == UInt)
     public static
     func encode<Component>(va:[VA<Component>], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
@@ -4659,11 +4659,11 @@ enum PNG
     ///         indexing format.
     ///     - File.Error.couldNotOpen: if the file at the given `path` could not 
     ///         be found or opened.
-    @_specialize(exported: true, where Component == UInt8)
-    @_specialize(exported: true, where Component == UInt16)
-    @_specialize(exported: true, where Component == UInt32)
-    @_specialize(exported: true, where Component == UInt64)
-    @_specialize(exported: true, where Component == UInt)
+    @_specialize(where Component == UInt8)
+    @_specialize(where Component == UInt16)
+    @_specialize(where Component == UInt32)
+    @_specialize(where Component == UInt64)
+    @_specialize(where Component == UInt)
     public static
     func encode<Component>(rgba:[RGBA<Component>], size:(x:Int, y:Int),
         as code:Properties.Format.Code, chromaKey:RGBA<UInt16>? = nil,
