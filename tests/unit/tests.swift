@@ -6,11 +6,46 @@ extension Test
     var cases:[(name:String, function:Function)] 
     {
         [
+            ("bitstream",                   .void(Self.bitstream)),
             ("premultiplication (8-bit)",   .void(Self.premultiplication8)),
             // ("premultiplication (16-bit)", .void(Self.premultiplication16)),
         ]
     }
-    
+    static 
+    func bitstream() -> Result<Void, Failure> 
+    {
+        let bits:PNG.Bitstream = 
+        [
+            0b1001_1110,
+            0b1111_0110,
+            0b0010_0011,
+        ]
+        guard   bits[0] == 0b0111_1001_0110_1111 ,
+                bits[1] == 0b111_1001_0110_1111_1,
+                bits[2] == 0b11_1001_0110_1111_11,
+                bits[3] == 0b1_1001_0110_1111_110,
+                bits[4] == 0b1001_0110_1111_1100 ,
+                bits[5] == 0b001_0110_1111_1100_0,
+                bits[6] == 0b01_0110_1111_1100_01,
+                bits[7] == 0b1_0110_1111_1100_010,
+                bits[8] == 0b0110_1111_1100_0100 ,
+                bits[9] == 0b110_1111_1100_0100_0,
+                bits[23] == 0b0000_0000_0000_0000
+        else 
+        {
+            return .failure(.init(message: "incorrect codeword read"))
+        }
+        guard   bits[0, count:  4, as: Int.self] ==                   0b1110,
+                bits[1, count:  4, as: Int.self] ==                 0b1_111,
+                bits[1, count:  6, as: Int.self] ==               0b001_111,
+                bits[2, count:  6, as: Int.self] ==              0b1001_11,
+                bits[2, count: 16, as: Int.self] == 0b11_1111_0110_1001_11
+        else
+        {
+            return .failure(.init(message: "incorrect integer read"))
+        }
+        return .success(())
+    }
     static 
     func premultiplication8() -> Result<Void, Failure>
     {
