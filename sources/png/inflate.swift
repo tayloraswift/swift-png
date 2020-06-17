@@ -42,7 +42,7 @@ extension PNG.Bitstream
     //                                       [4, count: 6, as: UInt16.self]
     //      produces 
     //  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b.10, b.9, b.8, b.7, b.6, b.5, b.4}
-    subscript<I>(i:Int, count c:Int, as _:I.Type) -> I 
+    subscript<I>(i:Int, count count:Int, as _:I.Type) -> I 
         where I:FixedWidthInteger
     {
         let a:Int = i >> 4, 
