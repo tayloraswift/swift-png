@@ -7,7 +7,7 @@
 [![language](https://img.shields.io/badge/version-swift_5-ffa020.svg)](https://swift.org)
 [![license](https://img.shields.io/badge/license-MPL2-ff3079.svg)](https://github.com/kelvin13/png/blob/master/LICENSE)
 
-<img align="right" src="logo.svg.png">
+<img align="right" width="256px" src="logo.svg.png">
 
 A pure Swift PNG library. Enjoy fast PNG encoding and decoding with strong data types, strict validation, and a safe, expressive, and Swifty API.
 
