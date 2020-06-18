@@ -8,13 +8,13 @@ enum Test
     enum Function 
     {
         case void(       ()                       -> Result<Void, Failure>)
-        case string_int2((String, (x:Int, y:Int)) -> Result<Void, Failure>, [(String, (x:Int, y:Int))])
+        // case string_int2((String, (x:Int, y:Int)) -> Result<Void, Failure>, [(String, (x:Int, y:Int))])
         case string(     (String)                 -> Result<Void, Failure>, [String])
         case int(        (Int)                    -> Result<Void, Failure>, [Int])
     }
 }
 
-func test(_ function:Test.Function, name:String) -> Void?
+func test(_ function:Test.Function, cases filter:Set<String>, name:String) -> Void?
 {
     var successes:Int                               = 0
     var failures:[(name:String?, message:String)]   = []
@@ -28,19 +28,19 @@ func test(_ function:Test.Function, name:String) -> Void?
         case .failure(let failure):
             failures.append((nil, failure.message))
         }
-    case .string_int2(let function, let cases):
-        for arguments:(String, (x:Int, y:Int)) in cases 
-        {
-            switch function(arguments.0, arguments.1)
-            {
-            case .success:
-                successes += 1
-            case .failure(let failure):
-                failures.append(("('\(arguments.0)', \(arguments.1))", failure.message))
-            }
-        }
+    //case .string_int2(let function, let cases):
+    //    for arguments:(String, (x:Int, y:Int)) in cases 
+    //    {
+    //        switch function(arguments.0, arguments.1)
+    //        {
+    //        case .success:
+    //            successes += 1
+    //        case .failure(let failure):
+    //            failures.append(("('\(arguments.0)', \(arguments.1))", failure.message))
+    //        }
+    //    }
     case .string(let function, let cases):
-        for argument:String in cases 
+        for argument:String in cases where filter.contains(argument) || filter.isEmpty
         {
             switch function(argument)
             {
@@ -51,7 +51,7 @@ func test(_ function:Test.Function, name:String) -> Void?
             }
         }
     case .int(let function, let cases):
-        for argument:Int in cases 
+        for argument:Int in cases where filter.contains("\(argument)") || filter.isEmpty
         {
             switch function(argument)
             {

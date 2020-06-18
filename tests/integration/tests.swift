@@ -50,7 +50,7 @@ extension Test
                 ]
             ),
             (
-                "odd sizes",
+                "odd-sizes",
                 [
                     "s01i3p01",
                     "s01n3p01",
@@ -173,7 +173,7 @@ extension Test
                 ]
             ),
             (
-                "ancillary chunks",
+                "ancillary-chunks",
                 [
                     "ccwn2c08",
                     "ccwn3p08",
@@ -203,7 +203,7 @@ extension Test
                 ]
             ),
             (
-                "chunk ordering",
+                "chunk-ordering",
                 [
                     "oi1n0g16",
                     "oi1n2c16",
@@ -216,7 +216,7 @@ extension Test
                 ]
             ),
             (
-                "lz77 compression",
+                "lz77-compression",
                 [
                     "z00n2c08",
                     "z03n2c08",
@@ -225,7 +225,7 @@ extension Test
                 ]
             ),
             (
-                "large images",
+                "large-images",
                 [
                     "becky palette",
                     "if red got the grammy",
@@ -237,11 +237,11 @@ extension Test
         
         return  suite.map 
         {
-            ("decode (\($0.name))", .string(Self.decode(_:), $0.members))
+            ("decode-\($0.name)", .string(Self.decode(_:), $0.members))
         }
         +       suite.map 
         {
-            ("encode (\($0.name))", .string(Self.encode(_:), $0.members))
+            ("encode-\($0.name)", .string(Self.encode(_:), $0.members))
         }
     }
     
