@@ -14,7 +14,7 @@ extension Test
     static 
     func bitstream() -> Result<Void, Failure> 
     {
-        let bits:PNG.Bitstream = 
+        var bits:LZ77.Bitstream = 
         [
             0b1001_1110,
             0b1111_0110,
@@ -43,6 +43,17 @@ extension Test
         else
         {
             return .failure(.init(message: "incorrect integer read"))
+        }
+        
+        // test rebase 
+        var b:Int = 20 
+        bits.rebase([0b1010_1101, 0b0001_1000], pointer: &b)
+        
+        guard   bits[b    ] == 0b0100_1011_0101_0001, 
+                bits[b + 1] == 0b100_1011_0101_0001_1
+        else 
+        {
+            return .failure(.init(message: "incorrect rebased codeword read"))
         }
         return .success(())
     }
