@@ -24,7 +24,7 @@ extension General
     /// ## (general-storage-types)
     @propertyWrapper 
     public 
-    struct Storage<I> where I:FixedWidthInteger & BinaryInteger 
+    struct Storage<I>:Equatable where I:FixedWidthInteger & BinaryInteger 
     {
         private 
         var storage:I 

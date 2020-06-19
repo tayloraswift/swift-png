@@ -1548,7 +1548,7 @@ enum PNG
         public
         func decoder() throws -> Decoder
         {
-            let inflator:LZ77.Inflator = try .init(),
+            let inflator:_LZ77.Inflator = try .init(),
                 stride:Int             = max(1, self.format.code.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, inflator: inflator)
         }
@@ -1562,7 +1562,7 @@ enum PNG
         public
         func encoder(level:Int) throws -> Encoder
         {
-            let deflator:LZ77.Deflator = try .init(level: level),
+            let deflator:_LZ77.Deflator = try .init(level: level),
                 stride:Int             = max(1, self.format.code.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, deflator: deflator)
         }
@@ -1590,13 +1590,22 @@ enum PNG
 
             private
             var pitches:Pitches,
-                inflator:LZ77.Inflator
+                inflator:_LZ77.Inflator
+            
+            #if SWIFT_INFLATE
+            private 
+            var _swiftinflator:LZ77.Inflator 
+            #endif
 
-            init(stride:Int, pitches:Pitches, inflator:LZ77.Inflator)
+            init(stride:Int, pitches:Pitches, inflator:_LZ77.Inflator)
             {
                 self.stride   = stride
                 self.pitches  = pitches
                 self.inflator = inflator
+                
+                #if SWIFT_INFLATE
+                self._swiftinflator = .init()
+                #endif
 
                 guard let pitch:Int = self.pitches.next() ?? nil
                 else
@@ -1628,6 +1637,10 @@ enum PNG
                 throws -> Bool
             {
                 self.inflator.push(data)
+                
+                #if SWIFT_INFLATE
+                try self._swiftinflator.push(data)
+                #endif
 
                 while let reference:[UInt8] = self.reference
                 {
@@ -1765,9 +1778,9 @@ enum PNG
 
             private
             var pitches:Pitches,
-                deflator:LZ77.Deflator
+                deflator:_LZ77.Deflator
 
-            init(stride:Int, pitches:Pitches, deflator:LZ77.Deflator)
+            init(stride:Int, pitches:Pitches, deflator:_LZ77.Deflator)
             {
                 self.stride   = stride
                 self.pitches  = pitches

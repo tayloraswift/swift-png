@@ -47,7 +47,7 @@ extension LZ77Stream
             stream.deinitialize(count: 1)
             stream.deallocate()
 
-            throw PNG.LZ77.Error.initialization
+            throw PNG._LZ77.Error.initialization
         }
 
         return stream
@@ -98,13 +98,13 @@ extension LZ77Stream
                 return true
 
             case Z_NEED_DICT:
-                throw PNG.LZ77.Error.missingDictionary
+                throw PNG._LZ77.Error.missingDictionary
 
             case Z_DATA_ERROR:
-                throw PNG.LZ77.Error.data
+                throw PNG._LZ77.Error.data
 
             case Z_MEM_ERROR:
-                throw PNG.LZ77.Error.memory
+                throw PNG._LZ77.Error.memory
 
             case Z_STREAM_ERROR:
                 fatalError("deflate(_:_:) was called on \(Self.self) stream after having been passed Z_FINISH without being passed Z_FINISH")
@@ -174,7 +174,7 @@ extension PNG
 {
     /// A namespace for LZ77 utilities. Not for public use.
     public
-    enum LZ77
+    enum _LZ77
     {
         /// Errors that can occur in the LZ77 compression or decompression process.
         public

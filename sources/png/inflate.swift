@@ -2,29 +2,38 @@
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-extension PNG 
+enum LZ77 
 {
     enum DecompressionError:Swift.Error
     {
         case truncatedBitstream 
+        // stream errors
+        case invalidStreamMethod
+        case invalidStreamWindowSize(exponent:Int)
+        case invalidStreamHeaderCheckBits
+        case unexpectedStreamDictionary
+        // block errors 
+        case invalidBlockType
         case invalidHuffmanRunLiteralSymbolCount(Int)
         case invalidHuffmanCodelengthHuffmanTable
         case invalidHuffmanCodelengthSequence
         case invalidHuffmanTable
     }
-}
-
-extension PNG 
-{
+    
     struct Bitstream 
     {
         private 
         var atoms:[UInt16]
         private(set)
-        var count:Int
+        var bytes:Int
+        
+        var count:Int 
+        {
+            self.bytes << 3
+        }
     }
 }
-extension PNG.Bitstream 
+extension LZ77.Bitstream 
 {
     // Bitstreams are indexed from LSB to MSB within each atom 
     //      
@@ -34,20 +43,70 @@ extension PNG.Bitstream
     // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
     init(_ data:[UInt8])
     {
-        // convert byte array to little-endian UInt16 array 
-        var atoms:[UInt16] = stride(from: data.startIndex, to: data.endIndex - 1, by: 2).map
-        {
-            UInt16.init(data[$0 | 1]) << 8 | .init(data[$0])
-        }
-        if data.count & 1 != 0
-        {
-            atoms.append(.init(data[data.endIndex - 1]))
-        }
-        // 16-bits of padding at the end 
-        atoms.append(0x0000)
+        self.atoms = [0x0000]
+        self.bytes = 0 
         
-        self.atoms = atoms
-        self.count = 8 * data.count
+        var b:Int  = 0
+        self.rebase(data, pointer: &b)
+    }
+    
+    // discards all bits before the pointer `b`
+    mutating 
+    func rebase(_ data:[UInt8], pointer b:inout Int)  
+    {
+        guard !data.isEmpty 
+        else 
+        {
+            return 
+        }
+        
+        let a:Int = b >> 4 
+        // calculate new buffer size 
+        let capacity:Int = (self.atoms.count - a as Int) + 
+            (data.count >> 1                     as Int) + 
+            // extra word only required if existing stream is even and new data is odd
+            (~self.bytes & data.count & 1        as Int)
+        
+        if a > 0 
+        {
+            var new:[UInt16] = [] 
+            new.reserveCapacity(capacity)
+            new.append(contentsOf: self.atoms.dropFirst(a).dropLast())
+            self.atoms  = new 
+            self.bytes -=  2 * a
+            b          -= 16 * a
+        }
+        else 
+        {
+            self.atoms.reserveCapacity(capacity)
+            self.atoms.removeLast() // remove padding word
+        }
+        
+        let integral:ArraySlice<UInt8>
+        if self.bytes & 1 != 0 
+        {
+            // odd number of bytes in the stream: move over 1 byte from the new data
+            let i:Int = self.bytes >> 1
+            self.atoms[i] &= .max           >> 8 
+            self.atoms[i] |= .init(data[0]) << 8 
+            integral = data.dropFirst()
+        }
+        else 
+        {
+            integral = data[...]
+        }
+        
+        for i:Int in stride(from: integral.startIndex, to: integral.endIndex - 1, by: 2)
+        {
+            self.atoms.append(.init(integral[i + 1]) << 8 | .init(integral[i]))
+        }
+        if integral.count & 1 != 0
+        {
+            self.atoms.append(.init(integral[integral.endIndex - 1]))
+        }
+        self.bytes += data.count
+        // 16-bits of padding at the end 
+        self.atoms.append(0x0000)
     }
     
     // puts bits in low end of outputted integer 
@@ -114,9 +173,9 @@ extension PNG.Bitstream
         return .init((fan >> 32) & 0x00_00_00_00__00_00_00_ff as UInt64)
     }
 }
-extension PNG.Bitstream:ExpressibleByArrayLiteral 
+extension LZ77.Bitstream:ExpressibleByArrayLiteral 
 {
-    //  init PNG.Bitstream.init(arrayLiteral...:)
+    //  init LZ77.Bitstream.init(arrayLiteral...:)
     //  ?:  Swift.ExpressibleByArrayLiteral 
     //      Creates a bitstream from the given array literal.
     // 
@@ -134,54 +193,8 @@ extension PNG.Bitstream:ExpressibleByArrayLiteral
     }
 }
 
-// symbol types 
-extension PNG.Bitstream 
-{
-    enum Symbol 
-    {
-    }
-}
-extension PNG.Bitstream.Symbol 
-{
-    //  from the RFC 1951: 
-    //  0 - 15: Represent code lengths of 0 - 15
-    //      16: Copy the previous code length 3 - 6 times.
-    //          The next 2 bits indicate repeat length
-    //                (0 = 3, ... , 3 = 6)
-    //             Example:  Codes 8, 16 (+2 bits 11),
-    //                       16 (+2 bits 10) will expand to
-    //                       12 code lengths of 8 (1 + 6 + 5)
-    //      17: Repeat a code length of 0 for 3 - 10 times.
-    //          (3 bits of length)
-    //      18: Repeat a code length of 0 for 11 - 138 times
-    //          (7 bits of length)
-    enum CodeLength:Comparable
-    {
-        // use smaller integers to reduce LUT footprint
-        case literal(UInt8)
-        case extend 
-        case zeros3
-        case zeros7
-        
-        //  let allSymbols:[Self] = 
-        //      (0 ..< 16).map(Self.literal(_:)) + [.extend, .zeros3, .zeros7]
-    }
-    
-    enum RunLiteral:Comparable
-    {
-        case literal(UInt8)
-        case end 
-        case run(UInt8)
-        
-        static 
-        let allSymbols:[Self] = 
-            (0 ... 255).map(Self.literal(_:)) + 
-            [.end] + 
-            (0 ...  28).map(Self.run(_:))
-    }
-}
-
-extension PNG 
+// huffman tables
+extension LZ77 
 {
     struct Huffman<Symbol> where Symbol:Comparable 
     {
@@ -190,9 +203,17 @@ extension PNG
         // we store them here as proof of tree validity, so that the 
         // constructor for the huffman Decoder type can just read it from here 
         let size:(n:Int, z:Int)
+        
+        // restrict access to this init 
+        private 
+        init(symbols:[[Symbol]], size:(n:Int, z:Int)) 
+        {
+            self.symbols = symbols
+            self.size    = size
+        }
     }
 }
-extension PNG.Huffman 
+extension LZ77.Huffman 
 {
     // determine the value of n, explained in `Huffman.decode()`,
     // as well as the useful size of the table (often, a large region of the high codeword 
@@ -208,7 +229,7 @@ extension PNG.Huffman
             guard interior > 0 
             else 
             {
-                return nil
+                break
             }
             
             // every interior node on the level above generates two new nodes.
@@ -216,8 +237,7 @@ extension PNG.Huffman
             interior = 2 * interior - leaves
         }
         
-        // the number of interior nodes remaining is the number of child trees, with 
-        // the possible exception of a fake all-ones branch 
+        // the number of interior nodes remaining is the number of child trees
         let n:Int      = 256 - interior 
         var z:Int      = n
         // finish validating the tree 
@@ -226,14 +246,14 @@ extension PNG.Huffman
             guard interior > 0 
             else 
             {
-                return nil
+                break
             }
             
             z       += leaves << (7 - i)
             interior = 2 * interior - leaves 
         }
         
-        guard interior > 0
+        guard interior == 0
         else 
         {
             return nil
@@ -242,17 +262,19 @@ extension PNG.Huffman
         return (n, z)
     }
     
-    init?<S>(_ assignments:S) where S:Sequence, S.Element == (Symbol, Int)
+    static 
+    func validate<S>(_ assignments:S) -> Self? 
+        where S:Sequence, S.Element == (Symbol, Int)
     {
         let groups:[Int: [(Symbol, Int)]] = .init(grouping: assignments, by: \.1)
         let symbols:[[Symbol]] = (1 ... 16).map 
         {
             groups[$0, default: []].map(\.0).sorted()
         }
-        self.init(symbols: symbols)
+        return .validate(symbols: symbols)
     }
     
-    //  init PNG.Huffman.init?(symbols:)
+    //  static func LZ77.Huffman.validate(symbols:)
     //      Creates a huffman tree from the given leaf nodes.
     //  
     //      This initializer determines the shape of the tree from the shape of 
@@ -261,31 +283,54 @@ extension PNG.Huffman
     //  
     //      This initializer will return `nil` if the sizes of the given leaf arrays do not 
     //      describe a [full binary tree](https://en.wikipedia.org/wiki/Binary_tree#full). 
-    //      (The last level is allowed to be incomplete.)
+    //
     //      For example, the leaf counts (3,\ 0,\ 0,\ …\ ) are invalid because 
     //      no binary tree can have three leaf nodes in its first level.
+    //
+    //      The exception is the single-symbol huffman tree, which is allowed to 
+    //      have one symbol in its first level. 
     //  - symbols   : [[Symbol]]
     //      The leaf nodes in each level of the tree. The tree root is always 
     //      assumed to be internal, so the 0th sub-array of this array should 
     //      contain the leaves in the first level of the tree. This array must 
     //      contain 16 sub-arrays, even if the deeper levels of the tree are 
     //      empty, or this initializer will suffer a precondition failure.
-    init?(symbols:[[Symbol]])
+    static 
+    func validate(symbols:[[Symbol]]) -> Self?
     {
+        let padded:[[Symbol]]
+        if symbols[0].count == 1, (symbols[1...].allSatisfy{ $0.count == 0 })
+        {
+            // handle single-symbol case 
+            padded = [[symbols[0][0], symbols[0][0]]] + repeatElement([], count: 15)
+        }
+        else 
+        {
+            padded = symbols 
+        }
+        
         // validate leaf counts 
-        guard let size:(n:Int, z:Int) = Self.size(symbols.map(\.count))
+        guard let size:(n:Int, z:Int) = Self.size(padded.map(\.count))
         else 
         {
             return nil
         }
         
-        self.symbols = symbols
-        self.size    = size
+        return .init(symbols: padded, size: size)
     } 
-}
-// huffman decoder 
-extension PNG.Huffman 
-{
+    
+    // non validating initializer, crashes on invalid input 
+    init(symbols:[[Symbol]]) 
+    {
+        guard let size:(n:Int, z:Int) = Self.size(symbols.map(\.count))
+        else 
+        {
+            preconditionFailure("invalid huffman table leaf list")
+        }
+        self.init(symbols: symbols, size: size)
+    }
+    
+    // decoder type 
     struct Decoder 
     {
         struct Entry 
@@ -297,206 +342,17 @@ extension PNG.Huffman
         
         private 
         let storage:[Entry], 
-            n:Int, // number of level 0 entries
-            ζ:Int  // logical size of the table (where the n level 0 entries are each 256 units big)
+            n:Int // number of level 0 entries
         
-        init(_ storage:[Entry], n:Int, ζ:Int) 
+        init(_ storage:[Entry], n:Int) 
         {
-            guard ζ == (1 << 16) - 1 
-            else 
-            {
-                fatalError("table incomplete (\(ζ) entries)")
-            }
             self.storage    = storage 
             self.n          = n
-            self.ζ          = ζ
         }
     }
-}
-extension PNG.Huffman 
-{
-    // this is a (relatively) expensive function. however most jpegs define a 
-    // fresh set of huffman tables for each scan, so it is very unlikely that 
-    // this function will get called redundantly.
+    
     func decoder() -> Decoder
     {
-        /*
-        idea:    jpeg huffman tables are encoded gzip style, as sequences of
-                 leaf counts and leaf values. the leaf counts tell you the
-                 number of leaf nodes at each level of the tree. combined with
-                 a rule that says that leaf nodes always occur on the “leftmost”
-                 side of the tree, this uniquely determines a huffman tree.
-        
-                 Given: leaves per level = [0, 3, 1, 1, ... ]
-        
-                         ___0___[root]___1___
-                       /                      \
-                __0__[ ]__1__            __0__[ ]__1__
-              /              \         /               \
-             [a]            [b]      [c]            _0_[ ]_1_
-                                                  /           \
-                                                [d]        _0_[ ]_1_
-                                                         /           \
-                                                       [e]        reserved
-        
-                 note that in a huffman tree, level 0 always contains 0 leaf
-                 nodes (why?) so the huffman table omits level 0 in the leaf
-                 counts list.
-        
-                 we *could* build a tree data structure, and traverse it as
-                 we read in the coded bits, but that would be slow and require
-                 a shift for every bit. instead we extend the huffman tree
-                 into a perfect tree, and assign the new leaf nodes the
-                 values of their parents.
-        
-                             ________[root]________
-                           /                        \
-                   _____[ ]_____                _____[ ]_____
-                  /             \             /               \
-                 [a]           [b]          [c]            ___[ ]___
-               /     \       /     \       /   \         /           \
-             (a)     (a)   (b)     (b)   (c)   (c)      [d]          ...
-        
-                 this lets us make a table of huffman codes where all the
-                 codes are “padded” to the same length. note that codewords
-                 that occur higher up the tree occur multiple times because
-                 they have multiple children. of course, since the extra bits
-                 aren’t actually part of the code, we have to store separately
-                 the length of the original code so we know how many bits
-                 we should advance the current bit position by once we match
-                 a code.
-        
-                   code       value     length
-                 —————————  —————————  ————————
-                    000        'a'         2
-                    001        'a'         2
-                    010        'b'         2
-                    011        'b'         2
-                    100        'c'         2
-                    101        'c'         2
-                    110        'd'         3
-                    111        ...        >3
-        
-                 decoding coded data then becomes a matter of matching a fixed
-                 length bitstream against the table (the code works as an integer
-                 index!) since all possible combinations of trailing “padding”
-                 bits are represented in the table.
-        
-                 in jpeg, codewords can be a maximum of 16 bits long. this
-                 means in theory we need a table with 2^16 entries. that’s a
-                 huge table considering there are only 256 actual encoded
-                 values, and since this is the kind of thing that really needs
-                 to be optimized for speed, this needs to be as cache friendly
-                 as possible.
-        
-                 we can reduce the table size by splitting the 16-bit table
-                 into two 8-bit levels. this means we have one 8-bit “root”
-                 tree, and k 8-bit child trees rooted on the internal nodes
-                 at level 8 of the original tree.
-        
-                 so far, we’ve looked at the huffman tree as a tree. however 
-                 it actually makes more sense to look at it as a table, just 
-                 like its implementation. remember that the tree is right-heavy, 
-                 so the first 8 levels will look something like 
-        
-                 +———————————————————+ 0
-                 |                   |
-                 |                   |
-                 |                   |
-                 |                   |
-                 |                   |
-                 |                   |
-                 |                   |
-                 +———————————————————+
-                 |                   |
-                 |                   |
-                 |                   |
-                 +———————————————————+
-                 |                   |
-                 |                   |
-                 |                   |
-                 +———————————————————+ -
-                 |                   |
-                 +———————————————————+
-                 |                   |
-                 +———————————————————+
-                 |                   |
-                 +———————————————————+
-                 |                   |
-                 +———————————————————+ -
-                 |                   |
-                 +———————————————————+
-                 +———————————————————+
-               n +———————————————————+ -    —    +———————————————————+ s = 0
-                 +-------------------+      ↑    |                   |
-                 +-------------------+      s    |                   |
-                 +-------------------+      ↓    |                   |
-           n + s +-------------------+ 256  —    +———————————————————+
-                                                 |                   |
-                                                 |                   |
-                                                 |                   |
-                                                 +———————————————————+
-                                                 |                   |
-                                                 |                   |
-                                                 |                   |
-                                                 +———————————————————+
-                                                 |                   |
-                                                 +———————————————————+
-                                                 |                   |
-                 /                               /////////////////////
-        
-                 this is awesome because we don’t need to store anything in 
-                 the table entries themselves to know if they are direct entries 
-                 or indirect entries. if the index of the entry is greater than 
-                 or equal to `n` (the number of direct entries), it is an 
-                 indirect entry, and its indirect index is given by the first 
-                 byte of the codeword with `n` subtracted from it. 
-                 level-1 subtables are always 256 entries long since they are 
-                 leaf tables. this means their positions can be computed in 
-                 constant time, given `n`, which is also the position of the 
-                 first level-1 table.
-                 
-                 (for computational ease, we store `s = 256 - n` instead. 
-                 `s` can be interpreted as the number of level-1 subtables 
-                 trail the level-0 table in the storage buffer)
-        
-                 how big can `s` be? well, remember that there are only 256
-                 different encoded values which means the original tree can
-                 only have 256 leaves. any full binary tree with height at
-                 least 1 *must* contain at least 2 leaf nodes (why?). since
-                 the child trees must have a height > 0 (otherwise they would
-                 be 0-bit trees), every child tree except possibly the right-
-                 most one must have at least 2 leaf nodes. the rightmost child
-                 tree is an exception because in jpeg, the all-ones codeword
-                 does not represent any value, so the right-most tree can
-                 possibly only contain one “real” leaf node. we can pigeonhole
-                 this to show that we can only have up to k ≤ 129 child trees.
-                 in fact, we can reduce this even further to k ≤ 128 because
-                 if the rightmost tree only contains 1 leaf, there has to be at
-                 least one other tree with an odd number of leaves to make the  
-                 total add up to 256, and that number has to be at least 3. 
-                 in reality, k is rarely bigger than 7 or 8 yielding a significant 
-                 size savings.
-        
-                 because we don’t need to store pointers, each table entry can 
-                 be just 2 bytes long — 1 byte for the encoded value, and 1 byte 
-                 to store the length of the codeword.
-        
-                 a buffer like this will never have size greater than
-                 2 * 256 × (128 + 1) = 65_792 bytes, compared with
-                 2 × (1 << 16)  = 131_072 bytes for the 16-bit table. in
-                 reality the 2 layer table is usually on the order of 2–4 kB.
-        
-                 why not compact the child trees further, since not all of them
-                 actually have height 8? we could do that, and get some serious
-                 worst-case memory savings, but then we couldn’t access the
-                 child tables at constant offsets from the buffer base. we’d
-                 need to store whole ≥16-bit pointers to the specific byte offset 
-                 where the variable-length child table lives, and perform a 
-                 conditional bit shift to transform the input bits into an 
-                 appropriate index into the table. not a good look.
-        */
-        
         // z is the physical size of the table in memory
         let (n, z):(Int, Int) = self.size 
         
@@ -520,11 +376,11 @@ extension PNG.Huffman
         }
         
         assert(storage.count == z)
-        return .init(storage, n: n, ζ: z + n * 255)
+        return .init(storage, n: n)
     }
 }
 // table accessors 
-extension PNG.Huffman.Decoder 
+extension LZ77.Huffman.Decoder 
 {
     // codeword is big-endian
     subscript(codeword:UInt16) -> Entry 
@@ -538,104 +394,483 @@ extension PNG.Huffman.Decoder
         else 
         {
             let j:Int = .init(codeword)
-            guard j < self.ζ 
-            else 
-            {
-                fatalError("unreachable")
-            }
-            
             return self.storage[j - self.n * 255]
         }
     }
 }
 
-// block parsing 
-extension PNG.Bitstream 
-{
-    func block(pointer b:inout Int) throws 
+// symbol types 
+extension LZ77 
+{    
+    enum Symbol 
     {
-        let table:(runliteral:PNG.Huffman<Symbol.RunLiteral>, distance:PNG.Huffman<UInt8>) = 
-            try self.tables(pointer: &b)
-        print(table)
-    }
-    
-    private 
-    func preamble(pointer b:inout Int) 
-        throws -> (table:PNG.Huffman<Symbol.CodeLength>, count:(runliteral:Int, distance:Int))
-    {
-        guard b + 14 <= self.count 
-        else 
+        //  from the RFC 1951: 
+        //  0 - 15: Represent code lengths of 0 - 15
+        //      16: Copy the previous code length 3 - 6 times.
+        //          The next 2 bits indicate repeat length
+        //                (0 = 3, ... , 3 = 6)
+        //             Example:  Codes 8, 16 (+2 bits 11),
+        //                       16 (+2 bits 10) will expand to
+        //                       12 code lengths of 8 (1 + 6 + 5)
+        //      17: Repeat a code length of 0 for 3 - 10 times.
+        //          (3 bits of length)
+        //      18: Repeat a code length of 0 for 11 - 138 times
+        //          (7 bits of length)
+        enum CodeLength:Comparable
         {
-            throw PNG.DecompressionError.truncatedBitstream 
+            // use smaller integers to reduce LUT footprint
+            case literal(UInt8)
+            case extend 
+            case zeros3
+            case zeros7
+            
+            //  let allSymbols:[Self] = 
+            //      (0 ..< 16).map(Self.literal(_:)) + [.extend, .zeros3, .zeros7]
         }
         
-        let count:(runliteral:Int, distance:Int, codelength:Int)
-        
-        count.runliteral    = 257 + self[b     , count: 5, as: Int.self]
-        count.distance      =   1 + self[b +  5, count: 5, as: Int.self]
-        count.codelength    =   4 + self[b + 10, count: 4, as: Int.self]
-        b += 14 
-        // other counts don’t need to be checked because the number of bits 
-        // matches the acceptable range 
-        guard   257 ... 286 ~= count.runliteral 
-        else 
+        enum RunLiteral:Comparable
         {
-            throw PNG.DecompressionError.invalidHuffmanRunLiteralSymbolCount(count.runliteral)
+            case literal(UInt8)
+            case end 
+            case run(UInt8)
+            
+            static 
+            let allSymbols:[Self] = 
+                (0 ... 255).map(Self.literal(_:)) + 
+                [.end] + 
+                (0 ...  28).map(Self.run(_:))
+            
+            static 
+            let decades:[(extra:Int, base:Int)] = 
+            [
+                (0,   3),
+                (0,   4),
+                (0,   5),
+                (0,   6),
+                (0,   7),
+                (0,   8),
+                (0,   9),
+                (0,  10),
+                (1,  11),
+                (1,  13),
+                (1,  15),
+                (1,  17),
+                (2,  19),
+                (2,  23),
+                (2,  27),
+                (2,  31),
+                (3,  35),
+                (3,  43),
+                (3,  51),
+                (3,  59),
+                (4,  67),
+                (4,  83),
+                (4,  99),
+                (4, 115),
+                (5, 131),
+                (5, 163),
+                (5, 195),
+                (5, 227),
+                (0, 258),
+            ]
         }
         
-        let symbols:[Symbol.CodeLength] = 
-        [
-            .extend, 
-            .zeros3,
-            .zeros7,
-            .literal( 0), 
-            .literal( 8), .literal( 7), 
-            .literal( 9), .literal( 6), 
-            .literal(10), .literal( 5), 
-            .literal(11), .literal( 4), 
-            .literal(12), .literal( 3), 
-            .literal(13), .literal( 2), 
-            .literal(14), .literal( 1), 
-            .literal(15), 
-        ]
-        
-        guard b + 3 * count.codelength <= self.count 
-        else 
+        // namespace for the decades LUT 
+        struct Distance:Comparable
         {
-            throw PNG.DecompressionError.truncatedBitstream
-        }
-        guard let table:PNG.Huffman<Symbol.CodeLength> = 
-            PNG.Huffman<Symbol.CodeLength>.init((0 ..< count.codelength).map 
-        {
-            (symbols[$0], self[b + 3 * $0, count: 3, as: Int.self])
-        })
-        else 
-        {
-            throw PNG.DecompressionError.invalidHuffmanCodelengthHuffmanTable 
-        }
-        b += 3 * count.codelength
-        return (table, (count.runliteral, count.distance))
-    }
-    private 
-    func tables(pointer b:inout Int) 
-        throws -> (runliteral:PNG.Huffman<Symbol.RunLiteral>, distance:PNG.Huffman<UInt8>)
-    {
-        let (table, count):(PNG.Huffman<Symbol.CodeLength>, (runliteral:Int, distance:Int)) = 
-            try self.preamble(pointer: &b)
-        let decoder:PNG.Huffman<Symbol.CodeLength>.Decoder = table.decoder()
-        // code lengths form an unbroken sequence 
-        var lengths:[Int] = []
-        codelengths:
-        while lengths.count < count.runliteral + count.distance 
-        {
-            guard b < self.count 
-            else 
+            @General.Storage<UInt8> 
+            var distance:Int 
+            
+            var decade:(extra:Int, base:Int) 
             {
-                throw PNG.DecompressionError.truncatedBitstream
+                Self.decades[self.distance]
             }
             
-            let entry:PNG.Huffman<Symbol.CodeLength>.Decoder.Entry = decoder[self[b]]
-            b += entry.length
+            init(_ distance:Int) 
+            {
+                self._distance = .init(wrappedValue: distance)
+            }
+            
+            private static 
+            let decades:[(extra:Int, base:Int)] = 
+            [
+                ( 0,     1),
+                ( 0,     2),
+                ( 0,     3),
+                ( 0,     4),
+                ( 1,     5),
+                
+                ( 1,     7),
+                ( 2,     9),
+                ( 2,    13),
+                ( 3,    17),
+                ( 3,    25),
+                
+                ( 4,    33),
+                ( 4,    49),
+                ( 5,    65),
+                ( 5,    97),
+                ( 6,   129),
+                
+                ( 6,   193),
+                ( 7,   257),
+                ( 7,   385),
+                ( 8,   513),
+                ( 8,   769),
+                
+                ( 9,  1025),
+                ( 9,  1537),
+                (10,  2049),
+                (10,  3073),
+                (11,  4097),
+                
+                (11,  6145),
+                (12,  8193),
+                (12, 12289),
+                (13, 16385),
+                (13, 24577),
+            ]
+            
+            static 
+            func < (lhs:Self, rhs:Self) -> Bool 
+            {
+                lhs.distance < rhs.distance
+            }
+        }
+    }
+}
+
+extension LZ77 
+{
+    enum Compression  
+    {
+        case none 
+        case fixed 
+        case dynamic(Huffman<Symbol.CodeLength>, count:(runliteral:Int, distance:Int))
+    }
+    
+    struct Inflator 
+    {
+        enum State 
+        {
+            case streamStart 
+            case blockStart(window:Int)
+            case blockTables(
+                window:Int, 
+                final:Bool, 
+                table:Huffman<Symbol.CodeLength>.Decoder,
+                count:(runliteral:Int, distance:Int)
+            )
+            case blockContent(
+                window:Int, 
+                final:Bool, 
+                table:
+                (
+                    runliteral:Huffman<Symbol.RunLiteral>.Decoder, 
+                    distance:Huffman<Symbol.Distance>.Decoder
+                )?
+            )
+            case streamChecksum
+            case streamEnd 
+        }
+        
+        struct Stream 
+        {
+            var input:Bitstream, 
+                b:Int 
+            var lengths:[Int]
+            var output:[UInt8] 
+        }
+        
+        var state:State
+        var stream:Stream 
+    }
+}
+extension LZ77.Inflator.Stream 
+{
+    init() 
+    {
+        self.b          = 0
+        self.input      = []
+        self.lengths    = []
+        self.output     = []
+    }
+}
+extension LZ77.Inflator
+{
+    init() 
+    {
+        self.state  = .streamStart
+        self.stream = .init()
+    }
+    
+    mutating 
+    func push(_ data:[UInt8]) throws 
+    {
+        self.stream.input.rebase(data, pointer: &self.stream.b)
+        while let _:Void = try self.advance() 
+        {
+        }
+    }
+    
+    // returns nil if unable to advance 
+    private mutating 
+    func advance() throws -> Void?
+    {
+        switch self.state 
+        {
+        case .streamStart:
+            guard let window:Int = try self.stream.start()
+            else 
+            {
+                return nil
+            }
+            self.state = .blockStart(window: window)
+        
+        case .blockStart(window: let window):
+            guard let (final, compression):(Bool, LZ77.Compression) = try self.stream.blockStart() 
+            else 
+            {
+                return nil 
+            }
+            
+            switch compression 
+            {
+            case .dynamic(let table, count: let count):
+                self.state = .blockTables(window: window, final: final, table: table.decoder(), count: count)
+            
+            case .fixed:
+                let symbols:(runliteral:[[LZ77.Symbol.RunLiteral]], distance:[[LZ77.Symbol.Distance]])
+                symbols.runliteral =
+                [
+                    // L1 ... L6
+                    [], [], [], [], [], [], 
+                    // L7 
+                    [.end] + 
+                    (  0 ...  22).map(LZ77.Symbol.RunLiteral.run(_:)),
+                    // L8
+                    (  0 ... 143).map(LZ77.Symbol.RunLiteral.literal(_:)) + 
+                    ( 23 ...  30).map(LZ77.Symbol.RunLiteral.run(_:)), 
+                    // L9
+                    (144 ... 255).map(LZ77.Symbol.RunLiteral.literal(_:)), 
+                    // L10 ... L16
+                    [], [], [], [], [], [], []
+                ]
+                symbols.distance =
+                [
+                    // L1 ... L4
+                    [], [], [], [], 
+                    // L5 
+                    (  0 ...  31).map(LZ77.Symbol.Distance.init(_:)),
+                    // L6 ... L16
+                    [], [], [], [], [], [], [], [], [], [], []
+                ]
+                let runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral> = 
+                    .init(symbols: symbols.runliteral)
+                let distance:LZ77.Huffman<LZ77.Symbol.Distance> = 
+                    .init(symbols: symbols.distance)
+                self.state = .blockContent(window: window, final: final, 
+                    table: (runliteral.decoder(), distance.decoder()))
+            
+            case .none:
+                self.state = .blockContent(window: window, final: final, table: nil)
+            }
+        
+        case .blockTables(window: let window, final: let final, table: let table, count: let count):
+            guard let (runliteral, distance):
+            (
+                LZ77.Huffman<LZ77.Symbol.RunLiteral>, 
+                LZ77.Huffman<LZ77.Symbol.Distance>
+            ) = try self.stream.blockTables(table: table, count: count) 
+            else 
+            {
+                return nil
+            }
+            self.state = .blockContent(window: window, final: final, 
+                table: (runliteral.decoder(), distance.decoder()))
+        
+        case .blockContent(window: let window, final: let final, table: nil):
+            guard let _:Void = try self.stream.blockContent() 
+            else 
+            {
+                return nil
+            }
+            self.state = .streamChecksum 
+        case .blockContent(window: let window, final: let final, table: let table?):
+            guard let _:Void = try self.stream.blockContent(table: table) 
+            else 
+            {
+                return nil
+            }
+            self.state = .streamChecksum 
+        
+        case .streamChecksum:
+            guard let _:Void = try self.stream.checksum()
+            else 
+            {
+                return nil 
+            }
+            self.state = .streamEnd 
+        case .streamEnd:
+            break 
+        }
+        
+        return ()
+    }
+}
+extension LZ77.Inflator.Stream 
+{
+    mutating 
+    func start() throws -> Int?
+    {
+        // read stream header 
+        guard self.b + 16 <= self.input.count 
+        else 
+        {
+            return nil 
+        }
+        
+        switch self.input[self.b + 0, count: 4, as: UInt.self] 
+        {
+        case 8:
+            break 
+        default:
+            throw LZ77.DecompressionError.invalidStreamMethod
+        }
+        
+        let exponent:Int = self.input[self.b + 4, count: 4, as: Int.self] 
+        guard exponent < 8 
+        else 
+        {
+            throw LZ77.DecompressionError.invalidStreamWindowSize(exponent: exponent)
+        }
+        
+        let flags:Int = self.input[self.b + 8, count: 8, as: Int.self]
+        guard (exponent << 12 | 8 << 8 + flags) % 31 == 0 
+        else 
+        {
+            throw LZ77.DecompressionError.invalidStreamHeaderCheckBits
+        }
+        guard flags & 0x20 == 0 
+        else 
+        {
+            throw LZ77.DecompressionError.unexpectedStreamDictionary
+        }
+        
+        self.b += 16
+        return 1 << exponent
+    }
+    mutating 
+    func blockStart() throws -> 
+    (
+        final:Bool, 
+        compression:LZ77.Compression
+    )? 
+    {
+        guard self.b + 3 <= self.input.count 
+        else 
+        {
+            return nil 
+        }
+        
+        // read block header bits 
+        let final:Bool = self.input[self.b, count: 1, as: UInt16.self] != 0 
+        let compression:LZ77.Compression 
+        switch self.input[self.b + 1, count: 2, as: UInt16.self] 
+        {
+        case 0:
+            compression = .none 
+            self.b += 3
+        
+        case 1:
+            compression = .fixed 
+            self.b += 3
+        
+        case 2:
+            guard self.b + 17 <= self.input.count 
+            else 
+            {
+                return nil 
+            }
+        
+            let codelengths:Int =   4 + self.input[self.b + 13, count: 4, as: Int.self]
+            
+            guard self.b + 17 + 3 * codelengths <= self.input.count 
+            else 
+            {
+                return nil 
+            }
+            
+            let runliteral:Int  = 257 + self.input[self.b +  3, count: 5, as: Int.self]
+            let distance:Int    =   1 + self.input[self.b +  8, count: 5, as: Int.self]
+            // other counts don’t need to be checked because the number of bits 
+            // matches the acceptable range 
+            guard 257 ... 286 ~= runliteral 
+            else 
+            {
+                throw LZ77.DecompressionError.invalidHuffmanRunLiteralSymbolCount(runliteral)
+            }
+            
+            let symbols:[LZ77.Symbol.CodeLength] = 
+            [
+                .extend, 
+                .zeros3,
+                .zeros7,
+                .literal( 0), 
+                .literal( 8), .literal( 7), 
+                .literal( 9), .literal( 6), 
+                .literal(10), .literal( 5), 
+                .literal(11), .literal( 4), 
+                .literal(12), .literal( 3), 
+                .literal(13), .literal( 2), 
+                .literal(14), .literal( 1), 
+                .literal(15), 
+            ]
+            guard let table:LZ77.Huffman<LZ77.Symbol.CodeLength> = .validate(
+                (0 ..< codelengths).map 
+            {
+                (symbols[$0], self.input[self.b + 17 + 3 * $0, count: 3, as: Int.self])
+            })
+            else 
+            {
+                throw LZ77.DecompressionError.invalidHuffmanCodelengthHuffmanTable 
+            }
+            
+            self.b += 17 + 3 * codelengths
+            compression = .dynamic(table, count: (runliteral, distance))
+        
+        default:
+            throw LZ77.DecompressionError.invalidBlockType
+        }
+        
+        return (final, compression)
+    }
+    mutating 
+    func blockTables(table:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder, count:(runliteral:Int, distance:Int)) 
+        throws -> 
+    (
+        LZ77.Huffman<LZ77.Symbol.RunLiteral>, 
+        LZ77.Huffman<LZ77.Symbol.Distance>
+    )?
+    {
+        // code lengths form an unbroken sequence 
+        codelengths:
+        while self.lengths.count < count.runliteral + count.distance 
+        {
+            guard self.b < self.input.count 
+            else 
+            {
+                return nil 
+            }
+            
+            let entry:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder.Entry = table[self.input[b]]
+            // if the codeword length is longer than the available input 
+            // then we know the match is invalid (due to padding 0-bits)
+            guard self.b + entry.length <= self.input.count 
+            else 
+            {
+                return nil 
+            }
             
             let element:Int, 
                 extra:Int, 
@@ -643,13 +878,15 @@ extension PNG.Bitstream
             switch entry.symbol 
             {
             case .literal(let length):
-                lengths.append(.init(length))
+                self.lengths.append(.init(length))
+                self.b += entry.length
                 continue codelengths
+            
             case .extend:
-                guard let last:Int  = lengths.last 
+                guard let last:Int = self.lengths.last 
                 else 
                 {
-                    break codelengths
+                    throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
                 }
                 element = last 
                 extra   = 2
@@ -664,30 +901,63 @@ extension PNG.Bitstream
                 base    = 11
             }
             
-            guard b + extra <= self.count 
+            guard self.b + entry.length + extra <= self.input.count 
             else 
             {
-                throw PNG.DecompressionError.truncatedBitstream
+                return nil 
             }
-            let repetitions:Int = base + self[b, count: extra, as: Int.self]
-            b += extra 
-            lengths.append(contentsOf: repeatElement(element, count: repetitions))
+            let repetitions:Int = base + self.input[self.b + entry.length, count: extra, as: Int.self]
+            self.lengths.append(contentsOf: repeatElement(element, count: repetitions))
+            self.b += entry.length + extra 
         }
-        guard lengths.count == count.runliteral + count.distance 
+        guard self.lengths.count == count.runliteral + count.distance 
         else 
         {
-            throw PNG.DecompressionError.invalidHuffmanCodelengthSequence
+            throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
         }
         
-        guard   let runliteral:PNG.Huffman<Symbol.RunLiteral>   = PNG.Huffman<Symbol.RunLiteral>.init(
-            zip(Symbol.RunLiteral.allSymbols,  lengths.prefix(   count.runliteral))),
-                let distance:PNG.Huffman<UInt8>                 = PNG.Huffman<UInt8>.init(
-            zip(1 ... 32,                      lengths.dropFirst(count.runliteral))) 
+        guard let runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral> = .validate(
+            zip(LZ77.Symbol.RunLiteral.allSymbols, self.lengths.prefix(count.runliteral)))
         else 
         {
-            throw PNG.DecompressionError.invalidHuffmanTable 
+            throw LZ77.DecompressionError.invalidHuffmanTable 
+        }
+        
+        let distance:LZ77.Huffman<LZ77.Symbol.Distance>
+        if (self.lengths.dropFirst(count.runliteral).allSatisfy{ $0 == 0 })
+        {
+            distance = .init(symbols: [[.init(0), .init(0)]] + repeatElement([], count: 15)) 
+        }
+        else if let table:LZ77.Huffman<LZ77.Symbol.Distance> = .validate(zip(
+                (1 ... 32).map(LZ77.Symbol.Distance.init(_:)), 
+                self.lengths.dropFirst(count.runliteral)))
+        {
+            distance = table 
+        }
+        else 
+        {
+            throw LZ77.DecompressionError.invalidHuffmanTable 
         }
         
         return (runliteral, distance)
+    }
+    mutating 
+    func blockContent(table:
+        (
+            runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder, 
+            distance:LZ77.Huffman<LZ77.Symbol.Distance>.Decoder
+        )) throws -> Void? 
+    {
+        return nil
+    }
+    mutating 
+    func blockContent() throws -> Void? 
+    {
+        return nil
+    }
+    mutating 
+    func checksum() throws -> Void?
+    {
+        return nil
     }
 }
