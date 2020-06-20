@@ -599,10 +599,12 @@ extension LZ77
     
     struct Buffer:RandomAccessCollection
     {
+        var window:Int 
         private 
         var baseIndex:Int
         private(set) 
-        var startIndex:Int 
+        var startIndex:Int, 
+            currentIndex:Int
         var endIndex:Int 
         {
             self.baseIndex + self.storage.count 
@@ -624,12 +626,32 @@ extension LZ77
         
         init() 
         {
-            self.baseIndex  = 0
-            self.startIndex = 0
-            self.storage    = []
-            self.integral   = (1, 0)
+            self.window         = 0
+            self.baseIndex      = 0
+            self.startIndex     = 0
+            self.currentIndex   = 0
+            self.storage        = []
+            self.integral       = (1, 0)
         }
         
+        mutating 
+        func release(bytes count:Int) -> [UInt8]? 
+        {
+            guard self.endIndex >= self.currentIndex + count 
+            else 
+            {
+                return nil 
+            }
+            
+            let i:Int = self.currentIndex - self.baseIndex
+            defer 
+            {
+                let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
+                self.currentIndex  += count 
+                self.startIndex     = Swift.min(self.currentIndex, limit)
+            }
+            return .init(self.storage[i ..< i + count])
+        }
         mutating 
         func append(_ value:UInt8) 
         {
@@ -649,14 +671,15 @@ extension LZ77
         func shift(allocating extra:Int) 
         {
             // optimal new capacity
-            let capacity:Int    = (self.count + Swift.max(16, extra)).nextPowerOfTwo
+            let count:Int       = self.count, 
+                capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
             let vacated:Int     = self.startIndex - self.baseIndex
             if self.storage.capacity >= capacity 
             {
                 // rebase without reallocating 
                 self.storage.withUnsafeMutableBufferPointer 
                 {
-                    for i:Int in $0.indices 
+                    for i:Int in 0 ..< count
                     {
                         $0[i] = $0[i + vacated]
                     }
@@ -677,19 +700,18 @@ extension LZ77
     
     struct Inflator 
     {
+        private 
         enum State 
         {
             case streamStart 
-            case blockStart(window:Int)
+            case blockStart
             case blockTables(
-                window:Int, 
                 final:Bool, 
                 table:Huffman<Symbol.CodeLength>.Decoder,
                 count:(runliteral:Int, distance:Int)
             )
-            case blockUncompressed(window:Int, final:Bool, end:Int)
+            case blockUncompressed(final:Bool, end:Int)
             case blockCompressed(
-                window:Int, 
                 final:Bool, 
                 table:
                 (
@@ -700,26 +722,26 @@ extension LZ77
             case streamChecksum
             case streamEnd 
             
-            var _description:String 
+            /* var _description:String 
             {
                 switch self 
                 {
                 case .streamStart:
                     return "stream start"
-                case .blockStart(window: let window):
-                    return "block start (window: \(window))"
-                case .blockTables(window: let window, final: let final, table: _, count: _):
-                    return "block tables (window: \(window), final: \(final))"
-                case .blockUncompressed(window: let window, final: let final, end: let end):
-                    return "block uncompressed (window: \(window), final: \(final), end: \(end))"
-                case .blockCompressed(window: let window, final: let final, table: _):
-                    return "block compressed (window: \(window), final: \(final))"
+                case .blockStart:
+                    return "block start"
+                case .blockTables(final: let final, table: _, count: _):
+                    return "block tables (final: \(final))"
+                case .blockUncompressed(final: let final, end: let end):
+                    return "block uncompressed (final: \(final), end: \(end))"
+                case .blockCompressed(final: let final, table: _):
+                    return "block compressed (final: \(final))"
                 case .streamChecksum:
                     return "stream checksum"
                 case .streamEnd:
                     return "stream end"
                 }
-            }
+            } */
         }
         
         struct Stream 
@@ -730,8 +752,9 @@ extension LZ77
             var output:Buffer 
         }
         
-        var state:State
-        var stream:Stream 
+        private 
+        var state:State, 
+            stream:Stream 
     }
 }
 extension LZ77.Inflator.Stream 
@@ -752,15 +775,32 @@ extension LZ77.Inflator
         self.stream = .init()
     }
     
+    // returns `nil` if the stream is finished
     mutating 
-    func push(_ data:[UInt8]) throws 
+    func push(_ data:[UInt8]) throws -> Void?
     {
         self.stream.input.rebase(data, pointer: &self.stream.b)
         while let _:Void = try self.advance() 
         {
         }
+        if case .streamEnd = self.state 
+        {
+            return nil 
+        }
+        else 
+        {
+            return ()
+        }
     }
-    
+    mutating 
+    func pull(_ count:Int) -> [UInt8]? 
+    {
+        self.stream.output.release(bytes: count)
+    }
+    var retained:Int 
+    {
+        self.stream.output.endIndex - self.stream.output.currentIndex
+    }
     // returns nil if unable to advance 
     private mutating 
     func advance() throws -> Void?
@@ -773,9 +813,10 @@ extension LZ77.Inflator
             {
                 return nil
             }
-            self.state = .blockStart(window: window)
+            self.stream.output.window   = window 
+            self.state                  = .blockStart
         
-        case .blockStart(window: let window):
+        case .blockStart:
             guard let (final, compression):(Bool, LZ77.Compression) = try self.stream.blockStart() 
             else 
             {
@@ -785,7 +826,7 @@ extension LZ77.Inflator
             switch compression 
             {
             case .dynamic(let table, count: let count):
-                self.state = .blockTables(window: window, final: final, table: table.decoder(), count: count)
+                self.state = .blockTables(final: final, table: table.decoder(), count: count)
             
             case .fixed:
                 let symbols:(runliteral:[[LZ77.Symbol.RunLiteral]], distance:[[LZ77.Symbol.Distance]])
@@ -817,16 +858,16 @@ extension LZ77.Inflator
                     .init(symbols: symbols.runliteral)
                 let distance:LZ77.Huffman<LZ77.Symbol.Distance> = 
                     .init(symbols: symbols.distance)
-                self.state = .blockCompressed(window: window, final: final, 
+                self.state = .blockCompressed(final: final, 
                     table: (runliteral.decoder(), distance.decoder()))
             
             case .none(bytes: let count):
                 // compute endindex 
                 let end:Int = self.stream.output.endIndex + count
-                self.state = .blockUncompressed(window: window, final: final, end: end)
+                self.state = .blockUncompressed(final: final, end: end)
             }
         
-        case .blockTables(window: let window, final: let final, table: let table, count: let count):
+        case .blockTables(final: let final, table: let table, count: let count):
             guard let (runliteral, distance):
             (
                 LZ77.Huffman<LZ77.Symbol.RunLiteral>, 
@@ -836,24 +877,24 @@ extension LZ77.Inflator
             {
                 return nil
             }
-            self.state = .blockCompressed(window: window, final: final, 
+            self.state = .blockCompressed(final: final, 
                 table: (runliteral.decoder(), distance.decoder()))
         
-        case .blockUncompressed(window: let window, final: let final, end: let end):
+        case .blockUncompressed(final: let final, end: let end):
             guard let _:Void = try self.stream.blockUncompressed(end: end) 
             else 
             {
                 return nil
             }
-            self.state = final ? .streamChecksum : .blockStart(window: window)
+            self.state = final ? .streamChecksum : .blockStart
         
-        case .blockCompressed(window: let window, final: let final, table: let table):
+        case .blockCompressed(final: let final, table: let table):
             guard let _:Void = try self.stream.blockCompressed(table: table) 
             else 
             {
                 return nil
             }
-            self.state = final ? .streamChecksum : .blockStart(window: window)
+            self.state = final ? .streamChecksum : .blockStart
         
         case .streamChecksum:
             guard let _:Void = try self.stream.checksum()
