@@ -1545,6 +1545,14 @@ enum PNG
 
         /// Initializes and returns a PNG `Decoder`.
         /// - Returns: An image `Decoder` in its initial state.
+    #if SWIFT_INFLATE
+        public
+        func decoder() -> Decoder
+        {
+            let stride:Int = max(1, self.format.code.volume >> 3)
+            return .init(stride: stride, pitches: self.pitches)
+        }
+    #else
         public
         func decoder() throws -> Decoder
         {
@@ -1552,6 +1560,7 @@ enum PNG
                 stride:Int             = max(1, self.format.code.volume >> 3)
             return .init(stride: stride, pitches: self.pitches, inflator: inflator)
         }
+    #endif
 
         /// Initializes and returns a PNG `Encoder`.
         /// - Parameters:
@@ -1576,12 +1585,6 @@ enum PNG
             /// to all zeroes before decoding the first scanline of a (sub-)image.
             private
             var reference:[UInt8]?
-            
-            /// The decoded pixels of the current scanline. Can be partially filled
-            /// if individual image data blocks do not contain a whole number of
-            /// scanlines.
-            private
-            var scanline:[UInt8] = []
 
             /// The filter delay used by this image `Decoder`. This value is computed
             /// from the volume of a PNG pixel format, but has no meaning itself.
@@ -1589,24 +1592,26 @@ enum PNG
             let stride:Int
 
             private
-            var pitches:Pitches,
-                inflator:_LZ77.Inflator
-            
-            #if SWIFT_INFLATE
+            var pitches:Pitches
+                
+        #if SWIFT_INFLATE
             private 
-            var _swiftinflator:LZ77.Inflator 
-            #endif
-
-            init(stride:Int, pitches:Pitches, inflator:_LZ77.Inflator)
+            var inflator:LZ77.Inflator 
+        #else 
+            /// The decoded pixels of the current scanline. Can be partially filled
+            /// if individual image data blocks do not contain a whole number of
+            /// scanlines.
+            private
+            var inflator:_LZ77.Inflator, 
+                scanline:[UInt8] = []
+        #endif
+        
+        #if SWIFT_INFLATE
+            init(stride:Int, pitches:Pitches)
             {
                 self.stride   = stride
                 self.pitches  = pitches
-                self.inflator = inflator
-                
-                #if SWIFT_INFLATE
-                self._swiftinflator = .init()
-                #endif
-
+                self.inflator = .init()
                 guard let pitch:Int = self.pitches.next() ?? nil
                 else
                 {
@@ -1615,6 +1620,21 @@ enum PNG
 
                 self.reference = .init(repeating: 0, count: pitch + 1)
             }
+        #else 
+            init(stride:Int, pitches:Pitches, inflator:_LZ77.Inflator)
+            {
+                self.stride   = stride
+                self.pitches  = pitches
+                self.inflator = inflator
+                guard let pitch:Int = self.pitches.next() ?? nil
+                else
+                {
+                    return
+                }
+
+                self.reference = .init(repeating: 0, count: pitch + 1)
+            }
+        #endif
 
             /// Calls the given closure for each complete scanline decoded from
             /// the given compressed image data, passing the decoded contents of
@@ -1636,12 +1656,40 @@ enum PNG
             func forEachScanline(decodedFrom data:[UInt8], _ body:(ArraySlice<UInt8>) throws -> ())
                 throws -> Bool
             {
-                self.inflator.push(data)
-                
-                #if SWIFT_INFLATE
-                try self._swiftinflator.push(data)
-                #endif
+            #if SWIFT_INFLATE
+                let streamContinue:Bool = try self.inflator.push(data) != nil
+                while let reference:[UInt8] = self.reference 
+                {
+                    guard var scanline:[UInt8] = self.inflator.pull(reference.count)
+                    else 
+                    {
+                        break
+                    }
+                    
+                    self.defilter(&scanline, reference: reference)
 
+                    try body(scanline.dropFirst())
+
+                    // transfer scanline to reference line
+                    if let pitch:Int? = self.pitches.next()
+                    {
+                        if let pitch:Int = pitch
+                        {
+                            self.reference = .init(repeating: 0, count: pitch + 1)
+                        }
+                        else
+                        {
+                            self.reference = scanline
+                        }
+                    }
+                    else
+                    {
+                        self.reference = nil
+                    }
+                }
+                return streamContinue
+            #else 
+                self.inflator.push(data)
                 while let reference:[UInt8] = self.reference
                 {
                     let streamContinue:Bool = try self.inflator.pull(  extending: &self.scanline,
@@ -1687,6 +1735,7 @@ enum PNG
                 }
 
                 return try self.inflator.test()
+            #endif
             }
 
             /// Defilters the given filtered scanline in-place, using the given
