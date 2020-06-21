@@ -47,7 +47,7 @@ extension LZ77.Bitstream
     // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
     init(_ data:[UInt8])
     {
-        self.atoms = [0x0000]
+        self.atoms = [0x0000, 0x0000, 0x0000]
         self.bytes = 0 
         
         var b:Int  = 0
@@ -75,7 +75,7 @@ extension LZ77.Bitstream
         {
             var new:[UInt16] = [] 
             new.reserveCapacity(capacity)
-            new.append(contentsOf: self.atoms.dropFirst(a).dropLast())
+            new.append(contentsOf: self.atoms.dropFirst(a).dropLast(3))
             self.atoms  = new 
             self.bytes -=  2 * a
             b          -= 16 * a
@@ -83,7 +83,7 @@ extension LZ77.Bitstream
         else 
         {
             self.atoms.reserveCapacity(capacity)
-            self.atoms.removeLast() // remove padding word
+            self.atoms.removeLast(3) // remove padding words
         }
         
         let integral:ArraySlice<UInt8>
@@ -109,7 +109,9 @@ extension LZ77.Bitstream
             self.atoms.append(.init(integral[integral.endIndex - 1]))
         }
         self.bytes += data.count
-        // 16-bits of padding at the end 
+        // 48-bits of padding at the end 
+        self.atoms.append(0x0000)
+        self.atoms.append(0x0000)
         self.atoms.append(0x0000)
     }
     
@@ -144,15 +146,8 @@ extension LZ77.Bitstream
             mask:UInt16     = ~(UInt16.max << count)
         return .init(interval & mask)
     }
-    // puts bits in high end of outputted integer 
-    // 
-    //  { ... b.18, b.17, b.16 | b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
-    //        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                                                                                           ^  
-    //                                                                                          [4]
-    //      produces 
-    //  { b.4, b.5, b.6, b.7, b.8, b.9, b.10, b.11, b.12, b.13, b.14, b.15, b.16, b.17, b.18 }
-    subscript(i:Int) -> UInt16 
+    
+    subscript(i:Int, as _:UInt16.Type) -> UInt16 
     {
         let a:Int = i >> 4, 
             b:Int = i & 0x0f
@@ -164,15 +159,31 @@ extension LZ77.Bitstream
         //      →   [x:x|x:x:x:x:x:x]
         
         // must use << and not &<< to correctly handle shift of 16
-        let reversed:UInt16 = self.atoms[a + 1] << (UInt16.bitWidth &- b) | self.atoms[a] &>> b
-        return Self.reverse(reversed & 0x00ff) << 8 | Self.reverse(reversed >> 8)
+        return self.atoms[a + 1] << (UInt16.bitWidth &- b) | self.atoms[a] &>> b
+    }
+    // puts bits in high end of outputted integer 
+    // 
+    //  { ... b.18, b.17, b.16 | b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
+    //        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                                                                                           ^  
+    //                                                                                          [4]
+    //      produces 
+    //  { b.4, b.5, b.6, b.7, b.8, b.9, b.10, b.11, b.12, b.13, b.14, b.15, b.16, b.17, b.18 }
+    subscript(i:Int) -> UInt16 
+    {        
+        return Self.reverse(self[i, as: UInt16.self])
     }
     
     // https://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
-    // bits go into the low end of the UInt16
+    @inline(__always)
+    static 
+    func reverse(_ word:UInt16) -> UInt16 
+    {
+        Self.reverse(lowBits: word & 0x00ff) << 8 | Self.reverse(lowBits: word >> 8)
+    }
     @inline(__always)
     private static 
-    func reverse(_ byte:UInt16) -> UInt16 
+    func reverse(lowBits byte:UInt16) -> UInt16 
     {
         let u64:UInt64 = .init(byte)
         let fan:UInt64 = ((u64 &* 
@@ -386,6 +397,7 @@ extension LZ77.Huffman
         }
         
         assert(storage.count == z)
+        //print("created huffman decoder (size \(storage.count * MemoryLayout<Decoder.Entry>.stride) bytes)")
         return .init(storage, n: n)
     }
 }
@@ -495,6 +507,13 @@ extension LZ77
                     (5, 195),
                     (5, 227),
                     (0, 258),
+                    
+                    // padding values, because out-of-bounds symbols occur
+                    // in fixed huffman trees, and may be erroneously decoded 
+                    // if the decoder goes beyond the end-of-stream (which it is 
+                    // temporarily allowed to do, for performance)
+                    (0,   0),
+                    (0,   0),
                 ]
                 
                 @General.Storage<UInt8> 
@@ -554,6 +573,13 @@ extension LZ77
                 (12, 12289),
                 (13, 16385),
                 (13, 24577),
+                
+                // padding values, because out-of-bounds symbols occur
+                // in fixed huffman trees, and may be erroneously decoded 
+                // if the decoder goes beyond the end-of-stream (which it is 
+                // temporarily allowed to do, for performance)
+                ( 0,     0),
+                ( 0,     0),
             ]
             
             @General.Storage<UInt8> 
@@ -629,8 +655,143 @@ extension LZ77
         case fixed 
         case dynamic(Huffman<Symbol.CodeLength>, count:(runliteral:Int, distance:Int))
     }
-    
-    struct Buffer:RandomAccessCollection
+    struct Buffer 
+    {
+        var window:Int
+         
+        private(set)
+        var baseIndex:Int,
+            startIndex:Int, 
+            currentIndex:Int,
+            endIndex:Int 
+        // storing this instead of using `ManagedBuffer.capacity` because 
+        // the apple docs said so
+        private 
+        var capacity:Int, 
+            storage:ManagedBuffer<Void, UInt8>
+        
+        var count:Int 
+        {
+            self.endIndex - self.startIndex
+        }
+        
+        init() 
+        {
+            var capacity:Int    = 0
+            self.storage = .create(minimumCapacity: 0)
+            {
+                capacity = $0.capacity 
+                return ()
+            }
+            self.window         = 0
+            self.baseIndex      = 0
+            self.startIndex     = 0
+            self.currentIndex   = 0
+            self.endIndex       = 0
+            self.capacity       = capacity
+        }
+        
+        mutating 
+        func release(bytes count:Int) -> [UInt8]? 
+        {
+            self.storage.withUnsafeMutablePointerToElements  
+            {
+                guard self.endIndex >= self.currentIndex + count 
+                else 
+                {
+                    return nil 
+                }
+                
+                let i:Int = self.currentIndex - self.baseIndex
+                let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
+                defer 
+                {
+                    let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
+                    self.currentIndex  += count 
+                    self.startIndex     = Swift.min(self.currentIndex, limit)
+                }
+                return .init(slice)
+            }
+        }
+
+        mutating 
+        func append(_ value:UInt8) 
+        {
+            self.reserve(1)
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                $0[self.endIndex &- self.baseIndex] = value 
+            }
+            self.endIndex &+= 1
+        }
+        mutating 
+        func expand(offset:Int, count:Int) 
+        {
+            self.reserve(count)
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: offset)
+                let front:UnsafeMutablePointer<UInt8> = $0 + (self.endIndex &- self.baseIndex)
+                for i:Int in 0 ..< q
+                {
+                    (front + i &* offset).initialize(from: front - offset, count: offset)
+                }
+                (front + q &* offset).initialize(from: front - offset, count: r)
+            }
+            self.endIndex &+= count
+        }
+        
+        @inline(__always)
+        private mutating 
+        func reserve(_ count:Int) 
+        {
+            if self.capacity < self.endIndex &- self.baseIndex &+ count 
+            {
+                self.shift(allocating: count)
+            }
+        }
+        // may discard array elements before `startIndex`, adjusts capacity so that 
+        // at least one more byte can always be written without a reallocation
+        private mutating 
+        func shift(allocating extra:Int) 
+        {
+            // optimal new capacity
+            let count:Int       = self.count, 
+                capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
+            if self.capacity >= capacity 
+            {
+                // rebase without reallocating 
+                self.storage.withUnsafeMutablePointerToElements 
+                {
+                    let vacant:Int = self.startIndex - self.baseIndex
+                    $0.initialize(from: $0 + vacant, count: count)
+                    self.baseIndex = self.startIndex
+                }
+            }
+            else 
+            {
+                self.storage = self.storage.withUnsafeMutablePointerToElements 
+                {
+                    (body:UnsafeMutablePointer<UInt8>) in 
+                    
+                    let new:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: capacity)
+                    {
+                        self.capacity = $0.capacity
+                        return ()
+                    }
+                    
+                    new.withUnsafeMutablePointerToElements 
+                    {
+                        let vacant:Int = self.startIndex - self.baseIndex
+                        $0.initialize(from: $0 + vacant, count: count)
+                    }
+                    self.baseIndex = self.startIndex
+                    return new 
+                }
+            }
+        }
+    }
+    /* struct _Buffer:RandomAccessCollection
     {
         var window:Int 
         private 
@@ -698,6 +859,21 @@ extension LZ77
             self.integral.single = (self.integral.single &+         .init(value)) % 65521
             self.integral.double = (self.integral.double &+ self.integral.single) % 65521
         }
+        mutating 
+        func _reserve(_ count:Int) 
+        {
+            while self.storage.capacity < self.storage.count + count 
+            {
+                self.shift(allocating: count)
+            }
+        }
+        mutating 
+        func _append(_ value:UInt8) 
+        {
+            self.storage.append(value)
+            // self.integral.single = (self.integral.single &+         .init(value)) % 65521
+            // self.integral.double = (self.integral.double &+ self.integral.single) % 65521
+        }
         // may discard array elements before `startIndex`, adjusts capacity so that 
         // at least one more byte can always be written without a reallocation
         private mutating 
@@ -706,30 +882,31 @@ extension LZ77
             // optimal new capacity
             let count:Int       = self.count, 
                 capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
-            let vacated:Int     = self.startIndex - self.baseIndex
+            let vacant:Int      = self.startIndex - self.baseIndex
             if self.storage.capacity >= capacity 
             {
                 // rebase without reallocating 
                 self.storage.withUnsafeMutableBufferPointer 
                 {
-                    for i:Int in 0 ..< count
-                    {
-                        $0[i] = $0[i + vacated]
-                    }
+                    $0.baseAddress?.initialize(from: $0.baseAddress! + vacant, count: count)
+                    //for i:Int in 0 ..< count
+                    //{
+                    //    $0[i] = $0[i + vacant]
+                    //}
                 }
                 // remove duplicated elements at the end 
-                self.storage.removeLast(vacated)
+                self.storage.removeLast(vacant)
             }
             else 
             {
                 var new:[UInt8] = []
                 new.reserveCapacity(capacity)
-                new.append(contentsOf: self.storage.dropFirst(vacated))
+                new.append(contentsOf: self.storage.dropFirst(vacant))
                 self.storage = new
             }
             self.baseIndex = self.startIndex 
         }
-    }
+    } */
     
     struct Inflator 
     {
@@ -1170,83 +1347,87 @@ extension LZ77.Inflator.Stream
     {
         while self.b < self.input.count 
         {
+            //  one token (either a literal, or a length-distance pair with extra bits)
+            //  never requires more than 48 bits of input:
+            //  
+            //  first codeword  : 15 bits 
+            //  first extras    :  5 bits 
+            //  second codeword : 15 bits 
+            //  second extras   : 13 bits 
+            //  -------------------------
+            //  total           : 48 bits 
+            let first:UInt16 = self.input[self.b, as: UInt16.self]
             let entry:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder.Entry = 
-                table.runliteral[self.input[self.b]]
-            
-            // we have to do this check here, even if the symbl is a run symbol 
-            // because we have no idea if the decade index (used to return .decade property) 
-            // is valid 
-            guard self.b + entry.length <= self.input.count 
-            else 
-            {
-                return nil 
-            }
+                table.runliteral[LZ77.Bitstream.reverse(first)]
             
             switch entry.symbol 
             {
             case .literal(let literal):
+                guard self.b + entry.length <= self.input.count 
+                else 
+                {
+                    return nil 
+                }
                 self.b += entry.length 
                 self.output.append(literal)
                 
             case .end:
+                guard self.b + entry.length <= self.input.count 
+                else 
+                {
+                    return nil 
+                }
                 self.b += entry.length 
                 return () 
             
             case .run(let run):
+                // get the next two words to form a 48-bit value 
+                // (in the low bits bits of a UInt64)
+                // we put it in the low bits so that we can do masking shifts instead 
+                // of checked shifts 
+                var slug:UInt64 = 
+                    .init(self.input[self.b + 32, as: UInt16.self]) << 32 |
+                    .init(self.input[self.b + 16, as: UInt16.self]) << 16 | 
+                    .init(first)
+                slug &>>= entry.length
+                
                 let decade:
                 (
-                    run:(extra:Int, base:Int),
-                    distance:(extra:Int, base:Int)
+                    count:(extra:Int, base:Int),
+                    offset:(extra:Int, base:Int)
                 )
-                let composite:(run:Int, distance:Int)
                 
-                decade.run = run.decade 
-                let c:Int = self.b + entry.length + decade.run.extra
-                // use < and not <= because we are also doing a distance lookup 
-                // after this 
-                guard c < self.input.count 
-                else 
-                {
-                    return nil 
-                }
+                decade.count        = run.decade 
+                let count:Int       = decade.count.base &+ 
+                    .init(truncatingIfNeeded: slug & ~(.max &<< decade.count.extra))
                 
-                composite.run = decade.run.base + 
-                    self.input[self.b + entry.length, count: decade.run.extra, as: Int.self]
+                slug &>>= decade.count.extra
                 
                 let distance:LZ77.Huffman<LZ77.Symbol.Distance>.Decoder.Entry = 
-                    table.distance[self.input[c]]
-                // need to do this check before reading `.decade` value 
-                guard c + distance.length <= self.input.count 
+                    table.distance[LZ77.Bitstream.reverse(.init(truncatingIfNeeded: slug))]
+                slug &>>= distance.length
+                
+                decade.offset       = distance.symbol.decade 
+                let offset:Int      = decade.offset.base &+ 
+                    .init(truncatingIfNeeded: slug & ~(.max &<< decade.offset.extra))
+                
+                let b:Int = self.b  + 
+                    entry.length    + decade.count.extra + 
+                    distance.length + decade.offset.extra 
+                guard b <= self.input.count 
                 else 
                 {
                     return nil 
                 }
                 
-                decade.distance = distance.symbol.decade 
-                
-                let d:Int = c + distance.length + decade.distance.extra
-                guard d <= self.input.count 
-                else 
-                {
-                    return nil 
-                }
-                
-                composite.distance = decade.distance.base + 
-                    self.input[c + distance.length, count: decade.distance.extra, as: Int.self]
-                
-                let start:Int = self.output.endIndex - composite.distance
-                guard start >= self.output.startIndex 
+                guard self.output.endIndex - offset >= self.output.startIndex 
                 else 
                 {
                     throw LZ77.DecompressionError.invalidStringReference
                 }
                 
-                for i:Int in 0 ..< composite.run 
-                {
-                    self.output.append(self.output[start + i % composite.distance])
-                } 
-                
-                self.b = d
+                self.output.expand(offset: offset, count: count)
+                self.b = b
             }
         }
         return nil
@@ -1279,22 +1460,22 @@ extension LZ77.Inflator.Stream
         }
         
         // adler 32 is big-endian 
-        let bytes:(UInt32, UInt32, UInt32, UInt32) = 
-        (
-            self.input[boundary,      count: 8, as: UInt32.self],
-            self.input[boundary +  8, count: 8, as: UInt32.self],
-            self.input[boundary + 16, count: 8, as: UInt32.self],
-            self.input[boundary + 24, count: 8, as: UInt32.self]
-        )
-        let checksum:UInt32   = bytes.0 << 24 |
-                                bytes.1 << 16 |
-                                bytes.2 <<  8 |
-                                bytes.3
-        guard self.output.checksum == checksum
-        else 
-        {
-            throw LZ77.DecompressionError.invalidStreamChecksum
-        } 
+        // let bytes:(UInt32, UInt32, UInt32, UInt32) = 
+        // (
+        //     self.input[boundary,      count: 8, as: UInt32.self],
+        //     self.input[boundary +  8, count: 8, as: UInt32.self],
+        //     self.input[boundary + 16, count: 8, as: UInt32.self],
+        //     self.input[boundary + 24, count: 8, as: UInt32.self]
+        // )
+        // let checksum:UInt32   = bytes.0 << 24 |
+        //                         bytes.1 << 16 |
+        //                         bytes.2 <<  8 |
+        //                         bytes.3
+        // guard self.output.checksum == checksum
+        // else 
+        // {
+        //     throw LZ77.DecompressionError.invalidStreamChecksum
+        // } 
         self.b = boundary + 32
         return ()
     }
