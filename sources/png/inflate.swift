@@ -577,6 +577,39 @@ extension LZ77
         }
     }
 }
+// fixed trees 
+extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.RunLiteral 
+{
+    static 
+    let fixed:Self = LZ77.Huffman<Symbol>.init(symbols: 
+    [
+        // L1 ... L6
+        [], [], [], [], [], [], 
+        // L7 
+        [.end] + 
+        (  0 ...  22).map(LZ77.Symbol.RunLiteral.run(_:)),
+        // L8
+        (  0 ... 143).map(LZ77.Symbol.RunLiteral.literal(_:)) + 
+        ( 23 ...  30).map(LZ77.Symbol.RunLiteral.run(_:)), 
+        // L9
+        (144 ... 255).map(LZ77.Symbol.RunLiteral.literal(_:)), 
+        // L10 ... L16
+        [], [], [], [], [], [], []
+    ]).decoder()
+}
+extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.Distance 
+{
+    static 
+    let fixed:Self = LZ77.Huffman<Symbol>.init(symbols: 
+    [
+        // L1 ... L4
+        [], [], [], [], 
+        // L5 
+        (  0 ...  31).map(LZ77.Symbol.Distance.init(_:)),
+        // L6 ... L16
+        [], [], [], [], [], [], [], [], [], [], []
+    ]).decoder()
+}
 
 extension FixedWidthInteger 
 {
@@ -829,37 +862,7 @@ extension LZ77.Inflator
                 self.state = .blockTables(final: final, table: table.decoder(), count: count)
             
             case .fixed:
-                let symbols:(runliteral:[[LZ77.Symbol.RunLiteral]], distance:[[LZ77.Symbol.Distance]])
-                symbols.runliteral =
-                [
-                    // L1 ... L6
-                    [], [], [], [], [], [], 
-                    // L7 
-                    [.end] + 
-                    (  0 ...  22).map(LZ77.Symbol.RunLiteral.run(_:)),
-                    // L8
-                    (  0 ... 143).map(LZ77.Symbol.RunLiteral.literal(_:)) + 
-                    ( 23 ...  30).map(LZ77.Symbol.RunLiteral.run(_:)), 
-                    // L9
-                    (144 ... 255).map(LZ77.Symbol.RunLiteral.literal(_:)), 
-                    // L10 ... L16
-                    [], [], [], [], [], [], []
-                ]
-                symbols.distance =
-                [
-                    // L1 ... L4
-                    [], [], [], [], 
-                    // L5 
-                    (  0 ...  31).map(LZ77.Symbol.Distance.init(_:)),
-                    // L6 ... L16
-                    [], [], [], [], [], [], [], [], [], [], []
-                ]
-                let runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral> = 
-                    .init(symbols: symbols.runliteral)
-                let distance:LZ77.Huffman<LZ77.Symbol.Distance> = 
-                    .init(symbols: symbols.distance)
-                self.state = .blockCompressed(final: final, 
-                    table: (runliteral.decoder(), distance.decoder()))
+                self.state = .blockCompressed(final: final, table: (.fixed, .fixed))
             
             case .none(bytes: let count):
                 // compute endindex 
