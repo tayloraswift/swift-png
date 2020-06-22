@@ -667,8 +667,13 @@ extension LZ77
         // storing this instead of using `ManagedBuffer.capacity` because 
         // the apple docs said so
         private 
-        var capacity:Int, 
-            storage:ManagedBuffer<Void, UInt8>
+        var capacity:Int
+        
+        private 
+        var storage:ManagedBuffer<Void, UInt8>
+        
+        private
+        var integral:(single:UInt32, double:UInt32)
         
         var count:Int 
         {
@@ -689,6 +694,8 @@ extension LZ77
             self.currentIndex   = 0
             self.endIndex       = 0
             self.capacity       = capacity
+            
+            self.integral       = (1, 0)
         }
         
         mutating 
@@ -734,9 +741,9 @@ extension LZ77
                 let front:UnsafeMutablePointer<UInt8> = $0 + (self.endIndex &- self.baseIndex)
                 for i:Int in 0 ..< q
                 {
-                    (front + i &* offset).initialize(from: front - offset, count: offset)
+                    (front + i &* offset).assign(from: front - offset, count: offset)
                 }
-                (front + q &* offset).initialize(from: front - offset, count: r)
+                (front + q &* offset).assign(from: front - offset, count: r)
             }
             self.endIndex &+= count
         }
@@ -763,9 +770,10 @@ extension LZ77
                 // rebase without reallocating 
                 self.storage.withUnsafeMutablePointerToElements 
                 {
-                    let vacant:Int = self.startIndex - self.baseIndex
-                    $0.initialize(from: $0 + vacant, count: count)
-                    self.baseIndex = self.startIndex
+                    let offset:Int  = self.startIndex - self.baseIndex
+                    self.integral   = Self.update(checksum: self.integral, from: $0, count: offset)
+                    $0.assign(from: $0 + offset, count: count)
+                    self.baseIndex  = self.startIndex
                 }
             }
             else 
@@ -782,12 +790,106 @@ extension LZ77
                     
                     new.withUnsafeMutablePointerToElements 
                     {
-                        let vacant:Int = self.startIndex - self.baseIndex
-                        $0.initialize(from: $0 + vacant, count: count)
+                        let offset:Int  = self.startIndex - self.baseIndex
+                        self.integral   = Self.update(checksum: self.integral, from: body, count: offset)
+                        $0.assign(from: body + offset, count: count)
                     }
                     self.baseIndex = self.startIndex
                     return new 
                 }
+            }
+        }
+        private static 
+        func update(checksum:(single:UInt32, double:UInt32), 
+            from start:UnsafePointer<UInt8>, count:Int) 
+            -> (single:UInt32, double:UInt32)
+        {
+            // https://software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums.html
+            let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
+            var (single, double):(UInt32, UInt32) = checksum
+            for i:Int in 0 ..< q 
+            {
+                for j:Int in 5552 * i ..< 5552 * (i + 1)
+                {
+                    single &+= .init(start[j])
+                    double &+= single 
+                }
+                single %= 65521
+                double %= 65521
+            }
+            for j:Int in 5552 * q ..< 5552 * q + r
+            {
+                single &+= .init(start[j])
+                double &+= single 
+            }
+            return (single % 65521, double % 65521)
+        }
+        // this vectorized version does not perform well at all
+        /* private static 
+        func update(checksum:(single:UInt32, double:UInt32), 
+            from start:UnsafePointer<UInt8>, count:Int) 
+            -> (single:UInt32, double:UInt32)
+        {
+            var (single, double):(UInt32, UInt32) = checksum
+            let linear:SIMD16<UInt16> = .init(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+            
+            var current:UnsafePointer<UInt8> = start, 
+                remaining:Int                = count 
+            
+            while remaining >= 16 
+            {
+                let k:Int  = min(remaining, 5552) & ~15
+                remaining -= k 
+                
+                var a:SIMD4<UInt32> = .init(0, 0, 0, single)
+                var b:SIMD4<UInt32> = .init(0, 0, 0, double)
+                for g:Int in 0 ..< k >> 4
+                {
+                    b                     &+= a &<< 4
+                    
+                    let bytes:SIMD16<UInt8> = 
+                        .init(UnsafeBufferPointer.init(start: current + g << 4, count: 16))
+                    // gather first-order sum 
+                    let a16:SIMD16<UInt16>  = .init(truncatingIfNeeded: bytes)
+                    let a8:SIMD8<UInt32>    = .init(truncatingIfNeeded: a16.evenHalf &+ a16.oddHalf)
+                    let a4:SIMD4<UInt32>    =        a8.evenHalf &+  a8.oddHalf
+                    a                     &+= a4
+                    // gather second-order sum
+                    let b16:SIMD16<UInt16>  = a16 &* linear
+                    let b8:SIMD8<UInt32>    = .init(truncatingIfNeeded: b16.evenHalf &+ b16.oddHalf)
+                    let b4:SIMD4<UInt32>    =        b8.evenHalf &+  b8.oddHalf
+                    b                     &+= b4
+                }
+                // no vectorized hardware modulo
+                let combined2:SIMD4<UInt32> = .init(
+                    lowHalf:  a.evenHalf &+ a.oddHalf, 
+                    highHalf: b.evenHalf &+ b.oddHalf)
+                let combined:SIMD2<UInt32>  = combined2.evenHalf &+ combined2.oddHalf
+                single = (single &+ combined.x) % 65521
+                double = (double &+ combined.y) % 65521
+                
+                current += k
+            }
+            while remaining > 0 
+            {
+                single &+= .init(current.pointee)
+                double &+= single 
+                
+                current   += 1
+                remaining -= 1
+            }
+            
+            return (single % 65521, double % 65521)
+        } */
+        mutating 
+        func checksum() -> UInt32 
+        {
+            // everything still in the storage buffer has not yet been integrated 
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                let (single, double):(UInt32, UInt32) = 
+                    Self.update(checksum: self.integral, from: $0, count: self.endIndex &- self.baseIndex)
+                return double << 16 | single
             }
         }
     }
@@ -1460,22 +1562,22 @@ extension LZ77.Inflator.Stream
         }
         
         // adler 32 is big-endian 
-        // let bytes:(UInt32, UInt32, UInt32, UInt32) = 
-        // (
-        //     self.input[boundary,      count: 8, as: UInt32.self],
-        //     self.input[boundary +  8, count: 8, as: UInt32.self],
-        //     self.input[boundary + 16, count: 8, as: UInt32.self],
-        //     self.input[boundary + 24, count: 8, as: UInt32.self]
-        // )
-        // let checksum:UInt32   = bytes.0 << 24 |
-        //                         bytes.1 << 16 |
-        //                         bytes.2 <<  8 |
-        //                         bytes.3
-        // guard self.output.checksum == checksum
-        // else 
-        // {
-        //     throw LZ77.DecompressionError.invalidStreamChecksum
-        // } 
+        let bytes:(UInt32, UInt32, UInt32, UInt32) = 
+        (
+            self.input[boundary,      count: 8, as: UInt32.self],
+            self.input[boundary +  8, count: 8, as: UInt32.self],
+            self.input[boundary + 16, count: 8, as: UInt32.self],
+            self.input[boundary + 24, count: 8, as: UInt32.self]
+        )
+        let checksum:UInt32   = bytes.0 << 24 |
+                                bytes.1 << 16 |
+                                bytes.2 <<  8 |
+                                bytes.3
+        guard self.output.checksum() == checksum
+        else 
+        {
+            throw LZ77.DecompressionError.invalidStreamChecksum
+        } 
         self.b = boundary + 32
         return ()
     }
