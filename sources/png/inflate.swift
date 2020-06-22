@@ -147,7 +147,7 @@ extension LZ77.Bitstream
         return .init(interval & mask)
     }
     
-    subscript(i:Int, as _:UInt16.Type) -> UInt16 
+    subscript(i:Int) -> UInt16 
     {
         self.atoms.withUnsafeBufferPointer
         {
@@ -693,13 +693,191 @@ extension FixedWidthInteger
 }
 extension LZ77 
 {
-    enum Compression  
+    enum Buffer 
     {
-        case none(bytes:Int)
-        case fixed 
-        case dynamic(Huffman<Symbol.CodeLength>, count:(runliteral:Int, distance:Int))
     }
-    struct Buffer 
+}
+extension LZ77.Buffer 
+{
+    struct In 
+    {
+        private 
+        var capacity:Int, // units in atoms
+            bytes:Int 
+        private 
+        var storage:ManagedBuffer<Void, UInt16>
+        
+        var count:Int 
+        {
+            self.bytes << 3
+        }
+        
+        // calculates number of atoms given byte count 
+        @inline(__always)
+        private static 
+        func atoms(bytes:Int) -> Int 
+        {
+            (bytes + 1) >> 1 + 3 // 3 padding shorts
+        }
+        
+        // Bitstreams are indexed from LSB to MSB within each atom 
+        //      
+        // atom 0   16 [ ← ← ← ← ← ← ← ← ]  0
+        // atom 1   32 [ ← ← ← ← ← ← ← ← ] 16
+        // atom 2   48 [ ← ← ← ← ← ← ← ← ] 32
+        // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
+        init(_ data:[UInt8])
+        {
+            self.capacity   = 0
+            self.bytes      = 0
+            self.storage    = .create(minimumCapacity: 0){ _ in () }
+            
+            var b:Int  = 0
+            self.rebase(data, pointer: &b)
+        }
+        
+        // discards all bits before the pointer `b`
+        mutating 
+        func rebase(_ data:[UInt8], pointer b:inout Int)  
+        {
+            guard !data.isEmpty 
+            else 
+            {
+                return 
+            }
+            
+            let a:Int = b >> 4 
+            // calculate new buffer size 
+            let rollover:Int    = self.bytes - 2 * a
+            let minimum:Int     = Self.atoms(bytes: rollover + data.count)
+            if self.capacity < minimum 
+            {
+                // reallocate storage 
+                var capacity:Int = minimum.nextPowerOfTwo
+                let new:ManagedBuffer<Void, UInt16> = .create(minimumCapacity: capacity) 
+                {
+                    capacity    = $0.capacity
+                    return ()
+                }
+                // transfer leftover elements 
+                self.capacity   = capacity
+                self.storage    = self.storage.withUnsafeMutablePointerToElements 
+                {
+                    (old:UnsafeMutablePointer<UInt16>) in
+                    new.withUnsafeMutablePointerToElements 
+                    {
+                        $0.assign(from: old + a, count: (rollover + 1) >> 1)
+                    }
+                    return new
+                }
+            }
+            else if a > 0
+            {
+                // shift to beginning 
+                self.storage.withUnsafeMutablePointerToElements 
+                {
+                    $0.assign(from: $0 + a, count: (rollover + 1) >> 1)
+                }
+            }
+            
+            b         -= a << 4
+            // write new data 
+            data.withUnsafeBufferPointer
+            {
+                (data:UnsafeBufferPointer<UInt8>) in 
+                self.storage.withUnsafeMutablePointerToElements 
+                {
+                    // already checked !data.isEmpty
+                    let count:Int
+                    var start:UnsafePointer<UInt8>  = data.baseAddress!
+                    let i:Int                       = (rollover + 1) >> 1
+                    if rollover & 1 != 0 
+                    {
+                        // odd number of bytes in the stream: move over 1 byte from the new data
+                        $0[i - 1]  &= 0x00ff
+                        $0[i - 1]  |= .init(start.pointee) << 8 
+                        start      += 1
+                        count       = data.count - 1
+                    }
+                    else 
+                    {
+                        count       = data.count 
+                    }
+                    
+                    for j:Int in 0 ..< count >> 1 
+                    {
+                        $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 | 
+                                                .init(start[j << 1    ])
+                    }
+                    let k:Int = i + (count + 1) >> 1
+                    if count & 1 != 0
+                    {
+                        $0[k &-         1]    = .init(start[count  - 1])
+                    }
+                    // write 48 bits of padding 
+                    $0[k    ] = 0x0000
+                    $0[k + 1] = 0x0000
+                    $0[k + 2] = 0x0000
+                }
+                
+                self.bytes = rollover + data.count
+            }
+        }
+        
+        // puts bits in low end of outputted integer 
+        // 
+        //  { b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
+        //                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //                                                                   ^  
+        //                                       [4, count: 6, as: UInt16.self]
+        //      produces 
+        //  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b.10, b.9, b.8, b.7, b.6, b.5, b.4}
+        subscript<I>(i:Int, count count:Int, as _:I.Type) -> I 
+            where I:FixedWidthInteger
+        {
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                guard count > 0 
+                else 
+                {
+                    return .zero 
+                }
+                
+                let a:Int = i >> 4, 
+                    b:Int = i & 0x0f
+                //    a + 2           a + 1             a
+                //      [ : : :x:x:x:x:x|x:x: : : : : : ]
+                //             ~~~~~~~~~~~~~^
+                //            count = 14, b = 12
+                //
+                //      →               [ :x:x:x:x:x|x:x]
+                
+                // must use << and not &<< to correctly handle shift of 16
+                let interval:UInt16 = $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b, 
+                    mask:UInt16     = ~(UInt16.max << count)
+                return .init(interval & mask)
+            }
+        }
+        
+        subscript(i:Int) -> UInt16 
+        {
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                let a:Int = i >> 4,
+                    b:Int = i & 0x0f
+                //    a + 2           a + 1             a
+                //      [ : :x:x:x:x:x:x|x:x: : : : : : ]
+                //           ~~~~~~~~~~~~~~~^
+                //            count = 16, b = 12
+                //
+                //      →   [x:x:x:x:x:x|x:x]
+                
+                // must use << and not &<< to correctly handle shift of 16
+                return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
+            }
+        }
+    }
+    struct Out 
     {
         var window:Int
          
@@ -937,7 +1115,17 @@ extension LZ77
             }
         }
     }
-    
+}
+extension LZ77.Buffer.In:ExpressibleByArrayLiteral 
+{
+    init(arrayLiteral:UInt8...) 
+    {
+        self.init(arrayLiteral)
+    }
+}
+
+extension LZ77 
+{    
     struct Inflator 
     {
         private 
@@ -947,7 +1135,7 @@ extension LZ77
             case blockStart
             case blockTables(
                 final:Bool, 
-                table:Huffman<Symbol.CodeLength>.Decoder,
+                table:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder,
                 count:(runliteral:Int, distance:Int)
             )
             case blockUncompressed(final:Bool, end:Int)
@@ -955,8 +1143,8 @@ extension LZ77
                 final:Bool, 
                 table:
                 (
-                    runliteral:Huffman<Symbol.RunLiteral>.Decoder, 
-                    distance:Huffman<Symbol.Distance>.Decoder
+                    runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder, 
+                    distance:LZ77.Huffman<LZ77.Symbol.Distance>.Decoder
                 )
             )
             case streamChecksum
@@ -983,13 +1171,27 @@ extension LZ77
                 }
             } */
         }
-        
         struct Stream 
         {
-            var input:Bitstream, 
+            enum Compression  
+            {
+                case none(bytes:Int)
+                case fixed 
+                case dynamic(LZ77.Huffman<Symbol.CodeLength>, count:(runliteral:Int, distance:Int))
+            }
+            
+            var input:LZ77.Buffer.In, 
                 b:Int 
             var lengths:[Int]
-            var output:Buffer 
+            var output:LZ77.Buffer.Out
+            
+            init() 
+            {
+                self.b          = 0
+                self.input      = []
+                self.lengths    = []
+                self.output     = .init()
+            }
         }
         
         private 
@@ -997,17 +1199,7 @@ extension LZ77
             stream:Stream 
     }
 }
-extension LZ77.Inflator.Stream 
-{
-    init() 
-    {
-        self.b          = 0
-        self.input      = []
-        self.lengths    = []
-        self.output     = .init()
-    }
-}
-extension LZ77.Inflator
+extension LZ77.Inflator 
 {
     init() 
     {
@@ -1057,7 +1249,7 @@ extension LZ77.Inflator
             self.state                  = .blockStart
         
         case .blockStart:
-            guard let (final, compression):(Bool, LZ77.Compression) = try self.stream.blockStart() 
+            guard let (final, compression):(Bool, Stream.Compression) = try self.stream.blockStart() 
             else 
             {
                 return nil 
@@ -1166,7 +1358,7 @@ extension LZ77.Inflator.Stream
     func blockStart() throws -> 
     (
         final:Bool, 
-        compression:LZ77.Compression
+        compression:Compression
     )? 
     {
         guard self.b + 3 <= self.input.count 
@@ -1177,7 +1369,7 @@ extension LZ77.Inflator.Stream
         
         // read block header bits 
         let final:Bool = self.input[self.b, count: 1, as: UInt16.self] != 0 
-        let compression:LZ77.Compression 
+        let compression:Compression 
         switch self.input[self.b + 1, count: 2, as: UInt16.self] 
         {
         case 0:
@@ -1283,7 +1475,7 @@ extension LZ77.Inflator.Stream
             }
             
             let entry:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder.Entry = 
-                table[LZ77.Bitstream.reverse(self.input[self.b, as: UInt16.self])]
+                table[LZ77.Bitstream.reverse(self.input[self.b])]
             // if the codeword length is longer than the available input 
             // then we know the match is invalid (due to padding 0-bits)
             guard self.b + entry.length <= self.input.count 
@@ -1386,7 +1578,7 @@ extension LZ77.Inflator.Stream
             //  second extras   : 13 bits 
             //  -------------------------
             //  total           : 48 bits 
-            let first:UInt16 = self.input[self.b, as: UInt16.self]
+            let first:UInt16 = self.input[self.b]
             let entry:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder.Entry = 
                 table.runliteral[LZ77.Bitstream.reverse(first)]
             
@@ -1416,8 +1608,8 @@ extension LZ77.Inflator.Stream
                 // we put it in the low bits so that we can do masking shifts instead 
                 // of checked shifts 
                 var slug:UInt64 = 
-                    .init(self.input[self.b + 32, as: UInt16.self]) << 32 |
-                    .init(self.input[self.b + 16, as: UInt16.self]) << 16 | 
+                    .init(self.input[self.b + 32]) << 32 |
+                    .init(self.input[self.b + 16]) << 16 | 
                     .init(first)
                 slug &>>= entry.length
                 
