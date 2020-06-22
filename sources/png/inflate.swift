@@ -149,29 +149,20 @@ extension LZ77.Bitstream
     
     subscript(i:Int, as _:UInt16.Type) -> UInt16 
     {
-        let a:Int = i >> 4, 
-            b:Int = i & 0x0f
-        //    a + 2           a + 1             a
-        //      [ : :x:x:x:x:x:x|x:x: : : : : : ]
-        //           ~~~~~~~~~~~~~~~^
-        //            count = 16, b = 12
-        //
-        //      →   [x:x|x:x:x:x:x:x]
-        
-        // must use << and not &<< to correctly handle shift of 16
-        return self.atoms[a + 1] << (UInt16.bitWidth &- b) | self.atoms[a] &>> b
-    }
-    // puts bits in high end of outputted integer 
-    // 
-    //  { ... b.18, b.17, b.16 | b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
-    //        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                                                                                           ^  
-    //                                                                                          [4]
-    //      produces 
-    //  { b.4, b.5, b.6, b.7, b.8, b.9, b.10, b.11, b.12, b.13, b.14, b.15, b.16, b.17, b.18 }
-    subscript(i:Int) -> UInt16 
-    {        
-        return Self.reverse(self[i, as: UInt16.self])
+        self.atoms.withUnsafeBufferPointer
+        {
+            let a:Int = i >> 4,
+                b:Int = i & 0x0f
+            //    a + 2           a + 1             a
+            //      [ : :x:x:x:x:x:x|x:x: : : : : : ]
+            //           ~~~~~~~~~~~~~~~^
+            //            count = 16, b = 12
+            //
+            //      →   [x:x:x:x:x:x|x:x]
+            
+            // must use << and not &<< to correctly handle shift of 16
+            return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
+        }
     }
     
     // https://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
@@ -420,12 +411,15 @@ extension LZ77.Huffman
         
         private 
         let storage:[Entry], 
-            n:Int // number of level 0 entries
+            fence:Int,
+            fold:Int
         
+        // n is the number of level 0 entries
         init(_ storage:[Entry], n:Int) 
         {
             self.storage    = storage 
-            self.n          = n
+            self.fence      = n << 8
+            self.fold       = n * 255
         }
     }
     
@@ -464,17 +458,10 @@ extension LZ77.Huffman.Decoder
     // codeword is big-endian
     subscript(codeword:UInt16) -> Entry 
     {
+        // all png huffman trees are complete, so out-of-range lookups are not possible (unlike in jpeg)
         // [ level 0 index  |    offset    ]
-        let i:Int = .init(codeword >> 8)
-        if i < self.n 
-        {
-            return self.storage[i]
-        }
-        else 
-        {
-            let j:Int = .init(codeword)
-            return self.storage[j - self.n * 255]
-        }
+        let i:Int = .init(codeword)
+        return self.storage[i < self.fence ? i >> 8 : i &- self.fold]
     }
 }
 
@@ -1296,7 +1283,7 @@ extension LZ77.Inflator.Stream
             }
             
             let entry:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder.Entry = 
-                table[self.input[self.b]]
+                table[LZ77.Bitstream.reverse(self.input[self.b, as: UInt16.self])]
             // if the codeword length is longer than the available input 
             // then we know the match is invalid (due to padding 0-bits)
             guard self.b + entry.length <= self.input.count 
