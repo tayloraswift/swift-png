@@ -283,18 +283,30 @@ extension LZ77.Huffman
         return (n, z)
     }
     
-    static 
+    private static
+    func group<S>(_ assignments:S) -> [[Symbol]]
+        where S:Sequence, S.Element == (Symbol, Int)
+    {
+        var groups:[[Symbol]] = .init(repeating: [], count: 16)
+        for (symbol, length):(Symbol, Int) in assignments where length > 0
+        {
+            groups[length - 1].append(symbol)
+        }
+        return groups
+    }
+    
+    static
     func validate<S>(_ assignments:S) -> Self? 
         where S:Sequence, S.Element == (Symbol, Int)
     {
-        let groups:[Int: [(Symbol, Int)]] = .init(grouping: assignments, by: \.1)
-        let symbols:[[Symbol]] = (1 ... 16).map 
-        {
-            groups[$0, default: []].map(\.0).sorted()
-        }
-        return .validate(symbols: symbols)
+        return .validate(symbols: Self.group(assignments))
     }
-    
+    static
+    func validate<S>(unsorted assignments:S) -> Self?
+        where S:Sequence, S.Element == (Symbol, Int)
+    {
+        return .validate(symbols: Self.group(assignments).map{ $0.sorted() })
+    }
     //  static func LZ77.Huffman.validate(symbols:)
     //      Creates a huffman tree from the given leaf nodes.
     //  
@@ -316,7 +328,7 @@ extension LZ77.Huffman
     //      contain the leaves in the first level of the tree. This array must 
     //      contain 16 sub-arrays, even if the deeper levels of the tree are 
     //      empty, or this initializer will suffer a precondition failure.
-    static 
+    private static
     func validate(symbols:[[Symbol]]) -> Self?
     {
         let padded:[[Symbol]]
@@ -1200,7 +1212,7 @@ extension LZ77.Inflator.Stream
                 .literal(14), .literal( 1), 
                 .literal(15), 
             ]
-            guard let table:LZ77.Huffman<LZ77.Symbol.CodeLength> = .validate(
+            guard let table:LZ77.Huffman<LZ77.Symbol.CodeLength> = .validate(unsorted: 
                 (0 ..< codelengths).map 
             {
                 (symbols[$0], self.input[self.b + 17 + 3 * $0, count: 3, as: Int.self])
