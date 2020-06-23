@@ -45,3 +45,26 @@ RGBA8   (interleaved, public  ): 1,057,035
 RGBA8   (encode,      internal): 10,672,385
 RGBA8   (encode,      public  ): 10,659,090
 ```
+
+new measurements from jun 23 
+measured with 1 google and 2 plain text firefox tabs open, 4-6 atom tabs, and paused spotify
+
+```
+$ .build/release/benchmarks
+ARGB32* (structured,  internal): 675,555
+ARGB32* (structured,  public  ): 655,488
+RGBA8   (structured,  internal): 596,695
+RGBA8   (structured,  public  ): 598,074
+RGBA8   (planar,      internal): 765,345
+RGBA8   (planar,      public  ): 751,493
+RGBA8   (interleaved, internal): 713,077
+RGBA8   (interleaved, public  ): 705,241
+  VA8   (structured,  internal): 582,071
+  VA8   (structured,  public  ): 579,289
+  VA8   (planar,      internal): 640,236
+  VA8   (planar,      public  ): 637,968
+  VA8   (interleaved, internal): 675,133
+  VA8   (interleaved, public  ): 682,644
+   V8   (interleaved, internal): 583,853
+   V8   (interleaved, public  ): 576,992
+```
