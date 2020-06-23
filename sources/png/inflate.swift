@@ -416,7 +416,7 @@ extension LZ77.Huffman
         init(_ storage:[Entry], n:Int) 
         {
             self.storage    = storage 
-            self.fence      = n << 7
+            self.fence      = n << 8
             self.fold       = n * 127
         }
     }
@@ -446,7 +446,7 @@ extension LZ77.Huffman
         }
         
         assert(storage.count == z)
-        //print("created huffman decoder (size \(storage.count * MemoryLayout<Decoder.Entry>.stride) bytes)")
+        // print("created huffman decoder (type \(Symbol.self), \(storage.count) entries, \(storage.count * MemoryLayout<Decoder.Entry>.stride) bytes)")
         return .init(storage, n: n)
     }
 }
@@ -459,7 +459,7 @@ extension LZ77.Huffman.Decoder
         // all png huffman trees are complete, so out-of-range lookups are not possible (unlike in jpeg)
         // [ level 0 index  |    offset    ]
         let i:Int = .init(codeword)
-        return self.storage[i < self.fence ? i >> 7 : i &- self.fold]
+        return self.storage[i < self.fence ? i >> 8 : i >> 1 &- self.fold]
     }
 }
 
