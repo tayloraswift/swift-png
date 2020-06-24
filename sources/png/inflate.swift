@@ -59,12 +59,12 @@ extension LZ77.Huffman
         {
             // every interior node on the level above generates two new nodes.
             // some of the new nodes are leaf nodes, the rest are interior nodes.
-            interior = 2 * interior - leaves.count
+            interior    = 2 * interior - leaves.count
         }
         
         // the number of interior nodes remaining is the number of child trees
-        let n:Int      = 256 - interior
-        var z:Int      = n
+        let n:Int       = 256 - interior
+        var z:Int       = 256 // n
         // finish validating the tree
         for (i, leaves):(Int, Range<Int>) in levels[8 ..< 15].enumerated()
         {
@@ -162,26 +162,29 @@ extension LZ77.Huffman
         self.init(symbols: symbols, levels: levels, size: size)
     }
     
-    var fence:Int 
-    {
-        self.size.n << 8
-    }
-    var fold:Int 
-    {
-        self.size.n * 127
-    }
     func table<Pattern>(initializing destination:UnsafeMutablePointer<Pattern>) 
         where Pattern:LZ77.Symbol.Pattern, Pattern.Symbol == Symbol
     {
         var current:UnsafeMutablePointer<Pattern> = destination
-        for (l, level):(Int, Range<Int>) in self.levels.enumerated()
+        for (l, level):(Int, Range<Int>) in zip(1 ... 8, self.levels.prefix(8))
         {
-            let clones:Int  = [128, 64, 32, 16, 8, 4, 2, 1, 64, 32, 16, 8, 4, 2, 1][l]
+            let clones:Int  = 256 >> l
             for symbol:Symbol in self.symbols[level]
             {
-                let pattern:Pattern = .init(symbol, length: l + 1)
+                let pattern:Pattern = .init(symbol, length: l)
                 current.initialize(repeating: pattern, count: clones)
                 current += clones 
+            }
+        }
+        current = destination + 256
+        for (l, level):(Int, Range<Int>) in zip(9 ... 15, self.levels.dropFirst(8))
+        {
+            let clones:Int  = 32768 >> l
+            for symbol:Symbol in self.symbols[level]
+            {
+                let pattern:Pattern = .init(symbol, length: l)
+                current.initialize(repeating: pattern, count: clones)
+                current += clones
             }
         }
     }
@@ -195,16 +198,16 @@ extension LZ77
         
         private 
         let storage:ManagedBuffer<Void, UInt8>,
-            runliteral:(fence:Int, fold:Int), 
-            distance:(offset:Int, fence:Int, fold:Int)
+            fence:(runliteral:Int, distance:Int),
+            offset:Int
+            //runliteral:(fence:Int, fold:Int),
+            //distance:(offset:Int, fence:Int, fold:Int)
         //               stack
         //    0 ┌───────────────────────┐ : Buffer pointer 
         //      ├───────────────────────┤ : Run-literal fence
-        //      ├───────────────────────┤ : Run-literal fold 
-        //      ├───────────────────────┤ : Distance table offset
         //      ├───────────────────────┤ : Distance fence
-        //      ├───────────────────────┤ : Distance fold 
-        //   48 └───────────────────────┘
+        //      ├───────────────────────┤ : Distance table offset
+        //   32 └───────────────────────┘
         //                heap
         //    0 ┌───────────────────────┐
         //      │                       │
@@ -414,27 +417,27 @@ extension LZ77.Semistatic
         }
         
         return .init(storage: storage,
-            runliteral: (                fence: runliteral.fence, fold: runliteral.fold), 
-            distance:   (offset: offset, fence:   distance.fence, fold:   distance.fold))
+            fence: (runliteral: runliteral.size.n, distance: distance.size.n), offset: offset)
     }
     
-    @inline(__always)
-    private 
-    func reverse(_ word:UInt16) -> UInt16 
+    // bits in lower half of the uint16
+    private
+    func reverse(_ byte:UInt16) -> Int
     {
         // fastest bit twiddle in the west,, now that i measured it
         // now i know why everyone at apple asks this same coding interview question
-        self.storage.withUnsafeMutablePointerToElements 
+        self.storage.withUnsafeMutablePointerToElements
         {
-            .init($0[.init(word & 0x00ff)]) << 8 | .init($0[.init(word >> 8)])
+            .init($0[.init(byte)])
         }
     }
-    @inline(__always)
-    private  
-    func index(_ codeword:UInt16, fence:Int, fold:Int) -> Int
+    private
+    func index(_ codeword:UInt16, fence:Int) -> Int
     {
-        let i:Int = .init(self.reverse(codeword))
-        return i < fence ? i >> 8 : i >> 1 &- fold
+        let first:Int = self.reverse(codeword & 0x00ff)
+        return first <  fence ?
+               first :
+            (( first &- fence &+ 2 ) << 8 | self.reverse(codeword >> 8)) >> 1
     }
     
     subscript(codeword:UInt16, as _:LZ77.Symbol.RunLiteral.Type) -> LZ77.Symbol.RunLiteral 
@@ -445,7 +448,7 @@ extension LZ77.Semistatic
             // should get constant-folded
             let start:Int  = 256    + 64 * MemoryLayout<Decade>.stride
             let offset:Int = start &+ MemoryLayout<LZ77.Symbol.RunLiteral>.stride &* 
-                self.index(codeword, fence: self.runliteral.fence, fold: self.runliteral.fold)
+                self.index(codeword, fence: self.fence.runliteral)
             return raw.load(fromByteOffset: offset, as: LZ77.Symbol.RunLiteral.self)
         }
     }
@@ -454,8 +457,8 @@ extension LZ77.Semistatic
         self.storage.withUnsafeMutablePointerToElements 
         {
             let raw:UnsafeRawPointer = .init($0)
-            let offset:Int = self.distance.offset &+ MemoryLayout<LZ77.Symbol.Distance>.stride &* 
-                self.index(codeword, fence: self.distance.fence, fold: self.distance.fold)
+            let offset:Int = self.offset &+ MemoryLayout<LZ77.Symbol.Distance>.stride &*
+                self.index(codeword, fence: self.fence.distance)
             return raw.load(fromByteOffset: offset, as: LZ77.Symbol.Distance.self)
         }
     }
@@ -834,9 +837,10 @@ extension LZ77.Buffer.In
             //            count = 16, b = 12
             //
             //      →   [x:x:x:x:x:x|x:x]
-            
+            let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            return .init(truncatingIfNeeded: extended &>> b)
             // must use << and not &<< to correctly handle shift of 16
-            return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
+            // return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
         }
     }
 }
