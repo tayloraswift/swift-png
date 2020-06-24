@@ -1,12 +1,11 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+//  This Source Code Form is subject to the terms of the Mozilla Public
+//  License, v. 2.0. If a copy of the MPL was not distributed with this
+//  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
 enum LZ77 
 {
     enum DecompressionError:Swift.Error
     {
-        case truncatedBitstream 
         // stream errors
         case invalidStreamMethod
         case invalidStreamWindowSize(exponent:Int)
@@ -639,188 +638,8 @@ extension LZ77
                 self.storage = .init(length) << 8 | .init(symbol)
             }
         }
-        
-        /* enum RunLiteral:Comparable
-        {
-            case literal(UInt8)
-            case end 
-            case run(Run)
-            
-            static 
-            let allSymbols:[Self] = 
-                (0 ... 255).map(Self.literal(_:)) + 
-                [.end] + 
-                (0 ...  28).map(Self.run(_:))
-            
-            static 
-            func run(_ run:Int) -> Self 
-            {
-                .run(.init(run: run))
-            }
-            
-            struct Run:Comparable
-            {
-                private static 
-                let decades:[(extra:Int, base:Int)] = 
-                [
-                    (0,   3),
-                    (0,   4),
-                    (0,   5),
-                    (0,   6),
-                    (0,   7),
-                    
-                    (0,   8),
-                    (0,   9),
-                    (0,  10),
-                    (1,  11),
-                    (1,  13),
-                    
-                    (1,  15),
-                    (1,  17),
-                    (2,  19),
-                    (2,  23),
-                    (2,  27),
-                    
-                    (2,  31),
-                    (3,  35),
-                    (3,  43),
-                    (3,  51),
-                    (3,  59),
-                    
-                    (4,  67),
-                    (4,  83),
-                    (4,  99),
-                    (4, 115),
-                    (5, 131),
-                    
-                    (5, 163),
-                    (5, 195),
-                    (5, 227),
-                    (0, 258),
-                    
-                    // padding values, because out-of-bounds symbols occur
-                    // in fixed huffman trees, and may be erroneously decoded 
-                    // if the decoder goes beyond the end-of-stream (which it is 
-                    // temporarily allowed to do, for performance)
-                    (0,   0),
-                    (0,   0),
-                ]
-                
-                @General.Storage<UInt8> 
-                var run:Int 
-                
-                var decade:(extra:Int, base:Int) 
-                {
-                    Self.decades[self.run]
-                }
-                
-                static 
-                func < (lhs:Self, rhs:Self) -> Bool 
-                {
-                    lhs.run < rhs.run
-                }
-            }
-        }
-        
-        // namespace for the decades LUT 
-        struct Distance:Comparable
-        {
-            private static 
-            let decades:[(extra:Int, base:Int)] = 
-            [
-                ( 0,     1),
-                ( 0,     2),
-                ( 0,     3),
-                ( 0,     4),
-                ( 1,     5),
-                
-                ( 1,     7),
-                ( 2,     9),
-                ( 2,    13),
-                ( 3,    17),
-                ( 3,    25),
-                
-                ( 4,    33),
-                ( 4,    49),
-                ( 5,    65),
-                ( 5,    97),
-                ( 6,   129),
-                
-                ( 6,   193),
-                ( 7,   257),
-                ( 7,   385),
-                ( 8,   513),
-                ( 8,   769),
-                
-                ( 9,  1025),
-                ( 9,  1537),
-                (10,  2049),
-                (10,  3073),
-                (11,  4097),
-                
-                (11,  6145),
-                (12,  8193),
-                (12, 12289),
-                (13, 16385),
-                (13, 24577),
-                
-                // padding values, because out-of-bounds symbols occur
-                // in fixed huffman trees, and may be erroneously decoded 
-                // if the decoder goes beyond the end-of-stream (which it is 
-                // temporarily allowed to do, for performance)
-                ( 0,     0),
-                ( 0,     0),
-            ]
-            
-            @General.Storage<UInt8> 
-            var distance:Int 
-            
-            var decade:(extra:Int, base:Int) 
-            {
-                Self.decades[self.distance]
-            }
-            
-            init(_ distance:Int) 
-            {
-                self._distance = .init(wrappedValue: distance)
-            }
-            
-            static 
-            func < (lhs:Self, rhs:Self) -> Bool 
-            {
-                lhs.distance < rhs.distance
-            }
-        } */
     }
 }
-// fixed trees 
-/* extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.RunLiteral 
-{
-    static 
-    let fixed:Self = LZ77.Huffman<Symbol>.init(
-        symbols: [.end] +
-            (  0 ...  22).map(LZ77.Symbol.RunLiteral.run(_:))       as [Symbol] +
-            (  0 ... 143).map(LZ77.Symbol.RunLiteral.literal(_:))   as [Symbol] +
-            ( 23 ...  30).map(LZ77.Symbol.RunLiteral.run(_:))       as [Symbol] +
-            (144 ... 255).map(LZ77.Symbol.RunLiteral.literal(_:)),
-        levels:
-            .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
-            [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
-            .init(repeating: 288 ..< 288, count: 6)   // L10 ... L15
-        ).decoder()
-}
-extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.Distance 
-{
-    static 
-    let fixed:Self = LZ77.Huffman<Symbol>.init(
-        symbols:
-            (0 ... 31).map(LZ77.Symbol.Distance.init(_:)),
-        levels:
-            .init(repeating:  0 ..<  0, count: 4)   +
-            [0 ..< 32]                              +
-            .init(repeating: 32 ..< 32, count: 10)
-        ).decoder()
-} */
 
 extension FixedWidthInteger 
 {
@@ -847,177 +666,182 @@ extension LZ77.Buffer
             bytes:Int 
         private 
         var storage:ManagedBuffer<Void, UInt16>
+    }
+}
+extension LZ77.Buffer.In 
+{        
+    var count:Int 
+    {
+        self.bytes << 3
+    }
+    
+    // calculates number of atoms given byte count 
+    @inline(__always)
+    private static 
+    func atoms(bytes:Int) -> Int 
+    {
+        (bytes + 1) >> 1 + 3 // 3 padding shorts
+    }
+    
+    // Bitstreams are indexed from LSB to MSB within each atom 
+    //      
+    // atom 0   16 [ ← ← ← ← ← ← ← ← ]  0
+    // atom 1   32 [ ← ← ← ← ← ← ← ← ] 16
+    // atom 2   48 [ ← ← ← ← ← ← ← ← ] 32
+    // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
+    init(_ data:[UInt8])
+    {
+        self.capacity   = 0
+        self.bytes      = 0
+        self.storage    = .create(minimumCapacity: 0){ _ in () }
         
-        var count:Int 
+        var b:Int  = 0
+        self.rebase(data, pointer: &b)
+    }
+    
+    // discards all bits before the pointer `b`
+    mutating 
+    func rebase(_ data:[UInt8], pointer b:inout Int)  
+    {
+        guard !data.isEmpty 
+        else 
         {
-            self.bytes << 3
+            return 
         }
         
-        // calculates number of atoms given byte count 
-        @inline(__always)
-        private static 
-        func atoms(bytes:Int) -> Int 
+        let a:Int = b >> 4 
+        // calculate new buffer size 
+        let rollover:Int    = self.bytes - 2 * a
+        let minimum:Int     = Self.atoms(bytes: rollover + data.count)
+        if self.capacity < minimum 
         {
-            (bytes + 1) >> 1 + 3 // 3 padding shorts
-        }
-        
-        // Bitstreams are indexed from LSB to MSB within each atom 
-        //      
-        // atom 0   16 [ ← ← ← ← ← ← ← ← ]  0
-        // atom 1   32 [ ← ← ← ← ← ← ← ← ] 16
-        // atom 2   48 [ ← ← ← ← ← ← ← ← ] 32
-        // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
-        init(_ data:[UInt8])
-        {
-            self.capacity   = 0
-            self.bytes      = 0
-            self.storage    = .create(minimumCapacity: 0){ _ in () }
-            
-            var b:Int  = 0
-            self.rebase(data, pointer: &b)
-        }
-        
-        // discards all bits before the pointer `b`
-        mutating 
-        func rebase(_ data:[UInt8], pointer b:inout Int)  
-        {
-            guard !data.isEmpty 
-            else 
+            // reallocate storage 
+            var capacity:Int = minimum.nextPowerOfTwo
+            let new:ManagedBuffer<Void, UInt16> = .create(minimumCapacity: capacity) 
             {
-                return 
+                capacity    = $0.capacity
+                return ()
             }
-            
-            let a:Int = b >> 4 
-            // calculate new buffer size 
-            let rollover:Int    = self.bytes - 2 * a
-            let minimum:Int     = Self.atoms(bytes: rollover + data.count)
-            if self.capacity < minimum 
+            // transfer leftover elements 
+            self.capacity   = capacity
+            self.storage    = self.storage.withUnsafeMutablePointerToElements 
             {
-                // reallocate storage 
-                var capacity:Int = minimum.nextPowerOfTwo
-                let new:ManagedBuffer<Void, UInt16> = .create(minimumCapacity: capacity) 
+                (old:UnsafeMutablePointer<UInt16>) in
+                new.withUnsafeMutablePointerToElements 
                 {
-                    capacity    = $0.capacity
-                    return ()
+                    $0.assign(from: old + a, count: (rollover + 1) >> 1)
                 }
-                // transfer leftover elements 
-                self.capacity   = capacity
-                self.storage    = self.storage.withUnsafeMutablePointerToElements 
-                {
-                    (old:UnsafeMutablePointer<UInt16>) in
-                    new.withUnsafeMutablePointerToElements 
-                    {
-                        $0.assign(from: old + a, count: (rollover + 1) >> 1)
-                    }
-                    return new
-                }
-            }
-            else if a > 0
-            {
-                // shift to beginning 
-                self.storage.withUnsafeMutablePointerToElements 
-                {
-                    $0.assign(from: $0 + a, count: (rollover + 1) >> 1)
-                }
-            }
-            
-            b         -= a << 4
-            // write new data 
-            data.withUnsafeBufferPointer
-            {
-                (data:UnsafeBufferPointer<UInt8>) in 
-                self.storage.withUnsafeMutablePointerToElements 
-                {
-                    // already checked !data.isEmpty
-                    let count:Int
-                    var start:UnsafePointer<UInt8>  = data.baseAddress!
-                    let i:Int                       = (rollover + 1) >> 1
-                    if rollover & 1 != 0 
-                    {
-                        // odd number of bytes in the stream: move over 1 byte from the new data
-                        $0[i - 1]  &= 0x00ff
-                        $0[i - 1]  |= .init(start.pointee) << 8 
-                        start      += 1
-                        count       = data.count - 1
-                    }
-                    else 
-                    {
-                        count       = data.count 
-                    }
-                    
-                    for j:Int in 0 ..< count >> 1 
-                    {
-                        $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 | 
-                                                .init(start[j << 1    ])
-                    }
-                    let k:Int = i + (count + 1) >> 1
-                    if count & 1 != 0
-                    {
-                        $0[k &-         1]    = .init(start[count  - 1])
-                    }
-                    // write 48 bits of padding 
-                    $0[k    ] = 0x0000
-                    $0[k + 1] = 0x0000
-                    $0[k + 2] = 0x0000
-                }
-                
-                self.bytes = rollover + data.count
+                return new
             }
         }
-        
-        // puts bits in low end of outputted integer 
-        // 
-        //  { b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
-        //                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //                                                                   ^  
-        //                                       [4, count: 6, as: UInt16.self]
-        //      produces 
-        //  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b.10, b.9, b.8, b.7, b.6, b.5, b.4}
-        subscript<I>(i:Int, count count:Int, as _:I.Type) -> I 
-            where I:FixedWidthInteger
+        else if a > 0
         {
+            // shift to beginning 
             self.storage.withUnsafeMutablePointerToElements 
             {
-                guard count > 0 
+                $0.assign(from: $0 + a, count: (rollover + 1) >> 1)
+            }
+        }
+        
+        b         -= a << 4
+        // write new data 
+        data.withUnsafeBufferPointer
+        {
+            (data:UnsafeBufferPointer<UInt8>) in 
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                // already checked !data.isEmpty
+                let count:Int
+                var start:UnsafePointer<UInt8>  = data.baseAddress!
+                let i:Int                       = (rollover + 1) >> 1
+                if rollover & 1 != 0 
+                {
+                    // odd number of bytes in the stream: move over 1 byte from the new data
+                    $0[i - 1]  &= 0x00ff
+                    $0[i - 1]  |= .init(start.pointee) << 8 
+                    start      += 1
+                    count       = data.count - 1
+                }
                 else 
                 {
-                    return .zero 
+                    count       = data.count 
                 }
                 
-                let a:Int = i >> 4, 
-                    b:Int = i & 0x0f
-                //    a + 2           a + 1             a
-                //      [ : : :x:x:x:x:x|x:x: : : : : : ]
-                //             ~~~~~~~~~~~~~^
-                //            count = 14, b = 12
-                //
-                //      →               [ :x:x:x:x:x|x:x]
-                
-                // must use << and not &<< to correctly handle shift of 16
-                let interval:UInt16 = $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b, 
-                    mask:UInt16     = ~(UInt16.max << count)
-                return .init(interval & mask)
+                for j:Int in 0 ..< count >> 1 
+                {
+                    $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 | 
+                                            .init(start[j << 1    ])
+                }
+                let k:Int = i + (count + 1) >> 1
+                if count & 1 != 0
+                {
+                    $0[k &-         1]    = .init(start[count  - 1])
+                }
+                // write 48 bits of padding 
+                $0[k    ] = 0x0000
+                $0[k + 1] = 0x0000
+                $0[k + 2] = 0x0000
             }
-        }
-        
-        subscript(i:Int) -> UInt16 
-        {
-            self.storage.withUnsafeMutablePointerToElements 
-            {
-                let a:Int = i >> 4,
-                    b:Int = i & 0x0f
-                //    a + 2           a + 1             a
-                //      [ : :x:x:x:x:x:x|x:x: : : : : : ]
-                //           ~~~~~~~~~~~~~~~^
-                //            count = 16, b = 12
-                //
-                //      →   [x:x:x:x:x:x|x:x]
-                
-                // must use << and not &<< to correctly handle shift of 16
-                return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
-            }
+            
+            self.bytes = rollover + data.count
         }
     }
+    
+    // puts bits in low end of outputted integer 
+    // 
+    //  { b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
+    //                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //                                                                   ^  
+    //                                       [4, count: 6, as: UInt16.self]
+    //      produces 
+    //  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b.10, b.9, b.8, b.7, b.6, b.5, b.4}
+    subscript<I>(i:Int, count count:Int, as _:I.Type) -> I 
+        where I:FixedWidthInteger
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            guard count > 0 
+            else 
+            {
+                return .zero 
+            }
+            
+            let a:Int = i >> 4, 
+                b:Int = i & 0x0f
+            //    a + 2           a + 1             a
+            //      [ : : :x:x:x:x:x|x:x: : : : : : ]
+            //             ~~~~~~~~~~~~~^
+            //            count = 14, b = 12
+            //
+            //      →               [ :x:x:x:x:x|x:x]
+            
+            // must use << and not &<< to correctly handle shift of 16
+            let interval:UInt16 = $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b, 
+                mask:UInt16     = ~(UInt16.max << count)
+            return .init(interval & mask)
+        }
+    }
+    
+    subscript(i:Int) -> UInt16 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let a:Int = i >> 4,
+                b:Int = i & 0x0f
+            //    a + 2           a + 1             a
+            //      [ : :x:x:x:x:x:x|x:x: : : : : : ]
+            //           ~~~~~~~~~~~~~~~^
+            //            count = 16, b = 12
+            //
+            //      →   [x:x:x:x:x:x|x:x]
+            
+            // must use << and not &<< to correctly handle shift of 16
+            return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
+        }
+    }
+}
+extension LZ77.Buffer 
+{
     struct Out 
     {
         var window:Int
@@ -1037,223 +861,174 @@ extension LZ77.Buffer
         
         private
         var integral:(single:UInt32, double:UInt32)
+    }
+}
+extension LZ77.Buffer.Out 
+{        
+    var count:Int 
+    {
+        self.endIndex - self.startIndex
+    }
+    
+    init() 
+    {
+        var capacity:Int    = 0
+        self.storage = .create(minimumCapacity: 0)
+        {
+            capacity = $0.capacity 
+            return ()
+        }
+        self.window         = 0
+        self.baseIndex      = 0
+        self.startIndex     = 0
+        self.currentIndex   = 0
+        self.endIndex       = 0
+        self.capacity       = capacity
         
-        var count:Int 
+        self.integral       = (1, 0)
+    }
+    
+    mutating 
+    func release(bytes count:Int) -> [UInt8]? 
+    {
+        self.storage.withUnsafeMutablePointerToElements  
         {
-            self.endIndex - self.startIndex
-        }
-        
-        init() 
-        {
-            var capacity:Int    = 0
-            self.storage = .create(minimumCapacity: 0)
-            {
-                capacity = $0.capacity 
-                return ()
-            }
-            self.window         = 0
-            self.baseIndex      = 0
-            self.startIndex     = 0
-            self.currentIndex   = 0
-            self.endIndex       = 0
-            self.capacity       = capacity
-            
-            self.integral       = (1, 0)
-        }
-        
-        mutating 
-        func release(bytes count:Int) -> [UInt8]? 
-        {
-            self.storage.withUnsafeMutablePointerToElements  
-            {
-                guard self.endIndex >= self.currentIndex + count 
-                else 
-                {
-                    return nil 
-                }
-                
-                let i:Int = self.currentIndex - self.baseIndex
-                let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
-                defer 
-                {
-                    let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
-                    self.currentIndex  += count 
-                    self.startIndex     = Swift.min(self.currentIndex, limit)
-                }
-                return .init(slice)
-            }
-        }
-
-        mutating 
-        func append(_ value:UInt8) 
-        {
-            self.reserve(1)
-            self.storage.withUnsafeMutablePointerToElements 
-            {
-                $0[self.endIndex &- self.baseIndex] = value 
-            }
-            self.endIndex &+= 1
-        }
-        mutating 
-        func expand(offset:Int, count:Int) 
-        {
-            self.reserve(count)
-            self.storage.withUnsafeMutablePointerToElements 
-            {
-                let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: offset)
-                let front:UnsafeMutablePointer<UInt8> = $0 + (self.endIndex &- self.baseIndex)
-                for i:Int in 0 ..< q
-                {
-                    (front + i &* offset).assign(from: front - offset, count: offset)
-                }
-                (front + q &* offset).assign(from: front - offset, count: r)
-            }
-            self.endIndex &+= count
-        }
-        
-        @inline(__always)
-        private mutating 
-        func reserve(_ count:Int) 
-        {
-            if self.capacity < self.endIndex &- self.baseIndex &+ count 
-            {
-                self.shift(allocating: count)
-            }
-        }
-        // may discard array elements before `startIndex`, adjusts capacity so that 
-        // at least one more byte can always be written without a reallocation
-        private mutating 
-        func shift(allocating extra:Int) 
-        {
-            // optimal new capacity
-            let count:Int       = self.count, 
-                capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
-            if self.capacity >= capacity 
-            {
-                // rebase without reallocating 
-                self.storage.withUnsafeMutablePointerToElements 
-                {
-                    let offset:Int  = self.startIndex - self.baseIndex
-                    self.integral   = Self.update(checksum: self.integral, from: $0, count: offset)
-                    $0.assign(from: $0 + offset, count: count)
-                    self.baseIndex  = self.startIndex
-                }
-            }
+            guard self.endIndex >= self.currentIndex + count 
             else 
             {
-                self.storage = self.storage.withUnsafeMutablePointerToElements 
-                {
-                    (body:UnsafeMutablePointer<UInt8>) in 
-                    
-                    let new:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: capacity)
-                    {
-                        self.capacity = $0.capacity
-                        return ()
-                    }
-                    
-                    new.withUnsafeMutablePointerToElements 
-                    {
-                        let offset:Int  = self.startIndex - self.baseIndex
-                        self.integral   = Self.update(checksum: self.integral, from: body, count: offset)
-                        $0.assign(from: body + offset, count: count)
-                    }
-                    self.baseIndex = self.startIndex
-                    return new 
-                }
+                return nil 
+            }
+            
+            let i:Int = self.currentIndex - self.baseIndex
+            let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
+            defer 
+            {
+                let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
+                self.currentIndex  += count 
+                self.startIndex     = Swift.min(self.currentIndex, limit)
+            }
+            return .init(slice)
+        }
+    }
+
+    mutating 
+    func append(_ value:UInt8) 
+    {
+        self.reserve(1)
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            $0[self.endIndex &- self.baseIndex] = value 
+        }
+        self.endIndex &+= 1
+    }
+    mutating 
+    func expand(offset:Int, count:Int) 
+    {
+        self.reserve(count)
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: offset)
+            let front:UnsafeMutablePointer<UInt8> = $0 + (self.endIndex &- self.baseIndex)
+            for i:Int in 0 ..< q
+            {
+                (front + i &* offset).assign(from: front - offset, count: offset)
+            }
+            (front + q &* offset).assign(from: front - offset, count: r)
+        }
+        self.endIndex &+= count
+    }
+    
+    @inline(__always)
+    private mutating 
+    func reserve(_ count:Int) 
+    {
+        if self.capacity < self.endIndex &- self.baseIndex &+ count 
+        {
+            self.shift(allocating: count)
+        }
+    }
+    // may discard array elements before `startIndex`, adjusts capacity so that 
+    // at least one more byte can always be written without a reallocation
+    private mutating 
+    func shift(allocating extra:Int) 
+    {
+        // optimal new capacity
+        let count:Int       = self.count, 
+            capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
+        if self.capacity >= capacity 
+        {
+            // rebase without reallocating 
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                let offset:Int  = self.startIndex - self.baseIndex
+                self.integral   = Self.update(checksum: self.integral, 
+                            from: $0,          count: offset)
+                $0.assign(  from: $0 + offset, count: count)
+                self.baseIndex  = self.startIndex
             }
         }
-        private static 
-        func update(checksum:(single:UInt32, double:UInt32), 
-            from start:UnsafePointer<UInt8>, count:Int) 
-            -> (single:UInt32, double:UInt32)
+        else 
         {
-            // https://software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums.html
-            let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
-            var (single, double):(UInt32, UInt32) = checksum
-            for i:Int in 0 ..< q 
+            self.storage = self.storage.withUnsafeMutablePointerToElements 
             {
-                for j:Int in 5552 * i ..< 5552 * (i + 1)
+                (body:UnsafeMutablePointer<UInt8>) in 
+                
+                let new:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: capacity)
                 {
-                    single &+= .init(start[j])
-                    double &+= single 
+                    self.capacity = $0.capacity
+                    return ()
                 }
-                single %= 65521
-                double %= 65521
+                
+                new.withUnsafeMutablePointerToElements 
+                {
+                    let offset:Int  = self.startIndex - self.baseIndex
+                    self.integral   = Self.update(checksum: self.integral, 
+                                from: body,          count: offset)
+                    $0.assign(  from: body + offset, count: count)
+                }
+                self.baseIndex = self.startIndex
+                return new 
             }
-            for j:Int in 5552 * q ..< 5552 * q + r
+        }
+    }
+    // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
+    // link also says to use simd vectorization, but that just seems to slow 
+    // things down (probably because llvm is already autovectorizing it)
+    private static 
+    func update(checksum:(single:UInt32, double:UInt32), 
+        from start:UnsafePointer<UInt8>, count:Int) 
+        -> (single:UInt32, double:UInt32)
+    {
+        let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
+        var (single, double):(UInt32, UInt32) = checksum
+        for i:Int in 0 ..< q 
+        {
+            for j:Int in 5552 * i ..< 5552 * (i + 1)
             {
                 single &+= .init(start[j])
                 double &+= single 
             }
-            return (single % 65521, double % 65521)
+            single %= 65521
+            double %= 65521
         }
-        // this vectorized version does not perform well at all
-        /* private static 
-        func update(checksum:(single:UInt32, double:UInt32), 
-            from start:UnsafePointer<UInt8>, count:Int) 
-            -> (single:UInt32, double:UInt32)
+        for j:Int in 5552 * q ..< 5552 * q + r
         {
-            var (single, double):(UInt32, UInt32) = checksum
-            let linear:SIMD16<UInt16> = .init(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-            
-            var current:UnsafePointer<UInt8> = start, 
-                remaining:Int                = count 
-            
-            while remaining >= 16 
-            {
-                let k:Int  = min(remaining, 5552) & ~15
-                remaining -= k 
-                
-                var a:SIMD4<UInt32> = .init(0, 0, 0, single)
-                var b:SIMD4<UInt32> = .init(0, 0, 0, double)
-                for g:Int in 0 ..< k >> 4
-                {
-                    b                     &+= a &<< 4
-                    
-                    let bytes:SIMD16<UInt8> = 
-                        .init(UnsafeBufferPointer.init(start: current + g << 4, count: 16))
-                    // gather first-order sum 
-                    let a16:SIMD16<UInt16>  = .init(truncatingIfNeeded: bytes)
-                    let a8:SIMD8<UInt32>    = .init(truncatingIfNeeded: a16.evenHalf &+ a16.oddHalf)
-                    let a4:SIMD4<UInt32>    =        a8.evenHalf &+  a8.oddHalf
-                    a                     &+= a4
-                    // gather second-order sum
-                    let b16:SIMD16<UInt16>  = a16 &* linear
-                    let b8:SIMD8<UInt32>    = .init(truncatingIfNeeded: b16.evenHalf &+ b16.oddHalf)
-                    let b4:SIMD4<UInt32>    =        b8.evenHalf &+  b8.oddHalf
-                    b                     &+= b4
-                }
-                // no vectorized hardware modulo
-                let combined2:SIMD4<UInt32> = .init(
-                    lowHalf:  a.evenHalf &+ a.oddHalf, 
-                    highHalf: b.evenHalf &+ b.oddHalf)
-                let combined:SIMD2<UInt32>  = combined2.evenHalf &+ combined2.oddHalf
-                single = (single &+ combined.x) % 65521
-                double = (double &+ combined.y) % 65521
-                
-                current += k
-            }
-            while remaining > 0 
-            {
-                single &+= .init(current.pointee)
-                double &+= single 
-                
-                current   += 1
-                remaining -= 1
-            }
-            
-            return (single % 65521, double % 65521)
-        } */
-        mutating 
-        func checksum() -> UInt32 
+            single &+= .init(start[j])
+            double &+= single 
+        }
+        return (single % 65521, double % 65521)
+    }
+
+    mutating 
+    func checksum() -> UInt32 
+    {
+        // everything still in the storage buffer has not yet been integrated 
+        self.storage.withUnsafeMutablePointerToElements 
         {
-            // everything still in the storage buffer has not yet been integrated 
-            self.storage.withUnsafeMutablePointerToElements 
-            {
-                let (single, double):(UInt32, UInt32) = 
-                    Self.update(checksum: self.integral, from: $0, count: self.endIndex &- self.baseIndex)
-                return double << 16 | single
-            }
+            let remaining:Int = self.endIndex &- self.baseIndex
+            let (single, double):(UInt32, UInt32) = 
+                Self.update(checksum: self.integral, from: $0, count: remaining)
+            return double << 16 | single
         }
     }
 }
@@ -1279,27 +1054,6 @@ extension LZ77
             case blockCompressed(final:Bool, semistatic:LZ77.Semistatic)
             case streamChecksum
             case streamEnd 
-            
-            /* var _description:String 
-            {
-                switch self 
-                {
-                case .streamStart:
-                    return "stream start"
-                case .blockStart:
-                    return "block start"
-                case .blockTables(final: let final, table: _, count: _):
-                    return "block tables (final: \(final))"
-                case .blockUncompressed(final: let final, end: let end):
-                    return "block uncompressed (final: \(final), end: \(end))"
-                case .blockCompressed(final: let final, table: _):
-                    return "block compressed (final: \(final))"
-                case .streamChecksum:
-                    return "stream checksum"
-                case .streamEnd:
-                    return "stream end"
-                }
-            } */
         }
         struct Stream 
         {
