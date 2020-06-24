@@ -817,14 +817,11 @@ extension LZ77.Buffer.In
             //            count = 14, b = 12
             //
             //      →               [ :x:x:x:x:x|x:x]
-            
-            // must use << and not &<< to correctly handle shift of 16
-            let interval:UInt16 = $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b, 
-                mask:UInt16     = ~(UInt16.max << count)
-            return .init(interval & mask)
+            let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a]),
+                mask:UInt32     = ~(UInt32.max &<< count)
+            return .init(extended &>> b & mask)
         }
     }
-    
     subscript(i:Int) -> UInt16 
     {
         self.storage.withUnsafeMutablePointerToElements 
@@ -837,10 +834,10 @@ extension LZ77.Buffer.In
             //            count = 16, b = 12
             //
             //      →   [x:x:x:x:x:x|x:x]
+            //  creating a uint32 and shifting that is faster than shifting
+            //  the two components individually
             let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
             return .init(truncatingIfNeeded: extended &>> b)
-            // must use << and not &<< to correctly handle shift of 16
-            // return $0[a &+ 1] << (UInt16.bitWidth &- b) | $0[a] &>> b
         }
     }
 }
@@ -931,13 +928,16 @@ extension LZ77.Buffer.Out
         self.reserve(count)
         self.storage.withUnsafeMutablePointerToElements 
         {
-            let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: offset)
-            let front:UnsafeMutablePointer<UInt8> = $0 + (self.endIndex &- self.baseIndex)
-            for i:Int in 0 ..< q
+            let start:UnsafeMutablePointer<UInt8>   = $0 + (self.endIndex &- self.baseIndex),
+                end:UnsafeMutablePointer<UInt8>     = start + count
+            let source:UnsafeMutablePointer<UInt8>  = start - offset
+            var current:UnsafeMutablePointer<UInt8> = start
+            while current + offset < end
             {
-                (front + i &* offset).assign(from: front - offset, count: offset)
+                current.assign(from: source, count: offset)
+                current += offset
             }
-            (front + q &* offset).assign(from: front - offset, count: r)
+            current.assign(from: source, count: end - current)
         }
         self.endIndex &+= count
     }
