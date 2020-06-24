@@ -58,12 +58,6 @@ extension LZ77.Huffman
         var interior:Int = 1 // count the root
         for leaves:Range<Int> in levels[0 ..< 8]
         {
-            guard interior > 0
-            else
-            {
-                break
-            }
-            
             // every interior node on the level above generates two new nodes.
             // some of the new nodes are leaf nodes, the rest are interior nodes.
             interior = 2 * interior - leaves.count
@@ -75,12 +69,6 @@ extension LZ77.Huffman
         // finish validating the tree
         for (i, leaves):(Int, Range<Int>) in levels[8 ..< 15].enumerated()
         {
-            guard interior > 0
-            else
-            {
-                break
-            }
-            
             z       += leaves.count << (6 - i)
             interior = 2 * interior - leaves.count
         }
@@ -96,8 +84,10 @@ extension LZ77.Huffman
     
     // handles 0-symbol and 1-symbol edge cases
     static
-    func validate<C>(symbols:[Symbol], normalizing lengths:C, default:Symbol) -> Self?
-        where C:Collection, C.Element == Int
+    func validate<Symbols, Lengths>(
+        symbols:Symbols, normalizing lengths:Lengths, default:Symbol) -> Self?
+        where   Symbols:Collection,        Lengths:Collection, 
+                Symbols.Element == Symbol, Lengths.Element == Int
     {
         var single:Symbol?
         for (symbol, length):(Symbol, Int) in zip(symbols, lengths)
@@ -124,8 +114,9 @@ extension LZ77.Huffman
     }
     
     static
-    func validate<C>(symbols:[Symbol], lengths:C) -> Self?
-        where C:Collection, C.Element == Int
+    func validate<Symbols, Lengths>(symbols:Symbols, lengths:Lengths) -> Self?
+        where   Symbols:Collection,        Lengths:Collection, 
+                Symbols.Element == Symbol, Lengths.Element == Int
     {
         var counts:[Int] = .init(repeating: 0, count: 16)
         for length:Int in lengths
@@ -172,131 +163,484 @@ extension LZ77.Huffman
         self.init(symbols: symbols, levels: levels, size: size)
     }
     
-    // decoder type 
-    struct Decoder 
+    var fence:Int 
     {
-        struct Entry 
-        {
-            let symbol:Symbol
-            @General.Storage<UInt8> 
-            var length:Int 
-        }
-        
-        private 
-        let storage:[Entry], 
-            fence:Int,
-            fold:Int
-        
-        // n is the number of level 0 entries
-        init(_ storage:[Entry], n:Int) 
-        {
-            self.storage    = storage 
-            self.fence      = n << 8
-            self.fold       = n * 127
-        }
+        self.size.n << 8
     }
-    
-    func decoder() -> Decoder
+    var fold:Int 
     {
-        // z is the physical size of the table in memory
-        let (n, z):(Int, Int) = self.size 
-        
-        var storage:[Decoder.Entry] = []
-            storage.reserveCapacity(z)
-        
+        self.size.n * 127
+    }
+    func table<Pattern>(initializing destination:UnsafeMutablePointer<Pattern>) 
+        where Pattern:LZ77.Symbol.Pattern, Pattern.Symbol == Symbol
+    {
+        var current:UnsafeMutablePointer<Pattern> = destination
         for (l, level):(Int, Range<Int>) in self.levels.enumerated()
         {
-            guard storage.count < z 
-            else 
-            {
-                break
-            }            
-            
             let clones:Int  = [128, 64, 32, 16, 8, 4, 2, 1, 64, 32, 16, 8, 4, 2, 1][l]
             for symbol:Symbol in self.symbols[level]
             {
-                let entry:Decoder.Entry = .init(symbol: symbol, length: l + 1)
-                storage.append(contentsOf: repeatElement(entry, count: clones))
+                let pattern:Pattern = .init(symbol, length: l + 1)
+                current.initialize(repeating: pattern, count: clones)
+                current += clones 
+            }
+        }
+    }
+}
+extension LZ77 
+{
+    struct Semistatic 
+    {
+        private 
+        typealias Decade = (extra:UInt16, base:UInt16)
+        
+        private 
+        let storage:ManagedBuffer<Void, UInt8>,
+            runliteral:(fence:Int, fold:Int), 
+            distance:(offset:Int, fence:Int, fold:Int)
+        //               stack
+        //    0 ┌───────────────────────┐ : Buffer pointer 
+        //      ├───────────────────────┤ : Run-literal fence
+        //      ├───────────────────────┤ : Run-literal fold 
+        //      ├───────────────────────┤ : Distance table offset
+        //      ├───────────────────────┤ : Distance fence
+        //      ├───────────────────────┤ : Distance fold 
+        //   48 └───────────────────────┘
+        //                heap
+        //    0 ┌───────────────────────┐
+        //      │                       │
+        //      │  byte reversal table  │ : 256 * UInt8
+        //      │                       │
+        //  256 ├───────────────────────┤
+        //      │   Run decade table    │ : 32 * (UInt16, UInt16) 
+        //  384 ├───────────────────────┤
+        //      │ Distance decade table │ : 32 * (UInt16, UInt16) 
+        //  512 ├───────────────────────┤ 
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │   Run-literal table   │
+        //      │        (1-8 KB)       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      ├───────────────────────┤
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │     Distance table    │
+        //      │        (1-4 KB)       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      └───────────────────────┘
+        private static 
+        let reversed:[UInt8] =
+        [
+            0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 
+            0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
+            0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 
+            0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
+            0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 
+            0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
+            0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 
+            0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
+            0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 
+            0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
+            0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 
+            0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
+            0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 
+            0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
+            0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 
+            0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
+            0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 
+            0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
+            0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 
+            0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
+            0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 
+            0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
+            0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 
+            0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
+            0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 
+            0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
+            0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 
+            0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
+            0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 
+            0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
+            0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 
+            0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
+        ]
+        private static 
+        let decades:[Decade] = 
+        [
+            // front-padding, which allows us to use a bitmask to 
+            // get the decade index
+            (0,   0),
+            
+            // run decades
+            (0,   3),
+            (0,   4),
+            (0,   5),
+            (0,   6),
+            (0,   7),
+            
+            (0,   8),
+            (0,   9),
+            (0,  10),
+            (1,  11),
+            (1,  13),
+            
+            (1,  15),
+            (1,  17),
+            (2,  19),
+            (2,  23),
+            (2,  27),
+            
+            (2,  31),
+            (3,  35),
+            (3,  43),
+            (3,  51),
+            (3,  59),
+            
+            (4,  67),
+            (4,  83),
+            (4,  99),
+            (4, 115),
+            (5, 131),
+            
+            (5, 163),
+            (5, 195),
+            (5, 227),
+            (0, 258),
+            
+            // padding values, because out-of-bounds symbols occur
+            // in fixed huffman trees, and may be erroneously decoded 
+            // if the decoder goes beyond the end-of-stream (which it is 
+            // temporarily allowed to do, for performance)
+            (0,   0),
+            (0,   0),
+            
+            // distance decades 
+            ( 0,     1),
+            ( 0,     2),
+            ( 0,     3),
+            ( 0,     4),
+            ( 1,     5),
+            
+            ( 1,     7),
+            ( 2,     9),
+            ( 2,    13),
+            ( 3,    17),
+            ( 3,    25),
+            
+            ( 4,    33),
+            ( 4,    49),
+            ( 5,    65),
+            ( 5,    97),
+            ( 6,   129),
+            
+            ( 6,   193),
+            ( 7,   257),
+            ( 7,   385),
+            ( 8,   513),
+            ( 8,   769),
+            
+            ( 9,  1025),
+            ( 9,  1537),
+            (10,  2049),
+            (10,  3073),
+            (11,  4097),
+            
+            (11,  6145),
+            (12,  8193),
+            (12, 12289),
+            (13, 16385),
+            (13, 24577),
+            
+            // padding values, because out-of-bounds symbols occur
+            // in fixed huffman trees, and may be erroneously decoded 
+            // if the decoder goes beyond the end-of-stream (which it is 
+            // temporarily allowed to do, for performance)
+            ( 0,     0),
+            ( 0,     0),
+        ]
+    }
+}
+extension LZ77.Semistatic 
+{        
+    static 
+    func create(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
+        -> Self 
+    {
+        let start:Int   = 256    + MemoryLayout<Decade>.stride * 64
+        let offset:Int  = start  + MemoryLayout<LZ77.Symbol.RunLiteral>.stride * runliteral.size.z 
+        let size:Int    = offset + MemoryLayout<LZ77.Symbol.Distance  >.stride *   distance.size.z
+        let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
+        storage.withUnsafeMutablePointerToElements 
+        {
+            (base:UnsafeMutablePointer<UInt8>) in 
+            
+            // write byte reversal table 
+            (base         ).initialize(from: Self.reversed, count: 256)
+            // write decade tables 
+            (base +    256).withMemoryRebound(to: Decade.self, capacity: 64) 
+            {
+                $0.initialize(from: Self.decades, count: 64)
+            }
+            // write huffman tables 
+            (base +  start).withMemoryRebound(to: LZ77.Symbol.RunLiteral.self, 
+                capacity: runliteral.size.z)
+            {
+                runliteral.table(initializing: $0)
+            }
+            (base + offset).withMemoryRebound(to: LZ77.Symbol.Distance.self, 
+                capacity: distance.size.z)
+            {
+                distance.table(initializing: $0)
             }
         }
         
-        assert(storage.count == z)
-        // print("created huffman decoder (type \(Symbol.self), \(storage.count) entries, \(storage.count * MemoryLayout<Decoder.Entry>.stride) bytes)")
-        return .init(storage, n: n)
+        return .init(storage: storage,
+            runliteral: (                fence: runliteral.fence, fold: runliteral.fold), 
+            distance:   (offset: offset, fence:   distance.fence, fold:   distance.fold))
     }
-}
-// table accessors 
-extension LZ77.Huffman.Decoder 
-{
-    // https://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
-    // do NOT inline(__always) this u will regret it
-    private static 
+    
+    @inline(__always)
+    private 
     func reverse(_ word:UInt16) -> UInt16 
     {
         // fastest bit twiddle in the west,, now that i measured it
         // now i know why everyone at apple asks this same coding interview question
-        let reversed:[UInt8] =
-        [
-          0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
-          0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
-          0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
-          0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
-          0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
-          0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
-          0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
-          0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
-          0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
-          0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
-          0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
-          0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
-          0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
-          0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
-          0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
-          0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
-        ]
-        return .init(reversed[.init(word & 0x00ff)]) << 8 | .init(reversed[.init(word >> 8)])
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            .init($0[.init(word & 0x00ff)]) << 8 | .init($0[.init(word >> 8)])
+        }
+    }
+    @inline(__always)
+    private  
+    func index(_ codeword:UInt16, fence:Int, fold:Int) -> Int
+    {
+        let i:Int = .init(self.reverse(codeword))
+        return i < fence ? i >> 8 : i >> 1 &- fold
     }
     
-    // codeword is in normal bit-order 
-    subscript(codeword:UInt16) -> Entry 
+    subscript(codeword:UInt16, as _:LZ77.Symbol.RunLiteral.Type) -> LZ77.Symbol.RunLiteral 
     {
-        // all png huffman trees are complete, so out-of-range lookups are not possible (unlike in jpeg)
-        // [ level 0 index  |    offset    ]
-        let i:Int = .init(Self.reverse(codeword))
-        return self.storage[i < self.fence ? i >> 8 : i >> 1 &- self.fold]
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let raw:UnsafeRawPointer = .init($0)
+            // should get constant-folded
+            let start:Int  = 256    + 64 * MemoryLayout<Decade>.stride
+            let offset:Int = start &+ MemoryLayout<LZ77.Symbol.RunLiteral>.stride &* 
+                self.index(codeword, fence: self.runliteral.fence, fold: self.runliteral.fold)
+            return raw.load(fromByteOffset: offset, as: LZ77.Symbol.RunLiteral.self)
+        }
+    }
+    subscript(codeword:UInt16, as _:LZ77.Symbol.Distance.Type) -> LZ77.Symbol.Distance 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let raw:UnsafeRawPointer = .init($0)
+            let offset:Int = self.distance.offset &+ MemoryLayout<LZ77.Symbol.Distance>.stride &* 
+                self.index(codeword, fence: self.distance.fence, fold: self.distance.fold)
+            return raw.load(fromByteOffset: offset, as: LZ77.Symbol.Distance.self)
+        }
+    }
+    
+    func decade(_ runliteral:LZ77.Symbol.RunLiteral) -> (extra:Int, base:Int) 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let raw:UnsafeRawPointer = .init($0)
+            let offset:Int = 256 &+ 
+                MemoryLayout<Decade>.stride &* runliteral.decadeIndex
+            let decade:Decade = raw.load(fromByteOffset: offset, as: Decade.self)
+            return (extra: .init(decade.extra), base: .init(decade.base))
+        }
+    }
+    func decade(_ distance:LZ77.Symbol.Distance) -> (extra:Int, base:Int) 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let raw:UnsafeRawPointer = .init($0)
+            // should get constant-folded
+            let offset:Int = (256 + 32 * MemoryLayout<Decade>.stride) &+ 
+                MemoryLayout<Decade>.stride &* distance.decadeIndex
+            let decade:Decade = raw.load(fromByteOffset: offset, as: Decade.self)
+            return (extra: .init(decade.extra), base: .init(decade.base))
+        }
+    }
+    
+    static 
+    let fixed:Self = .create(
+        runliteral: .init(
+            symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
+            levels:
+                .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
+                [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
+                .init(repeating: 288 ..< 288, count: 6)   // L10 ... L15
+            ), 
+        distance:   .init(
+            symbols: .init(0 ... 31),
+            levels:
+                .init(repeating:  0 ..<  0, count:  4)   +
+                [0 ..< 32]                              +
+                .init(repeating: 32 ..< 32, count: 10)
+            ))
+}
+extension LZ77.Semistatic 
+{
+    struct Meta 
+    {
+        private 
+        let storage:ManagedBuffer<Void, UInt8>
+    }
+}
+extension LZ77.Semistatic.Meta 
+{
+    static 
+    func create() -> Self 
+    {
+        let size:Int = 256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
+        let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
+        storage.withUnsafeMutablePointerToElements 
+        {
+            $0.initialize(from: LZ77.Semistatic.reversed, count: 256)
+        }
+        return .init(storage: storage)
+    }
+    
+    func replace(tree:LZ77.Huffman<UInt8>) 
+    {
+        assert(tree.size.z <= 256)
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            // write huffman tables 
+            ($0 + 256).withMemoryRebound(to: LZ77.Symbol.Meta.self, capacity: 256)
+            {
+                tree.table(initializing: $0)
+            }
+        }
+    }
+    
+    subscript(codeword:UInt8) -> LZ77.Symbol.Meta  
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let raw:UnsafeRawPointer    = .init($0)
+            let index:Int               = .init($0[.init(codeword)])
+            let offset:Int              = 256 &+ 
+                MemoryLayout<LZ77.Symbol.Meta>.stride &* index 
+            return raw.load(fromByteOffset: offset, as: LZ77.Symbol.Meta.self)
+        }
     }
 }
 
 // symbol types 
+protocol _LZ77SymbolPattern 
+{
+    associatedtype Symbol 
+    init(_ symbol:Symbol, length:Int)
+}
 extension LZ77 
 {    
     enum Symbol 
     {
-        //  from the RFC 1951: 
-        //  0 - 15: Represent code lengths of 0 - 15
-        //      16: Copy the previous code length 3 - 6 times.
-        //          The next 2 bits indicate repeat length
-        //                (0 = 3, ... , 3 = 6)
-        //             Example:  Codes 8, 16 (+2 bits 11),
-        //                       16 (+2 bits 10) will expand to
-        //                       12 code lengths of 8 (1 + 6 + 5)
-        //      17: Repeat a code length of 0 for 3 - 10 times.
-        //          (3 bits of length)
-        //      18: Repeat a code length of 0 for 11 - 138 times
-        //          (7 bits of length)
-        enum CodeLength:Comparable
+        typealias Pattern = _LZ77SymbolPattern
+        struct Meta:Pattern 
         {
-            // use smaller integers to reduce LUT footprint
-            case literal(UInt8)
-            case extend 
-            case zeros3
-            case zeros7
+            //  8               0
+            //  [c:c:c:s:s:s:s:s]
+            //   ~~~~~^~~~~~~~~~^
+            //   length    symbol
+            private 
+            let storage:UInt8 
             
-            static
-            let allSymbols:[Self] = (0 ..< 16).map(Self.literal(_:)) + [.extend, .zeros3, .zeros7]
+            var symbol:UInt8 
+            {
+                self.storage & 0b0001_1111
+            }
+            var length:Int 
+            {
+                .init(self.storage >> 5)
+            }
+            
+            init(_ symbol:UInt8, length:Int) 
+            {
+                self.storage = .init(length) << 5 | symbol
+            }
         }
         
-        enum RunLiteral:Comparable
+        struct RunLiteral:Pattern 
+        {
+            // 16               8               0
+            //  [c:c:c:c: : : :s|s:s:s:s:s:s:s:s] 
+            //   ~~~~~~~^      ~~~~~~~~~~~~~~~~~^
+            //     length                  symbol
+            private 
+            let storage:UInt16 
+            
+            var symbol:UInt16 
+            {
+                self.storage & 0b0000_0001_1111_1111
+            }
+            var literal:UInt8 
+            {
+                .init(truncatingIfNeeded: self.storage)
+            }
+            var decadeIndex:Int 
+            {
+                .init(self.storage & 0b0000_0000_1111_1111)
+            }
+            var length:Int 
+            {
+                .init(self.storage >> 12)
+            }
+            init(_ symbol:UInt16, length:Int) 
+            {
+                self.storage = .init(length) << 12 | symbol 
+            }
+        }
+        struct Distance:Pattern 
+        {
+            // 16               8               0
+            //  [ : : : :c:c:c:c| : : :s:s:s:s:s] 
+            //           ~~~~~~~^      ~~~~~~~~~^
+            //             length          symbol
+            // length goes here because it is probably slightly faster to 
+            // address the high byte than do a UInt16 bit shift
+            private 
+            let storage:UInt16 
+            
+            var decadeIndex:Int 
+            {
+                .init(self.storage & 0x00ff)
+            }
+            var length:Int 
+            {
+                .init(self.storage >> 8)
+            }
+            init(_ symbol:UInt8, length:Int) 
+            {
+                self.storage = .init(length) << 8 | .init(symbol)
+            }
+        }
+        
+        /* enum RunLiteral:Comparable
         {
             case literal(UInt8)
             case end 
@@ -446,11 +790,11 @@ extension LZ77
             {
                 lhs.distance < rhs.distance
             }
-        }
+        } */
     }
 }
 // fixed trees 
-extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.RunLiteral 
+/* extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.RunLiteral 
 {
     static 
     let fixed:Self = LZ77.Huffman<Symbol>.init(
@@ -476,7 +820,7 @@ extension LZ77.Huffman.Decoder where Symbol == LZ77.Symbol.Distance
             [0 ..< 32]                              +
             .init(repeating: 32 ..< 32, count: 10)
         ).decoder()
-}
+} */
 
 extension FixedWidthInteger 
 {
@@ -930,20 +1274,9 @@ extension LZ77
         {
             case streamStart 
             case blockStart
-            case blockTables(
-                final:Bool, 
-                table:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder,
-                count:(runliteral:Int, distance:Int)
-            )
+            case blockTables(final:Bool, runliterals:Int, distances:Int)
             case blockUncompressed(final:Bool, end:Int)
-            case blockCompressed(
-                final:Bool, 
-                table:
-                (
-                    runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder, 
-                    distance:LZ77.Huffman<LZ77.Symbol.Distance>.Decoder
-                )
-            )
+            case blockCompressed(final:Bool, semistatic:LZ77.Semistatic)
             case streamChecksum
             case streamEnd 
             
@@ -974,12 +1307,13 @@ extension LZ77
             {
                 case none(bytes:Int)
                 case fixed 
-                case dynamic(LZ77.Huffman<Symbol.CodeLength>, count:(runliteral:Int, distance:Int))
+                case dynamic(runliterals:Int, distances:Int)
             }
             
             var input:LZ77.Buffer.In,
                 b:Int 
             var lengths:[Int]
+            var meta:LZ77.Semistatic.Meta // reuse the same buffer since the size is fixed
             var output:LZ77.Buffer.Out
             
             init() 
@@ -987,6 +1321,7 @@ extension LZ77
                 self.b          = 0
                 self.input      = []
                 self.lengths    = []
+                self.meta       = .create()
                 self.output     = .init()
             }
         }
@@ -1046,7 +1381,8 @@ extension LZ77.Inflator
             self.state                  = .blockStart
         
         case .blockStart:
-            guard let (final, compression):(Bool, Stream.Compression) = try self.stream.blockStart() 
+            guard let (final, compression):(Bool, Stream.Compression) = 
+                try self.stream.blockStart() 
             else 
             {
                 return nil 
@@ -1054,11 +1390,12 @@ extension LZ77.Inflator
             
             switch compression 
             {
-            case .dynamic(let table, count: let count):
-                self.state = .blockTables(final: final, table: table.decoder(), count: count)
+            case .dynamic(runliterals: let runliterals, distances: let distances):
+                self.state = .blockTables(final: final, 
+                    runliterals: runliterals, distances: distances)
             
             case .fixed:
-                self.state = .blockCompressed(final: final, table: (.fixed, .fixed))
+                self.state = .blockCompressed(final: final, semistatic: .fixed)
             
             case .none(bytes: let count):
                 // compute endindex 
@@ -1066,18 +1403,16 @@ extension LZ77.Inflator
                 self.state = .blockUncompressed(final: final, end: end)
             }
         
-        case .blockTables(final: let final, table: let table, count: let count):
-            guard let (runliteral, distance):
-            (
-                LZ77.Huffman<LZ77.Symbol.RunLiteral>, 
-                LZ77.Huffman<LZ77.Symbol.Distance>
-            ) = try self.stream.blockTables(table: table, count: count) 
+        case .blockTables(final: let final, runliterals: let runliterals, distances: let distances):
+            guard let (runliteral, distance):(LZ77.Huffman<UInt16>, LZ77.Huffman<UInt8>) = 
+                try self.stream.blockTables(runliterals: runliterals, distances: distances) 
             else 
             {
                 return nil
             }
-            self.state = .blockCompressed(final: final, 
-                table: (runliteral.decoder(), distance.decoder()))
+            
+            self.state = .blockCompressed(final: final,
+                semistatic: .create(runliteral: runliteral, distance: distance))
         
         case .blockUncompressed(final: let final, end: let end):
             guard let _:Void = try self.stream.blockUncompressed(end: end) 
@@ -1087,8 +1422,8 @@ extension LZ77.Inflator
             }
             self.state = final ? .streamChecksum : .blockStart
         
-        case .blockCompressed(final: let final, table: let table):
-            guard let _:Void = try self.stream.blockCompressed(table: table) 
+        case .blockCompressed(final: let final, semistatic: let semistatic):
+            guard let _:Void = try self.stream.blockCompressed(semistatic: semistatic) 
             else 
             {
                 return nil
@@ -1208,14 +1543,14 @@ extension LZ77.Inflator.Stream
                 return nil 
             }
             
-            let runliteral:Int  = 257 + self.input[self.b +  3, count: 5, as: Int.self]
-            let distance:Int    =   1 + self.input[self.b +  8, count: 5, as: Int.self]
+            let runliterals:Int = 257 + self.input[self.b +  3, count: 5, as: Int.self]
+            let distances:Int   =   1 + self.input[self.b +  8, count: 5, as: Int.self]
             // other counts don’t need to be checked because the number of bits 
             // matches the acceptable range 
-            guard 257 ... 286 ~= runliteral 
+            guard 257 ... 286 ~= runliterals
             else 
             {
-                throw LZ77.DecompressionError.invalidHuffmanRunLiteralSymbolCount(runliteral)
+                throw LZ77.DecompressionError.invalidHuffmanRunLiteralSymbolCount(runliterals)
             }
             
             var lengths:[Int] = .init(repeating: 0, count: 19)
@@ -1224,15 +1559,16 @@ extension LZ77.Inflator.Stream
             {
                 lengths[d] = self.input[self.b + 17 + 3 * i, count: 3, as: Int.self]
             }
-            guard let table:LZ77.Huffman<LZ77.Symbol.CodeLength> =
-                .validate(symbols: LZ77.Symbol.CodeLength.allSymbols, lengths: lengths)
+            guard let tree:LZ77.Huffman<UInt8> = .validate(symbols: 0 ... 18, lengths: lengths)
             else 
             {
                 throw LZ77.DecompressionError.invalidHuffmanCodelengthHuffmanTable 
             }
             
+            self.meta.replace(tree: tree)
+            
             self.b += 17 + 3 * codelengths
-            compression = .dynamic(table, count: (runliteral, distance))
+            compression = .dynamic(runliterals: runliterals, distances: distances)
         
         default:
             throw LZ77.DecompressionError.invalidBlockType
@@ -1241,17 +1577,12 @@ extension LZ77.Inflator.Stream
         return (final, compression)
     }
     mutating 
-    func blockTables(table:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder, 
-        count:(runliteral:Int, distance:Int)) 
-        throws -> 
-    (
-        LZ77.Huffman<LZ77.Symbol.RunLiteral>, 
-        LZ77.Huffman<LZ77.Symbol.Distance>
-    )?
+    func blockTables(runliterals:Int, distances:Int)
+        throws -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)?
     {
         // code lengths form an unbroken sequence 
         codelengths:
-        while self.lengths.count < count.runliteral + count.distance 
+        while self.lengths.count < runliterals + distances 
         {
             guard self.b < self.input.count 
             else 
@@ -1259,27 +1590,39 @@ extension LZ77.Inflator.Stream
                 return nil 
             }
             
-            let entry:LZ77.Huffman<LZ77.Symbol.CodeLength>.Decoder.Entry = 
-                table[self.input[self.b]]
+            let meta:LZ77.Symbol.Meta = 
+                self.meta[.init(truncatingIfNeeded: self.input[self.b])]
             // if the codeword length is longer than the available input 
             // then we know the match is invalid (due to padding 0-bits)
-            guard self.b + entry.length <= self.input.count 
+            guard self.b + meta.length <= self.input.count 
             else 
             {
                 return nil 
             }
             
+            //  from the RFC 1951: 
+            //  0 - 15: Represent code lengths of 0 - 15
+            //      16: Copy the previous code length 3 - 6 times.
+            //          The next 2 bits indicate repeat length
+            //                (0 = 3, ... , 3 = 6)
+            //             Example:  Codes 8, 16 (+2 bits 11),
+            //                       16 (+2 bits 10) will expand to
+            //                       12 code lengths of 8 (1 + 6 + 5)
+            //      17: Repeat a code length of 0 for 3 - 10 times.
+            //          (3 bits of length)
+            //      18: Repeat a code length of 0 for 11 - 138 times
+            //          (7 bits of length)
             let element:Int, 
                 extra:Int, 
                 base:Int
-            switch entry.symbol 
+            switch meta.symbol 
             {
-            case .literal(let length):
-                self.lengths.append(.init(length))
-                self.b += entry.length
+            case 0 ..< 16:
+                self.lengths.append(.init(meta.symbol))
+                self.b += meta.length
                 continue codelengths
             
-            case .extend:
+            case 16:
                 guard let last:Int = self.lengths.last 
                 else 
                 {
@@ -1288,58 +1631,58 @@ extension LZ77.Inflator.Stream
                 element = last 
                 extra   = 2
                 base    = 3
-            case .zeros3:
+            
+            case 17:
                 element = 0 
                 extra   = 3
                 base    = 3
-            case .zeros7:
+            
+            case 18:
                 element = 0 
                 extra   = 7
                 base    = 11
-            }
             
-            guard self.b + entry.length + extra <= self.input.count 
+            default:
+                fatalError("unreachable")
+            } 
+            
+            guard self.b + meta.length + extra <= self.input.count 
             else 
             {
                 return nil 
             }
             let repetitions:Int = base + 
-                self.input[self.b + entry.length, count: extra, as: Int.self]
+                self.input[self.b + meta.length, count: extra, as: Int.self]
             
             self.lengths.append(contentsOf: repeatElement(element, count: repetitions))
-            self.b += entry.length + extra 
+            self.b += meta.length + extra 
         }
         defer 
         {
             // important
             self.lengths.removeAll(keepingCapacity: true)
         }
-        guard self.lengths.count == count.runliteral + count.distance 
+        guard self.lengths.count == runliterals + distances 
         else 
         {
             throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
         }
         
-        guard   let runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral> = .validate(
-                    symbols: LZ77.Symbol.RunLiteral.allSymbols,
-                    lengths: self.lengths.prefix(count.runliteral)),
-                let distance:LZ77.Huffman<LZ77.Symbol.Distance> = .validate(
-                    symbols: (0 ... 31).map(LZ77.Symbol.Distance.init(_:)),
-                    normalizing: self.lengths.dropFirst(count.runliteral),
-                    default: .init(0))
+        guard   let runliteral:LZ77.Huffman<UInt16> = .validate(
+                    symbols:        0 ... 287,
+                    lengths:        self.lengths.prefix(runliterals)),
+                let distance:LZ77.Huffman<UInt8> = .validate(
+                    symbols:        0 ... 31,
+                    normalizing:    self.lengths.dropFirst(runliterals),
+                    default:        0)
         else 
         {
             throw LZ77.DecompressionError.invalidHuffmanTable 
         }
-        
         return (runliteral, distance)
     }
     mutating 
-    func blockCompressed(table:
-        (
-            runliteral:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder, 
-            distance:LZ77.Huffman<LZ77.Symbol.Distance>.Decoder
-        )) throws -> Void? 
+    func blockCompressed(semistatic:LZ77.Semistatic) throws -> Void? 
     {
         while self.b < self.input.count 
         {
@@ -1353,30 +1696,31 @@ extension LZ77.Inflator.Stream
             //  -------------------------
             //  total           : 48 bits 
             let first:UInt16 = self.input[self.b]
-            let entry:LZ77.Huffman<LZ77.Symbol.RunLiteral>.Decoder.Entry = 
-                table.runliteral[first]
+            let runliteral:LZ77.Symbol.RunLiteral = 
+                semistatic[first, as: LZ77.Symbol.RunLiteral.self]
             
-            switch entry.symbol 
+            if      runliteral.symbol <  256 
             {
-            case .literal(let literal):
-                guard self.b + entry.length <= self.input.count 
+                guard self.b + runliteral.length <= self.input.count 
                 else 
                 {
                     return nil 
                 }
-                self.b += entry.length 
-                self.output.append(literal)
-                
-            case .end:
-                guard self.b + entry.length <= self.input.count 
+                self.b += runliteral.length 
+                self.output.append(runliteral.literal)
+            }
+            else if runliteral.symbol == 256 
+            {
+                guard self.b + runliteral.length <= self.input.count 
                 else 
                 {
                     return nil 
                 }
-                self.b += entry.length 
+                self.b += runliteral.length 
                 return () 
-            
-            case .run(let run):
+            }
+            else 
+            {
                 // get the next two words to form a 48-bit value 
                 // (in the low bits bits of a UInt64)
                 // we put it in the low bits so that we can do masking shifts instead 
@@ -1385,7 +1729,7 @@ extension LZ77.Inflator.Stream
                     .init(self.input[self.b + 32]) << 32 |
                     .init(self.input[self.b + 16]) << 16 | 
                     .init(first)
-                slug &>>= entry.length
+                slug &>>= runliteral.length
                 
                 let decade:
                 (
@@ -1393,23 +1737,23 @@ extension LZ77.Inflator.Stream
                     offset:(extra:Int, base:Int)
                 )
                 
-                decade.count        = run.decade 
+                decade.count        = semistatic.decade(runliteral) 
                 let count:Int       = decade.count.base &+ 
                     .init(truncatingIfNeeded: slug & ~(.max &<< decade.count.extra))
                 
                 slug &>>= decade.count.extra
                 
-                let distance:LZ77.Huffman<LZ77.Symbol.Distance>.Decoder.Entry = 
-                    table.distance[.init(truncatingIfNeeded: slug)]
+                let distance:LZ77.Symbol.Distance = 
+                    semistatic[.init(truncatingIfNeeded: slug), as: LZ77.Symbol.Distance.self]
                 slug &>>= distance.length
                 
-                decade.offset       = distance.symbol.decade 
+                decade.offset       = semistatic.decade(distance) 
                 let offset:Int      = decade.offset.base &+ 
                     .init(truncatingIfNeeded: slug & ~(.max &<< decade.offset.extra))
                 
-                let b:Int = self.b  + 
-                    entry.length    + decade.count.extra + 
-                    distance.length + decade.offset.extra 
+                let b:Int = self.b      + 
+                    runliteral.length   + decade.count.extra + 
+                    distance.length     + decade.offset.extra 
                 guard b <= self.input.count 
                 else 
                 {
