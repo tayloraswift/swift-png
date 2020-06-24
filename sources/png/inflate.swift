@@ -928,16 +928,14 @@ extension LZ77.Buffer.Out
         self.reserve(count)
         self.storage.withUnsafeMutablePointerToElements 
         {
-            let start:UnsafeMutablePointer<UInt8>   = $0 + (self.endIndex &- self.baseIndex),
-                end:UnsafeMutablePointer<UInt8>     = start + count
-            let source:UnsafeMutablePointer<UInt8>  = start - offset
-            var current:UnsafeMutablePointer<UInt8> = start
-            while current + offset < end
+            let start:UnsafeMutablePointer<UInt8>   = $0 + (self.endIndex &- self.baseIndex)
+            // cannot use assign(from:count:) because the standard library implementation
+            // copies from the back to the front if the ranges overlap
+            // https://github.com/apple/swift/blob/master/stdlib/public/core/UnsafePointer.swift#L745
+            for current:UnsafeMutablePointer<UInt8> in start ..< start + count
             {
-                current.assign(from: source, count: offset)
-                current += offset
+                current.pointee = (current - offset).pointee
             }
-            current.assign(from: source, count: end - current)
         }
         self.endIndex &+= count
     }
