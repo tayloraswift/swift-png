@@ -76,7 +76,13 @@ Philosophically, Swift encourages you to exclusively use `Int` for modeling nume
 
   Use a shorter integer type, and cast at the usage site.
 
-## 8. some C/C++ advice still applies 
+## 8. don’t use `Dictionary.init(grouping:by:)` 
+
+This is probably more of a bug in the standard library than an inherent language issue, but as of Swift 5.2, `Dictionary.init(grouping:by:)` seems to exhibit exceptionally poor performance, compared to a naive two-pass bucketing algorithm. (One pass to determine the sub-array counts, and one pass to populate the sub-arrays.) 
+
+Only use `Dictionary.init(grouping:by)` if you have a single-pass `Sequence` and absolutely need the `[Key: [Element]]` output format.
+
+## 9. some C/C++ advice still applies 
 
 Some advice for optimizing C or C++ code still applies to Swift, namely:
 
