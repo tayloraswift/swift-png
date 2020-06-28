@@ -14,7 +14,7 @@ extension Test
     static 
     func bitstream() -> Result<Void, Failure> 
     {
-        var bits:LZ77.Buffer.In = 
+        var bits:LZ77.Inflator.In = 
         [
             0b1001_1110,
             0b1111_0110,
