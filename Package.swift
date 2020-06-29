@@ -24,7 +24,7 @@ let package = Package(
     products:
     [
         .library(   name: "PNG",                targets: ["PNG"]),
-        .library(   name: "png",                targets: ["PNG4"]),
+        .executable(name: "png",                targets: ["PNG4"]),
         
         .executable(name: "unit-test",          targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",   targets: ["PNGIntegrationTests"]),
