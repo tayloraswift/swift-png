@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.2
 import PackageDescription
 
 let core:[Target]
@@ -24,6 +24,8 @@ let package = Package(
     products:
     [
         .library(   name: "PNG",                targets: ["PNG"]),
+        .library(   name: "png",                targets: ["PNG4"]),
+        
         .executable(name: "unit-test",          targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",   targets: ["PNGIntegrationTests"]),
         
@@ -32,10 +34,12 @@ let package = Package(
     ],
     targets: core +
     [
-        .target(name: "PNGUnitTests",           dependencies: ["PNG"], path: "tests/unit"),
-        .target(name: "PNGIntegrationTests",    dependencies: ["PNG"], path: "tests/integration"),
-        .target(name: "PNGBenchmarks",          dependencies: ["PNG"], path: "benchmarks"), 
-        .target(name: "PNGExamples",            dependencies: ["PNG"], path: "examples")
+        .target(name: "PNG4",                   dependencies: [],       path: "sources/png4"),
+        
+        .target(name: "PNGUnitTests",           dependencies: ["PNG"],  path: "tests/unit"),
+        .target(name: "PNGIntegrationTests",    dependencies: ["PNG"],  path: "tests/integration"),
+        .target(name: "PNGBenchmarks",          dependencies: ["PNG"],  path: "benchmarks"), 
+        .target(name: "PNGExamples",            dependencies: ["PNG"],  path: "examples")
     ],
     swiftLanguageVersions: [.v4_2, .v5]
 )

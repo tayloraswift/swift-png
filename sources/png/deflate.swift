@@ -180,3 +180,22 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         return levels
     }
 }
+
+extension LZ77.Deflator 
+{
+    struct In 
+    {
+        private 
+        var capacity:Int, 
+            count:Int 
+        private 
+        var storage:ManagedBuffer<Void, UInt8>
+    }
+}
+
+extension LZ77 
+{
+    struct Deflator 
+    {
+    }
+}
