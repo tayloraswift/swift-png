@@ -217,7 +217,7 @@ extension PNG
     public 
     enum LexingError:Swift.Error 
     {
-        case missingSignature
+        case invalidSignature
         
         case truncatedChunkHeader 
         case invalidChunkTypeCode((UInt8, UInt8, UInt8, UInt8))
@@ -235,7 +235,7 @@ extension PNG.Bytestream.Source
                     bytes == PNG.signature
         else
         {
-            throw PNG.LexingError.missingSignature
+            throw PNG.LexingError.invalidSignature
         }
     }
     
