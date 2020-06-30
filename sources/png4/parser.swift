@@ -162,90 +162,6 @@ extension PNG
         }
     }
 }
-extension PNG 
-{
-    public 
-    struct Layout 
-    {
-        @usableFromInline
-        enum Scheme 
-        {
-            case v1
-            case v2
-            case v4
-            case v8
-            case v16
-            
-            case rgb8(palette:PNG.Palette?)
-            case rgb16(palette:PNG.Palette?)
-            
-            case indexed1(palette:PNG.Palette)
-            case indexed2(palette:PNG.Palette)
-            case indexed4(palette:PNG.Palette)
-            case indexed8(palette:PNG.Palette)
-            
-            case va8
-            case va16
-            case rgba8(palette:PNG.Palette?)
-            case rgba16(palette:PNG.Palette?)
-        }
-        
-        @usableFromInline
-        let scheme:Scheme 
-        
-        public 
-        let standard:Standard, 
-            interlaced:Bool
-    }
-}
-extension PNG.Layout 
-{
-    @inlinable
-    public
-    var format:PNG.Format 
-    {
-        switch self.scheme 
-        {
-        case .v1:       return .v1
-        case .v2:       return .v2
-        case .v4:       return .v4
-        case .v8:       return .v8
-        case .v16:      return .v16
-        case .rgb8:     return .rgb8
-        case .rgb16:    return .rgb16
-        case .indexed1: return .indexed1
-        case .indexed2: return .indexed2
-        case .indexed4: return .indexed4
-        case .indexed8: return .indexed8
-        case .va8:      return .va8
-        case .va16:     return .va16
-        case .rgba8:    return .rgba8
-        case .rgba16:   return .rgba16
-        }
-    }
-    
-    @inlinable
-    public
-    var palette:PNG.Palette?
-    {
-        switch self.scheme
-        {
-        case    .indexed1(  let palette),
-                .indexed2(  let palette),
-                .indexed4(  let palette),
-                .indexed8(  let palette):
-            return palette
-
-        case    .rgb8(      let option),
-                .rgb16(     let option),
-                .rgba8(     let option),
-                .rgba16(    let option):
-            return option
-        default:
-            return nil
-        }
-    }
-}
 
 extension PNG 
 {
@@ -268,6 +184,7 @@ extension PNG
         case invalidChromaKeySample(UInt16, expected:ClosedRange<UInt16>)
         case invalidTransparencyPaletteEntryCount(Int, expected:ClosedRange<Int>)
         
+        case unexpectedBackground
         case invalidBackgroundChunkLength(Int, expected:Int)
         case invalidBackgroundSample(UInt16, expected:ClosedRange<UInt16>)
         case invalidBackgroundPaletteEntryIndex(Int, expected:ClosedRange<Int>)
@@ -374,8 +291,7 @@ extension PNG
     public 
     struct Palette 
     {
-        private 
-        var storage:[(r:UInt8, g:UInt8, b:UInt8)]
+        let entries:[(r:UInt8, g:UInt8, b:UInt8)]
     }
 }
 extension PNG.Palette 
@@ -404,11 +320,29 @@ extension PNG.Palette
             throw PNG.ParsingError.invalidPaletteEntryCount(count, expected: 1 ... maximum)
         }
 
-        return .init(storage: (0 ..< count).map
+        return .init(entries: (0 ..< count).map
         {
             (i:Int) -> (r:UInt8, g:UInt8, b:UInt8) in 
             (data[3 * i], data[3 * i + 1], data[3 * i + 2])
         })
+    }
+}
+extension PNG.Palette:RandomAccessCollection 
+{
+    public 
+    var startIndex:Int 
+    {
+        self.entries.startIndex
+    }
+    public 
+    var endIndex:Int 
+    {
+        self.entries.endIndex
+    }
+    public 
+    subscript(index:Int) -> (r:UInt8, g:UInt8, b:UInt8) 
+    {
+        self.entries[index]
     }
 }
 
@@ -425,10 +359,10 @@ extension PNG
 extension PNG.Transparency 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, paletteSize:Int) 
+    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette?) 
         throws -> Self
     {
-        let maxSample:UInt16 = .init(1 << format.depth - 1 as Int)
+        let max:UInt16 = .init(1 << format.depth - 1 as Int)
         switch format 
         {
         case .v1, .v2, .v4, .v8, .v16:
@@ -440,11 +374,10 @@ extension PNG.Transparency
             }
             
             let v:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-            guard v <= maxSample 
+            guard v <= max 
             else 
             {
-                throw PNG.ParsingError.invalidChromaKeySample(v, 
-                    expected: 0 ... maxSample)
+                throw PNG.ParsingError.invalidChromaKeySample(v, expected: 0 ... max)
             }
             return .v(key: v)
         
@@ -459,20 +392,25 @@ extension PNG.Transparency
             let r:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
                 g:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
                 b:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-            guard r <= maxSample, g <= maxSample, b <= maxSample 
+            guard r <= max, g <= max, b <= max 
             else 
             {
                 throw PNG.ParsingError.invalidChromaKeySample(Swift.max(r, g, b), 
-                    expected: 0 ... maxSample)
+                    expected: 0 ... max)
             }
             return .rgb(key: (r, g, b))
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard data.count <= paletteSize 
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                throw PNG.ParsingError.unexpectedTransparency(format: format)
+            }
+            guard data.count <= palette.count  
             else 
             {
                 throw PNG.ParsingError.invalidTransparencyPaletteEntryCount(data.count, 
-                    expected: 1 ... paletteSize)
+                    expected: 1 ... palette.count)
             }
             return .palette(alpha: data)
         
@@ -487,7 +425,7 @@ extension PNG
     public 
     enum Background 
     {
-        case palette(index:UInt8)
+        case palette(index:Int)
         case rgb((r:UInt16, g:UInt16, b:UInt16))
         case v(UInt16)
     }
@@ -495,10 +433,10 @@ extension PNG
 extension PNG.Background 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, paletteSize:Int) 
+    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette?) 
         throws -> Self
     {
-        let maxSample:UInt16 = .init(1 << format.depth - 1 as Int)
+        let max:UInt16 = .init(1 << format.depth - 1 as Int)
         switch format 
         {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
@@ -510,11 +448,10 @@ extension PNG.Background
             }
             
             let v:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-            guard v <= maxSample 
+            guard v <= max 
             else 
             {
-                throw PNG.ParsingError.invalidBackgroundSample(v, 
-                    expected: 0 ... maxSample)
+                throw PNG.ParsingError.invalidBackgroundSample(v, expected: 0 ... max)
             }
             return .v(v)
         
@@ -529,28 +466,33 @@ extension PNG.Background
             let r:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
                 g:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
                 b:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-            for v:UInt16 in [r, g, b] where v > maxSample
+            for v:UInt16 in [r, g, b] where v > max
             {
-                throw PNG.ParsingError.invalidBackgroundSample(v, 
-                    expected: 0 ... maxSample)
+                throw PNG.ParsingError.invalidBackgroundSample(v, expected: 0 ... max)
             }
             
             return .rgb((r, g, b))
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                throw PNG.ParsingError.unexpectedBackground
+            }
             guard data.count == 1
             else 
             {
                 throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, 
                     expected: 1)
             }
-            guard .init(data[0]) < paletteSize
+            let index:Int = .init(data[0])
+            guard index < palette.count
             else 
             {
-                throw PNG.ParsingError.invalidBackgroundPaletteEntryIndex(.init(data[0]), 
-                    expected: 0 ... paletteSize - 1)
+                throw PNG.ParsingError.invalidBackgroundPaletteEntryIndex(index, 
+                    expected: 0 ... palette.count - 1)
             }
-            return .palette(index: data[0])
+            return .palette(index: index)
         }
     }
 }
@@ -567,7 +509,7 @@ extension PNG
 extension PNG.Histogram 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, paletteSize:Int) 
+    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette?) 
         throws -> Self
     {
         switch format 
@@ -576,17 +518,22 @@ extension PNG.Histogram
             throw PNG.ParsingError.unexpectedHistogram(format: format)
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                throw PNG.ParsingError.unexpectedHistogram(format: format)
+            }
             guard data.count & 1 == 0 
             else 
             {
                 // must have parity 2
                 throw PNG.ParsingError.invalidHistogramChunkLength(data.count)
             }
-            guard data.count >> 1 == paletteSize
+            guard data.count >> 1 == palette.count
             else 
             {
                 throw PNG.ParsingError.invalidHistogramBinCount(data.count >> 1, 
-                    expected: paletteSize)
+                    expected: palette.count)
             }
             return .init(frequencies: (0 ..< data.count >> 1).map 
             {
