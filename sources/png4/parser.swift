@@ -104,6 +104,26 @@ extension PNG
         }
         
         @inlinable
+        var volume:Int
+        {
+            self.depth * self.channels
+        }
+        
+        @inlinable
+        public
+        var channels:Int
+        {
+            switch self
+            {
+            case .v1, .v2, .v4, .v8, .v16,
+                .indexed1, .indexed2, .indexed4, .indexed8:     return 1
+            case .va8,   .va16:                                 return 2
+            case .rgb8,  .rgb16:                                return 3
+            case .rgba8, .rgba16:                               return 4
+            }
+        }
+        
+        @inlinable
         public
         var depth:Int 
         {
@@ -189,7 +209,7 @@ extension PNG
         case invalidBackgroundSample(UInt16, expected:ClosedRange<UInt16>)
         case invalidBackgroundPaletteEntryIndex(Int, expected:ClosedRange<Int>)
         
-        case unexpectedHistogram(format:PNG.Format)
+        case unexpectedHistogram
         case invalidHistogramChunkLength(Int)
         case invalidHistogramBinCount(Int, expected:Int)
         
@@ -509,20 +529,15 @@ extension PNG
 extension PNG.Histogram 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette?) 
+    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette) 
         throws -> Self
     {
         switch format 
         {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
-            throw PNG.ParsingError.unexpectedHistogram(format: format)
+            throw PNG.ParsingError.unexpectedHistogram
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette 
-            else 
-            {
-                throw PNG.ParsingError.unexpectedHistogram(format: format)
-            }
             guard data.count & 1 == 0 
             else 
             {
