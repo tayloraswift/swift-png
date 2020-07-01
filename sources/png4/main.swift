@@ -339,24 +339,404 @@ extension PNG.Data
         let size:(x:Int, y:Int)
         public 
         var metadata:PNG.Metadata
+        
+        private 
+        var storage:[UInt8]
     }
 }
 extension PNG.Data.Rectangular 
 {
+    internal // uninitialized buffer 
+    init(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata)  
+    {
+        precondition(size.x > 0 && size.y > 0, "image dimensions must be positive")
+        self.layout     = layout
+        self.size       = size
+        self.metadata   = metadata
+        
+        let bytes:Int   = size.x * size.y * layout.format.channels * 
+            (layout.format.depth + 7) >> 3
+        self.storage    = .init(unsafeUninitializedCapacity: bytes)
+        {
+            $1 = bytes
+        }
+    }
+    
+    mutating 
+    func assign<RAC>(scanline:RAC, at base:(x:Int, y:Int), stride:(x:Int, y:Int)) 
+        where RAC:RandomAccessCollection, RAC.Index == Int, RAC.Element == UInt8
+    {
+        let indices:EnumeratedSequence<StrideTo<Int>> = 
+            Swift.stride(from: base.x, to: self.size.x, by: stride.x).enumerated()
+        switch self.layout.format 
+        {
+        // 0 x 1 
+        case .v1, .indexed1:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int =   i >> 3 &+ scanline.startIndex, 
+                    b:Int =  ~i & 0b111
+                storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0001
+            }
+        
+        case .v2, .indexed2:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int =   i >> 2 &+ scanline.startIndex, 
+                    b:Int = (~i & 0b011) << 1
+                storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0011
+            }
+        
+        case .v4, .indexed4:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int =   i >> 1 &+ scanline.startIndex, 
+                    b:Int = (~i & 0b001) << 2
+                storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b1111
+            }
+        
+        // 1 x 1
+        case .v8, .indexed8:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = i &+ scanline.startIndex, 
+                    d:Int = base.y &* self.size.x &+ x
+                storage[d] = scanline[a]
+            }
+        // 1 x 2
+        case .va8:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 2 &* i &+ scanline.startIndex, 
+                    d:Int = 2 &* (base.y &* self.size.x &+ x)
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+            }
+        // 1 x 3
+        case .rgb8:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 3 &* i &+ scanline.startIndex, 
+                    d:Int = 3 &* (base.y &* self.size.x &+ x)
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+                storage[d &+ 2] = scanline[a &+ 2]
+            }
+        // 1 x 4
+        case .rgba8:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 4 &* i &+ scanline.startIndex, 
+                    d:Int = 4 &* (base.y &* self.size.x &+ x)
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+                storage[d &+ 2] = scanline[a &+ 2]
+                storage[d &+ 3] = scanline[a &+ 3]
+            }
+        
+        // 2 x 1
+        case .v16:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 2 &* i &+ scanline.startIndex, 
+                    d:Int = 2 &* base.y &* self.size.x &+ x
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+            }
+        // 2 x 2
+        case .va16:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 4 &* i &+ scanline.startIndex, 
+                    d:Int = 4 &* (base.y &* self.size.x &+ x)
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+                storage[d &+ 2] = scanline[a &+ 2]
+                storage[d &+ 3] = scanline[a &+ 3]
+            }
+        // 2 x 3
+        case .rgb16:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 6 &* i &+ scanline.startIndex, 
+                    d:Int = 6 &* (base.y &* self.size.x &+ x)
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+                storage[d &+ 2] = scanline[a &+ 2]
+                storage[d &+ 3] = scanline[a &+ 3]
+                storage[d &+ 4] = scanline[a &+ 4]
+                storage[d &+ 5] = scanline[a &+ 5]
+            }
+        // 2 x 4
+        case .rgba16:
+            for (i, x):(Int, Int) in indices
+            {
+                let a:Int = 8 &* i &+ scanline.startIndex, 
+                    d:Int = 8 &* (base.y &* self.size.x &+ x)
+                storage[d     ] = scanline[a     ]
+                storage[d &+ 1] = scanline[a &+ 1]
+                storage[d &+ 2] = scanline[a &+ 2]
+                storage[d &+ 3] = scanline[a &+ 3]
+                storage[d &+ 4] = scanline[a &+ 4]
+                storage[d &+ 5] = scanline[a &+ 5]
+                storage[d &+ 6] = scanline[a &+ 6]
+                storage[d &+ 7] = scanline[a &+ 7]
+            }
+        }
+    }
+}
+
+extension PNG.Metadata 
+{
+    static 
+    func unique<T>(assign type:PNG.Chunk, to destination:inout T?, 
+        parser:() throws -> T) throws 
+    {
+        guard destination == nil 
+        else 
+        {
+            throw PNG.DecodingError.duplicateChunk(type)
+        }
+        destination = try parser()
+    }
+    
+    mutating 
+    func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8]), 
+        format:PNG.Format, palette:PNG.Palette?, 
+        background:inout PNG.Background?, 
+        transparency:inout PNG.Transparency?) throws 
+    {
+        // check before-palette chunk ordering 
+        switch chunk.type 
+        {
+        case .cHRM, .gAMA, .sRGB, .iCCP, .sBIT:
+            guard palette == nil 
+            else 
+            {
+                throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .PLTE)
+            }
+        default:
+            break 
+        }
+        
+        switch chunk.type 
+        {
+        case .bKGD:
+            try Self.unique(assign: chunk.type, to: &background) 
+            {
+                try .parse(chunk.data, format: format, palette: palette)
+            }
+        case .tRNS:
+            try Self.unique(assign: chunk.type, to: &transparency) 
+            {
+                try .parse(chunk.data, format: format, palette: palette)
+            }
+            
+        case .hIST:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                throw PNG.DecodingError.missingPalette
+            }
+            try Self.unique(assign: chunk.type, to: &self.histogram) 
+            {
+                try .parse(chunk.data, format: format, palette: palette)
+            }
+        
+        case .cHRM:
+            try Self.unique(assign: chunk.type, to: &self.chromaticity) 
+            {
+                try .parse(chunk.data)
+            }
+        case .gAMA:
+            try Self.unique(assign: chunk.type, to: &self.gamma) 
+            {
+                try .parse(chunk.data)
+            }
+        case .sRGB:
+            try Self.unique(assign: chunk.type, to: &self.colorRendering) 
+            {
+                try .parse(chunk.data)
+            }
+        case .iCCP:
+            try Self.unique(assign: chunk.type, to: &self.colorProfile) 
+            {
+                try .parse(chunk.data)
+            }
+        case .sBIT:
+            try Self.unique(assign: chunk.type, to: &self.significantBits) 
+            {
+                try .parse(chunk.data, format: format)
+            }
+        
+        case .pHYs:
+            try Self.unique(assign: chunk.type, to: &self.physicalDimensions) 
+            {
+                try .parse(chunk.data)
+            }
+        case .tIME:
+            try Self.unique(assign: chunk.type, to: &self.time) 
+            {
+                try .parse(chunk.data)
+            }
+        
+        case .sPLT:
+            self.suggestedPalettes.append(try .parse(chunk.data))
+        case .iTXt:
+            self.text.append(try .parse(        chunk.data))
+        case .tEXt, .zTXt:
+            self.text.append(try .parse(latin1: chunk.data))
+        
+        default:
+            self.application.append(chunk)
+        }
+    }
+}
+
+extension PNG 
+{
+    struct Decoder 
+    {
+        private 
+        var x:Int, 
+            y:Int, 
+            z:Int
+        private 
+        var reference:[UInt8] 
+        private 
+        var inflator:LZ77.Inflator 
+        
+        static 
+        func interlaced() -> Self
+        {
+            .init(x: 0, y: -1, z: 0, reference: [], inflator: .init())
+        }
+        
+        mutating 
+        func push(_ data:[UInt8], size:(x:Int, y:Int), format:PNG.Format, 
+            delegate:(ArraySlice<UInt8>, (x:Int, y:Int), (x:Int, y:Int)) throws -> ()) throws
+        {
+            try self.inflator.push(data)
+            
+            while self.z < 7 
+            {
+                let adam7:[(base:(x:Int, y:Int), exponent:(x:Int, y:Int))] = 
+                [
+                    (base: (0, 0), exponent: (3, 3)),
+                    (base: (4, 0), exponent: (3, 3)),
+                    (base: (0, 4), exponent: (2, 3)),
+                    (base: (2, 0), exponent: (2, 2)),
+                    (base: (0, 2), exponent: (1, 2)),
+                    (base: (1, 0), exponent: (1, 1)),
+                    (base: (0, 1), exponent: (0, 1)),
+                    
+                    (base: (0, 0), exponent: (0, 0)),
+                ]
+                
+                let (base, exponent):((x:Int, y:Int), (x:Int, y:Int)) = adam7[z]
+                let subimage:(x:Int, y:Int) = 
+                (
+                    (size.x + 7 - base.x) >> exponent.x, 
+                    (size.y + 7 - base.y) >> exponent.y
+                )
+                let stride:(x:Int, y:Int) = (1 << exponent.x, 1 << exponent.y)
+                let pitch:Int   = (subimage.x * format.volume + 7) >> 3
+                
+                if self.y < 0 
+                {
+                    self.reference = .init(repeating: 0, count: pitch + 1)
+                    self.y = 0
+                }
+                
+                while self.y < subimage.y 
+                {
+                    guard var scanline:[UInt8] = self.inflator.pull(self.reference.count)
+                    else 
+                    {
+                        return 
+                    }
+                    
+                    //self.defilter(&scanline)
+                    
+                    try delegate(scanline.dropFirst(), base, stride)
+                    
+                    self.reference  = scanline 
+                    self.y         += 1
+                }
+                
+                self.y  = -1
+                self.z +=  1
+            }
+        }
+    }
+}
+extension PNG 
+{
+    public 
+    struct Context 
+    {
+        public private(set)
+        var image:PNG.Data.Rectangular 
+        
+        private 
+        var decoder:PNG.Decoder 
+    }
+}
+extension PNG.Context 
+{
+    public 
     init(standard:PNG.Standard, header:PNG.Header, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
         metadata:PNG.Metadata) throws 
     {
-        self.size       = header.size
-        self.layout     = try .init(standard: standard, 
+        let layout:PNG.Layout = try .init(standard: standard, 
             interlaced:     header.interlaced, 
             format:         header.format, 
             palette:        palette, 
             background:     background, 
             transparency:   transparency)
-        self.metadata   = metadata
+        self.image = .init(size: header.size, layout: layout, metadata: metadata)
+        
+        self.decoder = .interlaced()
     }
     
+    mutating 
+    func push(imageData data:[UInt8]) throws 
+    {
+        try self.decoder.push(data, size: self.image.size, format: self.image.layout.format) 
+        {
+            self.image.assign(scanline: $0, at: $1, stride: $2)
+        }
+    }
+    
+    mutating 
+    func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8])) throws 
+    {
+        switch chunk.type 
+        {
+        case .tIME:
+            try PNG.Metadata.unique(assign: chunk.type, to: &self.image.metadata.time) 
+            {
+                try .parse(chunk.data)
+            }
+        case .iTXt:
+            self.image.metadata.text.append(try .parse(        chunk.data))
+        case .tEXt, .zTXt:
+            self.image.metadata.text.append(try .parse(latin1: chunk.data))
+        case .IHDR, .PLTE, .bKGD, .tRNS, .hIST, 
+            .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT:
+            throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT)
+        case .IEND: 
+            break 
+        default:
+            self.image.metadata.application.append(chunk)
+        }
+    }
+}
+
+
+extension PNG.Data.Rectangular 
+{    
     static 
     func decompress<Source>(stream:inout Source) throws -> Self 
         where Source:PNG.Bytestream.Source
@@ -385,17 +765,7 @@ extension PNG.Data.Rectangular
         
         var chunk:(type:PNG.Chunk, data:[UInt8]) = try stream.chunk()
         
-        func unique<T>(assign:inout T?, parser:() throws -> T) throws 
-        {
-            guard assign == nil 
-            else 
-            {
-                throw PNG.DecodingError.duplicateChunk(chunk.type)
-            }
-            assign = try parser()
-        }
-        
-        var image:Self = try 
+        var context:PNG.Context = try 
         {
             var palette:PNG.Palette?
             var background:PNG.Background?, 
@@ -441,82 +811,11 @@ extension PNG.Data.Rectangular
                 case .IEND:
                     throw PNG.DecodingError.missingImageData
                 
-                
-                case .bKGD:
-                    try unique(assign: &background) 
-                    {
-                        try .parse(chunk.data, format: header.format, palette: palette)
-                    }
-                case .tRNS:
-                    try unique(assign: &transparency) 
-                    {
-                        try .parse(chunk.data, format: header.format, palette: palette)
-                    }
-                case .hIST:
-                    try unique(assign: &metadata.histogram) 
-                    {
-                        try .parse(chunk.data, format: header.format, palette: palette)
-                    }
-                
-                case .cHRM:
-                    try unique(assign: &metadata.chromaticity) 
-                    {
-                        try .parse(chunk.data)
-                    }
-                case .gAMA:
-                    try unique(assign: &metadata.gamma) 
-                    {
-                        try .parse(chunk.data)
-                    }
-                case .sRGB:
-                    try unique(assign: &metadata.colorRendering) 
-                    {
-                        try .parse(chunk.data)
-                    }
-                case .iCCP:
-                    try unique(assign: &metadata.colorProfile) 
-                    {
-                        try .parse(chunk.data)
-                    }
-                case .sBIT:
-                    try unique(assign: &metadata.significantBits) 
-                    {
-                        try .parse(chunk.data, format: header.format)
-                    }
-                
-                case .pHYs:
-                    try unique(assign: &metadata.physicalDimensions) 
-                    {
-                        try .parse(chunk.data)
-                    }
-                case .tIME:
-                    try unique(assign: &metadata.time) 
-                    {
-                        try .parse(chunk.data)
-                    }
-                
-                case .sPLT:
-                    metadata.suggestedPalettes.append(try .parse(chunk.data))
-                case .iTXt:
-                    metadata.text.append(try .parse(chunk.data))
-                case .tEXt, .zTXt:
-                    metadata.text.append(try .parse(latin1: chunk.data))
-                
                 default:
-                    metadata.application.append(chunk)
-                }
-                
-                // check before-palette chunk ordering 
-                switch chunk.type 
-                {
-                case .cHRM, .gAMA, .iCCP, .sBIT, .sRGB:
-                    guard palette == nil 
-                    else 
-                    {
-                        throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .PLTE)
-                    }
-                default:
-                    break 
+                    try metadata.push(ancillary: chunk, format: header.format, 
+                        palette:        palette, 
+                        background:     &background, 
+                        transparency:   &transparency)
                 }
                 
                 chunk = try stream.chunk()
@@ -525,30 +824,17 @@ extension PNG.Data.Rectangular
         
         while chunk.type == .IDAT  
         {
+            try context.push(imageData: chunk.data)
             chunk = try stream.chunk()
         }
         
         while chunk.type != .IEND 
         {
-            switch chunk.type 
-            {
-            case .tIME:
-                try unique(assign: &image.metadata.time) 
-                {
-                    try .parse(chunk.data)
-                }
-            case .iTXt:
-                image.metadata.text.append(try .parse(        chunk.data))
-            case .tEXt, .zTXt:
-                image.metadata.text.append(try .parse(latin1: chunk.data))
-            default:
-                throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT)
-            }
-            
+            try context.push(ancillary: chunk)
             chunk = try stream.chunk()
         }
         
-        return image
+        return context.image
     }
 }
 
