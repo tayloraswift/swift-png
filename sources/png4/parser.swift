@@ -506,10 +506,25 @@ extension PNG
         let size:(x:Int, y:Int), 
             pixel:PNG.Format.Pixel, 
             interlaced:Bool
+        // need to override synthesized init
+        private 
+        init(unchecked size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
+        {
+            self.size       = size 
+            self.pixel      = pixel 
+            self.interlaced = interlaced
+        }
     }
 }
 extension PNG.Header 
 {
+    public 
+    init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
+    {
+        precondition(size.x > 0 && size.y > 0, "size must be positive")
+        self.init(unchecked: size, pixel: pixel, interlaced: interlaced)
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self 
     {
@@ -574,6 +589,14 @@ extension PNG
 }
 extension PNG.Palette 
 {
+    public 
+    init(_ entries:[(r:UInt8, g:UInt8, b:UInt8)], pixel:PNG.Format.Pixel) 
+    {
+        precondition(1 ... Swift.min(256, 1 << pixel.depth) ~= entries.count, "invalid number of palette entries")
+        precondition(pixel.hasColor, "invalid pixel format")
+        self.entries = entries 
+    }
+    
     public static 
     func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
     {
@@ -591,7 +614,7 @@ extension PNG.Palette
         }
 
         // check number of palette entries
-        let maximum:Int = 1 << pixel.depth
+        let maximum:Int = Swift.min(256, 1 << pixel.depth)
         guard 1 ... maximum ~= count 
         else
         {
