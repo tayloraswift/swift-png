@@ -399,14 +399,13 @@ extension PNG
         var row:(index:Int, reference:[UInt8])?, 
             pass:Int?
         private 
-        var reference:[UInt8] 
-        private 
         var inflator:LZ77.Inflator 
         
-        static 
-        func interlaced() -> Self
+        init(interlaced:Bool)
         {
-            .init(reference: [], inflator: .init())
+            self.row        = nil
+            self.pass       = interlaced ? 0 : nil
+            self.inflator   = .init()
         }
         
         mutating 
@@ -428,18 +427,21 @@ extension PNG
                     (base: (0, 1), exponent: (0, 1)),
                 ]
                 
-                for z:Int in pass ..< 7 
+                for z:Int in pass ..< 7
                 {
                     let (base, exponent):((x:Int, y:Int), (x:Int, y:Int)) = adam7[z]
+                    let stride:(x:Int, y:Int)   = 
+                    (
+                        x: 1                                 << exponent.x, 
+                        y: 1                                 << exponent.y
+                    )
                     let subimage:(x:Int, y:Int) = 
                     (
-                        (size.x + 7 - base.x) >> exponent.x, 
-                        (size.y + 7 - base.y) >> exponent.y
+                        x: (size.x + stride.x - base.x - 1 ) >> exponent.x, 
+                        y: (size.y + stride.y - base.y - 1 ) >> exponent.y
                     )
                     
-                    let stride:(x:Int, y:Int)   = (1 << exponent.x, 1 << exponent.y)
-                    let pitch:Int               = (subimage.x * pixel.volume + 7) >> 3
-                    
+                    let pitch:Int = (subimage.x * pixel.volume + 7) >> 3
                     var (start, last):(Int, [UInt8]) = self.row ?? 
                         (0, .init(repeating: 0, count: pitch + 1))
                     self.row = nil 
@@ -570,9 +572,8 @@ extension PNG.Context
             palette:        palette, 
             background:     background, 
             transparency:   transparency)
-        self.image = .init(size: header.size, layout: layout, metadata: metadata)
-        
-        self.decoder = .interlaced()
+        self.image      = .init(size: header.size, layout: layout, metadata: metadata)
+        self.decoder    = .init(interlaced: header.interlaced)
     }
     
     mutating 
