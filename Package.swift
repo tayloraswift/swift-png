@@ -24,7 +24,7 @@ let package = Package(
     products:
     [
         .library(   name: "PNG",                targets: ["PNG"]),
-        .executable(name: "png",                targets: ["PNG4"]),
+        .library(   name: "png",                targets: ["PNG4"]),
         
         .executable(name: "unit-test",          targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",   targets: ["PNGIntegrationTests"]),
@@ -37,7 +37,7 @@ let package = Package(
         .target(name: "PNG4",                   dependencies: [],       path: "sources/png4"),
         
         .target(name: "PNGUnitTests",           dependencies: ["PNG"],  path: "tests/unit"),
-        .target(name: "PNGIntegrationTests",    dependencies: ["PNG"],  path: "tests/integration"),
+        .target(name: "PNGIntegrationTests",    dependencies: ["PNG4"],  path: "tests/integration"),
         .target(name: "PNGBenchmarks",          dependencies: ["PNG"],  path: "benchmarks"), 
         .target(name: "PNGExamples",            dependencies: ["PNG"],  path: "examples")
     ],
