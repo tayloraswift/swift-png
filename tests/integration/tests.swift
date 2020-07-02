@@ -1,4 +1,4 @@
-import PNG
+import PNG4
 
 extension Test 
 {
@@ -239,10 +239,49 @@ extension Test
         {
             ("decode-\($0.name)", .string(Self.decode(_:), $0.members))
         }
-        +       suite.map 
+        /* +       suite.map 
         {
             ("encode-\($0.name)", .string(Self.encode(_:), $0.members))
-        }
+        } */
+    }
+    private static 
+    func print(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) 
+    {
+        let downsample:Int = max(1, size.x / 16)
+        for i:Int in stride(from: 0, to: size.y, by: downsample)
+        {
+            let line:String = stride(from: 0, to: size.x, by: downsample).map 
+            {
+                (j:Int) in 
+                
+                // downsampling 
+                var r:Int = 0, 
+                    g:Int = 0, 
+                    b:Int = 0 
+                for y:Int in i ..< min(i + downsample, size.y) 
+                {
+                    for x:Int in j ..< min(j + downsample, size.x)
+                    {
+                        let c:PNG.RGBA<UInt16> = rgb[x + y * size.x]
+                        r += .init(c.r)
+                        g += .init(c.g)
+                        b += .init(c.b)
+                    }
+                }
+                
+                let count:Int = 
+                    (min(i + downsample, size.y) - i) * 
+                    (min(j + downsample, size.x) - j)
+                let c:(r:Float, g:Float, b:Float) = 
+                (
+                    .init(r) / (65535 * .init(count)),
+                    .init(g) / (65535 * .init(count)),
+                    .init(b) / (65535 * .init(count))
+                )
+                return Highlight.square(c)
+            }.joined(separator: "")
+            Swift.print(line)
+        } 
     }
     
     static 
@@ -267,11 +306,13 @@ extension Test
                 return .failure(.init(message: "failed to open file '\(path.png)'"))
             }
 
-            let image:[PNG.RGBA<UInt16>] = rectangular.rgba(of: UInt16.self)
+            let image:[PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
+            
+            Self.print(image: image, size: rectangular.size)
 
-            guard let result:[PNG.RGBA<UInt16>]? = (PNG.File.Source.open(path: path.rgba)
+            guard let result:[PNG.RGBA<UInt16>]? = (System.File.Source.open(path: path.rgba)
             {
-                let pixels:Int = rectangular.properties.size.x * rectangular.properties.size.y,
+                let pixels:Int = rectangular.size.x * rectangular.size.y,
                     bytes:Int  = pixels * MemoryLayout<PNG.RGBA<UInt16>>.stride
 
                 guard let data:[UInt8] = $0.read(count: bytes)
@@ -319,7 +360,7 @@ extension Test
         }
     }
     
-    static 
+    /* static 
     func encode(_ name:String) -> Result<Void, Failure>
     {
         let path:(png:String, rgba:String, out:String) = 
@@ -350,7 +391,7 @@ extension Test
         }
 
         return Self.decode(path: (path.png, path.rgba))
-    }
+    } */
 }
 
 fileprivate

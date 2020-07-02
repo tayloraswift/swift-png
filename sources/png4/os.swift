@@ -241,4 +241,15 @@ extension System.File.Destination:PNG.Bytestream.Destination
 {
 }
 
+extension PNG.Data.Rectangular 
+{
+    public static 
+    func decompress(path:String) throws -> Self?
+    {
+        try System.File.Source.open(path: path)
+        {
+            try .decompress(stream: &$0)
+        }
+    }
+}
 #endif 

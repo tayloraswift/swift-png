@@ -48,138 +48,390 @@ extension PNG
     }
     
     public 
-    enum Standard 
-    {
-        case common
-        case ios
-    }
-    
-    public 
     enum Format 
     {
-        case v1
-        case v2 
-        case v4 
-        case v8 
-        case v16 
-        
-        case rgb8 
-        case rgb16 
-        
-        case indexed1
-        case indexed2
-        case indexed4
-        case indexed8 
-        
-        case va8 
-        case va16 
-        
-        case rgba8 
-        case rgba16 
-        
-        @inlinable
-        public
-        var hasColor:Bool
+        public 
+        enum Pixel 
         {
-            switch self 
-            {
-            case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-                return false 
-            case .rgb8, .rgb16, .indexed1, .indexed2, .indexed4, .indexed8, .rgba8, .rgba16:
-                return true 
-            }
-        }
-        @inlinable
-        public
-        var hasAlpha:Bool
-        {
-            switch self 
-            {
-            case .v1, .v2, .v4, .v8, .v16, .rgb8, .rgb16, 
-                .indexed1, .indexed2, .indexed4, .indexed8:
-                return false 
-            case .va8, .va16, .rgba8, .rgba16:
-                return true 
-            }
-        }
-        
-        @inlinable
-        var volume:Int
-        {
-            self.depth * self.channels
-        }
-        
-        @inlinable
-        public
-        var channels:Int
-        {
-            switch self
-            {
-            case .v1, .v2, .v4, .v8, .v16,
-                .indexed1, .indexed2, .indexed4, .indexed8:     return 1
-            case .va8,   .va16:                                 return 2
-            case .rgb8,  .rgb16:                                return 3
-            case .rgba8, .rgba16:                               return 4
-            }
-        }
-        
-        @inlinable
-        public
-        var depth:Int 
-        {
-            switch self 
-            {
-            case    .v1,          .indexed1:                    return  1
-            case    .v2,          .indexed2:                    return  2
-            case    .v4,          .indexed4:                    return  4
-            case    .v8,  .rgb8,  .indexed8, .va8,  .rgba8:     return  8
-            case    .v16, .rgb16,            .va16, .rgba16:    return 16
-            }
-        }
-        
-        @inlinable
-        public
-        var sampleDepth:Int 
-        {
-            switch self 
-            {
-            case    .v1:                                        return  1
-            case    .v2:                                        return  2
-            case    .v4:                                        return  4
-            case    .indexed1, .indexed2, .indexed4, .indexed8, 
-                    .v8,  .rgb8,  .va8,  .rgba8:                return  8
-            case    .v16, .rgb16, .va16, .rgba16:               return 16
-            }
-        }
-        
-        static 
-        func recognize(code:(depth:UInt8, type:UInt8)) -> Self?
-        {
-            switch code
-            {
-            case ( 1, 0):   return .v1
-            case ( 2, 0):   return .v2
-            case ( 4, 0):   return .v4
-            case ( 8, 0):   return .v8
-            case (16, 0):   return .v16
+            case v1
+            case v2 
+            case v4 
+            case v8 
+            case v16 
             
-            case ( 8, 2):   return .rgb8
-            case (16, 2):   return .rgb16
+            case rgb8 
+            case rgb16 
             
-            case ( 1, 3):   return .indexed1
-            case ( 2, 3):   return .indexed2
-            case ( 4, 3):   return .indexed4
-            case ( 8, 3):   return .indexed8
+            case indexed1
+            case indexed2
+            case indexed4
+            case indexed8 
             
-            case ( 8, 4):   return .va8
-            case (16, 4):   return .va16
+            case va8 
+            case va16 
             
-            case ( 8, 6):   return .rgba8
-            case (16, 6):   return .rgba16
+            case rgba8 
+            case rgba16 
+        }
+        
+        // can’t use these in the enum cases because they are `internal` only
+        typealias RGB<T>  = (r:T, g:T, b:T)
+        typealias RGBA<T> = (r:T, g:T, b:T, a:T)
+        
+        case v1      (                                                background:   UInt8?,                       key:   UInt8?                      )
+        case v2      (                                                background:   UInt8?,                       key:   UInt8?                      )
+        case v4      (                                                background:   UInt8?,                       key:   UInt8?                      )
+        case v8      (                                                background:   UInt8?,                       key:   UInt8?                      )
+        case v16     (                                                background:   UInt16?,                      key:   UInt16?                     )
+        
+        case rgb8    (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt8,  g:UInt8,  b:UInt8 )?, key:(r:UInt8,  g:UInt8,  b:UInt8 )?)
+        case rgb16   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt16, g:UInt16, b:UInt16)?, key:(r:UInt16, g:UInt16, b:UInt16)?)
+        
+        case indexed1(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
+        case indexed2(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
+        case indexed4(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
+        case indexed8(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
+        
+        case va8     (                                                background:   UInt8?                                                           )
+        case va16    (                                                background:   UInt16?                                                          )
+        
+        case rgba8   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt8,  g:UInt8,  b:UInt8 )?                                     )
+        case rgba16  (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt16, g:UInt16, b:UInt16)?                                     )
+    }
+}
+extension PNG.Format.Pixel 
+{
+    @inlinable
+    public
+    var hasColor:Bool
+    {
+        switch self 
+        {
+        case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
+            return false 
+        case .rgb8, .rgb16, .indexed1, .indexed2, .indexed4, .indexed8, .rgba8, .rgba16:
+            return true 
+        }
+    }
+    @inlinable
+    public
+    var hasAlpha:Bool
+    {
+        switch self 
+        {
+        case .v1, .v2, .v4, .v8, .v16, .rgb8, .rgb16, 
+            .indexed1, .indexed2, .indexed4, .indexed8:
+            return false 
+        case .va8, .va16, .rgba8, .rgba16:
+            return true 
+        }
+    }
+    
+    @inlinable
+    var volume:Int
+    {
+        self.depth * self.channels
+    }
+    
+    @inlinable
+    public
+    var channels:Int
+    {
+        switch self
+        {
+        case .v1, .v2, .v4, .v8, .v16,
+            .indexed1, .indexed2, .indexed4, .indexed8:     return 1
+        case .va8,   .va16:                                 return 2
+        case .rgb8,  .rgb16:                                return 3
+        case .rgba8, .rgba16:                               return 4
+        }
+    }
+    
+    @inlinable
+    public
+    var depth:Int 
+    {
+        switch self 
+        {
+        case    .v1,          .indexed1:                    return  1
+        case    .v2,          .indexed2:                    return  2
+        case    .v4,          .indexed4:                    return  4
+        case    .v8,  .rgb8,  .indexed8, .va8,  .rgba8:     return  8
+        case    .v16, .rgb16,            .va16, .rgba16:    return 16
+        }
+    }
+    
+    @inlinable
+    public
+    var sampleDepth:Int 
+    {
+        switch self 
+        {
+        case    .v1:                                        return  1
+        case    .v2:                                        return  2
+        case    .v4:                                        return  4
+        case    .indexed1, .indexed2, .indexed4, .indexed8, 
+                .v8,  .rgb8,  .va8,  .rgba8:                return  8
+        case    .v16, .rgb16, .va16, .rgba16:               return 16
+        }
+    }
+    
+    static 
+    func recognize(code:(depth:UInt8, type:UInt8)) -> Self?
+    {
+        switch code
+        {
+        case ( 1, 0):   return .v1
+        case ( 2, 0):   return .v2
+        case ( 4, 0):   return .v4
+        case ( 8, 0):   return .v8
+        case (16, 0):   return .v16
+        
+        case ( 8, 2):   return .rgb8
+        case (16, 2):   return .rgb16
+        
+        case ( 1, 3):   return .indexed1
+        case ( 2, 3):   return .indexed2
+        case ( 4, 3):   return .indexed4
+        case ( 8, 3):   return .indexed8
+        
+        case ( 8, 4):   return .va8
+        case (16, 4):   return .va16
+        
+        case ( 8, 6):   return .rgba8
+        case (16, 6):   return .rgba16
+        
+        default:        return nil
+        }
+    }
+}
+extension PNG.Format 
+{
+    @inlinable
+    public
+    var pixel:Pixel
+    {
+        switch self
+        {
+        case .v1:       return .v1
+        case .v2:       return .v2
+        case .v4:       return .v4
+        case .v8:       return .v8
+        case .v16:      return .v16
+        case .rgb8:     return .rgb8
+        case .rgb16:    return .rgb16
+        case .indexed1: return .indexed1
+        case .indexed2: return .indexed2
+        case .indexed4: return .indexed4
+        case .indexed8: return .indexed8
+        case .va8:      return .va8
+        case .va16:     return .va16
+        case .rgba8:    return .rgba8
+        case .rgba16:   return .rgba16
+        }
+    }
+    
+    public static 
+    func recognize(pixel:PNG.Format.Pixel, palette:PNG.Palette?, 
+        background:PNG.Background?, transparency:PNG.Transparency?) -> Self?
+    {
+        let format:Self 
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16:
+            guard palette == nil 
+            else 
+            {
+                // palette not allowed for grayscale format
+                return nil 
+            }
+            let b:UInt16?, 
+                k:UInt16?
+            switch background 
+            {
+            case nil: 
+                b = nil 
+            case .v(let v)?: 
+                guard Int.init(v) < 1 << pixel.depth
+                else 
+                {
+                    return nil 
+                }
+                b = v
+            default: 
+                return nil 
+            }
+            switch transparency 
+            {
+            case nil:
+                k = nil 
+            case .v(let v)?: 
+                guard Int.init(v) < 1 << pixel.depth
+                else 
+                {
+                    return nil 
+                }
+                k = v
+            default: 
+                return nil 
+            }
             
-            default:        return nil
+            switch pixel 
+            {
+            case .v1:
+                format = .v1(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+            case .v2:
+                format = .v2(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+            case .v4:
+                format = .v4(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+            case .v8:
+                format = .v8(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+            case .v16:
+                format = .v16(background: b,                    key: k)
+            default:
+                fatalError("unreachable")
+            }
+        
+        case .rgb8, .rgb16:
+            let palette:[RGB<UInt8>] = palette?.entries ?? []
+            let b:RGB<UInt16>?, 
+                k:RGB<UInt16>?
+            switch background 
+            {
+            case nil: 
+                b = nil 
+            case .rgb(let v)?: 
+                b = v
+            default: 
+                return nil 
+            }
+            switch transparency 
+            {
+            case nil:
+                k = nil 
+            case .rgb(let v)?: 
+                k = v
+            default: 
+                return nil 
+            }
+            
+            switch pixel 
+            {
+            case .rgb8:
+                format = .rgb8(palette: palette, 
+                    background: b.map{ (.init($0.r), .init($0.g), .init($0.b)) }, 
+                    key:        k.map{ (.init($0.r), .init($0.g), .init($0.b)) })
+            case .rgb16:
+                format = .rgb16(palette: palette, background: b, key: k)
+            default:
+                fatalError("unreachable")
+            }
+        
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let solid:PNG.Palette = palette, 
+                solid.count <= 1 << pixel.depth 
+            else 
+            {
+                return nil 
+            }
+            let b:Int? 
+            switch background 
+            {
+            case nil:
+                b = nil 
+            case .palette(index: let i):
+                guard i < solid.count 
+                else 
+                {
+                    return nil 
+                }
+                b = i
+            default: 
+                return nil 
+            }
+            let palette:[RGBA<UInt8>]
+            switch transparency 
+            {
+            case nil:
+                palette =          solid.map        { (  $0.r,   $0.g,   $0.b, .max) }
+            case .palette(alpha: let alpha):
+                precondition(alpha.count <= solid.count)
+                palette =      zip(solid, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } + 
+                    solid.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
+            default: 
+                return nil 
+            }
+            
+            switch pixel  
+            {
+            case .indexed1: 
+                format = .indexed1(palette: palette, background: b)
+            case .indexed2: 
+                format = .indexed2(palette: palette, background: b)
+            case .indexed4: 
+                format = .indexed4(palette: palette, background: b)
+            case .indexed8: 
+                format = .indexed8(palette: palette, background: b)
+            default:
+                fatalError("unreachable")
+            }
+        
+        case .va8, .va16:
+            guard palette == nil, transparency == nil 
+            else 
+            {
+                // palette/chroma-key not allowed for grayscale-alpha format
+                return nil 
+            }
+            let b:UInt16?
+            switch background 
+            {
+            case nil:           b = nil 
+            case .v(let v)?:    b = v
+            default: 
+                return nil 
+            }
+            
+            switch pixel 
+            {
+            case .va8:
+                format = .va8(background: b.map(UInt8.init(_:)))
+            case .va16:
+                format = .va16(background: b)
+            default:
+                fatalError("unreachable")
+            }
+        
+        case .rgba8, .rgba16:
+            guard transparency == nil 
+            else 
+            {
+                // chroma key not allowed for rgba format
+                return nil 
+            }
+            let palette:[RGB<UInt8>] = palette?.entries ?? []
+            let b:RGB<UInt16>?
+            switch background 
+            {
+            case nil:           b = nil 
+            case .rgb(let v)?:  b = v
+            default: 
+                return nil 
+            }
+            
+            switch pixel 
+            {
+            case .rgba8:
+                format = .rgba8(palette: palette, 
+                    background: b.map{ (.init($0.r), .init($0.g), .init($0.b)) })
+            case .rgba16:
+                format = .rgba16(palette: palette, background: b)
+            default:
+                fatalError("unreachable")
             }
         }
+        
+        return format 
     }
 }
 
@@ -195,11 +447,11 @@ extension PNG
         case invalidHeaderInterlacingCode(UInt8)
         case invalidHeaderSize((x:Int, y:Int))
         
-        case unexpectedPalette(format:PNG.Format)
+        case unexpectedPalette(pixel:PNG.Format.Pixel)
         case invalidPaletteSampleCount(Int)
         case invalidPaletteEntryCount(Int, expected:ClosedRange<Int>)
         
-        case unexpectedTransparency(format:PNG.Format)
+        case unexpectedTransparency(pixel:PNG.Format.Pixel)
         case invalidTransparencyChunkLength(Int, expected:Int)
         case invalidChromaKeySample(UInt16, expected:ClosedRange<UInt16>)
         case invalidTransparencyPaletteEntryCount(Int, expected:ClosedRange<Int>)
@@ -246,7 +498,7 @@ extension PNG
     {
         public
         let size:(x:Int, y:Int), 
-            format:PNG.Format, 
+            pixel:PNG.Format.Pixel, 
             interlaced:Bool
     }
 }
@@ -261,7 +513,7 @@ extension PNG.Header
             throw PNG.ParsingError.truncatedHeader(data.count, minimum: 13)
         }
         
-        guard let format:PNG.Format = .recognize(code: (data[8], data[9]))
+        guard let pixel:PNG.Format.Pixel = .recognize(code: (data[8], data[9]))
         else
         {
             throw PNG.ParsingError.invalidHeaderColorCode(depth: data[8], type: data[9])
@@ -302,7 +554,7 @@ extension PNG.Header
             throw PNG.ParsingError.invalidHeaderSize(size)
         }
 
-        return .init(size: size, format: format, interlaced: interlaced)
+        return .init(size: size, pixel: pixel, interlaced: interlaced)
     }
 }
 
@@ -317,12 +569,12 @@ extension PNG
 extension PNG.Palette 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format) throws -> Self
+    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
     {
-        guard format.hasColor
+        guard pixel.hasColor
         else
         {
-            throw PNG.ParsingError.unexpectedPalette(format: format)
+            throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
         }
         
         let (count, remainder):(Int, Int) = data.count.quotientAndRemainder(dividingBy: 3)
@@ -333,7 +585,7 @@ extension PNG.Palette
         }
 
         // check number of palette entries
-        let maximum:Int = 1 << format.depth
+        let maximum:Int = 1 << pixel.depth
         guard 1 ... maximum ~= count 
         else
         {
@@ -379,11 +631,11 @@ extension PNG
 extension PNG.Transparency 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette?) 
+    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
         throws -> Self
     {
-        let max:UInt16 = .init(1 << format.depth - 1 as Int)
-        switch format 
+        let max:UInt16 = .init(1 << pixel.depth - 1 as Int)
+        switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16:
             guard data.count == 2 
@@ -424,7 +676,7 @@ extension PNG.Transparency
             guard let palette:PNG.Palette = palette 
             else 
             {
-                throw PNG.ParsingError.unexpectedTransparency(format: format)
+                throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
             }
             guard data.count <= palette.count  
             else 
@@ -435,7 +687,7 @@ extension PNG.Transparency
             return .palette(alpha: data)
         
         case .va8, .va16, .rgba8, .rgba16:
-            throw PNG.ParsingError.unexpectedTransparency(format: format)
+            throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
         }
     }
 }
@@ -453,11 +705,11 @@ extension PNG
 extension PNG.Background 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette?) 
+    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
         throws -> Self
     {
-        let max:UInt16 = .init(1 << format.depth - 1 as Int)
-        switch format 
+        let max:UInt16 = .init(1 << pixel.depth - 1 as Int)
+        switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
             guard data.count == 2 
@@ -529,10 +781,10 @@ extension PNG
 extension PNG.Histogram 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format, palette:PNG.Palette) 
+    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette) 
         throws -> Self
     {
-        switch format 
+        switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
             throw PNG.ParsingError.unexpectedHistogram
@@ -674,9 +926,9 @@ extension PNG
 extension PNG.SignificantBits 
 {
     public static 
-    func parse(_ data:[UInt8], format:PNG.Format) throws -> Self
+    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
     {
-        let arity:Int = (format.hasColor ? 3 : 1) + (format.hasAlpha ? 1 : 0)
+        let arity:Int = (pixel.hasColor ? 3 : 1) + (pixel.hasAlpha ? 1 : 0)
         guard data.count == arity 
         else 
         {
@@ -684,36 +936,36 @@ extension PNG.SignificantBits
                 expected: arity)
         }
         
-        switch format 
+        switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16:
             let v:Int = .init(data[0])
-            guard 1 ... format.sampleDepth ~= v 
+            guard 1 ... pixel.sampleDepth ~= v 
             else 
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... format.sampleDepth)
+                    expected: 1 ... pixel.sampleDepth)
             }
-            return .init(bits: (v, v, v, format.sampleDepth))
+            return .init(bits: (v, v, v, pixel.sampleDepth))
         
         case .rgb8, .rgb16, .indexed1, .indexed2, .indexed4, .indexed8:
             let r:Int = .init(data[0]), 
                 g:Int = .init(data[1]), 
                 b:Int = .init(data[2])
-            for v:Int in [r, g, b] where !(1 ... format.sampleDepth ~= v)
+            for v:Int in [r, g, b] where !(1 ... pixel.sampleDepth ~= v)
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... format.sampleDepth)
+                    expected: 1 ... pixel.sampleDepth)
             }
-            return .init(bits: (r, g, b, format.sampleDepth))
+            return .init(bits: (r, g, b, pixel.sampleDepth))
         
         case .va8, .va16:
             let v:Int = .init(data[0]), 
                 a:Int = .init(data[1])
-            for v:Int in [v, a] where !(1 ... format.sampleDepth ~= v)
+            for v:Int in [v, a] where !(1 ... pixel.sampleDepth ~= v)
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... format.sampleDepth)
+                    expected: 1 ... pixel.sampleDepth)
             }
             return .init(bits: (v, v, v, a))
         
@@ -722,10 +974,10 @@ extension PNG.SignificantBits
                 g:Int = .init(data[1]), 
                 b:Int = .init(data[2]),
                 a:Int = .init(data[3])
-            for v:Int in [r, g, b, a] where !(1 ... format.sampleDepth ~= v)
+            for v:Int in [r, g, b, a] where !(1 ... pixel.sampleDepth ~= v)
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... format.sampleDepth)
+                    expected: 1 ... pixel.sampleDepth)
             }
             return .init(bits: (r, g, b, a))
         }
