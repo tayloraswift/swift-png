@@ -441,6 +441,12 @@ extension PNG
                         y: (size.y + stride.y - base.y - 1 ) >> exponent.y
                     )
                     
+                    guard subimage.x > 0, subimage.y > 0 
+                    else 
+                    {
+                        continue 
+                    }
+                    
                     let pitch:Int = (subimage.x * pixel.volume + 7) >> 3
                     var (start, last):(Int, [UInt8]) = self.row ?? 
                         (0, .init(repeating: 0, count: pitch + 1))

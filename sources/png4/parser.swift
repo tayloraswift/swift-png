@@ -1246,7 +1246,8 @@ extension PNG.Text
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
-        fatalError("unsupported")
+        print("warning: itxt chunks unsupported, ignoring")
+        return .init(compressed: false, keyword: ("", ""), language: "en", content: "")
     }
     public static 
     func parse(latin1 data:[UInt8]) throws -> Self
@@ -1266,7 +1267,8 @@ extension PNG.Text
         // if the next byte is also null, the chunk uses compression
         if offset + 1 < data.endIndex, data[offset + 1] == 0
         {
-            fatalError("unsupported")
+            print("warning: ztxt chunks unsupported, ignoring")
+            return .init(compressed: false, keyword: ("", ""), language: "en", content: "")
         }
         else 
         {
