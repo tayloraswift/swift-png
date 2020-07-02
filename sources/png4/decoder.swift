@@ -5,6 +5,10 @@ extension PNG
         case missingImageHeader
         case missingPalette
         case missingImageData
+        
+        case extraneousCompressedImageData
+        case extraneousUncompressedImageData
+        
         case duplicateChunk(PNG.Chunk)
         case invalidChunkOrder(PNG.Chunk, after:PNG.Chunk)
     }
@@ -397,7 +401,8 @@ extension PNG
     {
         private 
         var row:(index:Int, reference:[UInt8])?, 
-            pass:Int?
+            pass:Int?,
+            `continue`:Void? 
         private 
         var inflator:LZ77.Inflator 
         
@@ -405,14 +410,23 @@ extension PNG
         {
             self.row        = nil
             self.pass       = interlaced ? 0 : nil
+            self.continue   = ()
             self.inflator   = .init()
         }
         
         mutating 
         func push(_ data:[UInt8], size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
-            delegate:(ArraySlice<UInt8>, (x:Int, y:Int), Int) throws -> ()) throws
+            delegate:(ArraySlice<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
+            throws -> Void?
         {
-            try self.inflator.push(data)
+            guard let _:Void = self.continue 
+            else 
+            {
+                throw PNG.DecodingError.extraneousCompressedImageData
+            }
+            
+            self.continue = try self.inflator.push(data)
+            
             let delay:Int   = (pixel.volume + 7) >> 3
             if let pass:Int = self.pass 
             {
@@ -459,7 +473,7 @@ extension PNG
                         {
                             self.row  = (y, last) 
                             self.pass = z
-                            return 
+                            return self.continue
                         }
                         
                         self.defilter(&scanline, last: last, delay: delay)
@@ -470,8 +484,6 @@ extension PNG
                         last = scanline 
                     }
                 }
-                
-                self.pass = 7
             }
             else 
             {
@@ -487,7 +499,7 @@ extension PNG
                     else 
                     {
                         self.row  = (y, last) 
-                        return 
+                        return self.continue
                     }
                     
                     self.defilter(&scanline, last: last, delay: delay)
@@ -496,9 +508,15 @@ extension PNG
                     
                     last = scanline 
                 }
-                
-                self.pass = 7
             }
+            
+            self.pass = 7
+            guard self.inflator.pull().isEmpty 
+            else 
+            {
+                throw PNG.DecodingError.extraneousUncompressedImageData
+            }
+            return self.continue
         }
         
         private

@@ -440,7 +440,7 @@ extension PNG
     public 
     enum ParsingError:Swift.Error 
     {
-        case truncatedHeader(Int, minimum:Int)
+        case invalidHeaderChunkLength(Int)
         case invalidHeaderColorCode(depth:UInt8, type:UInt8)
         case invalidHeaderCompressionCode(UInt8)
         case invalidHeaderFilterCode(UInt8)
@@ -487,8 +487,14 @@ extension PNG
         case invalidTimeModifiedChunkLength(Int)
         case invalidTimeModifiedTime(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int)
         
-        case missingTextKeyword
-        case invalidTextKeyword
+        case missingTextEnglishKeyword
+        case invalidTextEnglishKeyword
+        case missingTextFlags
+        case invalidTextFlagsCode(compression:UInt8, method:UInt8)
+        case missingTextLanguage
+        case invalidTextLanguage
+        case missingTextLocalizedKeyword
+        case truncatedTextCompressedContent
     }
 }
 extension PNG 
@@ -510,7 +516,7 @@ extension PNG.Header
         guard data.count == 13
         else
         {
-            throw PNG.ParsingError.truncatedHeader(data.count, minimum: 13)
+            throw PNG.ParsingError.invalidHeaderChunkLength(data.count)
         }
         
         guard let pixel:PNG.Format.Pixel = .recognize(code: (data[8], data[9]))
@@ -1075,7 +1081,7 @@ extension PNG.SuggestedPalette
             throw PNG.ParsingError.missingSuggestedPaletteName
         }
         // validate keyword 
-        guard let name:String = PNG.Text.validate(keyword: data.prefix(offset))
+        guard let name:String = PNG.Text.validate(name: data.prefix(offset))
         else 
         {
             throw PNG.ParsingError.invalidSuggestedPaletteName
@@ -1207,7 +1213,7 @@ extension PNG
         let compressed:Bool 
         public 
         let keyword:(english:String, localized:String), 
-            language:String
+            language:[String]
         public 
         let content:String
     }
@@ -1215,70 +1221,160 @@ extension PNG
 extension PNG.Text 
 {
     static 
-    func validate<C>(keyword prefix:C) -> String? 
+    func validate<C>(name latin1:C) -> String?
         where C:Collection, C.Index == Int, C.Element == UInt8 
     {
-        guard (prefix.allSatisfy{ 32 ... 126 ~= $0 || 161 ... 255 ~= 0 })
+        guard (latin1.allSatisfy{ 0x20 ... 0x7d ~= $0 || 0xa1 ... 0xff ~= 0 })
         else 
         {
             return nil
         }
         
-        let keyword:String = .init(prefix.map{ Character.init(Unicode.Scalar.init($0)) })
-        guard   !prefix.reversed().starts(with: [32]), // no trailing spaces 
-                !prefix.starts(           with: [32])  // no leading spaces 
+        let name:String = .init(latin1.map{ Character.init(Unicode.Scalar.init($0)) })
+        guard   !latin1.reversed().starts(with: [0x20]), // no trailing spaces 
+                !latin1.starts(           with: [0x20])  // no leading spaces 
         else 
         {
             return nil
         }
-        for i:Int in prefix.indices where prefix[i] == 32 
+        for i:Int in latin1.indices where latin1[i] == 0x20 
         {
             // don’t need to check index bounds because we already verified 
             // it has no trailing spaces
-            guard prefix[i + 1] != 32 
+            guard latin1[i + 1] != 0x20 
             else 
             {
                 return nil
             }
         }
+        return name
+    }
+    
+    private static 
+    func validate<C>(keyword latin1:C) throws -> String
+        where C:Collection, C.Index == Int, C.Element == UInt8 
+    {
+        guard let keyword:String = Self.validate(name: latin1)
+        else 
+        {
+            throw PNG.ParsingError.invalidTextEnglishKeyword
+        }
         return keyword
     }
+    private static 
+    func validate<C>(language ascii:C) throws -> [String]
+        where C:Collection, C.Index == Int, C.Element == UInt8 
+    {
+        // split on '-' 
+        try ascii.split(separator: 0x2d, omittingEmptySubsequences: false).map 
+        {
+            guard 1 ... 8 ~= $0.count, 
+                ($0.allSatisfy{ 0x61 ... 0x7a ~= $0 || 0x41 ... 0x5a ~= $0 })
+            else 
+            {
+                throw PNG.ParsingError.invalidTextLanguage
+            }
+            
+            // 0x20 converts to canonical lowercase 
+            return .init($0.map{ Character.init(Unicode.Scalar.init($0 | 0x20)) })
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
-        print("warning: itxt chunks unsupported, ignoring")
-        return .init(compressed: false, keyword: ("", ""), language: "en", content: "")
+        guard let k:Int = data.firstIndex(of: 0)
+        else 
+        {
+            throw PNG.ParsingError.missingTextEnglishKeyword
+        }
+        // assert existence of compression flag and method bytes 
+        guard k + 2 < data.endIndex 
+        else 
+        {
+            throw PNG.ParsingError.missingTextFlags
+        }
+        guard let l:Int = data.dropFirst(k + 3).firstIndex(of: 0)
+        else 
+        {
+            throw PNG.ParsingError.missingTextLanguage
+        }
+        guard let m:Int = data.dropFirst(l + 1).firstIndex(of: 0) 
+        else 
+        {
+            throw PNG.ParsingError.missingTextLocalizedKeyword
+        }
+        
+        let keyword:(english:String, localized:String) = 
+        (
+            try Self.validate(keyword: data.prefix(k)),
+            .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
+        )
+        
+        let uncompressed:ArraySlice<UInt8>
+        let compressed:Bool 
+        if      data[k + 1] == 0 
+        {
+            uncompressed = data.dropFirst(m + 1)
+            compressed   = false
+        }
+        else if data[k + 1] == 1, data[k + 2] == 0
+        {
+            var inflator:LZ77.Inflator = .init()
+            guard try inflator.push(.init(data.dropFirst(m + 1))) == nil 
+            else 
+            {
+                throw PNG.ParsingError.truncatedTextCompressedContent
+            }
+            uncompressed = inflator.pull()[...]
+            compressed   = true
+        }
+        else 
+        {
+            throw PNG.ParsingError.invalidTextFlagsCode(
+                compression: data[k + 1], method: data[k + 2])
+        }
+        
+        return .init(compressed: compressed, 
+            keyword:    keyword, 
+            language:   try Self.validate(language: data[k + 3 ..< l]), 
+            content:    .init(decoding: uncompressed, as: Unicode.UTF8.self))
     }
     public static 
     func parse(latin1 data:[UInt8]) throws -> Self
     {
-        guard let offset:Int = data.firstIndex(of: 0)
+        guard let k:Int = data.firstIndex(of: 0)
         else 
         {
-            throw PNG.ParsingError.missingTextKeyword
-        }
-        // validate keyword 
-        guard let keyword:String = Self.validate(keyword: data.prefix(offset))
-        else 
-        {
-            throw PNG.ParsingError.invalidTextKeyword
+            throw PNG.ParsingError.missingTextEnglishKeyword
         }
         
+        let keyword:String = try Self.validate(keyword: data.prefix(k))
         // if the next byte is also null, the chunk uses compression
-        if offset + 1 < data.endIndex, data[offset + 1] == 0
+        let uncompressed:ArraySlice<UInt8>
+        let compressed:Bool 
+        if k + 1 < data.endIndex, data[k + 1] == 0
         {
-            print("warning: ztxt chunks unsupported, ignoring")
-            return .init(compressed: false, keyword: ("", ""), language: "en", content: "")
+            var inflator:LZ77.Inflator = .init()
+            guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
+            else 
+            {
+                throw PNG.ParsingError.truncatedTextCompressedContent
+            }
+            uncompressed = inflator.pull()[...]
+            compressed   = true
         }
         else 
         {
-            return .init(compressed: false, 
-                keyword: (keyword, keyword), 
-                language: "en", 
-                content: .init(data.dropFirst(offset + 1).map 
-                {
-                    Character.init(Unicode.Scalar.init($0))
-                }))
+            uncompressed = data.dropFirst(k + 1)
+            compressed   = false
         }
+        return .init(compressed: compressed, 
+            keyword:    (keyword, keyword), 
+            language:   ["en"], 
+            content:    .init(uncompressed.map 
+            {
+                Character.init(Unicode.Scalar.init($0))
+            }))
     }
 }

@@ -309,6 +309,11 @@ extension Test
             let image:[PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
             
             Self.print(image: image, size: rectangular.size)
+            for text in rectangular.metadata.text 
+            {
+                Swift.print(text)
+            }
+            Swift.print()
 
             guard let result:[PNG.RGBA<UInt16>]? = (System.File.Source.open(path: path.rgba)
             {
