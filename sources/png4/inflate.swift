@@ -509,21 +509,51 @@ extension LZ77.Semistatic
     struct Meta 
     {
         private 
-        let storage:ManagedBuffer<Void, UInt8>
+        var storage:ManagedBuffer<Void, UInt8>
     }
 }
 extension LZ77.Semistatic.Meta 
 {
+    private static 
+    var size:Int 
+    {
+        256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
+    }
+    
     static 
     func create() -> Self 
     {
-        let size:Int = 256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
-        let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
+        let storage:ManagedBuffer<Void, UInt8> = 
+            .create(minimumCapacity: Self.size){ _ in () }
         storage.withUnsafeMutablePointerToElements 
         {
             $0.initialize(from: LZ77.Semistatic.reversed, count: 256)
         }
         return .init(storage: storage)
+    }
+    
+    mutating 
+    func exclude() 
+    {
+        if !isKnownUniquelyReferenced(&self.storage)
+        {
+            #if WARN_COPY_ON_WRITE
+            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+            #endif 
+            
+            self.storage = self.storage.withUnsafeMutablePointerToElements 
+            {
+                (body:UnsafeMutablePointer<UInt8>) in 
+                
+                let new:ManagedBuffer<Void, UInt8> = 
+                    .create(minimumCapacity: Self.size){ _ in () }
+                new.withUnsafeMutablePointerToElements 
+                {
+                    $0.initialize(from: body, count: Self.size)
+                }
+                return new 
+            } 
+        }
     }
     
     func replace(tree:LZ77.Huffman<UInt8>) 
@@ -711,7 +741,15 @@ extension LZ77.Inflator.In
         // calculate new buffer size 
         let rollover:Int    = self.bytes - 2 * a
         let minimum:Int     = Self.atoms(bytes: rollover + data.count)
-        if self.capacity < minimum 
+        
+        #if WARN_COPY_ON_WRITE
+        if !isKnownUniquelyReferenced(&self.storage) 
+        {
+            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+        }
+        #endif 
+        
+        if self.capacity < minimum || !isKnownUniquelyReferenced(&self.storage)
         {
             // reallocate storage 
             var capacity:Int = minimum.nextPowerOfTwo
@@ -885,6 +923,34 @@ extension LZ77.Inflator.Out
     }
     
     mutating 
+    func exclude() 
+    {
+        if !isKnownUniquelyReferenced(&self.storage)
+        {
+            #if WARN_COPY_ON_WRITE
+            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+            #endif 
+            
+            self.storage = self.storage.withUnsafeMutablePointerToElements 
+            {
+                (body:UnsafeMutablePointer<UInt8>) in 
+                
+                let new:ManagedBuffer<Void, UInt8> = 
+                    .create(minimumCapacity: self.capacity)
+                {
+                    self.capacity = $0.capacity
+                    return ()
+                }
+                new.withUnsafeMutablePointerToElements 
+                {
+                    $0.assign(from: body, count: self.endIndex - self.baseIndex)
+                }
+                return new 
+            } 
+        }
+    }
+    
+    mutating 
     func release(bytes count:Int) -> [UInt8]? 
     {
         self.storage.withUnsafeMutablePointerToElements  
@@ -902,6 +968,24 @@ extension LZ77.Inflator.Out
                 let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
                 self.currentIndex  += count 
                 self.startIndex     = Swift.min(self.currentIndex, limit)
+            }
+            return .init(slice)
+        }
+    }
+    
+    // releases everything 
+    mutating 
+    func release() -> [UInt8] 
+    {
+        self.storage.withUnsafeMutablePointerToElements  
+        {
+            let i:Int       = self.currentIndex - self.baseIndex
+            let count:Int   = self.endIndex - self.currentIndex
+            let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
+            defer 
+            {
+                self.currentIndex   =           self.endIndex
+                self.startIndex     = Swift.max(self.endIndex - self.window, self.startIndex)
             }
             return .init(slice)
         }
@@ -1061,9 +1145,12 @@ extension LZ77
                 case dynamic(runliterals:Int, distances:Int)
             }
             
+            // Stream.In manages its own COW in rebase(_:pointer:)
             var input:In,
                 b:Int 
             var lengths:[Int]
+            // Meta and Stream.Out need to have COW manually implemented with 
+            // exclude() on each, to avoid redundant exclusions inside loops 
             var meta:LZ77.Semistatic.Meta // reuse the same buffer since the size is fixed
             var output:Out
             
@@ -1110,16 +1197,24 @@ extension LZ77.Inflator
     mutating 
     func pull(_ count:Int) -> [UInt8]? 
     {
-        self.stream.output.release(bytes: count)
+        self.stream.output.exclude()
+        return self.stream.output.release(bytes: count)
     }
-    var retained:Int 
+    mutating 
+    func pull() -> [UInt8]
     {
-        self.stream.output.endIndex - self.stream.output.currentIndex
+        self.stream.output.exclude()
+        return self.stream.output.release()
     }
+    
     // returns nil if unable to advance 
     private mutating 
     func advance() throws -> Void?
     {
+        // pool cow-exclusions here instead of checking the reference count 
+        // on every loop iteration
+        self.stream.meta.exclude()
+        self.stream.output.exclude()
         switch self.state 
         {
         case .streamStart:
