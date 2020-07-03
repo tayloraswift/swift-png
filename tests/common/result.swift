@@ -80,11 +80,11 @@ func test(_ function:Test.Function, cases filter:Set<String>, name:String) -> Vo
     case (1, 0):
         Highlight.print(.pad(" test \(String.pad("'\(name)'", right: 30)) passed ", right: width), highlight: white)
     case (let succeeded, 0):
-        Highlight.print(.pad(" test \(String.pad("'\(name)'", right: 30)) passed (\(String.pad("\(succeeded)", left: 2)) cases)", right: width), highlight: white)
+        Highlight.print(.pad(" test \(String.pad("'\(name)'", right: 30)) passed \(String.pad("(\(succeeded)", left: 3)) cases)", right: width), highlight: white)
     case (0, 1):
         Highlight.print(.pad(" test \(String.pad("'\(name)'", right: 30)) failed ", right: width), highlight: red)
     case (let succeeded, let failed):
-        Highlight.print(.pad(" test \(String.pad("'\(name)'", right: 30)) failed (\(String.pad("\(succeeded + failed)", left: 2)) cases, \(String.pad("\(failed)", left: 2)) failed)", right: width), highlight: red)
+        Highlight.print(.pad(" test \(String.pad("'\(name)'", right: 30)) failed \(String.pad("(\(succeeded + failed)", left: 3)) cases, \(String.pad("\(failed)", left: 2)) failed)", right: width), highlight: red)
     }
     for (i, failure):(Int, (name:String?, message:String)) in failures.enumerated() 
     {

@@ -458,7 +458,7 @@ extension PNG.Decoder
                         return self.continue
                     }
                     
-                    self.defilter(&scanline, last: last, delay: delay)
+                    Self.defilter(&scanline, last: last, delay: delay)
                     try scanline.dropFirst().withUnsafeBufferPointer 
                     {
                         try delegate($0, (base.x, base.y + y * stride.y), stride.x)
@@ -484,7 +484,7 @@ extension PNG.Decoder
                     return self.continue
                 }
                 
-                self.defilter(&scanline, last: last, delay: delay)
+                Self.defilter(&scanline, last: last, delay: delay)
                 try scanline.dropFirst().withUnsafeBufferPointer 
                 {
                     try delegate($0, (0, y), 1)
@@ -503,7 +503,7 @@ extension PNG.Decoder
         return self.continue
     }
     
-    private
+    static 
     func defilter(_ line:inout [UInt8], last:[UInt8], delay:Int)
     {
         let indices:Range<Int> = line.indices.dropFirst()
