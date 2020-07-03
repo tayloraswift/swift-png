@@ -226,3 +226,20 @@ extension LZ77
     {
     }
 }
+extension LZ77.Deflator 
+{
+    mutating 
+    func push(_ data:[UInt8]) 
+    {
+    }
+    mutating 
+    func pull(_ count:Int) -> [UInt8]?
+    {
+        nil
+    }
+    mutating 
+    func pull() -> [UInt8]
+    {
+        []
+    }
+}
