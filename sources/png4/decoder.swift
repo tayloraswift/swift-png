@@ -376,6 +376,18 @@ extension PNG.Metadata
 
 extension PNG 
 {
+    static 
+    let adam7:[(base:(x:Int, y:Int), exponent:(x:Int, y:Int))] = 
+    [
+        (base: (0, 0), exponent: (3, 3)),
+        (base: (4, 0), exponent: (3, 3)),
+        (base: (0, 4), exponent: (2, 3)),
+        (base: (2, 0), exponent: (2, 2)),
+        (base: (0, 2), exponent: (1, 2)),
+        (base: (1, 0), exponent: (1, 1)),
+        (base: (0, 1), exponent: (0, 1)),
+    ]
+    
     struct Decoder 
     {
         private 
@@ -384,7 +396,7 @@ extension PNG
             `continue`:Void? 
         private 
         var inflator:LZ77.Inflator 
-        
+
         init(interlaced:Bool)
         {
             self.row        = nil
@@ -395,7 +407,7 @@ extension PNG
         
         mutating 
         func push(_ data:[UInt8], size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
-            delegate:(ArraySlice<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
+            delegate:(UnsafeBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
             throws -> Void?
         {
             guard let _:Void = self.continue 
@@ -409,20 +421,9 @@ extension PNG
             let delay:Int   = (pixel.volume + 7) >> 3
             if let pass:Int = self.pass 
             {
-                let adam7:[(base:(x:Int, y:Int), exponent:(x:Int, y:Int))] = 
-                [
-                    (base: (0, 0), exponent: (3, 3)),
-                    (base: (4, 0), exponent: (3, 3)),
-                    (base: (0, 4), exponent: (2, 3)),
-                    (base: (2, 0), exponent: (2, 2)),
-                    (base: (0, 2), exponent: (1, 2)),
-                    (base: (1, 0), exponent: (1, 1)),
-                    (base: (0, 1), exponent: (0, 1)),
-                ]
-                
                 for z:Int in pass ..< 7
                 {
-                    let (base, exponent):((x:Int, y:Int), (x:Int, y:Int)) = adam7[z]
+                    let (base, exponent):((x:Int, y:Int), (x:Int, y:Int)) = PNG.adam7[z]
                     let stride:(x:Int, y:Int)   = 
                     (
                         x: 1                                 << exponent.x, 
@@ -444,7 +445,6 @@ extension PNG
                     var (start, last):(Int, [UInt8]) = self.row ?? 
                         (0, .init(repeating: 0, count: pitch + 1))
                     self.row = nil 
-                    
                     for y:Int in start ..< subimage.y 
                     {
                         guard var scanline:[UInt8] = self.inflator.pull(last.count)
@@ -456,9 +456,10 @@ extension PNG
                         }
                         
                         self.defilter(&scanline, last: last, delay: delay)
-                        
-                        try delegate(scanline.dropFirst(), 
-                            (base.x, base.y + y * stride.y), stride.x)
+                        try scanline.dropFirst().withUnsafeBufferPointer 
+                        {
+                            try delegate($0, (base.x, base.y + y * stride.y), stride.x)
+                        }
                         
                         last = scanline 
                     }
@@ -471,7 +472,6 @@ extension PNG
                 var (start, last):(Int, [UInt8]) = self.row ?? 
                     (0, .init(repeating: 0, count: pitch + 1))
                 self.row = nil 
-                
                 for y:Int in start ..< size.y 
                 {
                     guard var scanline:[UInt8] = self.inflator.pull(last.count)
@@ -482,8 +482,10 @@ extension PNG
                     }
                     
                     self.defilter(&scanline, last: last, delay: delay)
-                    
-                    try delegate(scanline.dropFirst(), (0, y), 1)
+                    try scanline.dropFirst().withUnsafeBufferPointer 
+                    {
+                        try delegate($0, (0, y), 1)
+                    }
                     
                     last = scanline 
                 }
@@ -499,49 +501,45 @@ extension PNG
         }
         
         private
-        func defilter(_ scanline:inout [UInt8], last reference:[UInt8], delay:Int)
+        func defilter(_ line:inout [UInt8], last:[UInt8], delay:Int)
         {
-            let filter:UInt8              = scanline[scanline.startIndex]
-            scanline[scanline.startIndex] = 0
-            switch filter
+            let indices:Range<Int> = line.indices.dropFirst()
+            switch line[line.startIndex]
             {
             case 0:
                 break
 
             case 1: // sub
-                for i:Int in scanline.indices.dropFirst(delay)
+                for i:Int in indices.dropFirst(delay)
                 {
-                    scanline[i] &+= scanline[i &- delay]
+                    line[i] &+= line[i &- delay]
                 }
 
             case 2: // up
-                for i:Int in scanline.indices
+                for i:Int in indices
                 {
-                    scanline[i] &+= reference[i]
+                    line[i] &+= last[i]
                 }
 
             case 3: // average
-                for i:Int in scanline.indices.prefix(delay)
+                for i:Int in indices.prefix(delay)
                 {
-                    scanline[i] &+= reference[i] >> 1
+                    line[i] &+= last[i] >> 1
                 }
-                for i:Int in scanline.indices.dropFirst(delay)
+                for i:Int in indices.dropFirst(delay)
                 {
-                    let total:UInt16 =  .init( scanline[i &- delay]) &+
-                                        .init(reference[i         ])
-                    scanline[i] &+= .init(truncatingIfNeeded: total >> 1)
+                    let total:UInt16 = .init(line[i &- delay]) &+ .init(last[i])
+                    line[i] &+= .init(total >> 1)
                 }
 
             case 4: // paeth
-                for i:Int in scanline.indices.prefix(delay)
+                for i:Int in indices.prefix(delay)
                 {
-                    scanline[i] &+= PNG.paeth(0, reference[i], 0)
+                    line[i] &+= PNG.paeth(0,                last[i], 0)
                 }
-                for i:Int in scanline.indices.dropFirst(delay)
+                for i:Int in indices.dropFirst(delay)
                 {
-                    scanline[i] &+= PNG.paeth(   scanline[i &- delay],
-                                                reference[i         ],
-                                                reference[i &- delay])
+                    line[i] &+= PNG.paeth(line[i &- delay], last[i], last[i &- delay])
                 }
 
             default:
