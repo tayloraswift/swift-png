@@ -1,4 +1,4 @@
-@testable import PNG
+@testable import PNG4
 
 extension Test 
 {
@@ -89,25 +89,25 @@ extension Test
     //     Self.premultiplication(for: UInt16.self)
     // }
     static 
-    func premultiplication<Sample>(for _:Sample.Type) -> Result<Void, Failure>
-        where Sample:FixedWidthInteger & UnsignedInteger
+    func premultiplication<T>(for _:T.Type) -> Result<Void, Failure>
+        where T:FixedWidthInteger & UnsignedInteger
     {
-        for alpha:Sample in Sample.min ... Sample.max
+        for alpha:T in T.min ... T.max
         {
-            for color:Sample in Sample.min ... Sample.max
+            for color:T in T.min ... T.max
             {
-                let direct:PNG.RGBA<Sample>        = .init(color, alpha),
-                    premultiplied:PNG.RGBA<Sample> = direct.premultiplied
+                let direct:PNG.RGBA<T>        = .init(color, alpha),
+                    premultiplied:PNG.RGBA<T> = direct.premultiplied
 
-                let unquantized:Double = (Double(alpha) * Double(color) / Double(Sample.max)),
-                    quantized:Sample   = .init(unquantized)
+                let unquantized:Double  = (.init(alpha) * .init(color) / .init(T.max)),
+                    quantized:T         = .init(unquantized)
 
                 // the order is important here,, the short circuiting protects us from
                 // overflow when `quantized` == 255
                 guard premultiplied.r == quantized || premultiplied.r == quantized + 1
                 else
                 {
-                    return .failure(.init(message: "premultiplication of rgba\(Sample.bitWidth)(\(direct.r), \(direct.g), \(direct.b), \(direct.a)) returned (\(premultiplied.r), \(premultiplied.g), \(premultiplied.b), \(premultiplied.a)), expected (\(unquantized), \(unquantized), \(unquantized), \(alpha))"))
+                    return .failure(.init(message: "premultiplication of rgba\(T.bitWidth)(\(direct.r), \(direct.g), \(direct.b), \(direct.a)) returned (\(premultiplied.r), \(premultiplied.g), \(premultiplied.b), \(premultiplied.a)), expected (\(unquantized), \(unquantized), \(unquantized), \(alpha))"))
                 }
             }
         }
