@@ -165,8 +165,8 @@ extension PNG.Data.Rectangular
     }
     
     mutating 
-    func assign<RAC>(scanline:RAC, at base:(x:Int, y:Int), stride:Int) 
-        where RAC:RandomAccessCollection, RAC.Index == Int, RAC.Element == UInt8
+    func assign<C>(scanline:C, at base:(x:Int, y:Int), stride:Int) 
+        where C:RandomAccessCollection, C.Index == Int, C.Element == UInt8
     {
         let indices:EnumeratedSequence<StrideTo<Int>> = 
             Swift.stride(from: base.x, to: self.size.x, by: stride).enumerated()
@@ -178,7 +178,7 @@ extension PNG.Data.Rectangular
             {
                 let a:Int =   i >> 3 &+ scanline.startIndex, 
                     b:Int =  ~i & 0b111
-                storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0001
+                self.storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0001
             }
         
         case .v2, .indexed2:
@@ -186,7 +186,7 @@ extension PNG.Data.Rectangular
             {
                 let a:Int =   i >> 2 &+ scanline.startIndex, 
                     b:Int = (~i & 0b011) << 1
-                storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0011
+                self.storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0011
             }
         
         case .v4, .indexed4:
@@ -194,7 +194,7 @@ extension PNG.Data.Rectangular
             {
                 let a:Int =   i >> 1 &+ scanline.startIndex, 
                     b:Int = (~i & 0b001) << 2
-                storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b1111
+                self.storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b1111
             }
         
         // 1 x 1
@@ -203,16 +203,16 @@ extension PNG.Data.Rectangular
             {
                 let a:Int = i &+ scanline.startIndex, 
                     d:Int = base.y &* self.size.x &+ x
-                storage[d] = scanline[a]
+                self.storage[d] = scanline[a]
             }
-        // 1 x 2
-        case .va8:
+        // 1 x 2, 2 x 1
+        case .va8, .v16:
             for (i, x):(Int, Int) in indices
             {
                 let a:Int = 2 &* i &+ scanline.startIndex, 
                     d:Int = 2 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
+                self.storage[d     ] = scanline[a     ]
+                self.storage[d &+ 1] = scanline[a &+ 1]
             }
         // 1 x 3
         case .rgb8:
@@ -220,41 +220,20 @@ extension PNG.Data.Rectangular
             {
                 let a:Int = 3 &* i &+ scanline.startIndex, 
                     d:Int = 3 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
-                storage[d &+ 2] = scanline[a &+ 2]
+                self.storage[d     ] = scanline[a     ]
+                self.storage[d &+ 1] = scanline[a &+ 1]
+                self.storage[d &+ 2] = scanline[a &+ 2]
             }
-        // 1 x 4
-        case .rgba8:
+        // 1 x 4, 2 x 2
+        case .rgba8, .va16:
             for (i, x):(Int, Int) in indices
             {
                 let a:Int = 4 &* i &+ scanline.startIndex, 
                     d:Int = 4 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
-                storage[d &+ 2] = scanline[a &+ 2]
-                storage[d &+ 3] = scanline[a &+ 3]
-            }
-        
-        // 2 x 1
-        case .v16:
-            for (i, x):(Int, Int) in indices
-            {
-                let a:Int = 2 &* i &+ scanline.startIndex, 
-                    d:Int = 2 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
-            }
-        // 2 x 2
-        case .va16:
-            for (i, x):(Int, Int) in indices
-            {
-                let a:Int = 4 &* i &+ scanline.startIndex, 
-                    d:Int = 4 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
-                storage[d &+ 2] = scanline[a &+ 2]
-                storage[d &+ 3] = scanline[a &+ 3]
+                self.storage[d     ] = scanline[a     ]
+                self.storage[d &+ 1] = scanline[a &+ 1]
+                self.storage[d &+ 2] = scanline[a &+ 2]
+                self.storage[d &+ 3] = scanline[a &+ 3]
             }
         // 2 x 3
         case .rgb16:
@@ -262,12 +241,12 @@ extension PNG.Data.Rectangular
             {
                 let a:Int = 6 &* i &+ scanline.startIndex, 
                     d:Int = 6 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
-                storage[d &+ 2] = scanline[a &+ 2]
-                storage[d &+ 3] = scanline[a &+ 3]
-                storage[d &+ 4] = scanline[a &+ 4]
-                storage[d &+ 5] = scanline[a &+ 5]
+                self.storage[d     ] = scanline[a     ]
+                self.storage[d &+ 1] = scanline[a &+ 1]
+                self.storage[d &+ 2] = scanline[a &+ 2]
+                self.storage[d &+ 3] = scanline[a &+ 3]
+                self.storage[d &+ 4] = scanline[a &+ 4]
+                self.storage[d &+ 5] = scanline[a &+ 5]
             }
         // 2 x 4
         case .rgba16:
@@ -275,14 +254,14 @@ extension PNG.Data.Rectangular
             {
                 let a:Int = 8 &* i &+ scanline.startIndex, 
                     d:Int = 8 &* (base.y &* self.size.x &+ x)
-                storage[d     ] = scanline[a     ]
-                storage[d &+ 1] = scanline[a &+ 1]
-                storage[d &+ 2] = scanline[a &+ 2]
-                storage[d &+ 3] = scanline[a &+ 3]
-                storage[d &+ 4] = scanline[a &+ 4]
-                storage[d &+ 5] = scanline[a &+ 5]
-                storage[d &+ 6] = scanline[a &+ 6]
-                storage[d &+ 7] = scanline[a &+ 7]
+                self.storage[d     ] = scanline[a     ]
+                self.storage[d &+ 1] = scanline[a &+ 1]
+                self.storage[d &+ 2] = scanline[a &+ 2]
+                self.storage[d &+ 3] = scanline[a &+ 3]
+                self.storage[d &+ 4] = scanline[a &+ 4]
+                self.storage[d &+ 5] = scanline[a &+ 5]
+                self.storage[d &+ 6] = scanline[a &+ 6]
+                self.storage[d &+ 7] = scanline[a &+ 7]
             }
         }
     }
