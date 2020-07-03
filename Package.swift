@@ -36,7 +36,7 @@ let package = Package(
     [
         .target(name: "PNG4",                   dependencies: [],       path: "sources/png4"),
         
-        .target(name: "PNGUnitTests",           dependencies: ["PNG"],  path: "tests/unit"),
+        .target(name: "PNGUnitTests",           dependencies: ["PNG4"],  path: "tests/unit"),
         .target(name: "PNGIntegrationTests",    dependencies: ["PNG4"],  path: "tests/integration"),
         .target(name: "PNGBenchmarks",          dependencies: ["PNG"],  path: "benchmarks"), 
         .target(name: "PNGExamples",            dependencies: ["PNG"],  path: "examples")

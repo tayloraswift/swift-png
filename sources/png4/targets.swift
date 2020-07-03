@@ -190,6 +190,26 @@ extension PNG.Color
 
 extension PNG 
 {
+    @usableFromInline
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
+    static
+    func premultiply<T>(color:T, alpha:T) -> T where T:FixedWidthInteger & UnsignedInteger
+    {
+        // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
+        let (high, low):(T, T.Magnitude) = color.multipliedFullWidth(by: alpha)
+        // divide by 255 using this one neat trick!1!!!
+        // value /. 255 == (value + 128 + (value >> 8)) >> 8
+        let carries:(Bool, Bool),
+            part:T.Magnitude
+        (part,  carries.0) =  low.addingReportingOverflow(high.magnitude)
+                carries.1  = part.addingReportingOverflow(T.Magnitude.max >> 1 + 1).overflow
+        return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
+    }
+    
     @frozen
     public
     struct RGBA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
@@ -290,21 +310,6 @@ extension PNG
         /* init(_ va:VA<Component>)
         {
             self.init(va.v, va.a)
-        } */
-
-        /// The color obtained by premultiplying the red, green, and blue components
-        /// of this color with its alpha component. The resulting component values
-        /// are accurate to within 1 `Component` unit.
-        /// 
-        /// *Inlinable*.
-        /* @inlinable
-        public
-        var premultiplied:RGBA<Component>
-        {
-            .init(  premultiply(color: self.r, alpha: self.a),
-                    premultiply(color: self.g, alpha: self.a),
-                    premultiply(color: self.b, alpha: self.a),
-                    self.a)
         } */
 
         /// The red, and alpha components of this color, stored as a grayscale-alpha
@@ -450,6 +455,16 @@ extension PNG.RGBA:PNG.Color
         -> [Self] 
     {
         fatalError("unsupported")
+    }
+    
+    @inlinable
+    public
+    var premultiplied:Self
+    {
+        .init(  PNG.premultiply(color: self.r, alpha: self.a),
+                PNG.premultiply(color: self.g, alpha: self.a),
+                PNG.premultiply(color: self.b, alpha: self.a),
+                self.a)
     }
 }
 
