@@ -7,8 +7,9 @@ extension Test
     {
         [
             ("bitstream",                   .void(Self.bitstream)),
+            ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
             ("premultiplication (8-bit)",   .void(Self.premultiplication8)),
-            // ("premultiplication (16-bit)", .void(Self.premultiplication16)),
+            ("premultiplication (16-bit)",  .void(Self.premultiplication16)),
         ]
     }
     static 
@@ -77,24 +78,89 @@ extension Test
         }
         return .success(())
     }
+    
+    static 
+    func filtering(delay:Int) -> Result<Void, Failure> 
+    {
+        let size:(x:Int, y:Int) = (24, 16)
+        let original:[[UInt8]] = (0 ..< size.y).map 
+        {
+            _ in [0] + (0 ..< size.x).map{ _ in UInt8.random(in: .min ... .max) }
+        }
+        
+        let filtered:[[UInt8]] = .init(unsafeUninitializedCapacity: size.y) 
+        {
+            $1 = $0.count
+            guard let base:UnsafeMutablePointer<[UInt8]> = $0.baseAddress 
+            else 
+            {
+                return 
+            }
+            
+            var last:[UInt8] = .init(repeating: 0, count: size.x + 1)
+            for (i, line):(Int, [UInt8]) in zip($0.indices, original)
+            {
+                (base + i).initialize(to: PNG.Encoder.filter(line, last: last, delay: delay))
+                last = line 
+            }
+        }
+        
+        let unfiltered:[[UInt8]] = .init(unsafeUninitializedCapacity: size.y) 
+        {
+            $1 = $0.count
+            guard let base:UnsafeMutablePointer<[UInt8]> = $0.baseAddress 
+            else 
+            {
+                return 
+            }
+            
+            var last:[UInt8] = .init(repeating: 0, count: size.x + 1)
+            for (i, line):(Int, [UInt8]) in zip($0.indices, filtered)
+            {
+                var line:[UInt8] = line
+                PNG.Decoder.defilter(&line, last: last, delay: delay)
+                last  = line 
+                
+                line[line.startIndex] = 0
+                (base + i).initialize(to: line)
+            }
+        }
+        
+        for (a, b):([UInt8], [UInt8]) in zip(original, unfiltered) 
+        {
+            guard a == b 
+            else 
+            {
+                return .failure(.init(message: "original and filter-cycled scanlines do not match"))
+            }
+        }
+        return .success(())
+    }
+    
     static 
     func premultiplication8() -> Result<Void, Failure>
     {
-        Self.premultiplication(for: UInt8.self)
+        Self.premultiplication(for: UInt8.self, over: (.min ... .max, .min ... .max))
     }
-    // 16-bit premultiplication tests take way too long to run
-    // static 
-    // func premultiplication16() -> Result<Void, Failure>
-    // {
-    //     Self.premultiplication(for: UInt16.self)
-    // }
+    // exhaustive 16-bit premultiplication tests take way too long to run, so we
+    // sample a select subset of the input space 
     static 
-    func premultiplication<T>(for _:T.Type) -> Result<Void, Failure>
-        where T:FixedWidthInteger & UnsignedInteger
+    func premultiplication16() -> Result<Void, Failure>
     {
-        for alpha:T in T.min ... T.max
+        Self.premultiplication(for: UInt16.self, over: 
+        (
+            (0 ..< 512).map{ _ in .random(in: .min ... .max) },
+            (0 ..< 512).map{ _ in .random(in: .min ... .max) }
+        ))
+    }
+    static 
+    func premultiplication<T, C>(for _:T.Type, over:(color:C, alpha:C)) -> Result<Void, Failure>
+        where   T:FixedWidthInteger & UnsignedInteger, 
+                C:Collection, C.Element == T
+    {
+        for color:T in over.color 
         {
-            for color:T in T.min ... T.max
+            for alpha:T in over.alpha 
             {
                 let direct:PNG.RGBA<T>        = .init(color, alpha),
                     premultiplied:PNG.RGBA<T> = direct.premultiplied

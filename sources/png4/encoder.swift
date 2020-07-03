@@ -173,7 +173,7 @@ extension PNG.Encoder
                         $1 = last.count
                     }
                     
-                    self.deflator.push(self.filter(scanline, last: last, delay: delay))
+                    self.deflator.push(Self.filter(scanline, last: last, delay: delay))
                     last = scanline 
                 }
             }
@@ -201,7 +201,7 @@ extension PNG.Encoder
                     $1 = last.count
                 }
                 
-                self.deflator.push(self.filter(scanline, last: last, delay: delay))
+                self.deflator.push(Self.filter(scanline, last: last, delay: delay))
                 last = scanline 
             }
         }
@@ -210,7 +210,7 @@ extension PNG.Encoder
         return self.deflator.pull()
     }
     
-    private
+    static 
     func filter(_ line:[UInt8], last:[UInt8], delay:Int) -> [UInt8]
     {
         //  filtering can be done in parallel
@@ -261,7 +261,7 @@ extension PNG.Encoder
         {
             Self.score($0.dropFirst())
         }
-
+        
         // i don’t know why this isn’t in the standard library
         var filter:Int  = 0,
             minimum:Int = .max
@@ -273,7 +273,7 @@ extension PNG.Encoder
                 filter  = i
             }
         }
-
+        
         switch filter
         {
             case 0: return candidates.0
