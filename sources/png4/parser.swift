@@ -176,6 +176,32 @@ extension PNG.Format.Pixel
         }
     }
     
+    var code:(depth:UInt8, type:UInt8) 
+    {
+        switch self 
+        {
+        case .v1:        return ( 1, 0)
+        case .v2:        return ( 2, 0)
+        case .v4:        return ( 4, 0)
+        case .v8:        return ( 8, 0)
+        case .v16:       return (16, 0)
+        
+        case .rgb8:      return ( 8, 2)
+        case .rgb16:     return (16, 2)
+        
+        case .indexed1:  return ( 1, 3)
+        case .indexed2:  return ( 2, 3)
+        case .indexed4:  return ( 4, 3)
+        case .indexed8:  return ( 8, 3) 
+        
+        case .va8:       return ( 8, 4) 
+        case .va16:      return (16, 4) 
+        
+        case .rgba8:     return ( 8, 6)
+        case .rgba16:    return (16, 6) 
+        }
+    }
+    
     static 
     func recognize(code:(depth:UInt8, type:UInt8)) -> Self?
     {
@@ -525,6 +551,21 @@ extension PNG.Header
         self.init(unchecked: size, pixel: pixel, interlaced: interlaced)
     }
     
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 13) 
+        {
+            $0.store(self.size.x, asBigEndian: UInt32.self, at: 0)
+            $0.store(self.size.y, asBigEndian: UInt32.self, at: 4)
+            ($0[8], $0[9])  = self.pixel.code 
+            $0[10]          = 0
+            $0[11]          = 0
+            $0[12]          = self.interlaced ? 1 : 0
+            $1              = 13
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self 
     {
@@ -597,6 +638,22 @@ extension PNG.Palette
         self.entries = entries 
     }
     
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 3 * self.entries.count)
+        {
+            for (i, c):(Int, (r:UInt8, g:UInt8, b:UInt8)) in 
+                zip(stride(from: $0.startIndex, to: $0.endIndex, by: 3), self.entries) 
+            {
+                $0[i    ] = c.r
+                $0[i + 1] = c.g
+                $0[i + 2] = c.b
+            }
+            $1 = $0.count
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
     {
@@ -659,6 +716,34 @@ extension PNG
 }
 extension PNG.Transparency 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        switch self 
+        {
+        case .palette(alpha: let alpha):
+            return .init(unsafeUninitializedCapacity: alpha.count)
+            {
+                $0.baseAddress?.assign(from: alpha, count: $0.count)
+                $1 = $0.count
+            }
+        case .rgb(key: let key):
+            return .init(unsafeUninitializedCapacity: 6)
+            {
+                $0.store(key.r, asBigEndian: UInt16.self, at: 0)
+                $0.store(key.g, asBigEndian: UInt16.self, at: 2)
+                $0.store(key.b, asBigEndian: UInt16.self, at: 4)
+                $1 = $0.count
+            }
+        case .v(key: let key):
+            return .init(unsafeUninitializedCapacity: 2)
+            {
+                $0.store(key, asBigEndian: UInt16.self, at: 0)
+                $1 = $0.count
+            }
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
         throws -> Self
@@ -733,6 +818,35 @@ extension PNG
 }
 extension PNG.Background 
 {
+    // will trap if index doesn’t fit in a uint8
+    public 
+    func serialized() -> [UInt8] 
+    {
+        switch self 
+        {
+        case .palette(index: let i):
+            return .init(unsafeUninitializedCapacity: 1)
+            {
+                $0[0] = .init(i)
+                $1 = $0.count
+            }
+        case .rgb(let color):
+            return .init(unsafeUninitializedCapacity: 6)
+            {
+                $0.store(color.r, asBigEndian: UInt16.self, at: 0)
+                $0.store(color.g, asBigEndian: UInt16.self, at: 2)
+                $0.store(color.b, asBigEndian: UInt16.self, at: 4)
+                $1 = $0.count
+            }
+        case .v(let value):
+            return .init(unsafeUninitializedCapacity: 2)
+            {
+                $0.store(value, asBigEndian: UInt16.self, at: 0)
+                $1 = $0.count
+            }
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
         throws -> Self

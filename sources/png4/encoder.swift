@@ -125,7 +125,7 @@ extension PNG.Encoder
     
     mutating 
     func pull(max count:Int, size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
-        delegate:(UnsafeMutableBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
+        delegate:(inout UnsafeMutableBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
         rethrows -> [UInt8]
     {
         let delay:Int   = (pixel.volume + 7) >> 3
@@ -168,8 +168,9 @@ extension PNG.Encoder
                         try .init(unsafeUninitializedCapacity: last.count) 
                     {
                         $0.baseAddress?.initialize(to: 0)
-                        try delegate(.init(rebasing: $0.dropFirst()), 
-                            (base.x, base.y + y * stride.y), stride.x)
+                        var tail:UnsafeMutableBufferPointer<UInt8> = 
+                            .init(rebasing: $0.dropFirst())
+                        try delegate(&tail, (base.x, base.y + y * stride.y), stride.x)
                         $1 = last.count
                     }
                     
@@ -197,7 +198,9 @@ extension PNG.Encoder
                     try .init(unsafeUninitializedCapacity: last.count) 
                 {
                     $0.baseAddress?.initialize(to: 0)
-                    try delegate(.init(rebasing: $0.dropFirst()), (0, y), 1)
+                    var tail:UnsafeMutableBufferPointer<UInt8> = 
+                        .init(rebasing: $0.dropFirst())
+                    try delegate(&tail, (0, y), 1)
                     $1 = last.count
                 }
                 
@@ -293,5 +296,53 @@ extension PNG.Encoder
         {
             $0 &+ ($1.0 != $1.1 ? 1 : 0)
         }
+    }
+}
+
+extension PNG.Data.Rectangular 
+{
+    public 
+    func compress<Destination>(stream:inout Destination) throws
+        where Destination:PNG.Bytestream.Destination
+    {
+        try stream.signature()
+        
+        let header:PNG.Header, 
+            palette:PNG.Palette?, 
+            background:PNG.Background?, 
+            transparency:PNG.Transparency?
+        (header, palette, background, transparency) = self.encode()
+        
+        try stream.format(type: .IHDR, data: header.serialized())
+        if let palette:PNG.Palette = palette 
+        {
+            try stream.format(type: .PLTE, data: palette.serialized())
+        }
+        if let background:PNG.Background = background
+        {
+            try stream.format(type: .bKGD, data: background.serialized())
+        }
+        if let transparency:PNG.Transparency = transparency
+        {
+            try stream.format(type: .tRNS, data: transparency.serialized())
+        }
+        
+        var encoder:PNG.Encoder = .init(interlaced: self.layout.interlaced)
+        while true 
+        {
+            let data:[UInt8] = encoder.pull(max: 1 << 15, size: self.size, 
+                pixel:      self.layout.format.pixel, 
+                delegate:   self.collect(scanline:at:stride:)) 
+            
+            guard !data.isEmpty
+            else 
+            {
+                break 
+            }
+            
+            try stream.format(type: .IDAT, data: data)
+        }
+        
+        try stream.format(type: .IEND)
     }
 }

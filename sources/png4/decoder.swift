@@ -85,20 +85,133 @@ extension PNG
 extension PNG.Layout 
 {
     public 
-    init(standard:PNG.Standard, interlaced:Bool, pixel:PNG.Format.Pixel, 
+    init?(standard:PNG.Standard, interlaced:Bool, pixel:PNG.Format.Pixel, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?) 
-        throws 
     {
         guard let format:PNG.Format = .recognize(pixel: pixel, palette: palette, 
             background: background, transparency: transparency) 
         else 
         {
-            // this is the only error condition that hasn’t already been checked 
-            // against by the parsing APIs 
-            throw PNG.DecodingError.missingPalette
+            // if all the inputs have been consistently validated by the parsing 
+            // APIs, the only error condition is a missing palette for an indexed 
+            // image. otherwise, it returns `nil` on any input chunk inconsistency
+            return nil 
         }
         
         self.init(format: format, standard: standard, interlaced: interlaced)
+    }
+    
+    var palette:PNG.Palette? 
+    {
+        switch self.format 
+        {
+        case    .v1, .v2, .v4, .v8, .v16, .va8, .va16:
+            return nil 
+        
+        case    .rgb8       (palette: let palette, background: _, key: _),
+                .rgb16      (palette: let palette, background: _, key: _), 
+                .rgba8      (palette: let palette, background: _),
+                .rgba16     (palette: let palette, background: _):
+            // should be impossible for self.format to have invalid palettes
+            return palette.isEmpty ? nil : .init(entries: palette)
+        
+        case    .indexed1   (palette: let palette, background: _),
+                .indexed2   (palette: let palette, background: _),
+                .indexed4   (palette: let palette, background: _),
+                .indexed8   (palette: let palette, background: _):
+            return .init(entries: palette.map{ ($0.r, $0.g, $0.b) })
+        }
+    }
+    var transparency:PNG.Transparency? 
+    {
+        switch self.format 
+        {
+        case    .v1         (background: _, key: nil), 
+                .v2         (background: _, key: nil), 
+                .v4         (background: _, key: nil), 
+                .v8         (background: _, key: nil), 
+                .v16        (background: _, key: nil),
+                .va8        (background: _),
+                .va16       (background: _),
+                .rgb8       (palette: _, background: _, key: nil),
+                .rgba8      (palette: _, background: _), 
+                .rgb16      (palette: _, background: _, key: nil),
+                .rgba16     (palette: _, background: _):
+            return nil 
+        
+        case    .v1         (background: _, key: let k?), 
+                .v2         (background: _, key: let k?), 
+                .v4         (background: _, key: let k?), 
+                .v8         (background: _, key: let k?):
+            return .v(key: .init(k))
+        
+        case    .v16        (background: _, key: let k?):
+            return .v(key: k)
+            
+        case    .rgb8       (palette: _, background: _, key: let k?):
+            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
+        
+        case    .rgb16      (palette: _, background: _, key: let k?):
+            return .rgb(key: k)
+        
+        case    .indexed1   (palette: let palette, background: _),
+                .indexed2   (palette: let palette, background: _),
+                .indexed4   (palette: let palette, background: _),
+                .indexed8   (palette: let palette, background: _):
+            guard let last:Int = (palette.lastIndex{ $0.a != .max })
+            else 
+            {
+                return nil 
+            }
+            return .palette(alpha: palette.prefix(last + 1).map(\.a))
+        }
+    }
+    var background:PNG.Background? 
+    {
+        switch self.format 
+        {
+        case    .v1         (background: nil, key: _), 
+                .v2         (background: nil, key: _), 
+                .v4         (background: nil, key: _), 
+                .v8         (background: nil, key: _), 
+                .v16        (background: nil, key: _),
+                .va8        (background: nil),
+                .va16       (background: nil),
+                .rgb8       (palette: _, background: nil, key: _),
+                .rgba8      (palette: _, background: nil), 
+                .rgb16      (palette: _, background: nil, key: _),
+                .rgba16     (palette: _, background: nil),
+                .indexed1   (palette: _, background: nil),
+                .indexed2   (palette: _, background: nil),
+                .indexed4   (palette: _, background: nil),
+                .indexed8   (palette: _, background: nil):
+            return nil 
+        
+        case    .v1         (background: let b?, key: _), 
+                .v2         (background: let b?, key: _), 
+                .v4         (background: let b?, key: _), 
+                .v8         (background: let b?, key: _), 
+                .va8        (background: let b?):
+            return .v(.init(b))
+        
+        case    .v16        (background: let b?, key: _), 
+                .va16       (background: let b?):
+            return .v(b)
+            
+        case    .rgb8       (palette: _, background: let b?, key: _),
+                .rgba8      (palette: _, background: let b?):
+            return .rgb((r: .init(b.r), g: .init(b.g), b: .init(b.b)))
+        
+        case    .rgb16      (palette: _, background: let b?, key: _),
+                .rgba16     (palette: _, background: let b?):
+            return .rgb(b)
+        
+        case    .indexed1   (palette: _, background: let i?),
+                .indexed2   (palette: _, background: let i?),
+                .indexed4   (palette: _, background: let i?),
+                .indexed8   (palette: _, background: let i?):
+            return .palette(index: i)
+        }
     }
 }
 
@@ -152,7 +265,7 @@ extension PNG.Data.Rectangular
     internal // uninitialized buffer 
     init(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata)  
     {
-        precondition(size.x > 0 && size.y > 0, "image dimensions must be positive")
+        // precondition(size.x > 0 && size.y > 0, "image dimensions must be positive")
         self.layout     = layout
         self.size       = size
         self.metadata   = metadata
@@ -162,6 +275,38 @@ extension PNG.Data.Rectangular
         {
             $1 = bytes
         }
+    }
+    
+    public 
+    init?(standard:PNG.Standard, header:PNG.Header, 
+        palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
+        metadata:PNG.Metadata) 
+    {
+        guard let layout:PNG.Layout = PNG.Layout.init(standard: standard, 
+            interlaced:     header.interlaced, 
+            pixel:          header.pixel, 
+            palette:        palette, 
+            background:     background, 
+            transparency:   transparency)
+        else 
+        {
+            return nil 
+        }
+        self.init(size: header.size, layout: layout, metadata: metadata)
+    }
+    
+    public 
+    func encode() -> 
+    (
+        header:PNG.Header, 
+        palette:PNG.Palette?, 
+        background:PNG.Background?, 
+        transparency:PNG.Transparency?
+    ) 
+    {
+        let header:PNG.Header = .init(size: self.size, 
+            pixel: self.layout.format.pixel, interlaced: self.layout.interlaced)
+        return (header, self.layout.palette, self.layout.background, self.layout.transparency)
     }
     
     mutating 
@@ -566,24 +711,31 @@ extension PNG
 extension PNG.Context 
 {
     public 
-    init(standard:PNG.Standard, header:PNG.Header, 
+    init?(standard:PNG.Standard, header:PNG.Header, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
-        metadata:PNG.Metadata) throws 
+        metadata:PNG.Metadata) 
     {
-        let layout:PNG.Layout = try .init(standard: standard, 
-            interlaced:     header.interlaced, 
-            pixel:          header.pixel, 
+        guard let image:PNG.Data.Rectangular = PNG.Data.Rectangular.init(
+            standard:       standard, 
+            header:         header, 
             palette:        palette, 
             background:     background, 
-            transparency:   transparency)
-        self.image      = .init(size: header.size, layout: layout, metadata: metadata)
-        self.decoder    = .init(interlaced: header.interlaced)
+            transparency:   transparency, 
+            metadata:       metadata)
+        else 
+        {
+            return nil 
+        }
+        
+        self.image      = image 
+        self.decoder    = .init(interlaced: image.layout.interlaced)
     }
     
     mutating 
     func push(data:[UInt8]) throws 
     {
-        try self.decoder.push(data, size: self.image.size, pixel: self.image.layout.format.pixel) 
+        try self.decoder.push(data, size: self.image.size, 
+            pixel: self.image.layout.format.pixel) 
         {
             self.image.assign(scanline: $0, at: $1, stride: $2)
         }
@@ -682,11 +834,18 @@ extension PNG.Data.Rectangular
                     palette = try .parse(chunk.data, pixel: header.pixel)
                 
                 case .IDAT:
-                    return try .init(standard: standard, header: header, 
+                    guard let context:PNG.Context = PNG.Context.init(
+                        standard:       standard, 
+                        header:         header, 
                         palette:        palette, 
                         background:     background, 
                         transparency:   transparency, 
                         metadata:       metadata)
+                    else 
+                    {
+                        throw PNG.DecodingError.missingPalette
+                    }
+                    return context
                     
                 case .IEND:
                     throw PNG.DecodingError.missingImageData
