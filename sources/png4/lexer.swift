@@ -224,6 +224,11 @@ extension PNG
         case truncatedChunkData
         case invalidChunkChecksum(declared:UInt32, computed:UInt32)
     }
+    public 
+    enum FormattingError:Swift.Error 
+    {
+        case invalidDestination
+    }
 }
 
 extension PNG.Bytestream.Source 
@@ -280,5 +285,44 @@ extension PNG.Bytestream.Source
         }
         
         return (type, data)
+    }
+}
+
+extension PNG.Bytestream.Destination 
+{
+    public mutating 
+    func signature() throws 
+    {
+        guard let _:Void = self.write(PNG.signature)
+        else
+        {
+            throw PNG.FormattingError.invalidDestination
+        }
+    }
+    
+    public mutating 
+    func format(type:PNG.Chunk, data:[UInt8]) throws 
+    {
+        let header:[UInt8] = .init(unsafeUninitializedCapacity: 8) 
+        {
+            ($0[0], $0[1], $0[2], $0[3]) = type.name
+            $0.store(data.count, asBigEndian: UInt32.self, at: 4)
+            $1 = 8
+        }
+        
+        let footer:[UInt8] = .init(unsafeUninitializedCapacity: 4) 
+        {
+            let crc:UInt32 = PNG.CRC32.update(PNG.CRC32.compute(header.suffix(4)), with: data)
+            $0.store(crc, asBigEndian: UInt32.self)
+            $1 = 4
+        }
+        
+        guard   let _:Void = self.write(header), 
+                let _:Void = self.write(data), 
+                let _:Void = self.write(footer)
+        else
+        {
+            throw PNG.FormattingError.invalidDestination
+        }
     }
 }
