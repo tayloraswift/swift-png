@@ -242,36 +242,32 @@ extension Array where Element == UInt8
     {
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
-
-    /// Decomposes the given integer value into its constituent bytes, in big-endian order.
-    /// - Parameters:
-    ///     - value: The integer value to decompose.
-    ///     - type: The big-endian format `T` to store the given `value` as. The given
-    ///             `value` is truncated to fit in a `T`.
-    /// - Returns: An array containing the bytes of the given `value`, in big-endian order.
-    static
-    func store<U, T>(_ value:U, asBigEndian type:T.Type) -> [UInt8]
-        where U:BinaryInteger, T:FixedWidthInteger
-    {
-        return .init(unsafeUninitializedCapacity: MemoryLayout<T>.size)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
-
-            let bigEndian:T = T.init(truncatingIfNeeded: value).bigEndian,
-                destination:UnsafeMutableRawBufferPointer = .init(buffer)
-            Swift.withUnsafeBytes(of: bigEndian)
-            {
-                destination.copyMemory(from: $0)
-                count = $0.count
-            }
-        }
-    }
-
-    mutating
+    
+    /* mutating
     func append(bigEndian:UInt16)
     {
         self.append(.init(truncatingIfNeeded: bigEndian >> 8))
         self.append(.init(truncatingIfNeeded: bigEndian     ))
+    } */
+}
+extension UnsafeMutableBufferPointer where Element == UInt8 
+{
+    func store<U, T>(_ value:U, asBigEndian type:T.Type, at byte:Int = 0)
+        where U:BinaryInteger, T:FixedWidthInteger
+    {
+        let cast:T = .init(truncatingIfNeeded: value)
+        withUnsafeBytes(of: cast.bigEndian) 
+        {
+            guard   let source:UnsafeRawPointer             = $0.baseAddress, 
+                    let destination:UnsafeMutableRawPointer = 
+                self.baseAddress.map(UnsafeMutableRawPointer.init(_:))
+            else 
+            {
+                return 
+            }
+            
+            (destination + byte).copyMemory(from: source, byteCount: MemoryLayout<T>.size)
+        }
     }
 }
 
