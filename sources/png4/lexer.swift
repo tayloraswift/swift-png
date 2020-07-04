@@ -301,7 +301,7 @@ extension PNG.Bytestream.Destination
     }
     
     public mutating 
-    func format(type:PNG.Chunk, data:[UInt8]) throws 
+    func format(type:PNG.Chunk, data:[UInt8] = []) throws 
     {
         let header:[UInt8] = .init(unsafeUninitializedCapacity: 8) 
         {
