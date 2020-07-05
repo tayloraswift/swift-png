@@ -220,17 +220,135 @@ extension LZ77.Deflator.In
     }
 }
 
+extension LZ77.Deflator 
+{
+    struct Out 
+    {
+        private 
+        var capacity:Int, // units in atoms 
+            count:Int // units in bits
+        private 
+        var storage:ManagedBuffer<Void, UInt16>
+        private 
+        var queue:[[UInt8]]
+    }
+}
+extension LZ77.Deflator.Out 
+{
+    var bytes:Int 
+    {
+        self.count >> 3
+    }
+    
+    private static 
+    func atoms(bytes:Int) -> Int 
+    {
+        (bytes + 1) >> 1 + 3 // 3 padding shorts
+    }
+    
+    init(hint:Int) 
+    {
+        self.count          = 0 
+        
+        var capacity:Int    = hint 
+        self.storage        = .create(minimumCapacity: hint)
+        { 
+            capacity = $0.capacity 
+            return () 
+        }
+        self.capacity       = capacity  
+        self.queue          = []
+    }
+    
+    mutating 
+    func append(_ bits:UInt16, count:Int)
+    {
+        let a:Int = self.count >> 4, 
+            b:Int = self.count & 15
+        guard a + 1 < self.capacity 
+        else 
+        {
+            let shifted:UInt32  = .init(bits) &<< b, 
+                mask:UInt16     = .max        &<< b
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                $0[a] = $0[a] & mask | .init(truncatingIfNeeded: shifted)
+            }
+            
+            if b + count >= 16
+            {
+                self.transfer()
+                self.storage.withUnsafeMutablePointerToElements 
+                {
+                    $0[0]   = .init(shifted >> 16)
+                }
+                self.count  = (b + count) & 15
+            }
+            else 
+            {
+                self.count += count 
+            }
+            return 
+        }
+        
+        let shifted:UInt32  = .init(bits) &<< b, 
+            mask:UInt16     = .max        &<< b
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            $0[a    ] = $0[a    ] & .init(mask & 0xffff) | .init(shifted & 0xffff)
+            $0[a + 1] = $0[a + 1] & .init(mask >>    16) | .init(shifted >>    16)
+        }
+        self.count += count
+    }
+    
+    private mutating 
+    func transfer() 
+    {
+        let size:Int = MemoryLayout<UInt16>.stride * self.capacity
+        queue.append(.init(unsafeUninitializedCapacity: size) 
+        {
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
+            
+            let raw:UnsafeMutableRawBufferPointer           = .init(buffer) 
+            let typed:UnsafeMutableBufferPointer<UInt16>    = raw.bindMemory(to: UInt16.self)
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                for i:Int in typed.indices 
+                {
+                    typed[i] = $0[i].littleEndian
+                }
+            }
+            
+            count = buffer.count
+        })
+    }
+}
 extension LZ77 
 {
     struct Deflator 
     {
+        private 
+        var input:[UInt8], 
+            current:Int 
     }
 }
 extension LZ77.Deflator 
 {
+    init() 
+    {
+        self.input      = []
+        self.current    = 0
+    }
     mutating 
     func push(_ data:[UInt8]) 
     {
+        // rebase input buffer 
+        self.input = .init(self.input.dropFirst(current)) + data 
+        // always maintain at least 258 bytes in the input buffer 
+        while self.input.endIndex - self.current >= 258
+        {
+            
+        }
     }
     mutating 
     func pull(_ count:Int) -> [UInt8]?
