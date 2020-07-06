@@ -30,15 +30,17 @@ let package = Package(
         .executable(name: "integration-test",   targets: ["PNGIntegrationTests"]),
         
         .executable(name: "benchmarks",         targets: ["PNGBenchmarks"]), 
+        .executable(name: "benchmarks4",        targets: ["PNGBenchmarks4"]), 
         .executable(name: "examples",           targets: ["PNGExamples"])
     ],
     targets: core +
     [
         .target(name: "PNG4",                   dependencies: [],       path: "sources/png4"),
         
-        .target(name: "PNGUnitTests",           dependencies: ["PNG4"],  path: "tests/unit"),
-        .target(name: "PNGIntegrationTests",    dependencies: ["PNG4"],  path: "tests/integration"),
+        .target(name: "PNGUnitTests",           dependencies: ["PNG4"], path: "tests/unit"),
+        .target(name: "PNGIntegrationTests",    dependencies: ["PNG4"], path: "tests/integration"),
         .target(name: "PNGBenchmarks",          dependencies: ["PNG"],  path: "benchmarks"), 
+        .target(name: "PNGBenchmarks4",         dependencies: ["PNG4"], path: "benchmarks4"), 
         .target(name: "PNGExamples",            dependencies: ["PNG"],  path: "examples")
     ],
     swiftLanguageVersions: [.v4_2, .v5]

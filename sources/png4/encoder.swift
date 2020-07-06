@@ -116,15 +116,15 @@ extension PNG
 }
 extension PNG.Encoder 
 {
-    init(interlaced:Bool)
+    init(interlaced:Bool, hint:Int = 1 << 15)
     {
         self.row        = nil
         self.pass       = interlaced ? 0 : nil
-        self.deflator   = .init()
+        self.deflator   = .init(hint: hint)
     }
     
     mutating 
-    func pull(max count:Int, size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
+    func pull(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
         delegate:(inout UnsafeMutableBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
         rethrows -> [UInt8]
     {
@@ -157,7 +157,7 @@ extension PNG.Encoder
                 self.row = nil 
                 for y:Int in start ..< subimage.y 
                 {
-                    if let data:[UInt8] = self.deflator.pull(count) 
+                    if let data:[UInt8] = self.deflator.pull() 
                     {
                         self.row  = (y, last) 
                         self.pass = z
@@ -188,7 +188,7 @@ extension PNG.Encoder
             self.row = nil 
             for y:Int in start ..< size.y 
             {
-                if let data:[UInt8] = self.deflator.pull(count) 
+                if let data:[UInt8] = self.deflator.pull() 
                 {
                     self.row  = (y, last) 
                     return data 
@@ -210,7 +210,7 @@ extension PNG.Encoder
         }
         
         self.pass = 7
-        return self.deflator.pull()
+        return self.deflator.pull() ?? []
     }
     
     static 
@@ -330,7 +330,7 @@ extension PNG.Data.Rectangular
         var encoder:PNG.Encoder = .init(interlaced: self.layout.interlaced)
         while true 
         {
-            let data:[UInt8] = encoder.pull(max: 1 << 15, size: self.size, 
+            let data:[UInt8] = encoder.pull(size: self.size, 
                 pixel:      self.layout.format.pixel, 
                 delegate:   self.collect(scanline:at:stride:)) 
             
