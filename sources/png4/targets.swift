@@ -83,7 +83,7 @@ extension PNG.Color
         T.max / (T.max >> (T.bitWidth - source))
     }
     
-    private static 
+    /*private static
     func map<A, T, F>(_ buffer:[UInt8], of _:A.Type, depth:Int, constructor:F,  
         map:(UnsafeBufferPointer<A>, F, (A) -> T) -> [Self])
         -> [Self]
@@ -113,7 +113,7 @@ extension PNG.Color
                 }
             }
         }
-    }
+    }*/
     
     static 
     func unpack<A, T>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A, A), 
@@ -145,15 +145,36 @@ extension PNG.Color
             }
         }
     }
-    
+    // cannot genericize the constructor parameters, since it produces an unacceptable slowdown
+    // so we have to manually specialize for all four cases (using the exact same function body)
     static 
     func unpack<A, T>(_ buffer:[UInt8], of _:A.Type, depth:Int, constructor:(T, A) -> Self)
         -> [Self]
         where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
     {
-        withoutActuallyEscaping(constructor) 
+        buffer.withUnsafeBytes
         {
-            Self.map(buffer, of: A.self, depth: depth, constructor: $0, map: Self.map(_:_:_:))
+            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                return Self.map(samples, constructor, T.init(_:))
+            }
+            else if T.bitWidth >  depth
+            {
+                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                return Self.map(samples, constructor)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = depth - T.bitWidth
+                return Self.map(samples, constructor)
+                {
+                    .init($0 &>> shift)
+                }
+            }
         }
     }
     static 
@@ -161,9 +182,29 @@ extension PNG.Color
         -> [Self]
         where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
     {
-        withoutActuallyEscaping(constructor) 
+        buffer.withUnsafeBytes
         {
-            Self.map(buffer, of: A.self, depth: depth, constructor: $0, map: Self.map(_:_:_:))
+            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                return Self.map(samples, constructor, T.init(_:))
+            }
+            else if T.bitWidth >  depth
+            {
+                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                return Self.map(samples, constructor)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = depth - T.bitWidth
+                return Self.map(samples, constructor)
+                {
+                    .init($0 &>> shift)
+                }
+            }
         }
     }
     static 
@@ -171,9 +212,29 @@ extension PNG.Color
         -> [Self]
         where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
     {
-        withoutActuallyEscaping(constructor) 
+        buffer.withUnsafeBytes
         {
-            Self.map(buffer, of: A.self, depth: depth, constructor: $0, map: Self.map(_:_:_:))
+            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                return Self.map(samples, constructor, T.init(_:))
+            }
+            else if T.bitWidth >  depth
+            {
+                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                return Self.map(samples, constructor)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = depth - T.bitWidth
+                return Self.map(samples, constructor)
+                {
+                    .init($0 &>> shift)
+                }
+            }
         }
     }
     static 
@@ -181,9 +242,29 @@ extension PNG.Color
         -> [Self]
         where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
     {
-        withoutActuallyEscaping(constructor) 
+        buffer.withUnsafeBytes
         {
-            Self.map(buffer, of: A.self, depth: depth, constructor: $0, map: Self.map(_:_:_:))
+            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                return Self.map(samples, constructor, T.init(_:))
+            }
+            else if T.bitWidth >  depth
+            {
+                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                return Self.map(samples, constructor)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = depth - T.bitWidth
+                return Self.map(samples, constructor)
+                {
+                    .init($0 &>> shift)
+                }
+            }
         }
     }
 }
