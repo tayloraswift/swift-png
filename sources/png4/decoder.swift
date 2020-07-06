@@ -237,18 +237,16 @@ extension PNG
         let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
         let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
         let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
-        if f.0 <= f.1 && f.0 <= f.2
-        {
-            return a
-        }
-        else if f.1 <= f.2
-        {
-            return b
-        }
-        else
-        {
-            return c
-        }
+        
+        let p:(UInt8, UInt8, UInt8) =
+        (
+            .init(truncatingIfNeeded: (f.1 - f.0) >> 15), // 0x00 if f.0 <= f.1 else 0xff
+            .init(truncatingIfNeeded: (f.2 - f.0) >> 15),
+            .init(truncatingIfNeeded: (f.2 - f.1) >> 15)
+        )
+        
+        return ~(p.0 | p.1) &  a        |
+                (p.0 | p.1) & (b & ~p.2 | c & p.2)
     }
 }
 extension PNG.Data 

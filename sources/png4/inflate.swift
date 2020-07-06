@@ -881,8 +881,7 @@ extension LZ77.Inflator
         var window:Int
          
         private(set)
-        var baseIndex:Int,
-            startIndex:Int, 
+        var startIndex:Int,
             currentIndex:Int,
             endIndex:Int 
         // storing this instead of using `ManagedBuffer.capacity` because 
@@ -913,7 +912,6 @@ extension LZ77.Inflator.Out
             return ()
         }
         self.window         = 0
-        self.baseIndex      = 0
         self.startIndex     = 0
         self.currentIndex   = 0
         self.endIndex       = 0
@@ -943,7 +941,7 @@ extension LZ77.Inflator.Out
                 }
                 new.withUnsafeMutablePointerToElements 
                 {
-                    $0.assign(from: body, count: self.endIndex - self.baseIndex)
+                    $0.assign(from: body, count: self.endIndex)
                 }
                 return new 
             } 
@@ -961,8 +959,8 @@ extension LZ77.Inflator.Out
                 return nil 
             }
             
-            let i:Int = self.currentIndex - self.baseIndex
-            let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
+            let slice:UnsafeBufferPointer<UInt8> =
+                .init(start: $0 + self.currentIndex, count: count)
             defer 
             {
                 let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
@@ -979,9 +977,9 @@ extension LZ77.Inflator.Out
     {
         self.storage.withUnsafeMutablePointerToElements  
         {
-            let i:Int       = self.currentIndex - self.baseIndex
-            let count:Int   = self.endIndex - self.currentIndex
-            let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
+            let count:Int = self.endIndex - self.currentIndex
+            let slice:UnsafeBufferPointer<UInt8>
+                = .init(start: $0 + self.currentIndex, count: count)
             defer 
             {
                 self.currentIndex   =           self.endIndex
@@ -997,7 +995,7 @@ extension LZ77.Inflator.Out
         self.reserve(1)
         self.storage.withUnsafeMutablePointerToElements 
         {
-            $0[self.endIndex &- self.baseIndex] = value 
+            $0[self.endIndex] = value
         }
         self.endIndex &+= 1
     }
@@ -1007,7 +1005,7 @@ extension LZ77.Inflator.Out
         self.reserve(count)
         self.storage.withUnsafeMutablePointerToElements 
         {
-            let start:UnsafeMutablePointer<UInt8>   = $0 + (self.endIndex &- self.baseIndex)
+            let start:UnsafeMutablePointer<UInt8>   = $0 + self.endIndex
             // cannot use assign(from:count:) because the standard library implementation
             // copies from the back to the front if the ranges overlap
             // https://github.com/apple/swift/blob/master/stdlib/public/core/UnsafePointer.swift#L745
@@ -1023,7 +1021,7 @@ extension LZ77.Inflator.Out
     private mutating 
     func reserve(_ count:Int) 
     {
-        if self.capacity < self.endIndex &- self.baseIndex &+ count 
+        if self.capacity < self.endIndex &+ count
         {
             self.shift(allocating: count)
         }
@@ -1041,11 +1039,12 @@ extension LZ77.Inflator.Out
             // rebase without reallocating 
             self.storage.withUnsafeMutablePointerToElements 
             {
-                let offset:Int  = self.startIndex - self.baseIndex
                 self.integral   = Self.update(checksum: self.integral, 
-                            from: $0,          count: offset)
-                $0.assign(  from: $0 + offset, count: count)
-                self.baseIndex  = self.startIndex
+                            from: $0,                   count: self.startIndex)
+                $0.assign(  from: $0 + self.startIndex, count: count)
+                self.currentIndex  -= self.startIndex
+                self.endIndex      -= self.startIndex
+                self.startIndex     = 0
             }
         }
         else 
@@ -1062,12 +1061,13 @@ extension LZ77.Inflator.Out
                 
                 new.withUnsafeMutablePointerToElements 
                 {
-                    let offset:Int  = self.startIndex - self.baseIndex
-                    self.integral   = Self.update(checksum: self.integral, 
-                                from: body,          count: offset)
-                    $0.assign(  from: body + offset, count: count)
+                    self.integral   = Self.update(checksum: self.integral,
+                                from: body,                   count: self.startIndex)
+                    $0.assign(  from: body + self.startIndex, count: count)
                 }
-                self.baseIndex = self.startIndex
+                self.currentIndex  -= self.startIndex
+                self.endIndex      -= self.startIndex
+                self.startIndex     = 0
                 return new 
             }
         }
@@ -1106,9 +1106,8 @@ extension LZ77.Inflator.Out
         // everything still in the storage buffer has not yet been integrated 
         self.storage.withUnsafeMutablePointerToElements 
         {
-            let remaining:Int = self.endIndex &- self.baseIndex
             let (single, double):(UInt32, UInt32) = 
-                Self.update(checksum: self.integral, from: $0, count: remaining)
+                Self.update(checksum: self.integral, from: $0, count: self.endIndex)
             return double << 16 | single
         }
     }
