@@ -226,15 +226,22 @@ extension PNG
     static
     func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     {
-        let v:SIMD3<Int16> = .init(truncatingIfNeeded: .init(a, b, c)),
-            d:SIMD3<Int16> = v.x + v.y - v.z &- v
-        let f:(x:Int16, y:Int16, z:Int16) = (abs(d.x), abs(d.y), abs(d.z))
-
-        if f.x <= f.y && f.x <= f.z
+        // abs here is poorly-predicted so it benefits from this
+        // branchless implementation
+        func abs(_ x:Int16) -> Int16
+        {
+            let mask:Int16 = x >> 15
+            return (x ^ mask) + (mask & 1)
+        }
+        
+        let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
+        let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
+        let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
+        if f.0 <= f.1 && f.0 <= f.2
         {
             return a
         }
-        else if f.y <= f.z
+        else if f.1 <= f.2
         {
             return b
         }
