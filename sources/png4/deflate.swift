@@ -224,13 +224,101 @@ extension LZ77.Deflator
 {
     struct Out 
     {
+        struct Queue<T> 
+        {
+            // use a header instead of inline storage because we anticipate the 
+            // amount of elements to be small
+            struct Header 
+            {
+                var capacity:Int, 
+                    startIndex:Int, 
+                    endIndex:Int 
+            }
+            // can’t use a normal `Array<T>`, because we want to move-deinitialize 
+            // constituent arrays when they get popped 
+            private 
+            var storage:ManagedBuffer<Header, T>
+            
+            init() 
+            {
+                self.storage = .create(minimumCapacity: 0) 
+                {
+                    .init(capacity: $0.capacity, startIndex: 0, endIndex: 0)
+                }
+            }
+            
+            mutating 
+            func enqueue(_ element:T) 
+            {
+                if self.storage.header.capacity < self.storage.header.endIndex + 1
+                {
+                    self.shift(allocating: 1)
+                }
+                self.storage.withUnsafeMutablePointerToElements 
+                {
+                    ($0 + self.storage.header.endIndex).initialize(to: element)
+                }
+                self.storage.header.endIndex += 1
+            }
+            
+            mutating 
+            func dequeue() -> T?
+            {
+                guard self.storage.header.startIndex < self.storage.header.endIndex 
+                else 
+                {
+                    return nil 
+                }
+                let element:T = self.storage.withUnsafeMutablePointerToElements 
+                {
+                    ($0 + self.storage.header.startIndex).move()
+                }
+                self.storage.header.startIndex += 1
+                return element
+            }
+            
+            private mutating 
+            func shift(allocating extra:Int) 
+            {
+                let count:Int       = self.storage.header.endIndex - self.storage.header.startIndex, 
+                    capacity:Int    = Swift.max(4, count + extra).nextPowerOfTwo
+                if self.storage.header.capacity >= capacity 
+                {
+                    // rebase without reallocating 
+                    self.storage.withUnsafeMutablePointerToElements 
+                    {
+                        let source:UnsafeMutablePointer<T>  = $0 + self.storage.header.startIndex
+                        $0.moveInitialize(from: source, count: count)
+                    }
+                    self.storage.header.startIndex = 0
+                    self.storage.header.endIndex   = count 
+                }
+                else 
+                {
+                    self.storage = self.storage.withUnsafeMutablePointerToElements 
+                    {
+                        let source:UnsafeMutablePointer<T>  = $0 + self.storage.header.startIndex
+                        let new:ManagedBuffer<Header, T>    = .create(minimumCapacity: capacity)
+                        {
+                            .init(capacity: $0.capacity, startIndex: 0, endIndex: count)
+                        }
+                        
+                        new.withUnsafeMutablePointerToElements 
+                        {
+                            $0.moveInitialize(from: source, count: count)
+                        }
+                        return new 
+                    }
+                }
+            }
+        }
         private 
         var capacity:Int, // units in atoms 
             count:Int // units in bits
         private 
         var storage:ManagedBuffer<Void, UInt16>
         private 
-        var queue:[[UInt8]]
+        var queue:Queue<[UInt8]>
     }
 }
 extension LZ77.Deflator.Out 
@@ -257,10 +345,16 @@ extension LZ77.Deflator.Out
             return () 
         }
         self.capacity       = capacity  
-        self.queue          = []
+        self.queue          = .init()
     }
     
     mutating 
+    func release() -> [UInt8]? 
+    {
+        self.queue.dequeue()
+    }
+    
+    /* mutating 
     func append(_ bits:UInt16, count:Int)
     {
         let a:Int = self.count >> 4, 
@@ -272,12 +366,12 @@ extension LZ77.Deflator.Out
                 mask:UInt16     = .max        &<< b
             self.storage.withUnsafeMutablePointerToElements 
             {
-                $0[a] = $0[a] & mask | .init(truncatingIfNeeded: shifted)
+                $0[a] = $0[a] & ~mask | .init(truncatingIfNeeded: shifted)
             }
             
             if b + count >= 16
             {
-                self.transfer()
+                self.transfer(bytes: 2 * self.capacity)
                 self.storage.withUnsafeMutablePointerToElements 
                 {
                     $0[0]   = .init(shifted >> 16)
@@ -295,33 +389,37 @@ extension LZ77.Deflator.Out
             mask:UInt16     = .max        &<< b
         self.storage.withUnsafeMutablePointerToElements 
         {
-            $0[a    ] = $0[a    ] & .init(mask & 0xffff) | .init(shifted & 0xffff)
-            $0[a + 1] = $0[a + 1] & .init(mask >>    16) | .init(shifted >>    16)
+            $0[a    ] = $0[a] & ~mask | .init(truncatingIfNeeded: shifted      )
+            $0[a + 1] =                 .init(                    shifted >> 16)
         }
         self.count += count
     }
     
     private mutating 
-    func transfer() 
+    func transfer(bytes:Int) 
     {
-        let size:Int = MemoryLayout<UInt16>.stride * self.capacity
-        queue.append(.init(unsafeUninitializedCapacity: size) 
+        self.queue.enqueue(.init(unsafeUninitializedCapacity: bytes) 
         {
             (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
             
-            let raw:UnsafeMutableRawBufferPointer           = .init(buffer) 
-            let typed:UnsafeMutableBufferPointer<UInt16>    = raw.bindMemory(to: UInt16.self)
             self.storage.withUnsafeMutablePointerToElements 
             {
-                for i:Int in typed.indices 
+                for a:Int in 0 ..< bytes >> 1 
                 {
-                    typed[i] = $0[i].littleEndian
+                    let atom:UInt16     = $0[a]
+                    buffer[a << 1    ]  = .init(truncatingIfNeeded: atom     )
+                    buffer[a << 1 | 1]  = .init(                    atom >> 8)
+                }
+                if bytes & 1 != 0 
+                {
+                    let a:Int           = bytes >> 1
+                    buffer[a << 1    ]  = .init(truncatingIfNeeded: $0[a]    )
                 }
             }
             
-            count = buffer.count
+            count = bytes 
         })
-    }
+    } */
 }
 extension LZ77 
 {
@@ -329,15 +427,17 @@ extension LZ77
     {
         private 
         var input:[UInt8], 
-            current:Int 
+            current:Int, 
+            output:Out
     }
 }
 extension LZ77.Deflator 
 {
-    init() 
+    init(hint:Int) 
     {
         self.input      = []
         self.current    = 0
+        self.output     = .init(hint: hint)
     }
     mutating 
     func push(_ data:[UInt8]) 
@@ -345,18 +445,18 @@ extension LZ77.Deflator
         // rebase input buffer 
         self.input = .init(self.input.dropFirst(current)) + data 
         // always maintain at least 258 bytes in the input buffer 
-        while self.input.endIndex - self.current >= 258
-        {
-            
-        }
+        // while self.input.endIndex - self.current >= 258
+        // {
+        //     
+        // }
     }
     mutating 
-    func pull(_ count:Int) -> [UInt8]?
+    func pull() -> [UInt8]?
     {
         nil
     }
     mutating 
-    func pull() -> [UInt8]
+    func remaining() -> [UInt8]
     {
         []
     }

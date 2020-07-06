@@ -485,10 +485,11 @@ extension PNG.Metadata
                 try .parse(chunk.data)
             }
         case .iCCP:
-            try Self.unique(assign: chunk.type, to: &self.colorProfile) 
-            {
-                try .parse(chunk.data)
-            }
+            break
+            //try Self.unique(assign: chunk.type, to: &self.colorProfile) 
+            //{
+            //    try .parse(chunk.data)
+            //}
         case .sBIT:
             try Self.unique(assign: chunk.type, to: &self.significantBits) 
             {
