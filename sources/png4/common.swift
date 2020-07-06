@@ -226,7 +226,7 @@ extension General.Heap:ExpressibleByArrayLiteral
     {
         self.init(arrayLiteral)
     }
-} 
+}
 
 extension Array where Element == UInt8
 {
