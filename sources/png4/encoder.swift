@@ -157,7 +157,7 @@ extension PNG.Encoder
                 self.row = nil 
                 for y:Int in start ..< subimage.y 
                 {
-                    if let data:[UInt8] = self.deflator.pull() 
+                    if let data:[UInt8] = self.deflator.pop() 
                     {
                         self.row  = (y, last) 
                         self.pass = z
@@ -188,7 +188,7 @@ extension PNG.Encoder
             self.row = nil 
             for y:Int in start ..< size.y 
             {
-                if let data:[UInt8] = self.deflator.pull() 
+                if let data:[UInt8] = self.deflator.pop() 
                 {
                     self.row  = (y, last) 
                     return data 
@@ -210,7 +210,7 @@ extension PNG.Encoder
         }
         
         self.pass = 7
-        return self.deflator.pull() ?? []
+        return self.deflator.pull() 
     }
     
     static 

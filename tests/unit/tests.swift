@@ -6,14 +6,15 @@ extension Test
     var cases:[(name:String, function:Function)] 
     {
         [
-            ("bitstream",                   .void(Self.bitstream)),
+            ("decode bitstream",            .void(Self.decodeBitstream)),
+            ("encode bitstream",            .void(Self.encodeBitstream)),
             ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
             ("premultiplication (8-bit)",   .void(Self.premultiplication8)),
             ("premultiplication (16-bit)",  .void(Self.premultiplication16)),
         ]
     }
     static 
-    func bitstream() -> Result<Void, Failure> 
+    func decodeBitstream() -> Result<Void, Failure> 
     {
         var bits:LZ77.Inflator.In = 
         [
@@ -75,6 +76,46 @@ extension Test
         else 
         {
             return .failure(.init(message: "incorrect rebased codeword read"))
+        }
+        return .success(())
+    }
+    
+    static 
+    func encodeBitstream() -> Result<Void, Failure>
+    {
+        var bits:LZ77.Deflator.Out = .init(hint: 4) 
+        
+        bits.append(0b11, count: 2)
+        bits.append(0b01_10, count: 4)
+        
+        bits.append(0b0110, count: 0)
+        
+        bits.append(0b1_1111_11, count: 7)
+        bits.append(0b1010_1010_1010_101, count: 15)
+        bits.append(0b000, count: 3)
+        bits.append(0b0_1101_1, count: 6)
+        bits.append(0b1_0000_0000_111, count: 12)
+        
+        var encoded:[UInt8] = []
+        while let chunk:[UInt8] = bits.pop() 
+        {
+            encoded.append(contentsOf: chunk)
+        }
+        encoded.append(contentsOf: bits.pull())
+        
+        guard encoded == 
+        [
+            0b1101_1011,
+            0b1011_1111, 
+            0b1010_1010, 
+            0b1000_1010,
+            0b1110_1101,
+            0b0000_0000, 
+            0b0000_0001
+        ]
+        else 
+        {
+            return .failure(.init(message: "incorrect codeword write"))
         }
         return .success(())
     }
