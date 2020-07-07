@@ -897,12 +897,7 @@ extension LZ77.Inflator
     }
 }
 extension LZ77.Inflator.Out 
-{        
-    var count:Int 
-    {
-        self.endIndex - self.startIndex
-    }
-    
+{
     init() 
     {
         var capacity:Int    = 0
@@ -941,6 +936,7 @@ extension LZ77.Inflator.Out
                 }
                 new.withUnsafeMutablePointerToElements 
                 {
+                    // cannot do shift here, since the checksum has to be updated
                     $0.assign(from: body, count: self.endIndex)
                 }
                 return new 
@@ -1032,7 +1028,7 @@ extension LZ77.Inflator.Out
     func shift(allocating extra:Int) 
     {
         // optimal new capacity
-        let count:Int       = self.count, 
+        let count:Int       = self.endIndex - self.startIndex, 
             capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
         if self.capacity >= capacity 
         {
