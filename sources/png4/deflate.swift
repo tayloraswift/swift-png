@@ -213,6 +213,11 @@ extension LZ77.Deflator.In
         self.capacity       = capacity
     }
     
+    var count:Int 
+    {
+        self.endIndex - self.startIndex
+    }
+    
     mutating 
     func exclude() 
     {
@@ -265,14 +270,13 @@ extension LZ77.Deflator.In
     func shift(allocating extra:Int) 
     {
         // optimal new capacity
-        let count:Int       = self.endIndex - self.startIndex, 
-            capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
+        let capacity:Int  = (self.count + Swift.max(16, extra)).nextPowerOfTwo
         if self.capacity >= capacity 
         {
             // rebase without reallocating 
             self.storage.withUnsafeMutablePointerToElements 
             {
-                $0.assign(from: $0 + self.startIndex, count: count)
+                $0.assign(from: $0 + self.startIndex, count: self.count)
                 self.endIndex      -= self.startIndex
                 self.startIndex     = 0
             }
@@ -291,12 +295,196 @@ extension LZ77.Deflator.In
                 
                 new.withUnsafeMutablePointerToElements 
                 {
-                    $0.assign(from: body + self.startIndex, count: count)
+                    $0.assign(from: body + self.startIndex, count: self.count)
                 }
                 self.endIndex      -= self.startIndex
                 self.startIndex     = 0
                 return new 
             }
+        }
+    }
+    
+    func withUnsafeBufferPointer<R>(_ body:(UnsafeBufferPointer<UInt8>) throws -> R) 
+        rethrows -> R 
+    {
+        try self.storage.withUnsafeMutablePointerToElements 
+        {
+            try body(.init(start: $0 + self.startIndex, count: self.count))
+        }
+    }
+}
+
+extension LZ77.Deflator 
+{
+    struct Window 
+    {
+        struct Element 
+        {
+            // stores a modular index
+            var next:UInt16?
+            let value:UInt8 
+        }
+        struct Prefix:Hashable
+        {
+            // can change this to a tuple in 5.4
+            let a:UInt8, 
+                b:UInt8, 
+                c:UInt8
+            
+            init(_ a:UInt8, _ b:UInt8, _ c:UInt8) 
+            {
+                self.a = a
+                self.b = b
+                self.c = c
+            }
+        }
+        
+        private 
+        let exponent:Int 
+        private 
+        var storage:ManagedBuffer<Void, Element>, 
+            head:[Prefix: UInt16] // modular index 
+        private 
+        var endIndex:Int // absolute index
+    }
+}
+extension LZ77.Deflator.Window 
+{
+    init(exponent:Int) 
+    {
+        precondition(exponent < 16, "exponent cannot be greater than 15")
+        self.exponent   = exponent 
+        self.endIndex   = 0
+        self.head       = [:]
+        self.storage    = .create(minimumCapacity: 1 << exponent){ _ in () }
+    }
+    
+    subscript(modular:UInt16) -> Element 
+    {
+        get 
+        {
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                $0[.init(modular)]
+            }
+        }
+        set(value) 
+        {
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                $0[.init(modular)] = value
+            }
+        }
+    }
+    
+    private 
+    func modular<T>(_ x:T) -> UInt16 where T:BinaryInteger
+    {
+        .init(x) & ~(.max << self.exponent)
+    }
+    
+    private 
+    func distance(from a:UInt16, to b:UInt16) -> Int 
+    {
+        .init((b &- a) & ~(.max << self.exponent))
+    }
+    
+    mutating 
+    func register(_ value:UInt8) 
+    {
+        //  a   b   c   d   e  e+1
+        //  [   :   |   :   :   ]
+        //  ~~~~~~~~~~~~ remove
+        //  add     ~~~~~~~~~~~~
+        let c:UInt16        = self.modular(self.endIndex)
+        self.endIndex      += 1
+        
+        guard self.endIndex > 2 
+        else 
+        {
+            self[c]         = .init(value: value)
+            return 
+        }
+        
+        let a:UInt16        = self.modular(c &- 2),
+            b:UInt16        = self.modular(c &- 1)
+        let new:Prefix      = .init(self[a].value, self[b].value, value)
+        if self.endIndex    > 1 << self.exponent 
+        {
+            // remove overwritten entry 
+            let d:UInt16    = self.modular(c &+ 1),
+                e:UInt16    = self.modular(c &+ 2)
+            let old:Prefix  = .init(self[c].value, self[d].value, self[e].value)
+            self.head[old]  = nil 
+        }
+        self[c]             = .init(value: value)
+        if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
+        {
+            // we know `m` is within the window range, because we preemptively 
+            // remove dictionary entries when they go out of range
+            self[a].next    = m
+        }
+    }
+    
+    func match(lookahead:LZ77.Deflator.In) -> (length:Int, distance:Int)?
+    {
+        // lookahead guaranteed to have at least 258 elements 
+        lookahead.withUnsafeBufferPointer 
+        {
+            let prefix:Prefix = .init($0[0], $0[1], $0[2])
+            guard var current:UInt16 = self.head[prefix] 
+            else 
+            {
+                return nil 
+            }
+            //  |<----- window ---->|<--- lookahead --->|
+            //  [   :   :   :   :   |   :   :   :   :   ]
+            //                      ~~~~~~~~~~~~
+            //                         prefix
+            let front:UInt16    = self.modular(self.endIndex)
+            var distance:Int    = self.distance(from: current, to: front)
+            var best:(length:Int, distance:Int) = (3, distance)
+            while best.length < 258 
+            {
+                var length:Int  =                         3, 
+                    m:UInt16    = self.modular(current &+ 3) 
+                // match up to front 
+                while   m                   != front, 
+                        length              <  $0.endIndex, 
+                        self[m].value       == $0[length]
+                {
+                    m           = self.modular(m &+ 1)
+                    length     += 1
+                }
+                // match lookahead 
+                let delay:Int   = length
+                while   length              <  $0.endIndex, 
+                        $0[length - delay]  == $0[length]
+                {
+                    length     += 1
+                }
+                
+                if length > best.length 
+                {
+                    best = (length: length, distance: distance)
+                }
+                
+                guard let next:UInt16 = self[current].next 
+                else 
+                {
+                    break 
+                }
+                
+                distance += self.distance(from: next, to: current)
+                guard distance < 1 << self.exponent 
+                else 
+                {
+                    break 
+                }
+                current = next
+            }
+            
+            return best
         }
     }
 }
@@ -472,23 +660,37 @@ extension LZ77
 {
     struct Deflator 
     {
+        struct Stream 
+        {
+            var input:In 
+            var literals:[UInt16]
+            var window:Window
+            var output:Out
+            
+            init(hint:Int) 
+            {
+                self.input      = .init(window: 258)
+                self.literals   = []
+                self.window     = .init(exponent: 15)
+                self.output     = .init(hint: hint)
+            }
+        }
+        
         private 
-        var input:In, 
-            output:Out
+        var stream:Stream 
     }
 }
 extension LZ77.Deflator 
 {
     init(hint:Int) 
     {
-        self.input      = .init(window: 258)
-        self.output     = .init(hint: hint)
+        self.stream = .init(hint: 256)
     }
     mutating 
     func push(_ data:[UInt8]) 
     {
         // rebase input buffer 
-        self.input.enqueue(contentsOf: data)
+        self.stream.input.enqueue(contentsOf: data)
         // always maintain at least 258 bytes in the input buffer 
         // while self.input.endIndex - self.current >= 258
         // {
@@ -498,11 +700,11 @@ extension LZ77.Deflator
     mutating 
     func pop() -> [UInt8]?
     {
-        self.output.pop()
+        self.stream.output.pop()
     }
     mutating 
     func pull() -> [UInt8]
     {
-        self.output.pull()
+        self.stream.output.pull()
     }
 }
