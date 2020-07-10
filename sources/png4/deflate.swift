@@ -185,8 +185,6 @@ extension LZ77.Deflator
 {
     struct In 
     {
-        let window:Int 
-        
         private 
         var startIndex:Int, 
             endIndex:Int 
@@ -199,7 +197,7 @@ extension LZ77.Deflator
 }
 extension LZ77.Deflator.In 
 {
-    init(window:Int) 
+    init() 
     {
         var capacity:Int    = 0
         self.storage = .create(minimumCapacity: 0)
@@ -207,7 +205,6 @@ extension LZ77.Deflator.In
             capacity = $0.capacity 
             return ()
         }
-        self.window         = window
         self.startIndex     = 0 
         self.endIndex       = 0 
         self.capacity       = capacity
@@ -244,6 +241,18 @@ extension LZ77.Deflator.In
                 return new 
             } 
         }
+    }
+    
+    mutating 
+    func dequeue() -> UInt8
+    {
+        assert(self.count > 0)
+        let value:UInt8 = self.storage.withUnsafeMutablePointerToElements 
+        {
+            $0[self.startIndex]
+        }
+        self.startIndex += 1
+        return value 
     }
     
     mutating 
@@ -426,31 +435,61 @@ extension LZ77.Deflator.Window
         }
     }
     
-    func match(lookahead:LZ77.Deflator.In) -> (length:Int, distance:Int)?
+    // lookahead must have at least 3 elements
+    func match(_ lookahead:LZ77.Deflator.In) -> (length:Int, distance:Int)?
     {
-        // lookahead guaranteed to have at least 258 elements 
         lookahead.withUnsafeBufferPointer 
         {
-            let prefix:Prefix = .init($0[0], $0[1], $0[2])
-            guard var current:UInt16 = self.head[prefix] 
+            // cannot encode run longer than 258 elements 
+            let limit:Int       = 258 
+            let front:UInt16    = self.modular(self.endIndex)
+            
+            //  these always succeed, but may contain garbage values if 
+            //  self.endIndex < 2
+            let a:UInt8         = self[self.modular(front &- 1)].value, 
+                b:UInt8         = self[self.modular(front &- 2)].value
+            var best:(length:Int, distance:Int)
+            //  check for internal matches 
+            //      A | A : A : A
+            if      self.endIndex > 0, 
+                $0[0] == a, 
+                $0[1] == a, 
+                $0[2] == a 
+            {
+                best = (length:    3, distance: 1)
+            }
+            //  B : A | B : A : B
+            else if self.endIndex > 1, 
+                $0[0] == b, 
+                $0[1] == a, 
+                $0[2] == b 
+            {
+                best = (length:    3, distance: 2)
+            }
             else 
             {
-                return nil 
+                best = (length: .min, distance: 3)
             }
+            
             //  |<----- window ---->|<--- lookahead --->|
             //  [   :   :   :   :   |   :   :   :   :   ]
             //                      ~~~~~~~~~~~~
             //                         prefix
-            let front:UInt16    = self.modular(self.endIndex)
+            let prefix:Prefix   = .init($0[0], $0[1], $0[2])
+            guard var current:UInt16 = self.head[prefix] 
+            else 
+            {
+                return best.length >= 3 ? best : nil 
+            }
             var distance:Int    = self.distance(from: current, to: front)
-            var best:(length:Int, distance:Int) = (3, distance)
-            while best.length < 258 
+            
+            while best.length  <= limit 
             {
                 var length:Int  =                         3, 
                     m:UInt16    = self.modular(current &+ 3) 
                 // match up to front 
                 while   m                   != front, 
-                        length              <  $0.endIndex, 
+                        length              <  limit, 
                         self[m].value       == $0[length]
                 {
                     m           = self.modular(m &+ 1)
@@ -458,7 +497,7 @@ extension LZ77.Deflator.Window
                 }
                 // match lookahead 
                 let delay:Int   = length
-                while   length              <  $0.endIndex, 
+                while   length              <  limit, 
                         $0[length - delay]  == $0[length]
                 {
                     length     += 1
@@ -669,7 +708,7 @@ extension LZ77
             
             init(hint:Int) 
             {
-                self.input      = .init(window: 258)
+                self.input      = .init()
                 self.literals   = []
                 self.window     = .init(exponent: 15)
                 self.output     = .init(hint: hint)

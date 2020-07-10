@@ -8,6 +8,7 @@ extension Test
         [
             ("decode bitstream",            .void(Self.decodeBitstream)),
             ("encode bitstream",            .void(Self.encodeBitstream)),
+            ("match lz77",                  .void(Self.matchLZ77)),
             ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
             ("premultiplication (8-bit)",   .void(Self.premultiplication8)),
             ("premultiplication (16-bit)",  .void(Self.premultiplication16)),
@@ -116,6 +117,46 @@ extension Test
         else 
         {
             return .failure(.init(message: "incorrect codeword write"))
+        }
+        return .success(())
+    }
+    
+    static 
+    func matchLZ77() -> Result<Void, Failure>
+    {
+        let segments:[[UInt8]] = 
+        [
+            [1, 2, 3, 3, 1, 2, 3, 3, 1, 2, 3, 1, 2, 2, 2, 2, 0, 1, 2, 0, 1, 2, 2], 
+            [0, 0, 0, 0, 1, 0, 0, 1, 0, 2, 3, 2, 1, 2, 3, 3, 1, 5], 
+            [1, 1, 1, 5, 1, 3, 2, 0, 1, 4, 4, 2, 1]
+        ]
+        var input:LZ77.Deflator.In = .init()
+        for segment:[UInt8] in segments 
+        {
+            input.enqueue(contentsOf: segment)
+            
+            var window:LZ77.Deflator.Window = .init(exponent: 4)
+            while input.count >= 10
+            {
+                if let match:(length:Int, distance:Int) = window.match(input) 
+                {
+                    var run:[UInt8] = []
+                    for _:Int in 0 ..< match.length 
+                    {
+                        let literal:UInt8 = input.dequeue()
+                        run.append(literal)
+                        window.register(literal)
+                    }
+                    print("match(\(match.distance), \(match.length)): \(run)")
+                }
+                else 
+                {
+                    let literal:UInt8 = input.dequeue()
+                    window.register(literal)
+                    
+                    print("literal:     [\(literal)]")
+                }
+            }
         }
         return .success(())
     }
