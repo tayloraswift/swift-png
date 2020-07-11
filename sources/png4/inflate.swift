@@ -24,6 +24,43 @@ enum LZ77
     }
 }
 
+// modular redundancy check (similar to PNG.CRC32)
+extension LZ77 
+{
+    // no more algorithms named after white man the world has 
+    // progressed past the need for white men <3
+    enum MRC32 
+    {
+        // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
+        // link also says to use simd vectorization, but that just seems to slow 
+        // things down (probably because llvm is already autovectorizing it)
+        static 
+        func update(_ checksum:(single:UInt32, double:UInt32), 
+            from start:UnsafePointer<UInt8>, count:Int) 
+            -> (single:UInt32, double:UInt32)
+        {
+            let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
+            var (single, double):(UInt32, UInt32) = checksum
+            for i:Int in 0 ..< q 
+            {
+                for j:Int in 5552 * i ..< 5552 * (i + 1)
+                {
+                    single &+= .init(start[j])
+                    double &+= single 
+                }
+                single %= 65521
+                double %= 65521
+            }
+            for j:Int in 5552 * q ..< 5552 * q + r
+            {
+                single &+= .init(start[j])
+                double &+= single 
+            }
+            return (single % 65521, double % 65521)
+        }
+    }
+}
+
 // huffman tables
 extension LZ77 
 {
@@ -191,6 +228,216 @@ extension LZ77.Huffman
 }
 extension LZ77 
 {
+    enum Decades 
+    {
+        static 
+        subscript(run run:Int) -> UInt8 
+        {
+            assert(3 ...   258 ~= run)
+            return Self.codes[run - 3]
+        }
+        static 
+        subscript(distance distance:Int) -> UInt8 
+        {
+            assert(1 ... 32768 ~= distance)
+            return distance <= 256 ? 
+                Self.codes[256 | (distance - 1)     ] : 
+                Self.codes[512 | (distance - 1) >> 7]
+        }
+        // these are only used by the deflator in deflate.swift,, the inflator 
+        // reads these values from the Semistatic table, for memory locality
+        static 
+        subscript(run run:UInt8) -> (extra:UInt16, base:UInt16) 
+        {
+            assert(1 ... 29 ~= run)
+            return Self.decades[.init(run)]
+        }
+        static 
+        subscript(distance distance:UInt8) -> (extra:UInt16, base:UInt16) 
+        {
+            assert(0 ... 29 ~= distance)
+            return Self.decades[.init(32 | distance)]
+        }
+        private static 
+        let codes:[UInt8] =
+        [
+            // length codes
+            // 257 ... 264
+             1,  2,  3,  4,  5,  6,  7,  8, 
+            // 265 ... 268
+             9,  9, 10, 10, 11, 11, 12, 12, 
+            // 269 ... 272
+            13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 
+            // 273 ... 274
+            17, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 
+            // 275 ... 276
+            19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 
+            // 277 ... 280
+            21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 
+            23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 
+            24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
+            // 281
+            25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 
+            25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 
+            // 282
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            // 283
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            // 284 ... 285 (there is an overlapping composite for length = 258)
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 29, 
+            // distance codes 
+            // 0 ... 3
+             0,  1,  2,  3,  
+            // 4 ... 5
+             4,  4,  5,  5, 
+            // 6 ... 7
+             6,  6,  6,  6,  7,  7,  7,  7, 
+            // 8 ... 9
+             8,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9, 
+            // 10 ... 11
+            10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 
+            11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 
+            
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 
+            
+            13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 
+            13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 
+            
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
+            
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
+            // ~~~ 7-bit fold ~~~
+             0,  0, // padding, to simplify index calculation
+            16, 17,
+            18, 18, 19, 19, 
+            20, 20, 20, 20, 21, 21, 21, 21, 
+            22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 
+            
+            24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
+            25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+            
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29
+        ]
+        fileprivate static 
+        let decades:[(extra:UInt16, base:UInt16)] = 
+        [
+            // front-padding, which allows us to use a bitmask to 
+            // get the decade index
+            (0,   0),
+            
+            // run decades
+            (0,   3),
+            (0,   4),
+            (0,   5),
+            (0,   6),
+            (0,   7),
+            
+            (0,   8),
+            (0,   9),
+            (0,  10),
+            (1,  11),
+            (1,  13),
+            
+            (1,  15),
+            (1,  17),
+            (2,  19),
+            (2,  23),
+            (2,  27),
+            
+            (2,  31),
+            (3,  35),
+            (3,  43),
+            (3,  51),
+            (3,  59),
+            
+            (4,  67),
+            (4,  83),
+            (4,  99),
+            (4, 115),
+            (5, 131),
+            
+            (5, 163),
+            (5, 195),
+            (5, 227),
+            (0, 258),
+            
+            // padding values, because out-of-bounds symbols occur
+            // in fixed huffman trees, and may be erroneously decoded 
+            // if the decoder goes beyond the end-of-stream (which it is 
+            // temporarily allowed to do, for performance)
+            (0,   0),
+            (0,   0),
+            
+            // distance decades 
+            ( 0,     1),
+            ( 0,     2),
+            ( 0,     3),
+            ( 0,     4),
+            ( 1,     5),
+            
+            ( 1,     7),
+            ( 2,     9),
+            ( 2,    13),
+            ( 3,    17),
+            ( 3,    25),
+            
+            ( 4,    33),
+            ( 4,    49),
+            ( 5,    65),
+            ( 5,    97),
+            ( 6,   129),
+            
+            ( 6,   193),
+            ( 7,   257),
+            ( 7,   385),
+            ( 8,   513),
+            ( 8,   769),
+            
+            ( 9,  1025),
+            ( 9,  1537),
+            (10,  2049),
+            (10,  3073),
+            (11,  4097),
+            
+            (11,  6145),
+            (12,  8193),
+            (12, 12289),
+            (13, 16385),
+            (13, 24577),
+            
+            // padding values, because out-of-bounds symbols occur
+            // in fixed huffman trees, and may be erroneously decoded 
+            // if the decoder goes beyond the end-of-stream (which it is 
+            // temporarily allowed to do, for performance)
+            ( 0,     0),
+            ( 0,     0),
+        ]
+    }
     struct Semistatic 
     {
         private 
@@ -286,100 +533,6 @@ extension LZ77
             0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 
             0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
         ]
-        private static 
-        let decades:[Decade] = 
-        [
-            // front-padding, which allows us to use a bitmask to 
-            // get the decade index
-            (0,   0),
-            
-            // run decades
-            (0,   3),
-            (0,   4),
-            (0,   5),
-            (0,   6),
-            (0,   7),
-            
-            (0,   8),
-            (0,   9),
-            (0,  10),
-            (1,  11),
-            (1,  13),
-            
-            (1,  15),
-            (1,  17),
-            (2,  19),
-            (2,  23),
-            (2,  27),
-            
-            (2,  31),
-            (3,  35),
-            (3,  43),
-            (3,  51),
-            (3,  59),
-            
-            (4,  67),
-            (4,  83),
-            (4,  99),
-            (4, 115),
-            (5, 131),
-            
-            (5, 163),
-            (5, 195),
-            (5, 227),
-            (0, 258),
-            
-            // padding values, because out-of-bounds symbols occur
-            // in fixed huffman trees, and may be erroneously decoded 
-            // if the decoder goes beyond the end-of-stream (which it is 
-            // temporarily allowed to do, for performance)
-            (0,   0),
-            (0,   0),
-            
-            // distance decades 
-            ( 0,     1),
-            ( 0,     2),
-            ( 0,     3),
-            ( 0,     4),
-            ( 1,     5),
-            
-            ( 1,     7),
-            ( 2,     9),
-            ( 2,    13),
-            ( 3,    17),
-            ( 3,    25),
-            
-            ( 4,    33),
-            ( 4,    49),
-            ( 5,    65),
-            ( 5,    97),
-            ( 6,   129),
-            
-            ( 6,   193),
-            ( 7,   257),
-            ( 7,   385),
-            ( 8,   513),
-            ( 8,   769),
-            
-            ( 9,  1025),
-            ( 9,  1537),
-            (10,  2049),
-            (10,  3073),
-            (11,  4097),
-            
-            (11,  6145),
-            (12,  8193),
-            (12, 12289),
-            (13, 16385),
-            (13, 24577),
-            
-            // padding values, because out-of-bounds symbols occur
-            // in fixed huffman trees, and may be erroneously decoded 
-            // if the decoder goes beyond the end-of-stream (which it is 
-            // temporarily allowed to do, for performance)
-            ( 0,     0),
-            ( 0,     0),
-        ]
     }
 }
 extension LZ77.Semistatic 
@@ -401,7 +554,7 @@ extension LZ77.Semistatic
             // write decade tables 
             (base +    256).withMemoryRebound(to: Decade.self, capacity: 64) 
             {
-                $0.initialize(from: Self.decades, count: 64)
+                $0.initialize(from: LZ77.Decades.decades, count: 64)
             }
             // write huffman tables 
             (base +  start).withMemoryRebound(to: LZ77.Symbol.RunLiteral.self, 
@@ -1035,7 +1188,7 @@ extension LZ77.Inflator.Out
             // rebase without reallocating 
             self.storage.withUnsafeMutablePointerToElements 
             {
-                self.integral   = Self.update(checksum: self.integral, 
+                self.integral   = LZ77.MRC32.update(self.integral, 
                             from: $0,                   count: self.startIndex)
                 $0.assign(  from: $0 + self.startIndex, count: count)
                 self.currentIndex  -= self.startIndex
@@ -1057,7 +1210,7 @@ extension LZ77.Inflator.Out
                 
                 new.withUnsafeMutablePointerToElements 
                 {
-                    self.integral   = Self.update(checksum: self.integral,
+                    self.integral   = LZ77.MRC32.update(self.integral,
                                 from: body,                   count: self.startIndex)
                     $0.assign(  from: body + self.startIndex, count: count)
                 }
@@ -1068,33 +1221,6 @@ extension LZ77.Inflator.Out
             }
         }
     }
-    // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
-    // link also says to use simd vectorization, but that just seems to slow 
-    // things down (probably because llvm is already autovectorizing it)
-    private static 
-    func update(checksum:(single:UInt32, double:UInt32), 
-        from start:UnsafePointer<UInt8>, count:Int) 
-        -> (single:UInt32, double:UInt32)
-    {
-        let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
-        var (single, double):(UInt32, UInt32) = checksum
-        for i:Int in 0 ..< q 
-        {
-            for j:Int in 5552 * i ..< 5552 * (i + 1)
-            {
-                single &+= .init(start[j])
-                double &+= single 
-            }
-            single %= 65521
-            double %= 65521
-        }
-        for j:Int in 5552 * q ..< 5552 * q + r
-        {
-            single &+= .init(start[j])
-            double &+= single 
-        }
-        return (single % 65521, double % 65521)
-    }
 
     mutating 
     func checksum() -> UInt32 
@@ -1103,7 +1229,7 @@ extension LZ77.Inflator.Out
         self.storage.withUnsafeMutablePointerToElements 
         {
             let (single, double):(UInt32, UInt32) = 
-                Self.update(checksum: self.integral, from: $0, count: self.endIndex)
+                LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
             return double << 16 | single
         }
     }

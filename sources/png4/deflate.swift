@@ -191,8 +191,12 @@ extension LZ77.Deflator
         
         private 
         var capacity:Int
+        
         private 
         var storage:ManagedBuffer<Void, UInt8>
+        
+        private
+        var integral:(single:UInt32, double:UInt32)
     }
 }
 extension LZ77.Deflator.In 
@@ -208,6 +212,8 @@ extension LZ77.Deflator.In
         self.startIndex     = 0 
         self.endIndex       = 0 
         self.capacity       = capacity
+        
+        self.integral       = (1, 0)
     }
     
     var count:Int 
@@ -236,6 +242,7 @@ extension LZ77.Deflator.In
                 }
                 new.withUnsafeMutablePointerToElements 
                 {
+                    // cannot do shift here, since the checksum has to be updated
                     $0.assign(from: body, count: self.endIndex)
                 }
                 return new 
@@ -285,7 +292,9 @@ extension LZ77.Deflator.In
             // rebase without reallocating 
             self.storage.withUnsafeMutablePointerToElements 
             {
-                $0.assign(from: $0 + self.startIndex, count: self.count)
+                self.integral   = LZ77.MRC32.update(self.integral, 
+                            from: $0,                   count: self.startIndex)
+                $0.assign(  from: $0 + self.startIndex, count: self.count)
                 self.endIndex      -= self.startIndex
                 self.startIndex     = 0
             }
@@ -304,12 +313,26 @@ extension LZ77.Deflator.In
                 
                 new.withUnsafeMutablePointerToElements 
                 {
-                    $0.assign(from: body + self.startIndex, count: self.count)
+                    self.integral   = LZ77.MRC32.update(self.integral,
+                                from: body,                   count: self.startIndex)
+                    $0.assign(  from: body + self.startIndex, count: self.count)
                 }
                 self.endIndex      -= self.startIndex
                 self.startIndex     = 0
                 return new 
             }
+        }
+    }
+    
+    mutating 
+    func checksum() -> UInt32 
+    {
+        // everything still in the storage buffer has not yet been integrated 
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            let (single, double):(UInt32, UInt32) = 
+                LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
+            return double << 16 | single
         }
     }
     
@@ -348,7 +371,6 @@ extension LZ77.Deflator
             }
         }
         
-        private 
         let exponent:Int 
         private 
         var storage:ManagedBuffer<Void, Element>, 
@@ -361,7 +383,7 @@ extension LZ77.Deflator.Window
 {
     init(exponent:Int) 
     {
-        precondition(exponent < 16, "exponent cannot be greater than 15")
+        precondition(8 ..< 16 ~= exponent, "exponent cannot be less than 8 or greater than 15")
         self.exponent   = exponent 
         self.endIndex   = 0
         self.head       = [:]
@@ -627,7 +649,7 @@ extension LZ77.Deflator.Out
         return data
     }
     
-    // content in low-bits, count must be <= 15
+    // content in low-bits
     mutating 
     func append(_ bits:UInt16, count:Int)
     {
@@ -699,18 +721,24 @@ extension LZ77
 {
     struct Deflator 
     {
+        struct Composite
+        {
+            private 
+            let storage:UInt32
+        }
+        
         struct Stream 
         {
             var input:In 
-            var literals:[UInt16]
+            var composites:[Composite]
             var window:Window
             var output:Out
             
-            init(hint:Int) 
+            init(exponent:Int, hint:Int) 
             {
                 self.input      = .init()
-                self.literals   = []
-                self.window     = .init(exponent: 15)
+                self.composites = []
+                self.window     = .init(exponent: exponent)
                 self.output     = .init(hint: hint)
             }
         }
@@ -719,22 +747,71 @@ extension LZ77
         var stream:Stream 
     }
 }
+extension LZ77.Deflator.Composite 
+{
+    //  it takes about 28 bits to represent a length-distance pair, and  
+    //  we can save ourselves some branching by using the remaining 4 
+    //  bits to encode a literal as-is
+    //  32              24              16              8               0
+    //  [ : : : : :D:D:D|D:D:D:D:D:D:D:D|D:D:R:R:R:R:R: | : : : : : : : ]
+    //   ~~~~~~~~~^                                    ~~~~~~~~~~~~~~~~~^
+    //     distance                                            runliteral
+    var symbol:(runliteral:Int, distance:Int) 
+    {
+        (.init(self.storage & 0x00_00_01_ff), .init(self.storage >> 27))
+    }
+    
+    var bits:(runliteral:UInt16, distance:UInt16) 
+    {
+        (.init(self.storage >> 9 & 0x00_1f), .init(self.storage >> 14 & 0x1f_ff))
+    }
+    
+    init(literal:UInt8) 
+    {
+        // put bitpattern for 31 in distance field, to streamline 
+        // frequency counting later on 
+        self.storage = 0b11111000_00000000_00000000_00000000 | .init(literal)
+    }
+    
+    static 
+    let end:Self = .init(storage: 0b11111000_00000000_00000001_00000000)
+    
+    init(run:Int, distance:Int) 
+    {
+        let code:(run:UInt8, distance:UInt8) = 
+        (
+            run:        LZ77.Decades[run:      run     ], 
+            distance:   LZ77.Decades[distance: distance]
+        )
+        let base:(run:UInt32, distance:UInt32) = 
+        (
+            run:        .init(LZ77.Decades[run:      code.run     ].base),
+            distance:   .init(LZ77.Decades[distance: code.distance].base)
+        )
+        
+        let symbols:UInt32 = 
+            .init(code.distance) << 27 | 0x0000_0100 | 
+            .init(code.run) 
+        let bits:UInt32    = 
+            (.init(distance) - base.distance) << 14 | 
+            (.init(run     ) - base.run     ) <<  9
+        self.storage = symbols | bits
+    }
+}
 extension LZ77.Deflator 
 {
-    init(hint:Int) 
+    init(hint:Int = 1 << 12) 
     {
-        self.stream = .init(hint: 256)
+        self.stream = .init(exponent: 15, hint: hint)
+        self.stream.start()
     }
     mutating 
     func push(_ data:[UInt8]) 
     {
         // rebase input buffer 
-        self.stream.input.enqueue(contentsOf: data)
-        // always maintain at least 258 bytes in the input buffer 
-        // while self.input.endIndex - self.current >= 258
-        // {
-        //     
-        // }
+        self.stream.input.enqueue(contentsOf: data) 
+        self.stream.blocks()
+        
     }
     mutating 
     func pop() -> [UInt8]?
@@ -745,5 +822,44 @@ extension LZ77.Deflator
     func pull() -> [UInt8]
     {
         self.stream.output.pull()
+    }
+}
+extension LZ77.Deflator.Stream 
+{
+    mutating 
+    func start() 
+    {
+        let unpaired:UInt16 = .init(self.window.exponent - 8) << 4 | 0x08
+        let check:UInt16    = ~((unpaired << 8 | unpaired >> 8) % 31) & 31
+        
+        self.output.append(check << 8 | unpaired, count: 16)
+    }
+    
+    mutating 
+    func blocks() 
+    {
+        // always maintain at least 258 bytes in the input buffer 
+        while self.input.count >= 258
+        {
+            while self.composites.count < 1024
+            {
+                let composite:LZ77.Deflator.Composite 
+                if let match:(length:Int, distance:Int) = self.window.match(self.input) 
+                {
+                    for _:Int in 0 ..< match.length 
+                    {
+                        self.window.register(input.dequeue())
+                    }
+                    composite = .init(run: match.length, distance: match.distance)
+                }
+                else 
+                {
+                    let literal:UInt8 = input.dequeue()
+                    window.register(literal)
+                    composite = .init(literal: literal)
+                }
+                self.composites.append(composite)
+            }
+        }
     }
 }
