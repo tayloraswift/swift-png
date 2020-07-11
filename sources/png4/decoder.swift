@@ -8,6 +8,7 @@ extension PNG
         
         case extraneousCompressedImageData
         case extraneousUncompressedImageData
+        case missingCompressedImageData
         
         case duplicateChunk(PNG.Chunk)
         case invalidChunkOrder(PNG.Chunk, after:PNG.Chunk)
@@ -543,8 +544,9 @@ extension PNG
     {
         private 
         var row:(index:Int, reference:[UInt8])?, 
-            pass:Int?,
-            `continue`:Void? 
+            pass:Int?
+        private(set)
+        var `continue`:Void? 
         private 
         var inflator:LZ77.Inflator 
     }
@@ -765,7 +767,11 @@ extension PNG.Context
             .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT:
             throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT)
         case .IEND: 
-            break 
+            guard self.decoder.continue == nil 
+            else 
+            {
+                throw PNG.DecodingError.missingCompressedImageData
+            } 
         default:
             self.image.metadata.application.append(chunk)
         }
@@ -873,12 +879,15 @@ extension PNG.Data.Rectangular
             chunk = try stream.chunk()
         }
         
-        while chunk.type != .IEND 
+        while true 
         {
             try context.push(ancillary: chunk)
+            guard chunk.type != .IEND 
+            else 
+            {
+                return context.image 
+            }
             chunk = try stream.chunk()
         }
-        
-        return context.image
     }
 }

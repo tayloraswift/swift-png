@@ -43,52 +43,42 @@ enum PNG
     struct Chunk:Hashable, Equatable, CustomStringConvertible
     {
         /// The four-byte name of this PNG chunk type.
-        private 
-        let ancillary:UInt8, 
-            authority:UInt8, 
-            reserved:UInt8, 
-            copy:UInt8 
-        
-        public 
-        var name:(UInt8, UInt8, UInt8, UInt8) 
-        {
-            (self.ancillary, self.authority, self.reserved, self.copy)
-        }
-
+        let name:UInt32
         /// A string displaying the ASCII representation of this PNG chunk type’s name.
         public
         var description:String
         {
-            .init(decoding: [self.ancillary, self.authority, self.reserved, self.copy],
-                        as: Unicode.ASCII.self)
+            withUnsafeBytes(of: self.name.bigEndian) 
+            {
+                .init(decoding: $0, as: Unicode.ASCII.self)
+            }
         }
-
-        private
-        init(_ ancillary:UInt8, _ authority:UInt8, _ reserved:UInt8, _ copy:UInt8)
+        
+        private 
+        init(unchecked name:UInt32) 
         {
-            self.ancillary  = ancillary 
-            self.authority  = authority 
-            self.reserved   = reserved 
-            self.copy       = copy
+            self.name = name
         }
-
+        
         public
-        init(name:(UInt8, UInt8, UInt8, UInt8))
+        init(name:UInt32)
         {
-            guard let chunk:Self = .validate(name: name) 
+            guard let chunk:Self = Self.init(validating: name) 
             else 
             {
-                let string:String = .init(decoding: [name.0, name.1, name.2, name.3],
-                    as: Unicode.ASCII.self)
+                let string:String = withUnsafeBytes(of: name.bigEndian) 
+                {
+                    .init(decoding: $0, as: Unicode.ASCII.self)
+                }
                 preconditionFailure("'\(string)' is not a valid png chunk type")
             }
             self = chunk 
         }
         
-        public static 
-        func validate(name:(UInt8, UInt8, UInt8, UInt8)) -> Self? 
+        public 
+        init?(validating name:UInt32) 
         {
-            let chunk:Self = .init(name.0, name.1, name.2, name.3)
+            let chunk:Self = .init(unchecked: name) 
             switch chunk 
             {
             // legal public chunks
@@ -98,76 +88,75 @@ enum PNG
                 break
 
             default:
-                guard   chunk.ancillary & 0x20 != 0, 
-                        chunk.reserved  & 0x20 == 0
+                guard chunk.name & 0x20_00_20_00 == 0x20_00_00_00
                 else
                 {
                     return nil
                 }
             }
-            return chunk 
+            self.name = name
         }
         
         public static
-        let CgBI:Self = .init( 67, 103,  66,  73)
+        let CgBI:Self = .init(unchecked: 0x43_67_42_49)
         /// The PNG header chunk type.
         public static
-        let IHDR:Self = .init( 73,  72,  68,  82)
+        let IHDR:Self = .init(unchecked: 0x49_48_44_52)
         /// The PNG palette chunk type.
         public static
-        let PLTE:Self = .init( 80,  76,  84,  69)
+        let PLTE:Self = .init(unchecked: 0x50_4c_54_45)
         /// The PNG image data chunk type.
         public static
-        let IDAT:Self = .init( 73,  68,  65,  84)
+        let IDAT:Self = .init(unchecked: 0x49_44_41_54)
         /// The PNG image end chunk type.
         public static
-        let IEND:Self = .init( 73,  69,  78,  68)
+        let IEND:Self = .init(unchecked: 0x49_45_4e_44)
 
         /// The PNG chromaticity chunk type.
         public static
-        let cHRM:Self = .init( 99,  72,  82,  77)
+        let cHRM:Self = .init(unchecked: 0x63_48_52_4d)
         /// The PNG gamma chunk type.
         public static
-        let gAMA:Self = .init(103,  65,  77,  65)
+        let gAMA:Self = .init(unchecked: 0x67_41_4d_41)
         /// The PNG embedded ICC chunk type.
         public static
-        let iCCP:Self = .init(105,  67,  67,  80)
+        let iCCP:Self = .init(unchecked: 0x69_43_43_50)
         /// The PNG significant bits chunk type.
         public static
-        let sBIT:Self = .init(115,  66,  73,  84)
+        let sBIT:Self = .init(unchecked: 0x73_42_49_54)
         /// The PNG *s*RGB chunk type.
         public static
-        let sRGB:Self = .init(115,  82,  71,  66)
+        let sRGB:Self = .init(unchecked: 0x73_52_47_42)
         /// The PNG background chunk type.
         public static
-        let bKGD:Self = .init( 98,  75,  71,  68)
+        let bKGD:Self = .init(unchecked: 0x62_4b_47_44)
         /// The PNG histogram chunk type.
         public static
-        let hIST:Self = .init(104,  73,  83,  84)
+        let hIST:Self = .init(unchecked: 0x68_49_53_54)
         /// The PNG transparency chunk type.
         public static
-        let tRNS:Self = .init(116,  82,  78,  83)
+        let tRNS:Self = .init(unchecked: 0x74_52_4e_53)
 
         /// The PNG physical dimensions chunk type.
         public static
-        let pHYs:Self = .init(112,  72,  89, 115)
+        let pHYs:Self = .init(unchecked: 0x70_48_59_73)
 
         /// The PNG suggested palette chunk type.
         public static
-        let sPLT:Self = .init(115,  80,  76,  84)
+        let sPLT:Self = .init(unchecked: 0x73_50_4c_54)
         /// The PNG time chunk type.
         public static
-        let tIME:Self = .init(116,  73,  77,  69)
+        let tIME:Self = .init(unchecked: 0x74_49_4d_45)
 
         /// The PNG UTF-8 text chunk type.
         public static
-        let iTXt:Self = .init(105,  84,  88, 116)
+        let iTXt:Self = .init(unchecked: 0x69_54_58_74)
         /// The PNG Latin-1 text chunk type.
         public static
-        let tEXt:Self = .init(116,  69,  88, 116)
+        let tEXt:Self = .init(unchecked: 0x74_45_58_74)
         /// The PNG compressed Latin-1 text chunk type.
         public static
-        let zTXt:Self = .init(122,  84,  88, 116)
+        let zTXt:Self = .init(unchecked: 0x7a_54_58_74)
     }
 }
 
@@ -220,7 +209,7 @@ extension PNG
         case invalidSignature
         
         case truncatedChunkHeader 
-        case invalidChunkTypeCode((UInt8, UInt8, UInt8, UInt8))
+        case invalidChunkTypeCode(UInt32)
         case truncatedChunkData
         case invalidChunkChecksum(declared:UInt32, computed:UInt32)
     }
@@ -253,21 +242,14 @@ extension PNG.Bytestream.Source
             throw PNG.LexingError.truncatedChunkHeader
         }
 
-        let length:Int = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self), 
-            name:(UInt8, UInt8, UInt8, UInt8) = 
-        (
-            header[4], 
-            header[5], 
-            header[6], 
-            header[7]
-        )
+        let length:Int  = header.prefix(4).load(bigEndian: UInt32.self, as:  Int.self), 
+            name:UInt32 = header.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self)
         
-        guard let type:PNG.Chunk = .validate(name: name)
+        guard let type:PNG.Chunk = PNG.Chunk.init(validating: name)
         else 
         {
             throw PNG.LexingError.invalidChunkTypeCode(name)
         }
-
         guard var data:[UInt8] = self.read(count: length + MemoryLayout<UInt32>.size)
         else
         {
@@ -305,11 +287,10 @@ extension PNG.Bytestream.Destination
     {
         let header:[UInt8] = .init(unsafeUninitializedCapacity: 8) 
         {
-            ($0[0], $0[1], $0[2], $0[3]) = type.name
-            $0.store(data.count, asBigEndian: UInt32.self, at: 4)
+            $0.store(data.count, asBigEndian: UInt32.self, at: 0)
+            $0.store(type.name,  asBigEndian: UInt32.self, at: 4)
             $1 = 8
         }
-        
         let footer:[UInt8] = .init(unsafeUninitializedCapacity: 4) 
         {
             let crc:UInt32 = PNG.CRC32.update(PNG.CRC32.compute(header.suffix(4)), with: data)
