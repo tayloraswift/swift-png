@@ -251,5 +251,13 @@ extension PNG.Data.Rectangular
             try .decompress(stream: &$0)
         }
     }
+    public  
+    func compress(path:String) throws -> Void?
+    {
+        try System.File.Destination.open(path: path)
+        {
+            try self.compress(stream: &$0)
+        }
+    }
 }
 #endif 

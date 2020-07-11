@@ -365,7 +365,7 @@ extension Test
         }
     }
     
-    /* static 
+    static 
     func encode(_ name:String) -> Result<Void, Failure>
     {
         let path:(png:String, rgba:String, out:String) = 
@@ -382,21 +382,15 @@ extension Test
             {
                 return .failure(.init(message: "failed to open file '\(path.png)'"))
             }
-
-            // compress image into png
-            try PNG.encode( rgba: rectangular.rgba(of: UInt16.self),
-                            size: rectangular.properties.size,
-                              as: rectangular.properties.format.code,
-                       chromaKey: rectangular.properties.chromaKey,
-                            path: path.out)
+            
+            try rectangular.compress(path: path.out)
         }
         catch
         {
             return .failure(.init(message: "\(error)"))
         }
-
-        return Self.decode(path: (path.png, path.rgba))
-    } */
+        return Self.decode(path: (png: path.out, rgba: path.rgba))
+    } 
 }
 
 fileprivate
