@@ -457,13 +457,18 @@ extension LZ77.Deflator.Window
         }
     }
     
-    // lookahead must have at least 3 elements
     func match(_ lookahead:LZ77.Deflator.In) -> (length:Int, distance:Int)?
     {
         lookahead.withUnsafeBufferPointer 
         {
+            guard $0.count >= 3 
+            else 
+            {
+                return nil 
+            }
+            
             // cannot encode run longer than 258 elements 
-            let limit:Int       = 258 
+            let limit:Int       = min($0.count, 258) 
             let front:UInt16    = self.modular(self.endIndex)
             
             //  these always succeed, but may contain garbage values if 
@@ -810,8 +815,7 @@ extension LZ77.Deflator
     {
         // rebase input buffer 
         self.stream.input.enqueue(contentsOf: data) 
-        self.stream.blocks()
-        
+        self.stream.compress(all: false)
     }
     mutating 
     func pop() -> [UInt8]?
@@ -821,7 +825,9 @@ extension LZ77.Deflator
     mutating 
     func pull() -> [UInt8]
     {
-        self.stream.output.pull()
+        self.stream.compress(all: true)
+        self.stream.end()
+        return self.pop() ?? self.stream.output.pull()
     }
 }
 extension LZ77.Deflator.Stream 
@@ -836,30 +842,45 @@ extension LZ77.Deflator.Stream
     }
     
     mutating 
-    func blocks() 
+    func compress(all:Bool) 
     {
         // always maintain at least 258 bytes in the input buffer 
-        while self.input.count >= 258
+        while self.input.count != 0 
         {
-            while self.composites.count < 1024
+            guard all || self.input.count >= 258 
+            else 
             {
-                let composite:LZ77.Deflator.Composite 
-                if let match:(length:Int, distance:Int) = self.window.match(self.input) 
-                {
-                    for _:Int in 0 ..< match.length 
-                    {
-                        self.window.register(input.dequeue())
-                    }
-                    composite = .init(run: match.length, distance: match.distance)
-                }
-                else 
-                {
-                    let literal:UInt8 = input.dequeue()
-                    window.register(literal)
-                    composite = .init(literal: literal)
-                }
-                self.composites.append(composite)
+                break 
             }
+            guard self.composites.count < 1024 
+            else 
+            {
+                break 
+            }
+            
+            let composite:LZ77.Deflator.Composite 
+            if let match:(length:Int, distance:Int) = self.window.match(self.input) 
+            {
+                for _:Int in 0 ..< match.length 
+                {
+                    self.window.register(input.dequeue())
+                }
+                composite = .init(run: match.length, distance: match.distance)
+            }
+            else 
+            {
+                let literal:UInt8 = input.dequeue()
+                window.register(literal)
+                composite = .init(literal: literal)
+            }
+            self.composites.append(composite)
         }
+        print(self.composites)
+    }
+    
+    mutating 
+    func end() 
+    {
+        
     }
 }

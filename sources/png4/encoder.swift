@@ -139,7 +139,7 @@ extension PNG.Encoder
     mutating 
     func pull(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
         delegate:(inout UnsafeMutableBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
-        rethrows -> [UInt8]
+        rethrows -> [UInt8]?
     {
         let delay:Int   = (pixel.volume + 7) >> 3
         if let pass:Int = self.pass 
@@ -223,7 +223,8 @@ extension PNG.Encoder
         }
         
         self.pass = 7
-        return self.deflator.pull() 
+        let data:[UInt8] = self.deflator.pull() 
+        return data.isEmpty ? nil : data
     }
     
     static 
@@ -341,18 +342,10 @@ extension PNG.Data.Rectangular
         }
         
         var encoder:PNG.Encoder = .init(interlaced: self.layout.interlaced)
-        while true 
+        while let data:[UInt8] = encoder.pull(size: self.size, 
+            pixel:      self.layout.format.pixel, 
+            delegate:   self.collect(scanline:at:stride:))  
         {
-            let data:[UInt8] = encoder.pull(size: self.size, 
-                pixel:      self.layout.format.pixel, 
-                delegate:   self.collect(scanline:at:stride:)) 
-            
-            guard !data.isEmpty
-            else 
-            {
-                break 
-            }
-            
             try stream.format(type: .IDAT, data: data)
         }
         
