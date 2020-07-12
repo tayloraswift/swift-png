@@ -10,6 +10,11 @@ extension PNG.Data.Rectangular
         {
         // 0 x 1 
         case .v1, .indexed1:
+            // need to initialize to 0 since we are using |=
+            for a:Int in scanline.indices 
+            {
+                scanline[a] = 0
+            }
             for (i, x):(Int, Int) in indices
             {
                 let a:Int    =   i >> 3 &+ scanline.startIndex, 
@@ -18,6 +23,10 @@ extension PNG.Data.Rectangular
             }
         
         case .v2, .indexed2:
+            for a:Int in scanline.indices 
+            {
+                scanline[a] = 0
+            }
             for (i, x):(Int, Int) in indices
             {
                 let a:Int    =   i >> 2 &+ scanline.startIndex, 
@@ -26,6 +35,10 @@ extension PNG.Data.Rectangular
             }
         
         case .v4, .indexed4:
+            for a:Int in scanline.indices 
+            {
+                scanline[a] = 0
+            }
             for (i, x):(Int, Int) in indices
             {
                 let a:Int    =   i >> 1 &+ scanline.startIndex, 
