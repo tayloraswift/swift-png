@@ -120,9 +120,15 @@ extension PNG
 {
     struct Encoder 
     {
+        enum Pass 
+        {
+            case subimage(Int)
+            case image
+        }
+        
         private 
         var row:(index:Int, reference:[UInt8])?, 
-            pass:Int?
+            pass:Pass?
         private 
         var deflator:LZ77.Deflator 
     }
@@ -132,7 +138,7 @@ extension PNG.Encoder
     init(interlaced:Bool, hint:Int = 1 << 15)
     {
         self.row        = nil
-        self.pass       = interlaced ? 0 : nil
+        self.pass       = interlaced ? .subimage(0) : .image
         self.deflator   = .init(hint: hint)
     }
     
@@ -142,8 +148,9 @@ extension PNG.Encoder
         rethrows -> [UInt8]?
     {
         let delay:Int   = (pixel.volume + 7) >> 3
-        if let pass:Int = self.pass 
+        switch self.pass 
         {
+        case .subimage(let pass)?:
             for z:Int in pass ..< 7
             {
                 let (base, exponent):((x:Int, y:Int), (x:Int, y:Int)) = PNG.adam7[z]
@@ -173,7 +180,7 @@ extension PNG.Encoder
                     if let data:[UInt8] = self.deflator.pop() 
                     {
                         self.row  = (y, last) 
-                        self.pass = z
+                        self.pass = .subimage(z)
                         return data 
                     }
                     // filter byte is initialized to 0
@@ -191,9 +198,11 @@ extension PNG.Encoder
                     last = scanline 
                 }
             }
-        }
-        else 
-        {
+            
+            self.deflator.push([], last: true)
+            self.pass = nil
+        
+        case .image?:
             let pitch:Int = (size.x * pixel.volume + 7) >> 3
             
             var (start, last):(Int, [UInt8]) = self.row ?? 
@@ -220,9 +229,14 @@ extension PNG.Encoder
                 self.deflator.push(Self.filter(scanline, last: last, delay: delay))
                 last = scanline 
             }
+            
+            self.deflator.push([], last: true)
+            self.pass = nil
+        
+        case nil:
+            break 
         }
         
-        self.pass = 7
         let data:[UInt8] = self.deflator.pull() 
         return data.isEmpty ? nil : data
     }
