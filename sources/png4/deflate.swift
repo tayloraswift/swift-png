@@ -6,9 +6,28 @@ extension LZ77.Huffman
 {
     struct Codeword 
     {
+        // bits are stored starting from least-significant bit to most-significant bit
         let bits:UInt16 
         @General.Storage<UInt8> 
         var length:Int 
+    }
+}
+extension LZ77.Huffman.Codeword 
+{
+    init(counter:UInt16, length:Int) 
+    {
+        // this branch should be well-predicted 
+        if length <= 8 
+        {
+            let low:UInt16  = LZ77.Reversed[counter]
+            self.init(bits:         low  &>> ( 8 - length), length: length)
+        }
+        else 
+        {
+            let high:UInt16 = LZ77.Reversed[counter & 0xff] << 8, 
+                low:UInt16  = LZ77.Reversed[counter >> 8]
+            self.init(bits: (high | low) &>> (16 - length), length: length)
+        }
     }
 }
 extension LZ77.Huffman where Symbol:BinaryInteger 
@@ -24,7 +43,9 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         {
             for symbol:Symbol in self.symbols[level]
             {
-                destination[.init(symbol)]  = .init(bits: counter, length: length)
+                assert(.init(symbol) < count, "symbol out of range")
+                
+                destination[.init(symbol)]  = .init(counter: counter, length: length)
                 counter                    += 1
             }
             
@@ -726,7 +747,7 @@ extension LZ77
 {
     struct Deflator 
     {
-        struct Composite
+        struct Term
         {
             private 
             let storage:UInt32
@@ -735,16 +756,16 @@ extension LZ77
         struct Stream 
         {
             var input:In 
-            var composites:[Composite]
+            var terms:[Term]
             var window:Window
             var output:Out
             
             init(exponent:Int, hint:Int) 
             {
-                self.input      = .init()
-                self.composites = []
-                self.window     = .init(exponent: exponent)
-                self.output     = .init(hint: hint)
+                self.input  = .init()
+                self.terms  = []
+                self.window = .init(exponent: exponent)
+                self.output = .init(hint: hint)
             }
         }
         
@@ -752,7 +773,7 @@ extension LZ77
         var stream:Stream 
     }
 }
-extension LZ77.Deflator.Composite 
+extension LZ77.Deflator.Term 
 {
     //  it takes about 28 bits to represent a length-distance pair, and  
     //  we can save ourselves some branching by using the remaining 4 
@@ -766,7 +787,11 @@ extension LZ77.Deflator.Composite
         (.init(self.storage & 0x00_00_01_ff), .init(self.storage >> 27))
     }
     
-    var bits:(runliteral:UInt16, distance:UInt16) 
+    var decade:(run:UInt8, distance:UInt8) 
+    {
+        (.init(self.storage & 0x00_00_00_ff), .init(self.storage >> 27))
+    }
+    var bits:(run:UInt16, distance:UInt16) 
     {
         (.init(self.storage >> 9 & 0x00_1f), .init(self.storage >> 14 & 0x1f_ff))
     }
@@ -783,20 +808,20 @@ extension LZ77.Deflator.Composite
     
     init(run:Int, distance:Int) 
     {
-        let code:(run:UInt8, distance:UInt8) = 
+        let decade:(run:UInt8, distance:UInt8) = 
         (
-            run:        LZ77.Decades[run:      run     ], 
-            distance:   LZ77.Decades[distance: distance]
+            run:            LZ77.Decades[run:      run     ], 
+            distance:       LZ77.Decades[distance: distance]
         )
         let base:(run:UInt32, distance:UInt32) = 
         (
-            run:        .init(LZ77.Decades[run:      code.run     ].base),
-            distance:   .init(LZ77.Decades[distance: code.distance].base)
+            run:      .init(LZ77.Composites[run:      decade.run     ].base),
+            distance: .init(LZ77.Composites[distance: decade.distance].base)
         )
         
         let symbols:UInt32 = 
-            .init(code.distance) << 27 | 0x0000_0100 | 
-            .init(code.run) 
+            .init(decade.distance) << 27 | 0x0000_0100 | 
+            .init(decade.run) 
         let bits:UInt32    = 
             (.init(distance) - base.distance) << 14 | 
             (.init(run     ) - base.run     ) <<  9
@@ -811,11 +836,22 @@ extension LZ77.Deflator
         self.stream.start()
     }
     mutating 
-    func push(_ data:[UInt8]) 
+    func push(_ data:[UInt8], last:Bool = false) 
     {
         // rebase input buffer 
-        self.stream.input.enqueue(contentsOf: data) 
-        self.stream.compress(all: false)
+        if !data.isEmpty 
+        {
+            self.stream.input.enqueue(contentsOf: data) 
+        }
+        while let _:Void = self.stream.compress(all: last) 
+        {
+            self.stream.block(last: false)
+        }
+        if last 
+        {
+            self.stream.block(last: true)
+            self.stream.end()
+        }
     }
     mutating 
     func pop() -> [UInt8]?
@@ -825,8 +861,6 @@ extension LZ77.Deflator
     mutating 
     func pull() -> [UInt8]
     {
-        self.stream.compress(all: true)
-        self.stream.end()
         return self.pop() ?? self.stream.output.pull()
     }
 }
@@ -842,40 +876,104 @@ extension LZ77.Deflator.Stream
     }
     
     mutating 
-    func compress(all:Bool) 
+    func compress(all:Bool) -> Void?
     {
         // always maintain at least 258 bytes in the input buffer 
-        while self.input.count != 0 
+        while    self.input.count >= 258 || 
+                (self.input.count != 0 && all)
         {
-            guard all || self.input.count >= 258 
-            else 
+            if self.terms.count >= 1024 
             {
-                break 
-            }
-            guard self.composites.count < 1024 
-            else 
-            {
-                break 
+                return ()
             }
             
-            let composite:LZ77.Deflator.Composite 
+            let term:LZ77.Deflator.Term 
             if let match:(length:Int, distance:Int) = self.window.match(self.input) 
             {
                 for _:Int in 0 ..< match.length 
                 {
                     self.window.register(input.dequeue())
                 }
-                composite = .init(run: match.length, distance: match.distance)
+                term = .init(run: match.length, distance: match.distance)
             }
             else 
             {
                 let literal:UInt8 = input.dequeue()
                 window.register(literal)
-                composite = .init(literal: literal)
+                term = .init(literal: literal)
             }
-            self.composites.append(composite)
+            self.terms.append(term)
         }
-        print(self.composites)
+        
+        return nil 
+    }
+    
+    mutating 
+    func block(last:Bool) 
+    {
+        // create fixed table 
+        let runliteral:[LZ77.Huffman<UInt16>.Codeword] = 
+            .init(unsafeUninitializedCapacity: 288) 
+        {
+            guard let base:UnsafeMutablePointer<LZ77.Huffman<UInt16>.Codeword> = 
+                $0.baseAddress 
+            else 
+            {
+                $1 = 0
+                return 
+            }
+            LZ77.FixedHuffman.runliteral.codewords(initializing: base, count: 288)
+            $1 = 288
+        }
+        let distance:[LZ77.Huffman<UInt8>.Codeword] = 
+            .init(unsafeUninitializedCapacity: 32) 
+        {
+            guard let base:UnsafeMutablePointer<LZ77.Huffman<UInt8>.Codeword> = 
+                $0.baseAddress 
+            else 
+            {
+                $1 = 0
+                return 
+            }
+            LZ77.FixedHuffman.distance.codewords(initializing: base, count: 32)
+            $1 = 32
+        }
+        
+        // fixed compression
+        self.output.append(last ? 0b01_1 : 0b01_0, count: 3)
+        for term:LZ77.Deflator.Term in self.terms 
+        {
+            let symbol:(runliteral:Int, distance:Int)       = term.symbol 
+            let codeword:
+            (
+                runliteral:LZ77.Huffman<UInt16>.Codeword, 
+                distance:LZ77.Huffman<UInt8>.Codeword
+            )
+            
+            codeword.runliteral = runliteral[symbol.runliteral]
+            self.output.append(codeword.runliteral.bits, count: codeword.runliteral.length)
+            
+            if symbol.runliteral > 256 
+            {
+                // there are extra bits and a distance code to follow 
+                let decade:(run:UInt8, distance:UInt8)  = term.decade,
+                    bits:(run:UInt16, distance:UInt16)  = term.bits 
+                let count:(run:Int, distance:Int)       = 
+                (
+                    .init(LZ77.Composites[run:      decade.run     ].extra),
+                    .init(LZ77.Composites[distance: decade.distance].extra)
+                )
+                
+                codeword.distance = distance[symbol.distance]
+                
+                self.output.append(bits.run,               count: count.run)
+                self.output.append(codeword.distance.bits, count: codeword.distance.length)
+                self.output.append(bits.distance,          count: count.distance)
+            }
+        }
+        // end-of-block symbol 
+        let end:LZ77.Huffman<UInt16>.Codeword = runliteral[256]
+        self.output.append(end.bits, count: end.length)
     }
     
     mutating 

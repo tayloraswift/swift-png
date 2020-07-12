@@ -226,6 +226,31 @@ extension LZ77.Huffman
         }
     }
 }
+extension LZ77
+{
+    enum FixedHuffman 
+    {
+    }
+}
+extension LZ77.FixedHuffman 
+{
+    static 
+    let runliteral:LZ77.Huffman<UInt16> = .init(
+        symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
+        levels:
+            .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
+            [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
+            .init(repeating: 288 ..< 288, count: 6)   // L10 ... L15
+        )
+    static 
+    let distance:LZ77.Huffman<UInt8> = .init(
+        symbols: .init(0 ... 31),
+        levels:
+            .init(repeating:  0 ..<  0, count:  4)  +
+            [0 ..< 32]                              +
+            .init(repeating: 32 ..< 32, count: 10)
+        )
+}
 extension LZ77 
 {
     enum Decades 
@@ -234,32 +259,19 @@ extension LZ77
         subscript(run run:Int) -> UInt8 
         {
             assert(3 ...   258 ~= run)
-            return Self.codes[run - 3]
+            return Self.table[run - 3]
         }
         static 
         subscript(distance distance:Int) -> UInt8 
         {
             assert(1 ... 32768 ~= distance)
             return distance <= 256 ? 
-                Self.codes[256 | (distance - 1)     ] : 
-                Self.codes[512 | (distance - 1) >> 7]
+                Self.table[256 | (distance - 1)     ] : 
+                Self.table[512 | (distance - 1) >> 7]
         }
-        // these are only used by the deflator in deflate.swift,, the inflator 
-        // reads these values from the Semistatic table, for memory locality
-        static 
-        subscript(run run:UInt8) -> (extra:UInt16, base:UInt16) 
-        {
-            assert(1 ... 29 ~= run)
-            return Self.decades[.init(run)]
-        }
-        static 
-        subscript(distance distance:UInt8) -> (extra:UInt16, base:UInt16) 
-        {
-            assert(0 ... 29 ~= distance)
-            return Self.decades[.init(32 | distance)]
-        }
+
         private static 
-        let codes:[UInt8] =
+        let table:[UInt8] =
         [
             // length codes
             // 257 ... 264
@@ -343,8 +355,26 @@ extension LZ77
             29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
             29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29
         ]
+    }
+    enum Composites 
+    {
+        // these are only used by the deflator in deflate.swift,, the inflator 
+        // reads these values from the Semistatic table, for memory locality
+        static 
+        subscript(run decade:UInt8) -> (extra:UInt16, base:UInt16) 
+        {
+            assert(1 ... 29 ~= decade)
+            return Self.table[.init(decade)]
+        }
+        static 
+        subscript(distance decade:UInt8) -> (extra:UInt16, base:UInt16) 
+        {
+            assert(0 ... 29 ~= decade)
+            return Self.table[.init(32 | decade)]
+        }
+        
         fileprivate static 
-        let decades:[(extra:UInt16, base:UInt16)] = 
+        let table:[(extra:UInt16, base:UInt16)] = 
         [
             // front-padding, which allows us to use a bitmask to 
             // get the decade index
@@ -438,10 +468,63 @@ extension LZ77
             ( 0,     0),
         ]
     }
+    enum Reversed 
+    {
+        // these are only used by the deflator in deflate.swift,, the inflator 
+        // reads these values from the Semistatic table, for memory locality
+        static 
+        subscript<T>(byte:T) -> T where T:BinaryInteger 
+        {
+            self.table.withUnsafeBufferPointer
+            {
+                .init($0[.init(byte)])
+            }
+        }
+        
+        fileprivate static 
+        let table:[UInt8] =
+        [
+            0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 
+            0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
+            0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 
+            0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
+            0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 
+            0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
+            0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 
+            0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
+            0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 
+            0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
+            0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 
+            0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
+            0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 
+            0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
+            0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 
+            0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
+            0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 
+            0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
+            0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 
+            0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
+            0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 
+            0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
+            0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 
+            0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
+            0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 
+            0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
+            0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 
+            0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
+            0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 
+            0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
+            0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 
+            0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
+        ]
+    }
+}
+extension LZ77.Inflator 
+{
     struct Semistatic 
     {
         private 
-        typealias Decade = (extra:UInt16, base:UInt16)
+        typealias Composite = (extra:UInt16, base:UInt16)
         
         private 
         let storage:ManagedBuffer<Void, UInt8>,
@@ -497,51 +580,15 @@ extension LZ77
         //      │                       │
         //      │                       │
         //      └───────────────────────┘
-        private static 
-        let reversed:[UInt8] =
-        [
-            0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 
-            0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
-            0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 
-            0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
-            0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 
-            0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
-            0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 
-            0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
-            0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 
-            0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
-            0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 
-            0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
-            0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 
-            0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
-            0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 
-            0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
-            0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 
-            0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
-            0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 
-            0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
-            0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 
-            0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
-            0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 
-            0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
-            0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 
-            0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
-            0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 
-            0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
-            0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 
-            0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
-            0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 
-            0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
-        ]
     }
 }
-extension LZ77.Semistatic 
+extension LZ77.Inflator.Semistatic 
 {        
     static 
     func create(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
         -> Self 
     {
-        let start:Int   = 256    + MemoryLayout<Decade>.stride * 64
+        let start:Int   = 256    + MemoryLayout<Composite>.stride * 64
         let offset:Int  = start  + MemoryLayout<LZ77.Symbol.RunLiteral>.stride * runliteral.size.z 
         let size:Int    = offset + MemoryLayout<LZ77.Symbol.Distance  >.stride *   distance.size.z
         let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
@@ -550,11 +597,11 @@ extension LZ77.Semistatic
             (base:UnsafeMutablePointer<UInt8>) in 
             
             // write byte reversal table 
-            (base         ).initialize(from: Self.reversed, count: 256)
+            (base         ).initialize(from: LZ77.Reversed.table, count: 256)
             // write decade tables 
-            (base +    256).withMemoryRebound(to: Decade.self, capacity: 64) 
+            (base +    256).withMemoryRebound(to: Composite.self, capacity: 64) 
             {
-                $0.initialize(from: LZ77.Decades.decades, count: 64)
+                $0.initialize(from: LZ77.Composites.table, count: 64)
             }
             // write huffman tables 
             (base +  start).withMemoryRebound(to: LZ77.Symbol.RunLiteral.self, 
@@ -599,7 +646,7 @@ extension LZ77.Semistatic
         {
             let raw:UnsafeRawPointer = .init($0)
             // should get constant-folded
-            let start:Int  = 256    + 64 * MemoryLayout<Decade>.stride
+            let start:Int  = 256    + 64 * MemoryLayout<Composite>.stride
             let offset:Int = start &+ MemoryLayout<LZ77.Symbol.RunLiteral>.stride &* 
                 self.index(codeword, fence: self.fence.runliteral)
             return raw.load(fromByteOffset: offset, as: LZ77.Symbol.RunLiteral.self)
@@ -616,48 +663,36 @@ extension LZ77.Semistatic
         }
     }
     
-    func decade(_ runliteral:LZ77.Symbol.RunLiteral) -> (extra:Int, base:Int) 
+    func composite(decade runliteral:LZ77.Symbol.RunLiteral) -> (extra:Int, base:Int) 
     {
         self.storage.withUnsafeMutablePointerToElements 
         {
             let raw:UnsafeRawPointer = .init($0)
-            let offset:Int = 256 &+ 
-                MemoryLayout<Decade>.stride &* runliteral.decadeIndex
-            let decade:Decade = raw.load(fromByteOffset: offset, as: Decade.self)
-            return (extra: .init(decade.extra), base: .init(decade.base))
+            let offset:Int          = 256 &+ 
+                MemoryLayout<Composite>.stride &* runliteral.decade
+            let composite:Composite = raw.load(fromByteOffset: offset, as: Composite.self)
+            return (extra: .init(composite.extra), base: .init(composite.base))
         }
     }
-    func decade(_ distance:LZ77.Symbol.Distance) -> (extra:Int, base:Int) 
+    func composite(decade distance:LZ77.Symbol.Distance) -> (extra:Int, base:Int) 
     {
         self.storage.withUnsafeMutablePointerToElements 
         {
             let raw:UnsafeRawPointer = .init($0)
             // should get constant-folded
-            let offset:Int = (256 + 32 * MemoryLayout<Decade>.stride) &+ 
-                MemoryLayout<Decade>.stride &* distance.decadeIndex
-            let decade:Decade = raw.load(fromByteOffset: offset, as: Decade.self)
-            return (extra: .init(decade.extra), base: .init(decade.base))
+            let offset:Int          = (256 + 32 * MemoryLayout<Composite>.stride) &+ 
+                MemoryLayout<Composite>.stride &* distance.decade
+            let composite:Composite = raw.load(fromByteOffset: offset, as: Composite.self)
+            return (extra: .init(composite.extra), base: .init(composite.base))
         }
     }
     
     static 
     let fixed:Self = .create(
-        runliteral: .init(
-            symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
-            levels:
-                .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
-                [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
-                .init(repeating: 288 ..< 288, count: 6)   // L10 ... L15
-            ), 
-        distance:   .init(
-            symbols: .init(0 ... 31),
-            levels:
-                .init(repeating:  0 ..<  0, count:  4)   +
-                [0 ..< 32]                              +
-                .init(repeating: 32 ..< 32, count: 10)
-            ))
+        runliteral: LZ77.FixedHuffman.runliteral, 
+        distance:   LZ77.FixedHuffman.distance)
 }
-extension LZ77.Semistatic 
+extension LZ77.Inflator.Semistatic 
 {
     struct Meta 
     {
@@ -665,7 +700,7 @@ extension LZ77.Semistatic
         var storage:ManagedBuffer<Void, UInt8>
     }
 }
-extension LZ77.Semistatic.Meta 
+extension LZ77.Inflator.Semistatic.Meta 
 {
     private static 
     var size:Int 
@@ -680,7 +715,7 @@ extension LZ77.Semistatic.Meta
             .create(minimumCapacity: Self.size){ _ in () }
         storage.withUnsafeMutablePointerToElements 
         {
-            $0.initialize(from: LZ77.Semistatic.reversed, count: 256)
+            $0.initialize(from: LZ77.Reversed.table, count: 256)
         }
         return .init(storage: storage)
     }
@@ -787,7 +822,7 @@ extension LZ77
             {
                 .init(truncatingIfNeeded: self.storage)
             }
-            var decadeIndex:Int 
+            var decade:Int 
             {
                 .init(self.storage & 0b0000_0000_1111_1111)
             }
@@ -811,7 +846,7 @@ extension LZ77
             private 
             let storage:UInt16 
             
-            var decadeIndex:Int 
+            var decade:Int 
             {
                 .init(self.storage & 0x00ff)
             }
@@ -1027,6 +1062,13 @@ extension LZ77.Inflator.In
         }
     }
 }
+extension LZ77.Inflator.In:ExpressibleByArrayLiteral 
+{
+    init(arrayLiteral:UInt8...) 
+    {
+        self.init(arrayLiteral)
+    }
+}
 extension LZ77.Inflator 
 {
     struct Out 
@@ -1234,13 +1276,6 @@ extension LZ77.Inflator.Out
         }
     }
 }
-extension LZ77.Inflator.In:ExpressibleByArrayLiteral 
-{
-    init(arrayLiteral:UInt8...) 
-    {
-        self.init(arrayLiteral)
-    }
-}
 
 extension LZ77 
 {    
@@ -1253,7 +1288,7 @@ extension LZ77
             case blockStart
             case blockTables(final:Bool, runliterals:Int, distances:Int)
             case blockUncompressed(final:Bool, end:Int)
-            case blockCompressed(final:Bool, semistatic:LZ77.Semistatic)
+            case blockCompressed(final:Bool, semistatic:Semistatic)
             case streamChecksum
             case streamEnd 
         }
@@ -1271,8 +1306,9 @@ extension LZ77
                 b:Int 
             var lengths:[Int]
             // Meta and Stream.Out need to have COW manually implemented with 
-            // exclude() on each, to avoid redundant exclusions inside loops 
-            var meta:LZ77.Semistatic.Meta // reuse the same buffer since the size is fixed
+            // exclude() on each, to avoid redundant exclusions inside loops,,
+            // reuse the same buffer since the size is fixed
+            var meta:Semistatic.Meta 
             var output:Out
             
             init() 
@@ -1649,7 +1685,7 @@ extension LZ77.Inflator.Stream
         return (runliteral, distance)
     }
     mutating 
-    func blockCompressed(semistatic:LZ77.Semistatic) throws -> Void? 
+    func blockCompressed(semistatic:LZ77.Inflator.Semistatic) throws -> Void? 
     {
         while self.b < self.input.count 
         {
@@ -1698,29 +1734,29 @@ extension LZ77.Inflator.Stream
                     .init(first)
                 slug &>>= runliteral.length
                 
-                let decade:
+                let composite:
                 (
                     count:(extra:Int, base:Int),
                     offset:(extra:Int, base:Int)
                 )
                 
-                decade.count        = semistatic.decade(runliteral) 
-                let count:Int       = decade.count.base &+ 
-                    .init(truncatingIfNeeded: slug & ~(.max &<< decade.count.extra))
+                composite.count     = semistatic.composite(decade: runliteral) 
+                let count:Int       = composite.count.base &+ 
+                    .init(truncatingIfNeeded: slug & ~(.max &<< composite.count.extra))
                 
-                slug &>>= decade.count.extra
+                slug &>>= composite.count.extra
                 
                 let distance:LZ77.Symbol.Distance = 
                     semistatic[.init(truncatingIfNeeded: slug), as: LZ77.Symbol.Distance.self]
                 slug &>>= distance.length
                 
-                decade.offset       = semistatic.decade(distance) 
-                let offset:Int      = decade.offset.base &+ 
-                    .init(truncatingIfNeeded: slug & ~(.max &<< decade.offset.extra))
+                composite.offset    = semistatic.composite(decade: distance) 
+                let offset:Int      = composite.offset.base &+ 
+                    .init(truncatingIfNeeded: slug & ~(.max &<< composite.offset.extra))
                 
                 let b:Int = self.b      + 
-                    runliteral.length   + decade.count.extra + 
-                    distance.length     + decade.offset.extra 
+                    runliteral.length   + composite.count.extra + 
+                    distance.length     + composite.offset.extra 
                 guard b <= self.input.count 
                 else 
                 {
