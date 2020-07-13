@@ -130,7 +130,8 @@ extension Test
             [0, 0, 0, 0, 1, 0, 0, 1, 0, 2, 3, 2, 1, 2, 3, 3, 1, 5], 
             [1, 1, 1, 5, 1, 3, 2, 0, 1, 4, 4, 2, 1]
         ]
-        var input:LZ77.Deflator.In = .init()
+        var input:LZ77.Deflator.In  = .init()
+        var output:[[UInt8]]        = []
         for segment:[UInt8] in segments 
         {
             input.enqueue(contentsOf: segment)
@@ -147,17 +148,53 @@ extension Test
                         run.append(literal)
                         window.register(literal)
                     }
-                    print("match(\(match.distance), \(match.length)): \(run)")
+                    output.append(run)
                 }
                 else 
                 {
                     let literal:UInt8 = input.dequeue()
                     window.register(literal)
-                    
-                    print("literal:     [\(literal)]")
+                    output.append([literal])
                 }
             }
         }
+        guard output == 
+        [
+            [1], 
+            [2], 
+            [3], 
+            [3], 
+            [1, 2, 3, 3, 1, 2, 3], 
+            [1], 
+            [2], 
+            [2, 2, 2], 
+            [0], 
+            [1], 
+            [2], 
+            [0, 1, 2], 
+            [2], 
+            [0], 
+            [0, 0, 0], 
+            [1], 
+            [0, 0, 1, 0], 
+            [2], 
+            [3], 
+            [2], 
+            [1], 
+            [2], 
+            [3], 
+            [3], 
+            [1], 
+            [5], 
+            [1], 
+            [1], 
+            [1, 5, 1],
+        ] 
+        else 
+        {
+            return .failure(.init(message: "compressed lz77 tokens do not match expected output"))
+        }
+
         return .success(())
     }
     
