@@ -404,7 +404,6 @@ extension LZ77.Deflator.Window
 {
     init(exponent:Int) 
     {
-        precondition(8 ..< 16 ~= exponent, "exponent cannot be less than 8 or greater than 15")
         self.exponent   = exponent 
         self.endIndex   = 0
         self.head       = [:]
@@ -762,6 +761,8 @@ extension LZ77
             
             init(exponent:Int, hint:Int) 
             {
+                precondition(8 ..< 16 ~= exponent, "exponent cannot be less than 8 or greater than 15")
+                
                 self.input  = .init()
                 self.terms  = []
                 self.window = .init(exponent: exponent)
