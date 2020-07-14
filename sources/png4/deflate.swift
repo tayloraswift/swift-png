@@ -431,7 +431,7 @@ extension LZ77.Deflator.Window
     private 
     func modular<T>(_ x:T) -> UInt16 where T:BinaryInteger
     {
-        .init(x) & ~(.max << self.exponent)
+        .init(truncatingIfNeeded: x) & ~(.max << self.exponent)
     }
     
     private 
@@ -534,20 +534,24 @@ extension LZ77.Deflator.Window
             {
                 var length:Int  =                         3, 
                     m:UInt16    = self.modular(current &+ 3) 
-                // match up to front 
-                while   m                   != front, 
-                        length              <  limit, 
-                        self[m].value       == $0[length]
+                while length < limit, self[m].value == $0[length]
                 {
-                    m           = self.modular(m &+ 1)
-                    length     += 1
-                }
-                // match lookahead 
-                let delay:Int   = length
-                while   length              <  limit, 
-                        $0[length - delay]  == $0[length]
-                {
-                    length     += 1
+                    // match up to front 
+                    if  m != front
+                    {
+                        m       = self.modular(m &+ 1)
+                        length += 1
+                        continue 
+                    }
+                    
+                    // match lookahead 
+                    let delay:Int = length
+                    while length < limit, $0[length - delay] == $0[length]
+                    {
+                        length     += 1
+                    }
+                    
+                    break
                 }
                 
                 if length > best.length 
@@ -693,6 +697,8 @@ extension LZ77.Deflator.Out
             if b + count >= 16
             {
                 self.queue.append(self.copy(bytes: 2 * self.capacity))
+                self.queued += 1
+                
                 self.storage.withUnsafeMutablePointerToElements 
                 {
                     $0[0]   = .init(shifted >> 16)
@@ -716,7 +722,13 @@ extension LZ77.Deflator.Out
         self.count += count
     }
     
-    private mutating 
+    mutating 
+    func pad(to _:UInt8.Type)
+    {
+        self.append(0, count: -self.count & 7)
+    }
+    
+    private  
     func copy(bytes:Int) -> [UInt8]
     {
         .init(unsafeUninitializedCapacity: bytes) 
@@ -831,9 +843,9 @@ extension LZ77.Deflator.Term
 }
 extension LZ77.Deflator 
 {
-    init(hint:Int = 1 << 12) 
+    init(exponent:Int = 15, hint:Int = 1 << 12) 
     {
-        self.stream = .init(exponent: 15, hint: hint)
+        self.stream = .init(exponent: exponent, hint: hint)
         self.stream.start()
     }
     mutating 
@@ -851,7 +863,7 @@ extension LZ77.Deflator
         if last 
         {
             self.stream.block(last: true)
-            self.stream.end()
+            self.stream.checksum()
         }
     }
     mutating 
@@ -880,8 +892,8 @@ extension LZ77.Deflator.Stream
     func compress(all:Bool) -> Void?
     {
         // always maintain at least 258 bytes in the input buffer 
-        while    self.input.count >= 258 || 
-                (self.input.count != 0 && all)
+        while       self.input.count >= 258 || 
+            (all && self.input.count !=   0)
         {
             if self.terms.count >= 1024 
             {
@@ -893,14 +905,14 @@ extension LZ77.Deflator.Stream
             {
                 for _:Int in 0 ..< match.length 
                 {
-                    self.window.register(input.dequeue())
+                    self.window.register(self.input.dequeue())
                 }
                 term = .init(run: match.length, distance: match.distance)
             }
             else 
             {
-                let literal:UInt8 = input.dequeue()
-                window.register(literal)
+                let literal:UInt8 = self.input.dequeue()
+                self.window.register(literal)
                 term = .init(literal: literal)
             }
             self.terms.append(term)
@@ -972,14 +984,21 @@ extension LZ77.Deflator.Stream
                 self.output.append(bits.distance,          count: count.distance)
             }
         }
+        // empty literal buffer 
+        self.terms.removeAll(keepingCapacity: true)
         // end-of-block symbol 
         let end:LZ77.Huffman<UInt16>.Codeword = runliteral[256]
-        self.output.append(end.bits, count: end.length)
+        self.output.append(end.bits, count: end.length)        
     }
     
     mutating 
-    func end() 
+    func checksum() 
     {
-        
+        // checksum is written big-endian, which means it has to go into the 
+        // bitstream msb-first
+        let checksum:UInt32 = self.input.checksum().byteSwapped
+        self.output.pad(to: UInt8.self)
+        self.output.append(.init(truncatingIfNeeded: checksum       ), count: 16)
+        self.output.append(.init(                    checksum >>  16), count: 16)
     }
 }
