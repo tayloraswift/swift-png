@@ -481,14 +481,16 @@ extension LZ77.Deflator.Window
     {
         lookahead.withUnsafeBufferPointer 
         {
-            guard $0.count >= 3 
+            (buffer:UnsafeBufferPointer<UInt8>) in 
+            
+            guard buffer.count >= 3 
             else 
             {
                 return nil 
             }
             
             // cannot encode run longer than 258 elements 
-            let limit:Int       = min($0.count, 258) 
+            let limit:Int       = min(buffer.count, 258) 
             let front:UInt16    = self.modular(self.endIndex)
             
             //  these always succeed, but may contain garbage values if 
@@ -499,17 +501,17 @@ extension LZ77.Deflator.Window
             //  check for internal matches 
             //      A | A : A : A
             if      self.endIndex > 0, 
-                $0[0] == a, 
-                $0[1] == a, 
-                $0[2] == a 
+                buffer[0] == a, 
+                buffer[1] == a, 
+                buffer[2] == a 
             {
                 best = (length:    3, distance: 1)
             }
             //  B : A | B : A : B
             else if self.endIndex > 1, 
-                $0[0] == b, 
-                $0[1] == a, 
-                $0[2] == b 
+                buffer[0] == b, 
+                buffer[1] == a, 
+                buffer[2] == b 
             {
                 best = (length:    3, distance: 2)
             }
@@ -522,7 +524,7 @@ extension LZ77.Deflator.Window
             //  [   :   :   :   :   |   :   :   :   :   ]
             //                      ~~~~~~~~~~~~
             //                         prefix
-            let prefix:Prefix   = .init($0[0], $0[1], $0[2])
+            let prefix:Prefix   = .init(buffer[0], buffer[1], buffer[2])
             guard var current:UInt16 = self.head[prefix] 
             else 
             {
@@ -532,27 +534,32 @@ extension LZ77.Deflator.Window
             
             while best.length  <= limit 
             {
-                var length:Int  =                         3, 
-                    m:UInt16    = self.modular(current &+ 3) 
-                while length < limit, self[m].value == $0[length]
+                let length:Int = 
                 {
-                    // match up to front 
-                    if  m != front
+                    (start:UInt16) in 
+                    
+                    var length:Int  =                       3, 
+                        m:UInt16    = self.modular(start &+ 3) 
+                    while length < limit, m != front
                     {
+                        // match up to front 
+                        guard self[m].value == buffer[length]
+                        else 
+                        {
+                            return length
+                        }
+                        
                         m       = self.modular(m &+ 1)
                         length += 1
-                        continue 
                     }
-                    
                     // match lookahead 
                     let delay:Int = length
-                    while length < limit, $0[length - delay] == $0[length]
+                    while length < limit, buffer[length - delay] == buffer[length]
                     {
-                        length     += 1
+                        length += 1
                     }
-                    
-                    break
-                }
+                    return length
+                }(current)
                 
                 if length > best.length 
                 {
