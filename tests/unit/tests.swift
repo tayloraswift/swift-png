@@ -9,6 +9,7 @@ extension Test
             ("decode bitstream",            .void(Self.decodeBitstream)),
             ("encode bitstream",            .void(Self.encodeBitstream)),
             ("match lz77",                  .void(Self.matchLZ77)),
+            ("compress swift-zlib",         .int(Self.compressZ(count:),  [5, 15, 100, 200, 2000, 5000])),
             ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
             ("premultiplication (8-bit)",   .void(Self.premultiplication8)),
             ("premultiplication (16-bit)",  .void(Self.premultiplication16)),
@@ -195,6 +196,43 @@ extension Test
             return .failure(.init(message: "compressed lz77 tokens do not match expected output"))
         }
 
+        return .success(())
+    }
+    
+    static 
+    func compressZ(count:Int) -> Result<Void, Failure> 
+    {
+        let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
+        var deflator:LZ77.Deflator = .init(exponent: 8, hint: 16)
+        deflator.push(input, last: true)
+        var compressed:[UInt8] = []
+        while true 
+        {
+            let part:[UInt8] = deflator.pull() 
+            guard !part.isEmpty 
+            else 
+            {
+                break
+            }
+            compressed.append(contentsOf: part)
+        }
+        
+        var inflator:LZ77.Inflator = .init()
+        do 
+        {
+            try inflator.push(compressed)
+        }
+        catch let error 
+        {
+            return .failure(.init(message: "\(error)"))
+        }
+        
+        let output:[UInt8] = inflator.pull()
+        guard input == output 
+        else 
+        {
+            return .failure(.init(message: "decompressor output does not match compressor input"))
+        }
         return .success(())
     }
     

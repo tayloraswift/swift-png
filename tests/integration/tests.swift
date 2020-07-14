@@ -239,10 +239,10 @@ extension Test
         {
             ("decode-\($0.name)", .string(Self.decode(_:), $0.members))
         }
-        /* +       suite.map 
+        +       suite.map 
         {
             ("encode-\($0.name)", .string(Self.encode(_:), $0.members))
-        } */
+        }
     }
     private static 
     func print(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) 
