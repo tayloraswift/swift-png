@@ -19,7 +19,7 @@ extension LZ77.Deflator.Term:CustomStringConvertible
 {
     var description:String 
     {
-        let symbol:(runliteral:Int, distance:Int) = self.symbol 
+        let symbol:(runliteral:UInt16, distance:UInt8) = self.symbol 
         
         if symbol.runliteral < 256 
         {
@@ -31,15 +31,36 @@ extension LZ77.Deflator.Term:CustomStringConvertible
         }
         else 
         {
-            let decade:(run:UInt8, distance:UInt8) = self.decade,
-                bits:(run:UInt16, distance:UInt16) = self.bits
+            let bits:(run:UInt16, distance:UInt16) = self.bits
             let base:(run:UInt16, distance:UInt16) = 
             (
-                run:      LZ77.Composites[run:      decade.run     ].base,
-                distance: LZ77.Composites[distance: decade.distance].base
+                run:      LZ77.Composites[run: .init(truncatingIfNeeded: symbol.runliteral)].base,
+                distance: LZ77.Composites[distance: symbol.distance].base
             )
             
             return "match(offset: -\(base.distance + bits.distance), count: \(base.run + bits.run))"
+        }
+    }
+}
+extension LZ77.Deflator.Term.Meta:CustomStringConvertible 
+{
+    var description:String 
+    {
+        if      self.symbol == 16 
+        {
+            return "repeat(\(self.bits + 3))"
+        }
+        else if self.symbol == 17
+        {
+            return "zeros(\(self.bits + 3))"
+        }
+        else if self.symbol == 18
+        {
+            return "zeros(\(self.bits + 11))"
+        }
+        else 
+        {
+            return "literal: \(self.symbol)"
         }
     }
 }

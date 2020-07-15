@@ -2,7 +2,7 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
-extension LZ77.Huffman 
+extension LZ77 
 {
     struct Codeword 
     {
@@ -10,33 +10,37 @@ extension LZ77.Huffman
         let bits:UInt16 
         @General.Storage<UInt8> 
         var length:Int 
+        @General.Storage<UInt8> 
+        var extra:Int
     }
 }
-extension LZ77.Huffman.Codeword 
+extension LZ77.Codeword 
 {
-    init(counter:UInt16, length:Int) 
+    init(counter:UInt16, length:Int, extra:Int) 
     {
         // this branch should be well-predicted 
         if length <= 8 
         {
             let low:UInt16  = LZ77.Reversed[counter]
-            self.init(bits:         low  &>> ( 8 - length), length: length)
+            self.init(bits:         low  &>> ( 8 - length), length: length, extra: extra)
         }
         else 
         {
             let high:UInt16 = LZ77.Reversed[counter & 0xff] << 8, 
                 low:UInt16  = LZ77.Reversed[counter >> 8]
-            self.init(bits: (high | low) &>> (16 - length), length: length)
+            self.init(bits: (high | low) &>> (16 - length), length: length, extra: extra)
         }
     }
 }
 extension LZ77.Huffman where Symbol:BinaryInteger 
 {
-    func codewords(initializing destination:UnsafeMutablePointer<Codeword>, count:Int) 
+    func codewords(initializing destination:UnsafeMutablePointer<LZ77.Codeword>, 
+        count:Int, extra:(Symbol) -> Int) 
     {
         // initialize all entries to 0, as symbols with frequency 0 are omitted 
         // from self.symbols 
-        destination.initialize(repeating: .init(bits: 0, length: 0), count: count)
+        destination.initialize(repeating: .init(bits: 0, length: 0, extra: 0), 
+            count: count)
         
         var counter:UInt16  = 0
         for (length, level):(Int, Range<Int>) in zip(1 ... 15, self.levels) 
@@ -45,7 +49,8 @@ extension LZ77.Huffman where Symbol:BinaryInteger
             {
                 assert(.init(symbol) < count, "symbol out of range")
                 
-                destination[.init(symbol)]  = .init(counter: counter, length: length)
+                destination[.init(symbol)]  = 
+                    .init(counter: counter, length: length, extra: extra(symbol))
                 counter                    += 1
             }
             
@@ -54,7 +59,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
     }
     
     // message length, in bits
-    func length<C>(frequencies:C) -> Int 
+    func mass<C>(frequencies:C) -> Int 
         where C:RandomAccessCollection, C.Index == Int, C.Element == Int 
     {
         var total:Int = 0
@@ -85,8 +90,8 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         guard let first:Symbol = symbols.first 
         else 
         {
-            self.init(symbols: [], 
-                levels:             .init(repeating: 0 ..< 0, count: 15))
+            self.init(symbols: [.zero, .zero], 
+                levels: [0 ..< 2] + .init(repeating: 2 ..< 2, count: 14))
             return 
         }
         guard symbols.count > 1 
@@ -150,7 +155,6 @@ extension LZ77.Huffman where Symbol:BinaryInteger
                 }
                 $1 = $0.count 
             }
-            print(levels)
             
             self.init(symbols: symbols, levels: levels)
             return  
@@ -787,6 +791,14 @@ extension LZ77
         {
             private 
             let storage:UInt32
+            
+            struct Meta 
+            {
+                // its possible to encode a metaterm in 8 bits, but it 
+                // complicates the accessors so much it’s not worth it
+                private 
+                let storage:(symbol:UInt8, bits:UInt8)
+            }
         }
         
         struct Stream 
@@ -811,6 +823,40 @@ extension LZ77
         var stream:Stream 
     }
 }
+extension LZ77.Deflator.Term.Meta 
+{
+    var symbol:UInt8 
+    {
+        self.storage.symbol
+    }
+    var bits:UInt16 
+    {
+        .init(self.storage.bits)
+    }
+    
+    static 
+    func literal(_ literal:UInt8) -> Self
+    {
+        .init(storage: (symbol: literal, bits: 0))
+    }
+    static 
+    func `repeat`(count:Int) -> Self
+    {
+        .init(storage: (symbol: 16, bits: .init(count - 3)))
+    }
+    static 
+    func zeros(count:Int) -> Self
+    {
+        if count < 11 
+        {
+            return .init(storage: (symbol: 17, bits: .init(count - 3)))
+        }
+        else 
+        {
+            return .init(storage: (symbol: 18, bits: .init(count - 11)))
+        }
+    }
+}
 extension LZ77.Deflator.Term 
 {
     //  it takes about 28 bits to represent a length-distance pair, and  
@@ -820,14 +866,9 @@ extension LZ77.Deflator.Term
     //  [ : : : : :D:D:D|D:D:D:D:D:D:D:D|D:D:R:R:R:R:R: | : : : : : : : ]
     //   ~~~~~~~~~^                                    ~~~~~~~~~~~~~~~~~^
     //     distance                                            runliteral
-    var symbol:(runliteral:Int, distance:Int) 
+    var symbol:(runliteral:UInt16, distance:UInt8) 
     {
         (.init(self.storage & 0x00_00_01_ff), .init(self.storage >> 27))
-    }
-    
-    var decade:(run:UInt8, distance:UInt8) 
-    {
-        (.init(self.storage & 0x00_00_00_ff), .init(self.storage >> 27))
     }
     var bits:(run:UInt16, distance:UInt16) 
     {
@@ -949,73 +990,83 @@ extension LZ77.Deflator.Stream
     mutating 
     func block(last:Bool) 
     {
-        //let _:LZ77.Deflator.Semistatic = .init(self.terms, unit: 1024)
+        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 16)
+        self.block(dicing.startIndex, dicing: dicing, last: last)
+    }
+    
+    private mutating 
+    func block(_ index:Int, dicing:LZ77.Deflator.Dicing, last:Bool)
+    {
+        let semistatic:LZ77.Deflator.Semistatic, 
+            range:Range<Int>
+        switch dicing[index] 
+        {
+        case .interior(prefix: let a, suffix: let b):
+            self.block(a, dicing: dicing, last: false)
+            self.block(b, dicing: dicing, last: last)
+            return 
         
-        // create fixed table 
-        let runliteral:[LZ77.Huffman<UInt16>.Codeword] = 
-            .init(unsafeUninitializedCapacity: 288) 
-        {
-            guard let base:UnsafeMutablePointer<LZ77.Huffman<UInt16>.Codeword> = 
-                $0.baseAddress 
-            else 
-            {
-                $1 = 0
-                return 
-            }
-            LZ77.FixedHuffman.runliteral.codewords(initializing: base, count: 288)
-            $1 = 288
-        }
-        let distance:[LZ77.Huffman<UInt8>.Codeword] = 
-            .init(unsafeUninitializedCapacity: 32) 
-        {
-            guard let base:UnsafeMutablePointer<LZ77.Huffman<UInt8>.Codeword> = 
-                $0.baseAddress 
-            else 
-            {
-                $1 = 0
-                return 
-            }
-            LZ77.FixedHuffman.distance.codewords(initializing: base, count: 32)
-            $1 = 32
-        }
+        case .leaf(terms: let terms, dynamic: nil):
+            // fixed compression
+            semistatic  = .fixed
+            range       = terms
+            self.output.append(last ? 0b01_1 : 0b01_0, count: 3)
         
-        // fixed compression
-        self.output.append(last ? 0b01_1 : 0b01_0, count: 3)
-        for term:LZ77.Deflator.Term in self.terms 
-        {
-            let symbol:(runliteral:Int, distance:Int)       = term.symbol 
-            let codeword:
+        case .leaf(terms: let terms, dynamic:
             (
-                runliteral:LZ77.Huffman<UInt16>.Codeword, 
-                distance:LZ77.Huffman<UInt8>.Codeword
-            )
+                codelengths:    let codelengths, 
+                runliterals:    let runliterals, 
+                distances:      let distances, 
+                metaterms:      let metaterms, 
+                tree:           let tree
+            )?):
+            // dynamic compression
+            semistatic  = .init(runliteral: tree.runliteral, distance: tree.distance, 
+                meta: tree.meta)
+            range       = terms 
+            self.output.append(last ? 0b10_1 : 0b10_0,  count: 3)
             
-            codeword.runliteral = runliteral[symbol.runliteral]
+            self.output.append(.init(runliterals       - 257), count: 5)
+            self.output.append(.init(distances         -   1), count: 5)
+            self.output.append(.init(codelengths.count -   4), count: 4)
+            for codelength:UInt16 in codelengths 
+            {
+                self.output.append(codelength, count: 3)
+            }
+            for metaterm:LZ77.Deflator.Term.Meta in metaterms 
+            {
+                let codeword:LZ77.Codeword = semistatic[meta: metaterm.symbol]
+                self.output.append(codeword.bits, count: codeword.length)
+                self.output.append(metaterm.bits, count: codeword.extra)
+            }
+        }
+        
+        for term:LZ77.Deflator.Term in self.terms[range]
+        {
+            let symbol:(runliteral:UInt16, distance:UInt8) = term.symbol 
+            let codeword:(runliteral:LZ77.Codeword, distance:LZ77.Codeword)
+            
+            codeword.runliteral = semistatic[runliteral: symbol.runliteral]
+            
             self.output.append(codeword.runliteral.bits, count: codeword.runliteral.length)
             
             if symbol.runliteral > 256 
             {
                 // there are extra bits and a distance code to follow 
-                let decade:(run:UInt8, distance:UInt8)  = term.decade,
-                    bits:(run:UInt16, distance:UInt16)  = term.bits 
-                let count:(run:Int, distance:Int)       = 
-                (
-                    .init(LZ77.Composites[run:      decade.run     ].extra),
-                    .init(LZ77.Composites[distance: decade.distance].extra)
-                )
+                let bits:(run:UInt16, distance:UInt16) = term.bits 
                 
-                codeword.distance = distance[symbol.distance]
+                codeword.distance = semistatic[distance: symbol.distance]
                 
-                self.output.append(bits.run,               count: count.run)
+                self.output.append(bits.run,               count: codeword.runliteral.extra)
                 self.output.append(codeword.distance.bits, count: codeword.distance.length)
-                self.output.append(bits.distance,          count: count.distance)
+                self.output.append(bits.distance,          count: codeword.distance.extra)
             }
         }
         // empty literal buffer 
         self.terms.removeAll(keepingCapacity: true)
         // end-of-block symbol 
-        let end:LZ77.Huffman<UInt16>.Codeword = runliteral[256]
-        self.output.append(end.bits, count: end.length)        
+        let end:LZ77.Codeword = semistatic[runliteral: 256]
+        self.output.append(end.bits, count: end.length)
     }
     
     mutating 
@@ -1033,6 +1084,124 @@ extension LZ77.Deflator.Stream
 extension LZ77.Deflator 
 {
     struct Semistatic 
+    {
+        private 
+        let storage:ManagedBuffer<Void, LZ77.Codeword>
+        
+        //                heap
+        //    0 ┌───────────────────────┐
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │  runliteral codewords │ : 288 * Codeword
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //  288 ├───────────────────────┤
+        //      │   distance codewords  │ :  32 * Codeword
+        //  320 ├───────────────────────┤
+        //      │     meta codewords    │ :  19 * Codeword
+        //  339 └───────────────────────┘
+    }
+}
+extension LZ77.Deflator.Semistatic 
+{
+    init(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>, 
+        meta:LZ77.Huffman<UInt8>? = nil)
+    {
+        self.storage = .create(minimumCapacity: 339){ _ in () }
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            runliteral.codewords(initializing: $0,       count: 288) 
+            {
+                $0 > 256 ? 
+                .init(LZ77.Composites[run: .init(truncatingIfNeeded: $0)].extra) : 0
+            }
+            distance.codewords(  initializing: $0 + 288, count:  32)
+            {
+                .init(LZ77.Composites[distance: $0].extra)
+            }
+            meta?.codewords(     initializing: $0 + 320, count:  19)
+            {
+                switch $0 
+                {
+                case 18: return 7
+                case 17: return 3
+                case 16: return 2
+                default: return 0
+                }
+            }
+        }
+    }
+    
+    subscript(runliteral symbol:UInt16) -> LZ77.Codeword 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            ($0      )[.init(symbol)]
+        }
+    }
+    subscript(distance symbol:UInt8) -> LZ77.Codeword 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            ($0 + 288)[.init(symbol)]
+        }
+    }
+    subscript(meta symbol:UInt8) -> LZ77.Codeword 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            ($0 + 320)[.init(symbol)]
+        }
+    }
+    
+    static 
+    let fixed:Self = .init(
+        runliteral: LZ77.FixedHuffman.runliteral, 
+        distance:   LZ77.FixedHuffman.distance)
+}
+extension LZ77.Deflator 
+{
+    struct Dicing 
+    {
+        enum Node 
+        {
+            case interior(prefix:Int, suffix:Int)
+            case leaf(terms:Range<Int>, dynamic:
+            (
+                codelengths:[UInt16],
+                runliterals:Int, 
+                distances:Int, 
+                metaterms:[LZ77.Deflator.Term.Meta], 
+                tree:
+                (
+                    runliteral:LZ77.Huffman<UInt16>, 
+                    distance:LZ77.Huffman<UInt8>, 
+                    meta:LZ77.Huffman<UInt8>
+                )
+            )?)
+        }
+        
+        typealias Element = (weight:Int, node:Node)
+        
+        private 
+        let memo:[Element]
+    }
+}
+extension LZ77.Deflator.Dicing 
+{
+    subscript(index:Int) -> Node
+    {
+        self.memo[index].node 
+    }
+    // root node 
+    var startIndex:Int 
+    {
+        0
+    }
+    
+    init(_ terms:[LZ77.Deflator.Term], unit:Int) 
     {
         //  algorithm is similar to segmented least squares,, should run in O(n^2)
         // 
@@ -1059,6 +1228,15 @@ extension LZ77.Deflator
         //                                │         │
         //                                └─────────┘ n - 1
         
+        //  indexing function:
+        //  { 
+        //      (i:Int, j:Int) in 
+        //      let u:Int = (4 - j + i) 
+        //      return u * (u + 1) / 2 + i 
+        //  }
+        
+        //  recursive pattern:
+        // 
         //  0             288 320
         //  ┌──────────────┬───╥──────────────┬───╥──────────────┬───╥──────────────┬───┐
         //  │ frequencies(0,1) ║ frequencies(1,2) ║ frequencies(2,3) ║ frequencies(3,4) │
@@ -1076,33 +1254,17 @@ extension LZ77.Deflator
         //  │ frequencies(0,4) │
         //  └──────────────┴───┘
         //  optimal  compression
-    }
-}
-extension LZ77.Deflator.Semistatic 
-{
-    struct Root 
-    {
-        enum Node 
-        {
-            case leaf(tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>))
-            case interior(prefix:Int, suffix:Int)
-        }
-        let weight:Int 
-        let node:Node 
         
-        static 
-        let placeholder:Self = .init(weight: 0, node: .interior(prefix: 0, suffix: 0))
-    }
-    init(_ terms:[LZ77.Deflator.Term], unit:Int) 
-    {
-        // indexing function 
-        // { (i:Int, j:Int) in let u:Int = (4 - j + i); return u * (u + 1) / 2 + i }
-        let units:Int           = (terms.count + (unit - 1) / unit),
-            count:Int           = units * (units + 1) / 2
-        let memo:[Root] = .init(unsafeUninitializedCapacity: count) 
+        
+        let units:Int   = (terms.count + unit - 1) / unit,
+            count:Int   = units * (units + 1) / 2
+        self.memo       = .init(unsafeUninitializedCapacity: count) 
         {
-            (memo:inout UnsafeMutableBufferPointer<Root>, count:inout Int) in 
-            count = memo.count
+            guard let memo:UnsafeMutablePointer<Element> = $0.baseAddress 
+            else 
+            {
+                fatalError("unreachable")
+            }
             // build frequency array, has largest interval at the beginning, eg:
             //  (0, 4), 
             //  (0, 3), (1, 4), 
@@ -1118,9 +1280,9 @@ extension LZ77.Deflator.Semistatic
                 // no need to differentiate between literals and run-distance pairs, 
                 // because literal terms have the distance symbol set to a non-
                 // existent symbol (32)
-                let symbol:(runliteral:Int, distance:Int) = term.symbol 
-                frequencies[base       + symbol.runliteral] += 1
-                frequencies[base + 288 + symbol.distance  ] += 1
+                let symbol:(runliteral:UInt16, distance:UInt8) = term.symbol 
+                frequencies[base       + .init(symbol.runliteral)] += 1
+                frequencies[base + 288 + .init(symbol.distance)  ] += 1
                 
                 phase += 1
                 guard phase != unit 
@@ -1131,6 +1293,7 @@ extension LZ77.Deflator.Semistatic
                     continue 
                 }
             }
+            
             // construct huffman trees for base cases 
             for i:Int in count - units ..< count 
             {
@@ -1140,20 +1303,197 @@ extension LZ77.Deflator.Semistatic
                     .init(frequencies: frequencies[base       ..< base + 286]),
                     .init(frequencies: frequencies[base + 288 ..< base + 318])
                 )
+                // compute combined metatree 
+                let meta:
+                (
+                    tree:LZ77.Huffman<UInt8>, 
+                    mass:Int, 
+                    runliterals:Int, 
+                    distances:Int,
+                    terms:[LZ77.Deflator.Term.Meta]
+                ) 
+                = 
+                Self.metatree(for: tree)
+                
+                let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19) 
+                {
+                    $0.initialize(repeating: 0)
+                    for (length, level):(UInt16, Range<Int>) in zip(1 ... 8, meta.tree.levels)
+                    {
+                        for symbol:UInt8 in meta.tree.symbols[level] 
+                        {
+                            let z:Int = 
+                            [
+                                3, 17, 15, 13, 11,  9,  7,  5, 
+                                4,  6,  8, 10, 12, 14, 16, 18, 
+                                0, 1, 2
+                            ][.init(symbol)]
+                            
+                            $0[z] = length
+                        }
+                    }
+                    // max(4, _) because HCLEN cannot be less than 4
+                    $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
+                }
+                
                 // compute message lengths 
-                let weight:(dynamic:Int, fixed:Int)
-                weight.dynamic = 
-                    tree.runliteral.length(frequencies: frequencies[base       ..< base + 286]) + 
-                    tree.distance.length(  frequencies: frequencies[base + 288 ..< base + 318])
-                weight.fixed = 
+                let score:(dynamic:Int, fixed:Int)
+                score.dynamic = 14 + 3 * codelengths.count + meta.mass + 
+                    tree.runliteral.mass(frequencies: frequencies[base       ..< base + 286]) + 
+                    tree.distance.mass(  frequencies: frequencies[base + 288 ..< base + 318])
+                score.fixed = 
                     8 * frequencies[base       ..< base + 144].reduce(0, +) + 
                     9 * frequencies[base + 144 ..< base + 256].reduce(0, +) + 
                     7 * frequencies[base + 256 ..< base + 280].reduce(0, +) + 
                     8 * frequencies[base + 280 ..< base + 286].reduce(0, +) + 
                     5 * frequencies[base + 288 ..< base + 318].reduce(0, +)
-                print(weight)
+                
+                let start:Int           = terms.startIndex + unit * i, 
+                    range:Range<Int>    = start ..< min(start + unit, terms.endIndex)
+                let element:Element 
+                if score.dynamic < score.fixed && false
+                {
+                    element = 
+                    (
+                        weight: score.dynamic, 
+                        node:  .leaf(terms: range, dynamic:
+                        (
+                            codelengths:    codelengths,
+                            runliterals:    meta.runliterals, 
+                            distances:      meta.distances, 
+                            metaterms:      meta.terms, 
+                            tree:           
+                            (
+                                runliteral: tree.runliteral, 
+                                distance:   tree.distance,
+                                meta:       meta.tree
+                            )
+                        ))
+                    )
+                }
+                else 
+                {
+                    element = 
+                    (
+                        weight: score.fixed, 
+                        node:  .leaf(terms: range, dynamic: nil)
+                    )
+                }
+                
+                (memo + i).initialize(to: element)
+            }
+            
+            $1 = count 
+        }
+    }
+    private static 
+    func metatree(for tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)) 
+        -> 
+    (
+        tree:LZ77.Huffman<UInt8>, 
+        mass:Int, 
+        runliterals:Int, 
+        distances:Int,
+        terms:[LZ77.Deflator.Term.Meta]
+    )
+    {
+        // there really should be a maximum of 316 combined symbols, not 
+        // 318, but the rfc 1951 specifies 218 for some reason 
+        var lengths:[UInt8] = .init(repeating: 0, count: 318) 
+        
+        for (length, level):(UInt8, Range<Int>) in 
+            zip(1 ... 15, tree.runliteral.levels) 
+        {
+            for symbol:UInt16 in tree.runliteral.symbols[level] 
+            {
+                lengths[      .init(symbol)] = length
             }
         }
+        // minimum of 257 runliteral codes
+        let r:Int = max(257, lengths.prefix(286).reversed().drop{ $0 == 0 }.count)
+        for (length, level):(UInt8, Range<Int>) in 
+            zip(1 ... 15, tree.distance.levels) 
+        {
+            for symbol:UInt8 in tree.distance.symbols[level] 
+            {
+                lengths[r + .init(symbol)] = length
+            }
+        }
+        // minimum of 1 distance code
+        let d:Int = max(1, lengths.dropFirst(r).prefix(32).reversed().drop{ $0 == 0 }.count)
         
+        // segment into metaterms 
+        var repetitions:Int = 1, 
+            last:UInt8      = lengths[0]
+        var iterator:ArraySlice<UInt8>.Iterator = lengths[1 ..< r + d].makeIterator(), 
+            terms:[LZ77.Deflator.Term.Meta]     = []
+        while true 
+        {
+            let current:UInt8? = iterator.next()
+            
+            if let literal:UInt8 = current, literal == last 
+            {
+                repetitions += 1
+            }
+            else 
+            {
+                if last == 0 
+                {
+                    while repetitions > 138 
+                    {
+                        terms.append(.zeros(count: 138))
+                        repetitions -= 138
+                    }
+                    if repetitions > 2 
+                    {
+                        terms.append(.zeros(count: repetitions))
+                    }
+                    else 
+                    {
+                        terms.append(contentsOf: 
+                            repeatElement(.literal(last), count: repetitions))
+                    }
+                }
+                else 
+                {
+                    terms.append(.literal(last))
+                    repetitions -= 1
+                    while repetitions > 6
+                    {
+                        terms.append(.repeat(count: 6))
+                        repetitions -= 6
+                    }
+                    if repetitions > 2 
+                    {
+                        terms.append(.repeat(count: repetitions))
+                    }
+                    else 
+                    {
+                        terms.append(contentsOf: 
+                            repeatElement(.literal(last), count: repetitions))
+                    }
+                }
+                
+                guard let literal:UInt8 = current 
+                else 
+                {
+                    break 
+                }
+                
+                last        = literal 
+                repetitions = 1
+            }
+        } 
+        
+        // construct metatree 
+        var frequencies:[Int] = .init(repeating: 0, count: 19)
+        for term:LZ77.Deflator.Term.Meta in terms 
+        {
+            frequencies[.init(term.symbol)] += 1
+        }
+        
+        let metatree:LZ77.Huffman<UInt8>    = .init(frequencies: frequencies), 
+            mass:Int                        = metatree.mass(frequencies: frequencies)
+        return (metatree, mass: mass, runliterals: r, distances: d, terms)
     }
 }
