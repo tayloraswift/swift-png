@@ -363,13 +363,11 @@ extension LZ77
         static 
         subscript(run decade:UInt8) -> (extra:UInt16, base:UInt16) 
         {
-            assert(1 ... 29 ~= decade)
             return Self.table[.init(decade)]
         }
         static 
         subscript(distance decade:UInt8) -> (extra:UInt16, base:UInt16) 
         {
-            assert(0 ... 29 ~= decade)
             return Self.table[.init(32 | decade)]
         }
         
@@ -584,15 +582,13 @@ extension LZ77.Inflator
 }
 extension LZ77.Inflator.Semistatic 
 {        
-    static 
-    func create(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
-        -> Self 
+    init(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
     {
         let start:Int   = 256    + MemoryLayout<Composite>.stride * 64
         let offset:Int  = start  + MemoryLayout<LZ77.Symbol.RunLiteral>.stride * runliteral.size.z 
         let size:Int    = offset + MemoryLayout<LZ77.Symbol.Distance  >.stride *   distance.size.z
-        let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
-        storage.withUnsafeMutablePointerToElements 
+        self.storage = .create(minimumCapacity: size){ _ in () }
+        self.storage.withUnsafeMutablePointerToElements 
         {
             (base:UnsafeMutablePointer<UInt8>) in 
             
@@ -616,8 +612,8 @@ extension LZ77.Inflator.Semistatic
             }
         }
         
-        return .init(storage: storage,
-            fence: (runliteral: runliteral.size.n, distance: distance.size.n), offset: offset)
+        self.fence  = (runliteral: runliteral.size.n, distance: distance.size.n)
+        self.offset = offset
     }
     
     // bits in lower half of the uint16
@@ -688,7 +684,7 @@ extension LZ77.Inflator.Semistatic
     }
     
     static 
-    let fixed:Self = .create(
+    let fixed:Self = .init(
         runliteral: LZ77.FixedHuffman.runliteral, 
         distance:   LZ77.FixedHuffman.distance)
 }
@@ -708,16 +704,13 @@ extension LZ77.Inflator.Semistatic.Meta
         256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
     }
     
-    static 
-    func create() -> Self 
+    init()  
     {
-        let storage:ManagedBuffer<Void, UInt8> = 
-            .create(minimumCapacity: Self.size){ _ in () }
-        storage.withUnsafeMutablePointerToElements 
+        self.storage = .create(minimumCapacity: Self.size){ _ in () }
+        self.storage.withUnsafeMutablePointerToElements 
         {
             $0.initialize(from: LZ77.Reversed.table, count: 256)
         }
-        return .init(storage: storage)
     }
     
     mutating 
@@ -1316,7 +1309,7 @@ extension LZ77
                 self.b          = 0
                 self.input      = []
                 self.lengths    = []
-                self.meta       = .create()
+                self.meta       = .init()
                 self.output     = .init()
             }
         }
@@ -1415,7 +1408,7 @@ extension LZ77.Inflator
             }
             
             self.state = .blockCompressed(final: final,
-                semistatic: .create(runliteral: runliteral, distance: distance))
+                semistatic: .init(runliteral: runliteral, distance: distance))
         
         case .blockUncompressed(final: let final, end: let end):
             guard let _:Void = try self.stream.blockUncompressed(end: end) 
