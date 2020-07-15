@@ -53,15 +53,32 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         }
     }
     
-    init(frequencies:[Int]) 
+    // message length, in bits
+    func length<C>(frequencies:C) -> Int 
+        where C:RandomAccessCollection, C.Index == Int, C.Element == Int 
+    {
+        var total:Int = 0
+        for (length, level):(Int, Range<Int>) in zip(1 ... 15, self.levels) 
+        {
+            total += length * self.symbols[level].reduce(0)
+            {
+                $0 + frequencies[frequencies.startIndex + .init($1)]
+            }
+        }
+        return total
+    }
+    
+    init<C>(frequencies:C) 
+        where C:RandomAccessCollection, C.Index == Int, C.Element == Int 
     {
         // sort non-zero symbols by (decreasing) frequency
         let symbols:[Symbol] = frequencies.indices.compactMap 
         {
-            frequencies[$0] > 0 ? .init($0) : nil 
+            frequencies[$0] > 0 ? .init($0 - frequencies.startIndex) : nil 
         }.sorted
         {
-            frequencies[.init($0)] > frequencies[.init($1)]
+            frequencies[frequencies.startIndex + .init($0)] > 
+            frequencies[frequencies.startIndex + .init($1)]
         }
         
         // cover 0-symbol and 1-symbol cases 
@@ -84,7 +101,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         // to its best-case O(n) time, not that O matters for n = 256 
         var heap:General.Heap<Int, [Int]> = .init(symbols.reversed().map  
         {
-            (frequencies[.init($0)], [1])
+            (frequencies[frequencies.startIndex + .init($0)], [1])
         })
         
         // standard huffman tree construction algorithm. builds a list of leaf-level 
@@ -105,7 +122,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
                     merged = second.value 
                     mergee = first.value 
                 }
-                for (i, k):(Int, Int) in zip(merged.indices.reversed(), mergee)
+                for (i, k):(Int, Int) in zip(merged.indices.reversed(), mergee.reversed())
                 {
                     merged[i] += k
                 }
@@ -133,6 +150,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
                 }
                 $1 = $0.count 
             }
+            print(levels)
             
             self.init(symbols: symbols, levels: levels)
             return  
@@ -931,6 +949,8 @@ extension LZ77.Deflator.Stream
     mutating 
     func block(last:Bool) 
     {
+        //let _:LZ77.Deflator.Semistatic = .init(self.terms, unit: 1024)
+        
         // create fixed table 
         let runliteral:[LZ77.Huffman<UInt16>.Codeword] = 
             .init(unsafeUninitializedCapacity: 288) 
@@ -1007,5 +1027,133 @@ extension LZ77.Deflator.Stream
         self.output.pad(to: UInt8.self)
         self.output.append(.init(truncatingIfNeeded: checksum       ), count: 16)
         self.output.append(.init(                    checksum >>  16), count: 16)
+    }
+}
+
+extension LZ77.Deflator 
+{
+    struct Semistatic 
+    {
+        //  algorithm is similar to segmented least squares,, should run in O(n^2)
+        // 
+        //  k := `unit`
+        //  n := `units`
+        // 
+        //                  end index
+        //  1                                       n
+        //  ┌─────────┬─────────┬─────────┲━━━━━━━━━┓ 0
+        //  │         │         │         ┃         ┃
+        //  │ 0 ..< 1 │ 0 ..< 2 │ 0 ..< 3 ┃ 0 ..< 4 ┃
+        //  │         │         │         ┃         ┃
+        //  └─────────┼─────────┼─────────╄━━━━━━━━━┩
+        //            │         │         │         │   
+        //            │ 1 ..< 2 │ 1 ..< 3 │ 1 ..< 4 │   
+        //            │         │         │         │   start
+        //            └─────────┼─────────┼─────────┤   index
+        //                      │         │         │
+        //                      │ 2 ..< 3 │ 2 ..< 4 │
+        //                      │         │         │
+        //                      └─────────┼─────────┤
+        //                                │         │
+        //                                │ 3 ..< 4 │
+        //                                │         │
+        //                                └─────────┘ n - 1
+        
+        //  0             288 320
+        //  ┌──────────────┬───╥──────────────┬───╥──────────────┬───╥──────────────┬───┐
+        //  │ frequencies(0,1) ║ frequencies(1,2) ║ frequencies(2,3) ║ frequencies(3,4) │
+        //  └──────────────┴───╨──────────────┴───╨──────────────┴───╨──────────────┴───┘
+        //          ↓↓↓       ↙↙↙      ↓↓↓       ↙↙↙      ↓↓↓       ↙↙↙
+        //  ┌──────────────┬───╥──────────────┬───╥──────────────┬───┐
+        //  │ frequencies(0,2) ║ frequencies(1,3) ║ frequencies(2,4) │
+        //  └──────────────┴───╨──────────────┴───╨──────────────┴───┘
+        //          ↓↓↓       ↙↙↙      ↓↓↓       ↙↙↙
+        //  ┌──────────────┬───╥──────────────┬───┐
+        //  │ frequencies(0,3) ║ frequencies(1,4) │
+        //  └──────────────┴───╨──────────────┴───┘
+        //          ↓↓↓       ↙↙↙
+        //  ┌──────────────┬───┐
+        //  │ frequencies(0,4) │
+        //  └──────────────┴───┘
+        //  optimal  compression
+    }
+}
+extension LZ77.Deflator.Semistatic 
+{
+    struct Root 
+    {
+        enum Node 
+        {
+            case leaf(tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>))
+            case interior(prefix:Int, suffix:Int)
+        }
+        let weight:Int 
+        let node:Node 
+        
+        static 
+        let placeholder:Self = .init(weight: 0, node: .interior(prefix: 0, suffix: 0))
+    }
+    init(_ terms:[LZ77.Deflator.Term], unit:Int) 
+    {
+        // indexing function 
+        // { (i:Int, j:Int) in let u:Int = (4 - j + i); return u * (u + 1) / 2 + i }
+        let units:Int           = (terms.count + (unit - 1) / unit),
+            count:Int           = units * (units + 1) / 2
+        let memo:[Root] = .init(unsafeUninitializedCapacity: count) 
+        {
+            (memo:inout UnsafeMutableBufferPointer<Root>, count:inout Int) in 
+            count = memo.count
+            // build frequency array, has largest interval at the beginning, eg:
+            //  (0, 4), 
+            //  (0, 3), (1, 4), 
+            //  (0, 2), (1, 3), (2, 4), 
+            //  (0, 1), (1, 2), (2, 3), (3, 4)
+            var frequencies:[Int] = .init(repeating: 0, count: 320 * count)
+            
+            // tally symbol frequencies for single-unit intervals 
+            var base:Int    = 320 * (count - units),
+                phase:Int   = 0
+            for term:LZ77.Deflator.Term in terms 
+            {
+                // no need to differentiate between literals and run-distance pairs, 
+                // because literal terms have the distance symbol set to a non-
+                // existent symbol (32)
+                let symbol:(runliteral:Int, distance:Int) = term.symbol 
+                frequencies[base       + symbol.runliteral] += 1
+                frequencies[base + 288 + symbol.distance  ] += 1
+                
+                phase += 1
+                guard phase != unit 
+                else 
+                {
+                    base += 320
+                    phase = 0 
+                    continue 
+                }
+            }
+            // construct huffman trees for base cases 
+            for i:Int in count - units ..< count 
+            {
+                let base:Int = 320 * i
+                let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
+                (
+                    .init(frequencies: frequencies[base       ..< base + 286]),
+                    .init(frequencies: frequencies[base + 288 ..< base + 318])
+                )
+                // compute message lengths 
+                let weight:(dynamic:Int, fixed:Int)
+                weight.dynamic = 
+                    tree.runliteral.length(frequencies: frequencies[base       ..< base + 286]) + 
+                    tree.distance.length(  frequencies: frequencies[base + 288 ..< base + 318])
+                weight.fixed = 
+                    8 * frequencies[base       ..< base + 144].reduce(0, +) + 
+                    9 * frequencies[base + 144 ..< base + 256].reduce(0, +) + 
+                    7 * frequencies[base + 256 ..< base + 280].reduce(0, +) + 
+                    8 * frequencies[base + 280 ..< base + 286].reduce(0, +) + 
+                    5 * frequencies[base + 288 ..< base + 318].reduce(0, +)
+                print(weight)
+            }
+        }
+        
     }
 }
