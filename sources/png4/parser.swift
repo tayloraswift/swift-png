@@ -923,6 +923,18 @@ extension PNG
 }
 extension PNG.Histogram 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 2 * self.frequencies.count) 
+        {
+            for (i, frequency):(Int, UInt16) in self.frequencies.enumerated()
+            {
+                $0.store(frequency, asBigEndian: UInt16.self, at: i << 1)
+            }
+            $1 = 2 * self.frequencies.count
+        }
+    }
     public static 
     func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette) 
         throws -> Self
@@ -964,6 +976,16 @@ extension PNG
 }
 extension PNG.Gamma 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: MemoryLayout<UInt32>.size) 
+        {
+            $0.store(self.pcm.points, asBigEndian: UInt32.self, at: 0)
+            $1 = $0.count
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -991,6 +1013,26 @@ extension PNG
 }
 extension PNG.Chromaticity 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 32) 
+        {
+            $0.store(self.w.x.points, asBigEndian: UInt32.self, at:  0)
+            $0.store(self.w.y.points, asBigEndian: UInt32.self, at:  4)
+            
+            $0.store(self.r.x.points, asBigEndian: UInt32.self, at:  8)
+            $0.store(self.r.y.points, asBigEndian: UInt32.self, at: 12)
+            
+            $0.store(self.g.x.points, asBigEndian: UInt32.self, at: 16)
+            $0.store(self.g.y.points, asBigEndian: UInt32.self, at: 20)
+            
+            $0.store(self.b.x.points, asBigEndian: UInt32.self, at: 24)
+            $0.store(self.b.y.points, asBigEndian: UInt32.self, at: 28)
+            $1 = $0.count
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -1037,6 +1079,18 @@ extension PNG
 }
 extension PNG.ColorRendering 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        switch self 
+        {
+        case .perceptual:   return [0]
+        case .relative:     return [1]
+        case .saturation:   return [2]
+        case .absolute:     return [3]
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -1060,14 +1114,28 @@ extension PNG.ColorRendering
 extension PNG 
 {
     public 
-    struct SignificantBits 
+    enum SignificantBits 
     {
-        public 
-        let bits:(r:Int, g:Int, b:Int, a:Int)
+        case v(Int)
+        case va((v:Int, a:Int))
+        case rgb((r:Int, g:Int, b:Int))
+        case rgba((r:Int, g:Int, b:Int, a:Int))
     }
 }
 extension PNG.SignificantBits 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        switch self 
+        {
+        case .v(   let c):  return [c].map(UInt8.init(_:))
+        case .va(  let c):  return [c.v, c.a].map(UInt8.init(_:))
+        case .rgb( let c):  return [c.r, c.g, c.b].map(UInt8.init(_:))
+        case .rgba(let c):  return [c.r, c.g, c.b, c.a].map(UInt8.init(_:))
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
     {
@@ -1089,7 +1157,7 @@ extension PNG.SignificantBits
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
                     expected: 1 ... pixel.sampleDepth)
             }
-            return .init(bits: (v, v, v, pixel.sampleDepth))
+            return .v(v)
         
         case .rgb8, .rgb16, .indexed1, .indexed2, .indexed4, .indexed8:
             let r:Int = .init(data[0]), 
@@ -1100,7 +1168,7 @@ extension PNG.SignificantBits
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
                     expected: 1 ... pixel.sampleDepth)
             }
-            return .init(bits: (r, g, b, pixel.sampleDepth))
+            return .rgb((r, g, b))
         
         case .va8, .va16:
             let v:Int = .init(data[0]), 
@@ -1110,7 +1178,7 @@ extension PNG.SignificantBits
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
                     expected: 1 ... pixel.sampleDepth)
             }
-            return .init(bits: (v, v, v, a))
+            return .va((v, a))
         
         case .rgba8, .rgba16:
             let r:Int = .init(data[0]), 
@@ -1122,7 +1190,7 @@ extension PNG.SignificantBits
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
                     expected: 1 ... pixel.sampleDepth)
             }
-            return .init(bits: (r, g, b, a))
+            return .rgba((r, g, b, a))
         }
     }
 }
@@ -1140,6 +1208,12 @@ extension PNG
 }
 extension PNG.ColorProfile 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        fatalError("unsupported")
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -1165,6 +1239,23 @@ extension PNG
 }
 extension PNG.PhysicalDimensions 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 9) 
+        {
+            $0.store(self.density.x, asBigEndian: UInt32.self, at:  0)
+            $0.store(self.density.y, asBigEndian: UInt32.self, at:  4)
+            
+            switch self.density.unit 
+            {
+            case nil:       $0[8] = 0
+            case .meter?:   $0[8] = 1
+            }
+            $1 = $0.count
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -1209,6 +1300,61 @@ extension PNG
 }
 extension PNG.SuggestedPalette 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        let head:Int = self.name.unicodeScalars.count
+        let tail:Int 
+        switch self.entries 
+        {
+        case .rgba8( let entries):  tail =  6 * entries.count 
+        case .rgba16(let entries):  tail = 10 * entries.count 
+        }
+        
+        return .init(unsafeUninitializedCapacity: head + 1 + tail) 
+        {
+            for (i, u):(Int, Unicode.Scalar) in 
+                zip($0.indices, self.name.unicodeScalars)
+            {
+                $0[i] = .init(u.value)
+            }
+            $0[head] = 0
+            
+            switch self.entries 
+            {
+            case .rgba8( let entries):  
+                for (base, (color, frequency)):
+                (
+                    Int, 
+                    ((r:UInt8,  g:UInt8,  b:UInt8,  a:UInt8), UInt16)
+                ) 
+                    in zip(stride(from: head + 1, to: $0.endIndex, by: 6), entries)
+                {
+                    $0[base    ]    = color.r
+                    $0[base + 1]    = color.g
+                    $0[base + 2]    = color.b
+                    $0[base + 3]    = color.a
+                    $0.store(frequency, asBigEndian: UInt16.self, at: base + 4)
+                }
+            case .rgba16(let entries): 
+                for (base, (color, frequency)):
+                (
+                    Int, 
+                    ((r:UInt16, g:UInt16, b:UInt16, a:UInt16), UInt16)
+                ) 
+                    in zip(stride(from: head + 1, to: $0.endIndex, by: 10), entries)
+                {
+                    $0.store(color.r,   asBigEndian: UInt16.self, at: base    )
+                    $0.store(color.g,   asBigEndian: UInt16.self, at: base + 2)
+                    $0.store(color.b,   asBigEndian: UInt16.self, at: base + 4)
+                    $0.store(color.a,   asBigEndian: UInt16.self, at: base + 6)
+                    $0.store(frequency, asBigEndian: UInt16.self, at: base + 8)
+                }
+            }
+            $1 = $0.count
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -1309,6 +1455,21 @@ extension PNG
 }
 extension PNG.TimeModified 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 7) 
+        {
+            $0.store(self.year, asBigEndian: UInt16.self, at: 0)
+            $0[2] = .init(self.month)
+            $0[3] = .init(self.day)
+            $0[4] = .init(self.hour)
+            $0[5] = .init(self.minute)
+            $0[6] = .init(self.second)
+            $1 = $0.count
+        }
+    }
+    
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
@@ -1357,6 +1518,56 @@ extension PNG
 }
 extension PNG.Text 
 {
+    public 
+    func serialized() -> [UInt8] 
+    {
+        let size:Int = 5 +
+            self.keyword.english.count                      + 
+            self.keyword.localized.count                    + 
+            self.language.reduce(0){ $0 + $1.count + 1 }    + 
+            self.content.utf8.count 
+            
+        var data:[UInt8] = []
+        data.reserveCapacity(size)
+        data.append(contentsOf: self.keyword.english.unicodeScalars.map{ .init($0.value) })
+        data.append(0)
+        data.append(self.compressed ? 1 : 0)
+        data.append(0) // compression method
+        data.append(contentsOf: self.language.map
+        { 
+            $0.unicodeScalars.map{ .init($0.value) }
+        }.joined(separator: [0x2d]))
+        data.append(0)
+        if self.keyword.localized != self.keyword.english 
+        {
+            data.append(contentsOf: self.keyword.localized.utf8)
+        }
+        data.append(0)
+        
+        if self.compressed 
+        {
+            var deflator:LZ77.Deflator = .init(exponent: 15, hint: 4096)
+            deflator.push(.init(self.content.utf8), last: true)
+            while true 
+            {
+                let segment:[UInt8] = deflator.pull()
+                guard !segment.isEmpty 
+                else 
+                {
+                    break 
+                }
+                
+                data.append(contentsOf: segment)
+            }
+        }
+        else 
+        {
+            data.append(contentsOf: self.content.utf8)
+        }
+        
+        return data
+    }
+    
     static 
     func validate<C>(name latin1:C) -> String?
         where C:Collection, C.Index == Int, C.Element == UInt8 
@@ -1442,11 +1653,10 @@ extension PNG.Text
             throw PNG.ParsingError.missingTextLocalizedKeyword
         }
         
-        let keyword:(english:String, localized:String) = 
-        (
-            try Self.validate(keyword: data.prefix(k)),
-            .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
-        )
+        let localized:String = .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
+        let keyword:(english:String, localized:String) 
+        keyword.english     = try Self.validate(keyword: data.prefix(k))
+        keyword.localized   = keyword.english == localized ? "" : localized
         
         let uncompressed:ArraySlice<UInt8>
         let compressed:Bool 
@@ -1507,7 +1717,7 @@ extension PNG.Text
             compressed   = false
         }
         return .init(compressed: compressed, 
-            keyword:    (keyword, keyword), 
+            keyword:    (english: keyword, localized: ""), 
             language:   ["en"], 
             content:    .init(uncompressed.map 
             {
