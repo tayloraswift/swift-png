@@ -978,7 +978,7 @@ extension LZ77.Deflator.Stream
         while       self.input.count >= 258 || 
             (all && self.input.count !=   0)
         {
-            if self.terms.count >= 1024 
+            if self.terms.count >= 4096 
             {
                 return ()
             }
