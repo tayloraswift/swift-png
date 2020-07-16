@@ -73,7 +73,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         return total
     }
     
-    init<C>(frequencies:C) 
+    init<C>(frequencies:C, limit:Int) 
         where C:RandomAccessCollection, C.Index == Int, C.Element == Int 
     {
         // sort non-zero symbols by (decreasing) frequency
@@ -138,7 +138,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
             
             // drop the first (last) level count, since it corresponds to 
             // the tree root, and convert level counts to codeword assignments 
-            let leaves:[Int] = Self.limitHeight(first.value.dropLast().reversed(), to: 15)
+            let leaves:[Int] = Self.limitHeight(first.value.dropLast().reversed(), to: limit)
             // split symbols list into levels 
             let levels:[Range<Int>] = .init(unsafeUninitializedCapacity: 15) 
             {
@@ -156,7 +156,24 @@ extension LZ77.Huffman where Symbol:BinaryInteger
                 $1 = $0.count 
             }
             
-            self.init(symbols: symbols, levels: levels)
+            // symbols with the same length are sorted by symbol value. this 
+            // ordering may be different from the plain frequency-keyed order.
+            let resorted:[Symbol] = .init(unsafeUninitializedCapacity: symbols.count) 
+            {
+                guard let base:UnsafeMutablePointer<Symbol> = $0.baseAddress 
+                else 
+                {
+                    fatalError("unreachable")
+                }
+                for level:Range<Int> in levels 
+                {
+                    (base + level.lowerBound).initialize(
+                        from: symbols[level].sorted(), count: level.count)
+                }
+                $1 = symbols.count 
+            }
+            
+            self.init(symbols: resorted, levels: levels)
             return  
         }
         
@@ -1293,6 +1310,8 @@ extension LZ77.Deflator.Dicing
                     continue 
                 }
             }
+            // register the eob code, since it isn’t explicitly represented 
+            frequencies[base + 256] = 1
             
             // construct huffman trees for base cases 
             for i:Int in count - units ..< count 
@@ -1300,8 +1319,8 @@ extension LZ77.Deflator.Dicing
                 let base:Int = 320 * i
                 let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
                 (
-                    .init(frequencies: frequencies[base       ..< base + 286]),
-                    .init(frequencies: frequencies[base + 288 ..< base + 318])
+                    .init(frequencies: frequencies[base       ..< base + 286], limit: 15),
+                    .init(frequencies: frequencies[base + 288 ..< base + 318], limit: 15)
                 )
                 // compute combined metatree 
                 let meta:
@@ -1351,7 +1370,7 @@ extension LZ77.Deflator.Dicing
                 let start:Int           = terms.startIndex + unit * i, 
                     range:Range<Int>    = start ..< min(start + unit, terms.endIndex)
                 let element:Element 
-                if score.dynamic < score.fixed && false
+                if score.dynamic < score.fixed
                 {
                     element = 
                     (
@@ -1492,7 +1511,7 @@ extension LZ77.Deflator.Dicing
             frequencies[.init(term.symbol)] += 1
         }
         
-        let metatree:LZ77.Huffman<UInt8>    = .init(frequencies: frequencies), 
+        let metatree:LZ77.Huffman<UInt8>    = .init(frequencies: frequencies, limit: 7), 
             mass:Int                        = metatree.mass(frequencies: frequencies)
         return (metatree, mass: mass, runliterals: r, distances: d, terms)
     }
