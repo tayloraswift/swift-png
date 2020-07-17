@@ -1398,6 +1398,10 @@ extension LZ77.Inflator
                 let end:Int = self.stream.output.endIndex + count
                 self.state = .blockUncompressed(final: final, end: end)
             }
+            
+            #if DUMP_LZ77_BLOCKS 
+            print("< \(compression)")
+            #endif 
         
         case .blockTables(final: let final, runliterals: let runliterals, distances: let distances):
             guard let (runliteral, distance):(LZ77.Huffman<UInt16>, LZ77.Huffman<UInt8>) = 
@@ -1704,6 +1708,10 @@ extension LZ77.Inflator.Stream
                 }
                 self.b += runliteral.length 
                 self.output.append(runliteral.literal)
+                
+                #if DUMP_LZ77_TERMS 
+                print("< literal(\(runliteral.literal))")
+                #endif 
             }
             else if runliteral.symbol == 256 
             {
@@ -1713,6 +1721,11 @@ extension LZ77.Inflator.Stream
                     return nil 
                 }
                 self.b += runliteral.length 
+                
+                #if DUMP_LZ77_TERMS 
+                print("< end-of-block\n")
+                #endif 
+                
                 return () 
             }
             else 
@@ -1761,6 +1774,10 @@ extension LZ77.Inflator.Stream
                 {
                     throw LZ77.DecompressionError.invalidStringReference
                 }
+                
+                #if DUMP_LZ77_TERMS 
+                print("< match(offset: \(-offset), run: \(count))")
+                #endif 
                 
                 self.output.expand(offset: offset, count: count)
                 self.b = b
