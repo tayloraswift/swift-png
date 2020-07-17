@@ -536,27 +536,47 @@ extension LZ77.Deflator.Window
             //  self.endIndex < 2
             let a:UInt8         = self[self.modular(front &- 1)].value, 
                 b:UInt8         = self[self.modular(front &- 2)].value
-            var best:(length:Int, distance:Int)
+            var best:(length:Int, distance:Int) = (length: .min, distance: 0)
             //  check for internal matches 
             //      A | A : A : A
-            if      self.endIndex > 0, 
+            if  self.endIndex > 0, 
                 buffer[0] == a, 
                 buffer[1] == a, 
                 buffer[2] == a 
             {
-                best = (length:    3, distance: 1)
+                var length:Int = 3
+                while length < limit, buffer[length] == a 
+                {
+                    length += 1
+                }
+                
+                if length > best.length 
+                {
+                    best = (length: length, distance: 1)
+                }
             }
             //  B : A | B : A : B
-            else if self.endIndex > 1, 
+            if  self.endIndex > 1, 
                 buffer[0] == b, 
                 buffer[1] == a, 
                 buffer[2] == b 
             {
-                best = (length:    3, distance: 2)
-            }
-            else 
-            {
-                best = (length: .min, distance: 3)
+                var length:Int = 3
+                while length < limit, buffer[length] == a 
+                {
+                    length += 1
+                    guard length < limit, buffer[length] == b 
+                    else 
+                    {
+                        break 
+                    } 
+                    length += 1
+                }
+                
+                if length > best.length 
+                {
+                    best = (length: length, distance: 2)
+                }
             }
             
             //  |<----- window ---->|<--- lookahead --->|
@@ -569,8 +589,8 @@ extension LZ77.Deflator.Window
             {
                 return best.length >= 3 ? best : nil 
             }
-            var distance:Int    = self.distance(from: current, to: front)
             
+            var distance:Int    = self.distance(from: current, to: front)
             while best.length  <= limit 
             {
                 let length:Int = 
