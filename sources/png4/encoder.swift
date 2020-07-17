@@ -316,7 +316,7 @@ extension PNG.Encoder
         }
     } 
     
-    private static
+    /* private static
     func score<C>(_ filtered:C) -> Int
         where C:Sequence, C.Element == UInt8
     {
@@ -324,6 +324,20 @@ extension PNG.Encoder
         {
             $0 &+ ($1.0 != $1.1 ? 1 : 0)
         }
+    } */
+    
+    // returns sum of squares of byte frequencies. this biases the score 
+    // towards scanlines with many repeated bytes
+    private static
+    func score<C>(_ filtered:C) -> Int
+        where C:Sequence, C.Element == UInt8
+    {
+        var frequencies:[Int] = .init(repeating: 0, count: 256)
+        for byte:UInt8 in filtered 
+        {
+            frequencies[.init(byte)] += 1
+        }
+        return -frequencies.reduce(0){ $0 + $1 * $1 }
     }
 }
 
