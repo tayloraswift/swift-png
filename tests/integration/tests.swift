@@ -225,12 +225,10 @@ extension Test
                 ]
             ),
             (
-                "large-images",
+                "general",
                 [
-                    "becky palette",
-                    "if red got the grammy",
-                    "taylor",
-                    "wildest dreams adam7"
+                    "color-photographic",
+                    "grayscale-photographic"
                 ]
             ),
         ]
