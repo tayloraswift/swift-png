@@ -584,15 +584,20 @@ extension LZ77.Deflator.Window
             //                      ~~~~~~~~~~~~
             //                         prefix
             let prefix:Prefix   = .init(buffer[0], buffer[1], buffer[2])
-            guard var current:UInt16 = self.head[prefix] 
-            else 
+            var distance:Int    = 0
+            var last:UInt16     = front, 
+                next:UInt16?    = self.head[prefix] 
+            while let current:UInt16 = next, best.length <= limit 
             {
-                return best.length >= 3 ? best : nil 
-            }
-            
-            var distance:Int    = self.distance(from: current, to: front)
-            while best.length  <= limit 
-            {
+                distance += self.distance(from: current, to: last)
+                guard distance < 1 << self.exponent 
+                else 
+                {
+                    break 
+                }
+                last = current 
+                next = self[current].next 
+                
                 let length:Int = 
                 {
                     (start:UInt16) in 
@@ -620,27 +625,14 @@ extension LZ77.Deflator.Window
                     return length
                 }(current)
                 
-                if length > best.length 
+                if  length     > best.length, 
+                    length - 2 > 2 * (.bitWidth - distance.leadingZeroBitCount - 2)
                 {
                     best = (length: length, distance: distance)
                 }
-                
-                guard let next:UInt16 = self[current].next 
-                else 
-                {
-                    break 
-                }
-                
-                distance += self.distance(from: next, to: current)
-                guard distance < 1 << self.exponent 
-                else 
-                {
-                    break 
-                }
-                current = next
             }
             
-            return best
+            return best.length >= 3 ? best : nil
         }
     }
 }
@@ -999,7 +991,7 @@ extension LZ77.Deflator.Stream
         while       self.input.count >= 258 || 
             (all && self.input.count !=   0)
         {
-            if self.terms.count >= 1 << 14 
+            if self.terms.count >= 1 << 15 
             {
                 return ()
             }

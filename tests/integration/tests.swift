@@ -225,10 +225,28 @@ extension Test
                 ]
             ),
             (
-                "general",
+                "general-v",
                 [
-                    "color-photographic",
-                    "grayscale-photographic"
+                    "v-grayscale-photographic",
+                    "v-grayscale-nonphotographic",
+                ]
+            ),
+            (
+                "general-rgb",
+                [
+                    "rgb-color-photographic",
+                    "rgb-grayscale-photographic",
+                    "rgb-color-nonphotographic",
+                    "rgb-grayscale-nonphotographic", 
+                ]
+            ),
+            (
+                "general-palette",
+                [
+                    "palette-color-photographic",
+                    "palette-grayscale-photographic",
+                    "palette-color-nonphotographic",
+                    "palette-grayscale-nonphotographic", 
                 ]
             ),
         ]
@@ -245,7 +263,7 @@ extension Test
     private static 
     func print(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) 
     {
-        let downsample:Int = max(1, size.x / 16)
+        let downsample:Int = min(max(1, size.x / 16), max(1, size.y / 16))
         for i:Int in stride(from: 0, to: size.y, by: downsample)
         {
             let line:String = stride(from: 0, to: size.x, by: downsample).map 
