@@ -954,6 +954,7 @@ extension LZ77.Deflator
     mutating 
     func push(_ data:[UInt8], last:Bool = false) 
     {
+        // print("out", data)
         // rebase input buffer 
         if !data.isEmpty 
         {
@@ -998,7 +999,7 @@ extension LZ77.Deflator.Stream
         while       self.input.count >= 258 || 
             (all && self.input.count !=   0)
         {
-            if self.terms.count >= 4096 
+            if self.terms.count >= 1 << 14 
             {
                 return ()
             }
@@ -1027,8 +1028,10 @@ extension LZ77.Deflator.Stream
     mutating 
     func block(last:Bool) 
     {
-        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 16)
+        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 10)
         self.block(dicing.startIndex, dicing: dicing, last: last)
+        // empty literal buffer 
+        self.terms.removeAll(keepingCapacity: true)
     }
     
     private mutating 
@@ -1099,8 +1102,6 @@ extension LZ77.Deflator.Stream
                 self.output.append(bits.distance,          count: codeword.distance.extra)
             }
         }
-        // empty literal buffer 
-        self.terms.removeAll(keepingCapacity: true)
         // end-of-block symbol 
         let end:LZ77.Codeword = semistatic[runliteral: 256]
         self.output.append(end.bits, count: end.length)
@@ -1240,8 +1241,6 @@ extension LZ77.Deflator.Dicing
     
     init(_ terms:[LZ77.Deflator.Term], unit:Int) 
     {
-        //  algorithm is similar to segmented least squares,, should run in O(n^2)
-        // 
         //  k := `unit`
         //  n := `units`
         // 
@@ -1330,99 +1329,183 @@ extension LZ77.Deflator.Dicing
                     continue 
                 }
             }
-            // register the eob code, since it isn’t explicitly represented 
-            frequencies[base + 256] = 1
             
-            // construct huffman trees for base cases 
-            for i:Int in count - units ..< count 
+            // register the eob code, since it isn’t explicitly represented 
+            for k:Int in count - units ..< count 
             {
-                let base:Int = 320 * i
-                let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
-                (
-                    .init(frequencies: frequencies[base       ..< base + 286], limit: 15),
-                    .init(frequencies: frequencies[base + 288 ..< base + 318], limit: 15)
-                )
-                // compute combined metatree 
-                let meta:
-                (
-                    tree:LZ77.Huffman<UInt8>, 
-                    mass:Int, 
-                    runliterals:Int, 
-                    distances:Int,
-                    terms:[LZ77.Deflator.Term.Meta]
-                ) 
-                = 
-                Self.metatree(for: tree)
-                
-                let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19) 
+                frequencies[320 * k + 256] = 1
+            }
+            // derive frequency counts for multi-unit intervals 
+            for order:Int in 1 ..< units
+            {
+                for a:Int in 0 ..< units - order
                 {
-                    $0.initialize(repeating: 0)
-                    for (length, level):(UInt16, Range<Int>) in zip(1 ... 8, meta.tree.levels)
+                    let b:Int = a + order, 
+                        c:Int = b + 1
+                    
+                    let base:(i:Int, j:Int, k:Int) = 
+                    (
+                        320 * Self.linear(index: (a, b), units: units),
+                        320 * Self.linear(index: (b, c), units: units),
+                        320 * Self.linear(index: (a, c), units: units)
+                    )
+                    for s:Int in 0 ..< 318 
                     {
-                        for symbol:UInt8 in meta.tree.symbols[level] 
-                        {
-                            let z:Int = 
-                            [
-                                3, 17, 15, 13, 11,  9,  7,  5, 
-                                4,  6,  8, 10, 12, 14, 16, 18, 
-                                0, 1, 2
-                            ][.init(symbol)]
-                            
-                            $0[z] = length
-                        }
+                        frequencies[base.k + s] = 
+                            frequencies[base.j + s] + frequencies[base.i + s]
                     }
-                    // max(4, _) because HCLEN cannot be less than 4
-                    $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
+                    // reset eob frequency to 1 
+                    frequencies[base.k + 256] = 1
                 }
-                
-                // compute message lengths 
-                let score:(dynamic:Int, fixed:Int)
-                score.dynamic = 14 + 3 * codelengths.count + meta.mass + 
-                    tree.runliteral.mass(frequencies: frequencies[base       ..< base + 286]) + 
-                    tree.distance.mass(  frequencies: frequencies[base + 288 ..< base + 318])
-                score.fixed = 
-                    8 * frequencies[base       ..< base + 144].reduce(0, +) + 
-                    9 * frequencies[base + 144 ..< base + 256].reduce(0, +) + 
-                    7 * frequencies[base + 256 ..< base + 280].reduce(0, +) + 
-                    8 * frequencies[base + 280 ..< base + 286].reduce(0, +) + 
-                    5 * frequencies[base + 288 ..< base + 318].reduce(0, +)
-                
-                let start:Int           = terms.startIndex + unit * i, 
-                    range:Range<Int>    = start ..< min(start + unit, terms.endIndex)
-                let element:Element 
-                if score.dynamic < score.fixed
+            }
+            
+            for order:Int in 0 ..< units
+            {
+                for (a, b):(Int, Int) in 
+                    zip(0 ..< units - order, order + 1 ..< units + 1) 
                 {
-                    element = 
-                    (
-                        weight: score.dynamic, 
-                        node:  .leaf(terms: range, dynamic:
-                        (
-                            codelengths:    codelengths,
-                            runliterals:    meta.runliterals, 
-                            distances:      meta.distances, 
-                            metaterms:      meta.terms, 
-                            tree:           
-                            (
-                                runliteral: tree.runliteral, 
-                                distance:   tree.distance,
-                                meta:       meta.tree
-                            )
-                        ))
-                    )
+                    let (i, element):(Int, Element) = Self.fill(a, b, 
+                        unit: unit, units: units, terms: terms.indices, 
+                        frequencies: frequencies, memo: $0)
+                    
+                    (memo + i).initialize(to: element)
                 }
-                else 
-                {
-                    element = 
-                    (
-                        weight: score.fixed, 
-                        node:  .leaf(terms: range, dynamic: nil)
-                    )
-                }
-                
-                (memo + i).initialize(to: element)
             }
             
             $1 = count 
+        }
+    }
+    
+    private static 
+    func linear(index:(a:Int, b:Int), units:Int) -> Int 
+    {
+        let u:Int = units + index.a - index.b
+        return (u * u + u) >> 1 + index.a
+    }
+    private static 
+    func fill<C>(_ a:Int, _ b:Int, unit:Int, units:Int, terms:Range<Int>, 
+        frequencies:[Int], memo:C) 
+        -> (index:Int, element:Element) 
+        where C:RandomAccessCollection, C.Index == Int, C.Element == Element
+    {
+        let k:Int = Self.linear(index: (a, b), units: units)
+        // print("\((a, b)) -> \(k)")
+        
+        let base:Int = 320 * k
+        let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
+        (
+            .init(frequencies: frequencies[base       ..< base + 286], limit: 15),
+            .init(frequencies: frequencies[base + 288 ..< base + 318], limit: 15)
+        )
+        // compute combined metatree 
+        let meta:
+        (
+            tree:LZ77.Huffman<UInt8>, 
+            mass:Int, 
+            runliterals:Int, 
+            distances:Int,
+            terms:[LZ77.Deflator.Term.Meta]
+        ) 
+        = 
+        Self.metatree(for: tree)
+        
+        let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19) 
+        {
+            $0.initialize(repeating: 0)
+            for (length, level):(UInt16, Range<Int>) in zip(1 ... 8, meta.tree.levels)
+            {
+                for symbol:UInt8 in meta.tree.symbols[level] 
+                {
+                    let z:Int = 
+                    [
+                        3, 17, 15, 13, 11,  9,  7,  5, 
+                        4,  6,  8, 10, 12, 14, 16, 18, 
+                        0, 1, 2
+                    ][.init(symbol)]
+                    
+                    $0[z] = length
+                }
+            }
+            // max(4, _) because HCLEN cannot be less than 4
+            $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
+        }
+        
+        // compute message lengths 
+        let score:(dynamic:Int, fixed:Int)
+        score.dynamic = 14 + 3 * codelengths.count + meta.mass + 
+            tree.runliteral.mass(frequencies: frequencies[base       ..< base + 286]) + 
+            tree.distance.mass(  frequencies: frequencies[base + 288 ..< base + 318])
+        score.fixed = 
+            8 * frequencies[base       ..< base + 144].reduce(0, +) + 
+            9 * frequencies[base + 144 ..< base + 256].reduce(0, +) + 
+            7 * frequencies[base + 256 ..< base + 280].reduce(0, +) + 
+            8 * frequencies[base + 280 ..< base + 286].reduce(0, +) + 
+            5 * frequencies[base + 288 ..< base + 318].reduce(0, +)
+        
+        if b - a > 1 
+        {
+            // recursive case 
+            var minimum:(i:(Int, Int), score:Int) = ((-1, -1), .max)
+            for partition:Int in a + 1 ..< b 
+            {
+                let i:(Int, Int) = 
+                (
+                    Self.linear(index: (a, partition   ), units: units),
+                    Self.linear(index: (   partition, b), units: units)
+                )
+                
+                let score:Int = memo[i.0].weight + memo[i.1].weight
+                if score < minimum.score 
+                {
+                    minimum = (i: i, score: score)
+                }
+            }
+            
+            if  minimum.score < score.dynamic, 
+                minimum.score < score.fixed 
+            {
+                print("[\(a) ..< \(b)]: split (\(minimum.score)) is BETTER than whole (\(min(score.dynamic, score.fixed)))")
+                return (index: k, element: 
+                (
+                    weight: minimum.score, 
+                    node:  .interior(prefix: minimum.i.0, suffix: minimum.i.1)
+                ))
+            }
+            else 
+            {
+                print("[\(a) ..< \(b)]: split (\(minimum.score)) is NOT better than whole (\(min(score.dynamic, score.fixed)))")
+            }
+        }
+        // base case
+        let start:Int   =     terms.startIndex + unit * a, 
+            end:Int     = min(terms.startIndex + unit * b, terms.endIndex)
+        if score.dynamic < score.fixed
+        {
+            return (index: k, element: 
+            (
+                weight: score.dynamic, 
+                node:  .leaf(terms: start ..< end, dynamic:
+                (
+                    codelengths:    codelengths,
+                    runliterals:    meta.runliterals, 
+                    distances:      meta.distances, 
+                    metaterms:      meta.terms, 
+                    tree:           
+                    (
+                        runliteral: tree.runliteral, 
+                        distance:   tree.distance,
+                        meta:       meta.tree
+                    )
+                ))
+            ))
+        }
+        else 
+        {
+            return (index: k, element: 
+            (
+                weight: score.fixed, 
+                node:  .leaf(terms: start ..< end, dynamic: nil)
+            ))
         }
     }
     private static 
