@@ -612,7 +612,7 @@ extension PNG.Decoder
                     }
                     
                     #if DUMP_FILTERED_SCANLINES
-                    print("scanline(\(scanline[0]))[\(scanline.dropFirst().prefix(8).map(String.init(_:)).joined(separator: ", ")) ... ]")
+                    print("< scanline(\(scanline[0]))[\(scanline.dropFirst().prefix(8).map(String.init(_:)).joined(separator: ", ")) ... ]")
                     #endif 
                     
                     Self.defilter(&scanline, last: last, delay: delay)
@@ -642,7 +642,7 @@ extension PNG.Decoder
                 }
                 
                 #if DUMP_FILTERED_SCANLINES
-                print("scanline(\(scanline[0]))[\(scanline.dropFirst().prefix(8).map(String.init(_:)).joined(separator: ", ")) ... ]")
+                print("< scanline(\(scanline[0]))[\(scanline.dropFirst().prefix(8).map(String.init(_:)).joined(separator: ", ")) ... ]")
                 #endif 
                 
                 Self.defilter(&scanline, last: last, delay: delay)

@@ -6,13 +6,13 @@ extension Test
     var cases:[(name:String, function:Function)] 
     {
         [
-            ("decode bitstream",            .void(Self.decodeBitstream)),
-            ("encode bitstream",            .void(Self.encodeBitstream)),
-            ("match lz77",                  .void(Self.matchLZ77)),
-            ("compress swift-zlib",         .int(Self.compressZ(count:),  [5, 15, 100, 200, 2000, 5000])),
+            ("decode-bitstream",            .void(Self.decodeBitstream)),
+            ("encode-bitstream",            .void(Self.encodeBitstream)),
+            ("match-lz77",                  .void(Self.matchLZ77)),
+            ("compress-swift-z",            .int(Self.compressZ(count:),  [5, 15, 100, 200, 2000, 5000])),
             ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
-            ("premultiplication (8-bit)",   .void(Self.premultiplication8)),
-            ("premultiplication (16-bit)",  .void(Self.premultiplication16)),
+            ("premultiplication-8-bit",     .void(Self.premultiplication8)),
+            ("premultiplication-16-bit",    .void(Self.premultiplication16)),
         ]
     }
     static 
@@ -131,14 +131,14 @@ extension Test
             [0, 0, 0, 0, 1, 0, 0, 1, 0, 2, 3, 2, 1, 2, 3, 3, 1, 5], 
             [1, 1, 1, 5, 1, 3, 2, 0, 1, 4, 4, 2, 1]
         ]
-        var input:LZ77.Deflator.In  = .init()
-        var output:[[UInt8]]        = []
-        for segment:[UInt8] in segments 
+        var input:LZ77.Deflator.In      = .init()
+        var window:LZ77.Deflator.Window = .init(exponent: 4)
+        var output:[[UInt8]]            = []
+        for (s, segment):(Int, [UInt8]) in segments.enumerated()
         {
             input.enqueue(contentsOf: segment)
             
-            var window:LZ77.Deflator.Window = .init(exponent: 4)
-            while input.count >= 10
+            while input.count > (s == segments.count - 1 ? 0 : 10)
             {
                 if let match:(length:Int, distance:Int) = window.match(input) 
                 {
@@ -171,28 +171,22 @@ extension Test
             [2, 2, 2], 
             [0], 
             [1], 
-            [2], 
-            [0, 1, 2], 
+            [2, 0, 1, 2], 
             [2], 
             [0], 
             [0, 0, 0], 
             [1], 
             [0, 0, 1, 0], 
-            [2], 
-            [3], 
-            [2], 
-            [1], 
-            [2], 
-            [3], 
-            [3], 
-            [1], 
-            [5], 
-            [1], 
-            [1], 
-            [1, 5, 1],
+            [2], [3], [2], [1], 
+            [2], [3], [3], [1], 
+            [5], [1], [1], [1], 
+            [5], [1], [3], [2], 
+            [0], [1], [4], [4], 
+            [2], [1],
         ] 
         else 
         {
+            print(output)
             return .failure(.init(message: "compressed lz77 tokens do not match expected output"))
         }
 
