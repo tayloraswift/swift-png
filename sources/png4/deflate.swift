@@ -484,30 +484,30 @@ extension LZ77.Deflator.Window
     {
         //  a   b   c   d   e  e+1
         //  [   :   |   :   :   ]
-        //  ~~~~~~~~~~~~ remove
-        //  add     ~~~~~~~~~~~~
+        //  ^~~~~~~~~~~~^~~~~~~~~~~~
+        //  add         remove
         let c:UInt16        = self.modular(self.endIndex)
-        self.endIndex      += 1
+        self[c]             = .init(value: value)
         
+        self.endIndex      += 1
         guard self.endIndex > 2 
         else 
         {
-            self[c]         = .init(value: value)
             return 
         }
         
         let a:UInt16        = self.modular(c &- 2),
             b:UInt16        = self.modular(c &- 1)
         let new:Prefix      = .init(self[a].value, self[b].value, value)
-        if self.endIndex    > 1 << self.exponent 
+        if self.endIndex   >= 1 << self.exponent 
         {
             // remove overwritten entry 
             let d:UInt16    = self.modular(c &+ 1),
-                e:UInt16    = self.modular(c &+ 2)
-            let old:Prefix  = .init(self[c].value, self[d].value, self[e].value)
+                e:UInt16    = self.modular(c &+ 2),
+                f:UInt16    = self.modular(c &+ 3)
+            let old:Prefix  = .init(self[d].value, self[e].value, self[f].value)
             self.head[old]  = nil 
         }
-        self[c]             = .init(value: value)
         if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
         {
             // we know `m` is within the window range, because we preemptively 
