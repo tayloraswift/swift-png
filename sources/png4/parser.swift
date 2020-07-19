@@ -1311,7 +1311,7 @@ extension PNG.SuggestedPalette
         case .rgba16(let entries):  tail = 10 * entries.count 
         }
         
-        return .init(unsafeUninitializedCapacity: head + 1 + tail) 
+        return .init(unsafeUninitializedCapacity: head + 2 + tail) 
         {
             for (i, u):(Int, Unicode.Scalar) in 
                 zip($0.indices, self.name.unicodeScalars)
@@ -1323,12 +1323,13 @@ extension PNG.SuggestedPalette
             switch self.entries 
             {
             case .rgba8( let entries):  
+                $0[head + 1] = 8
                 for (base, (color, frequency)):
                 (
                     Int, 
                     ((r:UInt8,  g:UInt8,  b:UInt8,  a:UInt8), UInt16)
                 ) 
-                    in zip(stride(from: head + 1, to: $0.endIndex, by: 6), entries)
+                    in zip(stride(from: head + 2, to: $0.endIndex, by: 6), entries)
                 {
                     $0[base    ]    = color.r
                     $0[base + 1]    = color.g
@@ -1337,12 +1338,13 @@ extension PNG.SuggestedPalette
                     $0.store(frequency, asBigEndian: UInt16.self, at: base + 4)
                 }
             case .rgba16(let entries): 
+                $0[head + 1] = 16
                 for (base, (color, frequency)):
                 (
                     Int, 
                     ((r:UInt16, g:UInt16, b:UInt16, a:UInt16), UInt16)
                 ) 
-                    in zip(stride(from: head + 1, to: $0.endIndex, by: 10), entries)
+                    in zip(stride(from: head + 2, to: $0.endIndex, by: 10), entries)
                 {
                     $0.store(color.r,   asBigEndian: UInt16.self, at: base    )
                     $0.store(color.g,   asBigEndian: UInt16.self, at: base + 2)
