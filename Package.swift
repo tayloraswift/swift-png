@@ -28,6 +28,7 @@ let package = Package(
         
         .executable(name: "unit-test",          targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",   targets: ["PNGIntegrationTests"]),
+        .executable(name: "compression-test",   targets: ["PNGCompressionTests"]),
         
         .executable(name: "benchmarks",         targets: ["PNGBenchmarks"]), 
         .executable(name: "benchmarks4",        targets: ["PNGBenchmarks4"]), 
@@ -39,6 +40,7 @@ let package = Package(
         
         .target(name: "PNGUnitTests",           dependencies: ["PNG4"], path: "tests/unit"),
         .target(name: "PNGIntegrationTests",    dependencies: ["PNG4"], path: "tests/integration"),
+        .target(name: "PNGCompressionTests",    dependencies: ["PNG4"], path: "tests/compression"),
         .target(name: "PNGBenchmarks",          dependencies: ["PNG"],  path: "benchmarks"), 
         .target(name: "PNGBenchmarks4",         dependencies: ["PNG4"], path: "benchmarks4"), 
         .target(name: "PNGExamples",            dependencies: ["PNG"],  path: "examples")

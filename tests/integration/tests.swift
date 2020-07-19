@@ -224,31 +224,6 @@ extension Test
                     "z09n2c08"
                 ]
             ),
-            (
-                "general-v",
-                [
-                    "v-grayscale-photographic",
-                    "v-grayscale-nonphotographic",
-                ]
-            ),
-            (
-                "general-rgb",
-                [
-                    "rgb-color-photographic",
-                    "rgb-grayscale-photographic",
-                    "rgb-color-nonphotographic",
-                    "rgb-grayscale-nonphotographic", 
-                ]
-            ),
-            (
-                "general-palette",
-                [
-                    "palette-color-photographic",
-                    "palette-grayscale-photographic",
-                    "palette-color-nonphotographic",
-                    "palette-grayscale-nonphotographic", 
-                ]
-            ),
         ]
         
         return  suite.map 
