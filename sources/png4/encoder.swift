@@ -338,7 +338,7 @@ extension PNG.Encoder
             frequencies[.init(byte)] += 1
         }
         return -frequencies.reduce(0){ $0 + $1 * $1 }
-    }
+    } 
     /* private static
     func score<C>(_ filtered:C) -> Int
         where C:Sequence, C.Element == UInt8
