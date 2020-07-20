@@ -10,6 +10,16 @@ extension String
     {
         string + .init(repeating: " ", count: count - string.count)
     }
+    
+    init(_ x:Double, places:Int)
+    {
+        let p:Int = (0 ..< places).reduce(1){ (a, _) in a * 10 }
+        let i:Int = .init((x * .init(p)).rounded())
+        let (a, b):(quotient:Int, remainder:Int) = i.quotientAndRemainder(dividingBy: p) 
+        
+        let tail:String = "\(b)"
+        self = "\(a).\(String.init(repeating: "0", count: places - tail.count) + tail)"
+    }
 }
 enum Highlight 
 {

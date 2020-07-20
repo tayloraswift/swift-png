@@ -1304,6 +1304,23 @@ extension LZ77
             var meta:Semistatic.Meta 
             var output:Out
             
+            #if DUMP_LZ77_BLOCKS 
+            // histogram, no match can ever cost more than 17 bits per literal
+            var statistics: 
+            (
+                literals:[Int],
+                matches:[Int], 
+                symbols:[Int]
+            ) 
+            = 
+            (
+                literals:   .init(repeating: 0, count: 16), 
+                matches:    .init(repeating: 0, count: 17), 
+                // 2d symbol histogram (run, distance) 
+                symbols:    .init(repeating: 0, count: 29 * 30)
+            )
+            #endif
+            
             init() 
             {
                 self.b          = 0
@@ -1712,6 +1729,9 @@ extension LZ77.Inflator.Stream
                 #if DUMP_LZ77_TERMS 
                 print("< literal(\(runliteral.literal))")
                 #endif 
+                #if DUMP_LZ77_BLOCKS 
+                self.statistics.literals[runliteral.length] += 1
+                #endif
             }
             else if runliteral.symbol == 256 
             {
@@ -1725,6 +1745,9 @@ extension LZ77.Inflator.Stream
                 #if DUMP_LZ77_TERMS 
                 print("< end-of-block\n")
                 #endif 
+                #if DUMP_LZ77_BLOCKS 
+                self.statistics.literals[runliteral.length] += 1
+                #endif
                 
                 return () 
             }
@@ -1778,6 +1801,14 @@ extension LZ77.Inflator.Stream
                 #if DUMP_LZ77_TERMS 
                 print("< match(offset: \(-offset), run: \(count))")
                 #endif 
+                #if DUMP_LZ77_BLOCKS 
+                let n:Int = 29 * .init(distance.decade) + .init(runliteral.symbol - 257)
+                let m:Int = 
+                    runliteral.length + composite.count.extra + 
+                    distance.length   + composite.offset.extra
+                self.statistics.symbols[n]          += 1
+                self.statistics.matches[m / count]  += 1
+                #endif
                 
                 self.output.expand(offset: offset, count: count)
                 self.b = b
@@ -1804,6 +1835,19 @@ extension LZ77.Inflator.Stream
     mutating 
     func checksum() throws -> Void?
     {
+        #if DUMP_LZ77_BLOCKS 
+        let efficiency:Double = self.statistics.literals.enumerated().reduce(0.0){ $0 + .init($1.0 * $1.1) } / 
+            .init(self.statistics.literals.reduce(0, +))
+        print("> average literal coding efficiency: \(efficiency)")
+        print("> match coding efficiency histogram:")
+        for (bin, frequency):(Int, Int) in self.statistics.matches.enumerated()
+        {
+            print("    [\(bin) ..< \(bin + 1) bits]: \(frequency)")
+        }
+        print("> run-distance symbol histogram:")
+        print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
+        #endif
+        
         // skip to next byte boundary, read 4 bytes 
         let boundary:Int = (self.b + 7) & ~7
         guard boundary + 32 <= self.input.count 

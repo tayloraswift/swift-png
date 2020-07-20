@@ -138,31 +138,39 @@ extension Test
 
         do
         {
-            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.png)
+            guard let baseline:(image:PNG.Data.Rectangular, size:Int) = 
+                (try System.File.Source.open(path: path.png) 
+            {
+                (try .decompress(stream: &$0), $0.count!)
+            })
             else
             {
                 return .failure(.init(message: "failed to open file '\(path.png)'"))
             }
             
-            try rectangular.compress(path: path.out)
+            try baseline.image.compress(path: path.out)
             
-            guard let recompressed:PNG.Data.Rectangular = try .decompress(path: path.out)
+            guard let output:(image:PNG.Data.Rectangular, size:Int) = 
+                (try System.File.Source.open(path: path.out) 
+            {
+                (try .decompress(stream: &$0), $0.count!)
+            })
             else
             {
                 return .failure(.init(message: "failed to open file '\(path.out)'"))
             }
 
-            let image:[PNG.RGBA<UInt16>] = recompressed.unpack(as: PNG.RGBA<UInt16>.self)
-            
-            Self.print(image: image, size: recompressed.size)
-            for text in recompressed.metadata.text 
-            {
-                Swift.print(text)
-            }
-            Swift.print()
+            let pixels:[PNG.RGBA<UInt16>] = baseline.image.unpack(as: PNG.RGBA<UInt16>.self)
+            let filesize:(baseline:Double, output:Double) = 
+            (
+                .init(baseline.size),
+                .init(output.size)
+            )
+            Self.print(image: pixels, size: baseline.image.size)
+            Swift.print("baseline: \(String.init(filesize.baseline / 1024.0, places: 4)) KB, output: \(String.init(filesize.output / 1024.0, places: 4)) KB, ratio: \(String.init(filesize.output / filesize.baseline, places: 4))")
 
             for (i, pair):(Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
-                zip(rectangular.unpack(as: PNG.RGBA<UInt16>.self), image).enumerated()
+                zip(output.image.unpack(as: PNG.RGBA<UInt16>.self), pixels).enumerated()
             {
                 guard pair.0 == pair.1
                 else

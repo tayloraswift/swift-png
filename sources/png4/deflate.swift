@@ -625,8 +625,9 @@ extension LZ77.Deflator.Window
                     return length
                 }(current)
                 
+                let e:Int = .bitWidth - distance.leadingZeroBitCount - 1
                 if  length     > best.length, 
-                    length - 2 > 2 * (.bitWidth - distance.leadingZeroBitCount - 2)
+                    length     > 3 * e
                 {
                     best = (length: length, distance: distance)
                 }
@@ -1073,12 +1074,6 @@ extension LZ77.Deflator.Stream
             }
         }
         
-        #if DUMP_LZ77_BLOCKS 
-        // histogram, no match can ever cost more than 17 bits per literal
-        var literals:[Int] = .init(repeating: 0, count: 16),
-            matches:[Int]  = .init(repeating: 0, count: 17)
-        #endif
-        
         for term:LZ77.Deflator.Term in self.terms[range]
         {
             let symbol:(runliteral:UInt16, distance:UInt8) = term.symbol 
@@ -1098,41 +1093,8 @@ extension LZ77.Deflator.Stream
                 self.output.append(bits.run,               count: codeword.runliteral.extra)
                 self.output.append(codeword.distance.bits, count: codeword.distance.length)
                 self.output.append(bits.distance,          count: codeword.distance.extra)
-                
-                #if DUMP_LZ77_BLOCKS 
-                let n:Int = .init(bits.run +
-                    LZ77.Composites[run: .init(truncatingIfNeeded: symbol.runliteral)].base)
-                let m:Int  = 
-                    codeword.runliteral.length + 
-                    codeword.runliteral.extra + 
-                    codeword.distance.length + 
-                    codeword.distance.extra
-                matches[m / n] += 1
-                #endif
-            }
-            else 
-            {
-                #if DUMP_LZ77_BLOCKS 
-                literals[codeword.runliteral.length] += 1
-                #endif
             }
         }
-        
-        #if DUMP_LZ77_BLOCKS 
-        let efficiency:Double = literals.enumerated().reduce(0.0){ $0 + .init($1.0 * $1.1) } / 
-            .init(literals.reduce(0, +))
-        print("> average literal coding efficiency: \(efficiency)")
-        print("> literal coding efficiency histogram:")
-        for (bin, frequency):(Int, Int) in literals.enumerated().dropFirst() 
-        {
-            print("    [\(bin) bits]: \(frequency)")
-        }
-        print("> match coding efficiency histogram:")
-        for (bin, frequency):(Int, Int) in matches.enumerated()
-        {
-            print("    [\(bin) ..< \(bin + 1) bits]: \(frequency)")
-        }
-        #endif
         
         // end-of-block symbol 
         let end:LZ77.Codeword = semistatic[runliteral: 256]
