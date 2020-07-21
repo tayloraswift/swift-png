@@ -324,6 +324,26 @@ If we look at the histograms for the monochrome RGB16 images, we can see that th
 >
 > A similar effect happens in the monochrome RGBA16 images, but it is far less pronounced.
 
+### iv.iii. harmonic matches 
+
+A similar but unrelated phenomenon called **harmonic matching** also takes place when compressing monochrome RGB and RGBA images. While internal matches are references to a sequence within the same logical pixel, harmonic matches are references to entire, preceeding pixels.
+
+Harmonic matches occur because PNG filters have a set [delay](http://www.libpng.org/pub/png/spec/1.2/PNG-Filters.html) determined by the logical stride of the image pixels. For an 8-bit RGB image, this delay is three bytes long. For a 16-bit RGBA image, the filter delay is eight bytes long, and so forth. This filter delay tends to create repetitions in the filtered data at integer multiples of the delay length. We can think of this length as the natural wavelength of the PNG image, which creates clusters of matches at certain lengths and offsets. 
+
+We can observe these spectral patterns in the symbol histograms. For example, we can see in the histograms from the last subsection that the column for length decade 3 contains many more matches than either of the adjacent columns. It is no coincidence that length decade 3 corresponds to a match length of 6 bytes, which is the natural wavelength of a 16-bit RGB image. In fact, we can observe secondary peaks in the columns for length decades 8, 11, and 13. These decades contain matches of length 12, 18, and 24, respectively, all of which are integer multiples of 6. Harmonic banding also happens along the vertical (match offset) axis — we can observe a disproportionately high match density in rows 4, 6, and 8, which correspond to offsets of 6, 12, and 18 and 24 (both in decade 8). [Signal aliasing](https://en.wikipedia.org/wiki/Aliasing) creates additional striations in distance decades 10, 12, 14, 16, and so forth.
+
+The following symbol histogram contains an very pronounced example of harmonic banding. It was created from an 8-bit RGBA image, which has a natural wavelength of four bytes. The striations gradually blend together in the higher length decades (horizontal axis) because they encode increasingly larger ranges of length values. The same effect happens in the higher distance decades (vertical axis), but here, the 1-byte staggering from the filter code at the beginning of each scanline also contributes to spectral broadening.
+
+![Symbol histogram containing highly visible harmonic bands](histogram-iv-3.png)
+
+> A symbol histogram from the test image `rgba8-monochrome-nonphotographic.png`, compressed by Swift *PNG*, with match thresholding turned off. The histogram from the same image compressed with *libpng*/*zlib* does not contain the same striations, which is why the Swift *PNG* version is so much smaller (ratio = 0.8584).
+
+Harmonic matches are easiest to see in monochrome RGB/RGBA images, but they also occur in full-color images. Match lengths generally don’t fall on integer multiples of the image wavelength, since full-color images lack the repeated samples that monochrome images have, but match offsets still tend towards those frequencies, since PNG scanline filtering is still reducing the entropy in those frequencies.
+
+![Symbol histogram containing less-visible harmonic bands](histogram-iv-4.png)
+
+> A symbol histogram from the test image `rgb8-color-nonphotographic.png`, compressed by Swift *PNG*, with match thresholding turned off. It has visible harmonic banding in the vertical (distance) direction, but not the horizontal (length) direction.
+
 ## *further reading* 
 
 1. [PNG tech](http://optipng.sourceforge.net/pngtech/)
