@@ -102,7 +102,7 @@ In general:
 
 ## ii. naïve implementation
 
-I based this implementation on the recommendations of the original PNG and *DEFLATE* specifications. For filter selection, it uses a heuristic that minimizes the sum of absolute values of the filtered scanline. It performs non-greedy LZ77 compression with a backtracking limit of 1 byte. (LZ77 dictionaries have the [*suffix property*](https://scholar.acadiau.ca/islandora/object/theses:625), so you only need to backtrack once to get optimal output.) For entropic partitioning, it emits *DEFLATE* blocks at fixed intervals of 32K *DEFLATE* terms each.
+I based this implementation on the recommendations of the original PNG and *DEFLATE* specifications. For filter selection, it uses a heuristic that minimizes the **sum of absolute values** of the filtered scanline. It performs non-greedy LZ77 compression with a backtracking limit of 1 byte. (LZ77 dictionaries have the [*suffix property*](https://scholar.acadiau.ca/islandora/object/theses:625), so you only need to backtrack once to get optimal output.) For entropic partitioning, it emits *DEFLATE* blocks at fixed intervals of 32K *DEFLATE* terms each.
 
 To summarize:
 
@@ -146,6 +146,93 @@ The sizes of the Swift *PNG* output images under this implementation are given b
 | `rgba16-color-photographic`           | 506.2188 KB   | 519.5957 KB   | **1.0264** |
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 149.7783 KB   | **1.0656** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 401.6504 KB   | **1.0426** |
+
+Most of the test images compress slightly worse than the baseline. (It would be very weird if a naïve implementation produced *better* output than the baseline.) A few of them — namely the indexed images and some of the monochrome images that were saved in an RGB or RGBA format — compress significantly better than the baseline. We’ll see later why that happened.
+
+## iii. improvement: better filter heuristics 
+
+The filter selection heuristic is the only part of the compression pipeline that is under the control of the PNG codec if it does not also implement its own *DEFLATE*. So it’s a common starting point for improving PNG compression. 
+
+Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum intervals** selector. It minimizes the number of byte changes in the filtered scanline, so it prefers data that looks like `[5, 5, 5, 5, 5, 5, 6, 6, 6, 6]`, whereas the absolute values selector would prefer data that looks like `[0, 1, 0, 1, 0, 1, 1, 0, 1, 0]`.
+
+| Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
+| --------- | -------------- | ------- | ----- |
+| Intervals | Non-greedy | All allowed | Fixed-length blocks |
+
+| Image                                 | Baseline      | Swift *PNG*   | Ratio      |
+| ------------------------------------- | ------------- | ------------- | ---------- |
+| `v8-monochrome-photographic`          | 58.3428 KB    | 74.3691 KB    | **1.2747** |
+| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 63.5762 KB    | **1.3509** |
+| `v16-monochrome-photographic`         | 172.1055 KB   | 172.8584 KB   | **1.0044** |
+| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 121.7344 KB   | **1.0104** |
+|   |   |   |   |
+| `va8-monochrome-photographic`         | 74.4922 KB    | 76.9248 KB    | **1.0327** |
+| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 61.3496 KB    | **1.0388** |
+| `va16-monochrome-photographic`        | 204.9824 KB   | 223.3369 KB   | **1.0895** |
+| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 147.2939 KB   | **1.0479** |
+|   |   |   |   |
+| `indexed8-monochrome-photographic`    | 80.0918 KB    | 75.0986 KB    | **0.9377** |
+| `indexed8-color-photographic`         | 63.9521 KB    | 66.5498 KB    | **1.0406** |
+| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 62.6807 KB    | **1.0206** |
+| `indexed8-color-nonphotographic`      | 42.4766 KB    | 45.5898 KB    | **1.0733** |
+|   |   |   |   |
+| `rgb8-monochrome-photographic`        | 89.8662 KB    | 119.0811 KB   | **1.3251** |
+| `rgb8-color-photographic`             | 170.2129 KB   | 185.5430 KB   | **1.0901** |
+| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 96.4775 KB    | **1.2891** |
+| `rgb8-color-nonphotographic`          | 127.5342 KB   | 145.6641 KB   | **1.1422** |
+| `rgb16-monochrome-photographic`       | 370.2275 KB   | 228.5674 KB   | **0.6174** |
+| `rgb16-color-photographic`            | 466.5859 KB   | 451.0078 KB   | **0.9666** |
+| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 160.9482 KB   | **0.6752** |
+| `rgb16-color-nonphotographic`         | 356.6924 KB   | 360.0156 KB   | **1.0093** |
+|   |   |   |   |
+| `rgba8-monochrome-photographic`       | 99.1416 KB    | 87.2051 KB    | **0.8796** |
+| `rgba8-color-photographic`            | 191.9307 KB   | 209.5791 KB   | **1.0920** |
+| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 70.7471 KB    | **0.8614** |
+| `rgba8-color-nonphotographic`         | 143.5771 KB   | 160.1768 KB   | **1.1156** |
+| `rgba16-monochrome-photographic`      | 404.8105 KB   | 318.9385 KB   | **0.7879** |
+| `rgba16-color-photographic`           | 506.2188 KB   | 506.1338 KB   | **0.9998** |
+| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 147.2939 KB   | **1.0479** |
+| `rgba16-color-nonphotographic`        | 385.2471 KB   | 399.4443 KB   | **1.0369** |
+
+
+| Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
+| --------- | -------------- | ------- | ----- |
+| Squared frequencies | Non-greedy | All allowed | Fixed-length blocks |
+
+| Image                                 | Baseline      | Swift *PNG*   | Ratio      |
+| ------------------------------------- | ------------- | ------------- | ---------- |
+| `v8-monochrome-photographic`          | 58.3428 KB    | 67.9697 KB    | **1.1650** |
+| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 55.0615 KB    | **1.1700** |
+| `v16-monochrome-photographic`         | 172.1055 KB   | 173.8086 KB   | **1.0099** |
+| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 123.3574 KB   | **1.0239** |
+|   |   |   |   |
+| `va8-monochrome-photographic`         | 74.4922 KB    | 76.7412 KB    | **1.0302** |
+| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 61.2178 KB    | **1.0365** |
+| `va16-monochrome-photographic`        | 204.9824 KB   | 224.8350 KB   | **1.0968** |
+| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 150.3066 KB   | **1.0693** |
+|   |   |   |   |
+| `indexed8-monochrome-photographic`    | 80.0918 KB    | 68.7061 KB    | **0.8578** |
+| `indexed8-color-photographic`         | 63.9521 KB    | 67.9199 KB    | **1.0620** |
+| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 53.4941 KB    | **0.8710** |
+| `indexed8-color-nonphotographic`      | 42.4766 KB    | 49.1191 KB    | **1.1564** |
+|   |   |   |   |
+| `rgb8-monochrome-photographic`        | 89.8662 KB    | 112.1992 KB   | **1.2485** |
+| `rgb8-color-photographic`             | 170.2129 KB   | 188.2383 KB   | **1.1059** |
+| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 85.9590 KB    | **1.1486** |
+| `rgb8-color-nonphotographic`          | 127.5342 KB   | 144.8555 KB   | **1.1358** |
+| `rgb16-monochrome-photographic`       | 370.2275 KB   | 231.5352 KB   | **0.6254** |
+| `rgb16-color-photographic`            | 466.5859 KB   | 463.0098 KB   | **0.9923** |
+| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 166.0303 KB   | **0.6966** |
+| `rgb16-color-nonphotographic`         | 356.6924 KB   | 362.9736 KB   | **1.0176** |
+|   |   |   |   |
+| `rgba8-monochrome-photographic`       | 99.1416 KB    | 86.8799 KB    | **0.8763** |
+| `rgba8-color-photographic`            | 191.9307 KB   | 212.1475 KB   | **1.1053** |
+| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 70.4961 KB    | **0.8584** |
+| `rgba8-color-nonphotographic`         | 143.5771 KB   | 159.9473 KB   | **1.1140** |
+| `rgba16-monochrome-photographic`      | 404.8105 KB   | 322.1221 KB   | **0.7957** |
+| `rgba16-color-photographic`           | 506.2188 KB   | 517.6357 KB   | **1.0226** |
+| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 150.3066 KB   | **1.0693** |
+| `rgba16-color-nonphotographic`        | 385.2471 KB   | 403.0332 KB   | **1.0462** |
 
 ## *further reading* 
 
