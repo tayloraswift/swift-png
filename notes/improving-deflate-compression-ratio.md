@@ -6,7 +6,7 @@ Version 4 of Swift *PNG* features a native Swift implementation of the *DEFLATE*
 
 ### i.i. test images 
 
-All of Swift *PNG*’s compression benchmarks run on the following 28 test images. I chose them depicting essentially the same subject, in photographic and non-photographic forms, and in different PNG color formats to be representative of how PNGs are used in the real world. Because casual PNG users do stupid things (from the perspective of 𝒸𝑜𝓂𝓅𝓇𝑒𝓈𝓈𝒾𝑜𝓃 𝑒𝓃𝑔𝒾𝓃𝑒𝑒𝓇𝓈, who ~never~ do stupid things) such as save a monochrome image in RGB(A) format, the test suite includes representation for those use cases as well. None of the images have transparent alpha, as PNG images with varying alpha are rare. (Most transparent PNGs such as logos, test overlays, etc., have alpha that comes in regions of either full or zero opacity, which has the same compression characteristics as fully opaque alpha.)
+All of Swift *PNG*’s compression benchmarks run on the following 28 test images. I chose them depicting essentially the same subject, in photographic and non-photographic forms, and in different PNG color formats to be representative of how PNGs are used in the real world. Because casual PNG users do stupid things (from the perspective of 𝒸𝑜𝓂𝓅𝓇𝑒𝓈𝓈𝒾𝑜𝓃 𝑒𝓃𝑔𝒾𝓃𝑒𝑒𝓇𝓈, who \~never\~ do stupid things) such as save a monochrome image in RGB(A) format, the test suite includes representation for those use cases as well. None of the images have transparent alpha, as PNG images with varying alpha are rare. (Most transparent PNGs such as logos, test overlays, etc., have alpha that comes in regions of either full or zero opacity, which has the same compression characteristics as fully opaque alpha.)
 
 All baseline images were saved in [GIMP 2.10](https://www.gimp.org/) at the maximum compression setting (*zlib* mode 9), with no interlacing and no ancillary chunks.
 
@@ -153,8 +153,13 @@ Most of the test images compress slightly worse than the baseline. (It would be 
 
 The filter selection heuristic is the only part of the compression pipeline that is under the control of the PNG codec if it does not also implement its own *DEFLATE*. So it’s a common starting point for improving PNG compression. 
 
-Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum intervals** selector. It minimizes the number of byte changes in the filtered scanline, so it prefers data that looks like `[5, 5, 5, 5, 5, 5, 6, 6, 6, 6]`, whereas the absolute values selector would prefer data that looks like `[0, 1, 0, 1, 0, 1, 1, 0, 1, 0]`.
+### iii.i. minimum intervals
 
+Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum intervals** selector. It minimizes the number of byte changes in the filtered scanline, so it prefers data that looks like `[5, 5, 5, 5, 5, 5, 6, 6, 6, 6]`, whereas the absolute values selector would prefer data that looks like `[0, 1, 0, 1, 0, 1, 1, 0, 1, 0]`. It’s not really an improvement over the absolute values selector, but for reference, the benchmark results for this filter selector are given below (in the collapsible section):
+
+<details>
+<summary><em>Click to expand</em></summary>
+  
 | Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
 | --------- | -------------- | ------- | ----- |
 | Intervals | Non-greedy | All allowed | Fixed-length blocks |
@@ -194,6 +199,13 @@ Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum int
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 147.2939 KB   | **1.0479** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 399.4443 KB   | **1.0369** |
 
+</details>
+
+### iii.ii. squared frequencies
+
+One alternative filter heuristic does seem to be an improvement over the absolute values selector: the **squared frequencies** selector. The squared frequencies selector maximizes the sum of the squared frequencies of each byte value (256 in total) in the filtered data. So it prefers data that looks like `[5, 6, 5, 5, 6, 5, 6, 6, 5, 6]` over data that looks like `[0, 0, 0, 1, 1, 1, 2, 2, 2, 2]`. (Which the previous two heuristics would prefer.)
+
+The squared frequencies selector works by reducing the entropy of the filtered data, making its huffman encoding more efficient. For most input images, it has little to no impact, but it noticably improves the worst-case compression compared to the absolute values selector.
 
 | Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
 | --------- | -------------- | ------- | ----- |
@@ -233,6 +245,84 @@ Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum int
 | `rgba16-color-photographic`           | 506.2188 KB   | 517.6357 KB   | **1.0226** |
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 150.3066 KB   | **1.0693** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 403.0332 KB   | **1.0462** |
+
+## iv. improvement: better LZ77 matching 
+
+### iv.i. match thresholds 
+
+Many of the test images are still compressing 5 to 15 percent worse than the baseline. When examining the symbol histograms of the original and recompressed images, we can see that the string matches Swift *PNG* is emitting are very different from the matches that *zlib* is emitting.
+
+In the screenshot below, the upper histogram is from one of the original test images (`rgb8-color-nonphotographic`), and the lower histogram is from the recompressed version.
+
+<p align="center">
+<img src="../tests/compression/baseline/rgb8-color-nonphotographic.png"/>
+</p>
+
+![Comparison of string match frequencies for the original and recompressed versions of one of the test images](histogram-iv-1.png)
+
+> Symbol histogram for the test image `rgb8-color-nonphotographic.png` when compressed with *libpng*/*zlib* (top) and Swift *PNG* (bottom).
+
+We can see that Swift *PNG* is finding many more matches than *zlib* is, but most of these matches are short matches located at distant offsets. These matches are relatively expensive to encode, and are raising the overall entropy of the *DEFLATE* stream, so they are not really helping to compress the image.
+
+*zlib* on the other hand is discarding all matches of length less than 6. (Decade 3 corresponds to a length of 6, so all the previous columns are empty.) This is because *libpng* has *zlib* configured to use the [`Z_FILTERED`](http://www.zlib.net/manual.html) search strategy, which only accepts matches of length 6.
+
+Getting Swift *PNG* to impose this condition improves the compression for almost all the test images to the point where they compress about as well as they do under *libpng*/*zlib*.
+
+| Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
+| --------- | -------------- | ------- | ----- |
+| Squared frequencies | Non-greedy | Fixed threshold | Fixed-length blocks |
+
+| Image                                 | Baseline      | Swift *PNG*   | Ratio      |
+| ------------------------------------- | ------------- | ------------- | ---------- |
+| `v8-monochrome-photographic`          | 58.3428 KB    | 59.7842 KB    | **1.0247** |
+| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 48.2822 KB    | **1.0259** |
+| `v16-monochrome-photographic`         | 172.1055 KB   | 171.0078 KB   | **0.9936** |
+| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 120.5137 KB   | **1.0003** |
+|   |   |   |   |
+| `va8-monochrome-photographic`         | 74.4922 KB    | 75.8877 KB    | **1.0187** |
+| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 59.7227 KB    | **1.0112** |
+| `va16-monochrome-photographic`        | 204.9824 KB   | 205.2910 KB   | **1.0015** |
+| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 140.8359 KB   | **1.0020** |
+|   |   |   |   |
+| `indexed8-monochrome-photographic`    | 80.0918 KB    | 60.5088 KB    | **0.7555** |
+| `indexed8-color-photographic`         | 63.9521 KB    | 61.3555 KB    | **0.9594** |
+| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 47.1191 KB    | **0.7672** |
+| `indexed8-color-nonphotographic`      | 42.4766 KB    | 45.3438 KB    | **1.0675** |
+|   |   |   |   |
+| `rgb8-monochrome-photographic`        | 89.8662 KB    | 101.9668 KB   | **1.1347** |
+| `rgb8-color-photographic`             | 170.2129 KB   | 175.3096 KB   | **1.0299** |
+| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 84.8887 KB    | **1.1343** |
+| `rgb8-color-nonphotographic`          | 127.5342 KB   | 132.3105 KB   | **1.0375** |
+| `rgb16-monochrome-photographic`       | 370.2275 KB   | 350.9502 KB   | **0.9479** |
+| `rgb16-color-photographic`            | 466.5859 KB   | 465.6855 KB   | **0.9981** |
+| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 234.2822 KB   | **0.9829** |
+| `rgb16-color-nonphotographic`         | 356.6924 KB   | 357.7402 KB   | **1.0029** |
+|   |   |   |   |
+| `rgba8-monochrome-photographic`       | 99.1416 KB    | 101.3145 KB   | **1.0219** |
+| `rgba8-color-photographic`            | 191.9307 KB   | 200.4219 KB   | **1.0442** |
+| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 81.9160 KB    | **0.9974** |
+| `rgba8-color-nonphotographic`         | 143.5771 KB   | 149.3398 KB   | **1.0401** |
+| `rgba16-monochrome-photographic`      | 404.8105 KB   | 399.9043 KB   | **0.9879** |
+| `rgba16-color-photographic`           | 506.2188 KB   | 504.9336 KB   | **0.9975** |
+| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 140.8359 KB   | **1.0020** |
+| `rgba16-color-nonphotographic`        | 385.2471 KB   | 387.3760 KB   | **1.0055** |
+
+### iv.ii. internal matches
+
+While most of the worst-case inputs have converged towards a ratio of 1.0, so have some of the best-case inputs. Notably, the monochrome RGB and RGBA images (some of which were previously outperforming the baseline by over 38 percent!) are now compressing about the same as the baseline. This is because certain monochrome RGB and RGBA byte patterns tend to produce lots of highly-efficient matches that get discarded by the match threshold. Many of these are **internal matches** (matches with a distance less than 3), which are very efficient to encode.
+
+| Color format | Compression pattern |
+| ------------ | ------------------- |
+| RGB16  | `(A B) (A B) (A B)       → (A) (B) match(offset: -2, count: 4)` |
+| RGBA16 | `(A B) (A B) (A B) (C C) → (A) (B) match(offset: -2, count: 4) (C) (C)` |
+
+If we look at the histograms for the monochrome RGB16 images, we can see that there are a vast number of matches of length 4 and distance 2, especially compared to the adjacent cells. Because these matches are all concentrated in a single bin, they are cheap to encode, but the match threshold condition, not knowing any better, is discarding them all.
+
+![Comparison of string match frequencies for the original and recompressed versions a monochrome RGB16 image](histogram-iv-2.png)
+
+> Symbol histograms for the test image `rgb16-monochrome-photographic.png`, compressed using *libpng*/*zlib* (top), and Swift *PNG* with the match length threshold turned off (bottom). The bin for decade (1, 1) in the second histogram has overflowed, so it is displaying “9999”. The second compressed image is less than two-thirds the size of the first image!
+>
+> A similar effect happens in the monochrome RGBA16 images, but it is far less pronounced.
 
 ## *further reading* 
 
