@@ -2,45 +2,111 @@
 
 Version 4 of Swift *PNG* features a native Swift implementation of the *deflate* and *inflate* algorithms, as described in the [rfc-1951](https://tools.ietf.org/html/rfc1951). *Deflate* implementations can vary widely in quality, with some implementations producing far better-optimized (higher compression ratio) output streams than others. So, just as it is important to ensure Swift *PNG*’s *inflate* procedure [is as fast as that of the *zlib* C library](../low-level-swift-optimization.md), it is also important to ensure Swift *PNG*’s *deflate* output is as optimal as *zlib*’s. This readme documents some comparisons between Swift *PNG* and *libpng*/*zlib*, as well as choices of compression parameters in the framework at the time of writing.
 
-## comparisons with *libpng*/*zlib*
+## i. methodology 
 
-All baseline images were saved in [GIMP](https://www.gimp.org/) at the maximum compression setting (*zlib* mode 9), with no interlacing and no metadata chunks.
+### i.i. test images 
 
-| Test image | Baseline | Swift *PNG* | Ratio |
-| ---------- | -------- | ----------- | ----------------------------- |
-| `v-grayscale-photographic` <br/> <img src="../tests/integration/png/v-grayscale-photographic.png">                    | 59.0 KB  | 58.9 KB  | **0.9983** |
-| `v-grayscale-nonphotographic` <br/> <img src="../tests/integration/png/v-grayscale-nonphotographic.png">              | 50.3 KB  | 49.6 KB  | **0.9861** |
-| `rgb-grayscale-photographic` <br/> <img src="../tests/integration/png/rgb-grayscale-photographic.png">                | 91.2 KB  | 155.9 KB | **1.7094** |
-| `rgb-grayscale-nonphotographic` <br/> <img src="../tests/integration/png/rgb-grayscale-nonphotographic.png">          | 80.1 KB  | 129.6 KB | **1.6180** |
-| `rgb-color-photographic` <br/> <img src="../tests/integration/png/rgb-color-photographic.png">                        | 168.9 KB | 173.7 KB | **1.0284** |
-| `rgb-color-nonphotographic` <br/> <img src="../tests/integration/png/rgb-color-nonphotographic.png">                  | 126.7 KB | 130.3 KB | **1.0284** |
-| `palette-grayscale-photographic` <br/> <img src="../tests/integration/png/palette-grayscale-photographic.png">        | 80.6 KB  | 59.7 KB  | **0.7407** |
-| `palette-grayscale-nonphotographic` <br/> <img src="../tests/integration/png/palette-grayscale-nonphotographic.png">  | 61.1 KB  | 45.8 KB  | **0.7496** |
-| `palette-color-photographic` <br/> <img src="../tests/integration/png/palette-color-photographic.png">                | 64.7 KB  | 60.6 KB  | **0.9366** |
-| `palette-color-nonphotographic` <br/> <img src="../tests/integration/png/palette-color-nonphotographic.png">          | 43.2 KB  | 45.4 KB  | **1.0509** |
+All of Swift *PNG*’s compression benchmarks run on the following 28 test images. They were chosen to depict essentially the same subject, in photographic and non-photographic forms, and in different PNG color formats to be representative of how PNGs are used in the real world. Because many casual PNG users do “stupid” things (from the perspective of 𝒸𝑜𝓂𝓅𝓇𝑒𝓈𝓈𝒾𝑜𝓃 𝑒𝓃𝑔𝒾𝓃𝑒𝑒𝓇𝓈, who  never do stupid things) such as save a monochrome image in RGB(A) format, the test suite includes representation for those use cases as well. None of the images have transparent alpha, as PNG images with varying alpha are rare. (Most transparent PNGs such as logos, test overlays, etc., have alpha that comes in regions of either full or zero opacity, which has the same compression characteristics as fully opaque alpha.)
 
-Most images compress about the same. Some images (monochrome indexed) compress much better, some images (monochrome RGB), much worse. We’ll explore in the following sections why that is the case. Suffice to say, there is no such thing as [universal compression](http://mattmahoney.net/dc/dce.html), so most choices we make that improve the compression ratio for some inputs will degrade it for other inputs. Indeed, the only reason PNG compression works in the first place is that there are certain assumptions you can make about what an image (any image) *is*. These assumptions can get pretty technical but they always boil down to some variation of “this picture is not random noise, by virtue of the fact that the picture is interesting enough for someone to bother displaying it in the first place.” 
+All baseline images were saved in [GIMP 2.10](https://www.gimp.org/) at the maximum compression setting (*zlib* mode 9), with no interlacing and no ancillary chunks.
 
-Casual readers should be aware that **total PNG optimization**, or losslessly reducing a PNG image to the smallest possible file without heed to computation time, is a [*hard* problem](http://optipng.sourceforge.net/pngtech/optipng.html). The gap between good and bad compressors in the context of PNG codecs is miniscule, often measured in fractions of a percentage point. It is always possible to optimize a PNG compressor for a particular (and arbitrary) class of images, but such a compressor would no longer be a PNG codec since it would only be effective for that subset of the input space. It follows that a good PNG codec should not produce excellent compression for some inputs and awful compression for others, but acceptable compression for all inputs. This is, of course, an ideal, and all real-world PNG codecs, including Swift *PNG*, inevitably end up privileging some types of inputs at the expense of others. 
+| Test image | Color format | Size |
+| ---------- | ------------ | ---- |
+| `v8-monochrome-photographic.png`          <br/> <img src="../tests/compression/baseline/v8-monochrome-photographic.png"/>             | `v8`       |  59,743 B | 
+| `v8-monochrome-nonphotographic.png`       <br/> <img src="../tests/compression/baseline/v8-monochrome-nonphotographic.png"/>          | `v8`       |  48,191 B | 
+| `v16-monochrome-photographic.png`         <br/> <img src="../tests/compression/baseline/v16-monochrome-photographic.png"/>            | `v16`      | 176,236 B | 
+| `v16-monochrome-nonphotographic.png`      <br/> <img src="../tests/compression/baseline/v16-monochrome-nonphotographic.png"/>         | `v16`      | 123,371 B | 
+|   |   |   |
+| `va8-monochrome-photographic.png`         <br/> <img src="../tests/compression/baseline/va8-monochrome-photographic.png"/>            | `va8`      |  76,280 B | 
+| `va8-monochrome-nonphotographic.png`      <br/> <img src="../tests/compression/baseline/va8-monochrome-nonphotographic.png"/>         | `va8`      |  60,478 B | 
+| `va16-monochrome-photographic.png`        <br/> <img src="../tests/compression/baseline/va16-monochrome-photographic.png"/>           | `va16`     | 209,902 B | 
+| `va16-monochrome-nonphotographic.png`     <br/> <img src="../tests/compression/baseline/va16-monochrome-nonphotographic.png"/>        | `va16`     | 143,935 B | 
+|   |   |   |
+| `indexed8-monochrome-photographic.png`    <br/> <img src="../tests/compression/baseline/indexed8-monochrome-photographic.png"/>       | `indexed8` |  82,014 B | 
+| `indexed8-color-photographic.png`         <br/> <img src="../tests/compression/baseline/indexed8-color-photographic.png"/>            | `indexed8` |  65,487 B | 
+| `indexed8-monochrome-nonphotographic.png` <br/> <img src="../tests/compression/baseline/indexed8-monochrome-nonphotographic.png"/>    | `indexed8` |  62,888 B | 
+| `indexed8-color-nonphotographic.png`      <br/> <img src="../tests/compression/baseline/indexed8-color-nonphotographic.png"/>         | `indexed8` |  43,496 B | 
+|   |   |   |
+| `rgb8-monochrome-photographic.png`        <br/> <img src="../tests/compression/baseline/rgb8-monochrome-photographic.png"/>           | `rgb8`     |  92,023 B | 
+| `rgb8-color-photographic.png`             <br/> <img src="../tests/compression/baseline/rgb8-color-photographic.png"/>                | `rgb8`     | 174,298 B | 
+| `rgb8-monochrome-nonphotographic.png`     <br/> <img src="../tests/compression/baseline/rgb8-monochrome-nonphotographic.png"/>        | `rgb8`     |  76,636 B | 
+| `rgb8-color-nonphotographic.png`          <br/> <img src="../tests/compression/baseline/rgb8-color-nonphotographic.png"/>             | `rgb8`     | 130,595 B | 
+| `rgb16-monochrome-photographic.png`       <br/> <img src="../tests/compression/baseline/rgb16-monochrome-photographic.png"/>          | `rgb16`    | 379,113 B | 
+| `rgb16-color-photographic.png`            <br/> <img src="../tests/compression/baseline/rgb16-color-photographic.png"/>               | `rgb16`    | 477,784 B | 
+| `rgb16-monochrome-nonphotographic.png`    <br/> <img src="../tests/compression/baseline/rgb16-monochrome-nonphotographic.png"/>       | `rgb16`    | 244,077 B | 
+| `rgb16-color-nonphotographic.png`         <br/> <img src="../tests/compression/baseline/rgb16-color-nonphotographic.png"/>            | `rgb16`    | 365,253 B | 
+|   |   |   |
+| `rgba8-monochrome-photographic.png`       <br/> <img src="../tests/compression/baseline/rgba8-monochrome-photographic.png"/>          | `rgba8`    | 101,521 B | 
+| `rgba8-color-photographic.png`            <br/> <img src="../tests/compression/baseline/rgba8-color-photographic.png"/>               | `rgba8`    | 196,537 B | 
+| `rgba8-monochrome-nonphotographic.png`    <br/> <img src="../tests/compression/baseline/rgba8-monochrome-nonphotographic.png"/>       | `rgba8`    |  84,098 B | 
+| `rgba8-color-nonphotographic.png`         <br/> <img src="../tests/compression/baseline/rgba8-color-nonphotographic.png"/>            | `rgba8`    | 147,023 B | 
+| `rgba16-monochrome-photographic.png`      <br/> <img src="../tests/compression/baseline/rgba16-monochrome-photographic.png"/>         | `rgba16`   | 414,526 B | 
+| `rgba16-color-photographic.png`           <br/> <img src="../tests/compression/baseline/rgba16-color-photographic.png"/>              | `rgba16`   | 518,368 B | 
+| `rgba16-monochrome-nonphotographic.png`   <br/> <img src="../tests/compression/baseline/rgba16-monochrome-nonphotographic.png"/>      | `rgba16`   | 143,935 B | 
+| `rgba16-color-nonphotographic.png`        <br/> <img src="../tests/compression/baseline/rgba16-color-nonphotographic.png"/>           | `rgba16`   | 394,493 B | 
 
-A PNG crusher (a program that optimize PNG files for size) is not the same thing as a PNG codec, even if both types of programs share similar goals, and are occasionally advertised as if they were the other. Most PNG crushers are actually higher-level applications that repeatedly invoke a PNG codec (such as *libpng*, or conceivably, Swift *PNG*) with many different settings. The best PNG crushers wrap multiple PNG codecs, running them all on a given input image, and returning the smallest output. 
+### i.ii. benchmarks
 
-A (real) PNG crusher will always outperform any PNG codec, because it keeps the best output from its constituent PNG codecs, while discarding the rest. (This is why you should never be impressed if a PNG crusher claims to produce smaller files than a popular PNG codec!) This is also why PNG crushers are much slower than PNG codecs, because they recompress images over and over again from start to finish. The difference between a PNG codec and a PNG crusher is then essentially a difference of foresight versus hindsight. A well-optimized PNG codec uses a hueristic to predict the best compression strategy to use on a particular input image, while a PNG crusher determines the best compression strategy by actually doing the image compression.
+The compression benchmarks come in their own package target, `compression-test`. The repository’s [CI](https://github.com/kelvin13/png/actions?query=workflow%3Abuild) builds and runs them (though it doesn’t particularly care about the output). 
 
-PNG codec optimization is then really not about implementing perfectly optimal search algorithms. There are simply too many possibilities to explore, even with algorithmic reductions. Rather, it is about determining the impact of varying certain compression parameters (*coding*, in information theory), and formulating accurate predictions for which compression parameters will work best with certain image inputs (*modeling*, in information theory).
+The `compression-test` product is most useful when Swift *PNG* is built with one of several inspection features enabled. To enable inspection, pass one of the following compiler build flags:
 
-## sources of compression
+1. `DUMP_FILTERED_SCANLINES`
+2. `DUMP_LZ77_TERMS`
+3. `DUMP_LZ77_BLOCKS`
+4. `DUMP_LZ77_SYMBOL_HISTOGRAM`
 
-PNG files are smaller than their raw pixel-array equivalents for three main reasons:
+> To pass a build flag with the Swift Package Manager, use `-Xswiftc -D`. For example, to build with scanline dumping enabled, pass `-Xswiftc -DDUMP_FILTERED_SCANLINES` to the Swift compiler. 
 
-1. **filtering**, which makes pixel data more compressible,
-2. **run-length coding**, which collapses repeated sequences in the filtered data, and
-3. **entropy coding**, which replaces common run-length/literal tokens with shorter representations, and uncommon run-length/literal tokens with longer representations.
+#### `DUMP_FILTERED_SCANLINES`
 
-Each of these three compressive processes come with a lot of parameters, far more than could be realistically minimized through an exhaustive search. Worse, since they are applied on top of each other, the behavior of one process can influence the effectiveness of the subsequent processes. For example, filtering usually makes run-length coding more effective. (In Swift *PNG*, we also leverage it to make the entropy-coding more effective.) Run-length coding usually makes entropy coding *less* effective (since it increases the entropy of the data), but the data savings from the run-length coding itself usually outweighs the impact it has on the entropy coding.
+Makes the decoder print out each image scanline before defiltering.
 
-Swift *PNG* uses several techniques to improve its average-case compression ratio, each of which acts on a different stage of the PNG compression pipeline:
+#### `DUMP_LZ77_TERMS`
 
-1. **filter selection** (choosing a filter that results in the most compressible string), 
-2. **match subsidies** (encouraging the run-length coder to emit more compressible run-length sequences), and 
-3. **entropic partitioning** (dividing the entropy-coded bitstream such that each partition can benefit from a more specialized probability model.)
+Makes the decoder print out each *DEFLATE* term (either a literal value or a string reference) as it decompresses the *DEFLATE* stream.
+
+#### `DUMP_LZ77_BLOCKS`
+
+Makes the decoder print out information about each *DEFLATE* block, and aggregate statistics for the entire *DEFLATE* stream, including: 
+
+* the average entropy-coding efficiency of the literal terms in the stream,
+* a histogram of composite lengths of the string reference terms in the stream, and 
+* a two-dimensional histogram of the run length decades and distance decades of the string reference terms in the stream.
+
+It also makes the encoder print out its decision-making process when determining optimal *DEFLATE* block boundaries.
+
+#### `DUMP_LZ77_SYMBOL_HISTOGRAM`
+
+The same as `DUMP_LZ77_BLOCKS`, except it only prints out the two-dimensional symbol histogram. The histograms look like this:
+
+![example histogram](sample-histogram.png)
+
+The *x*-axis is binned by **run-length decade**. Decade zero corresponds to a match length of 3 bytes. Decade 28 corresponds to a match length of 258 bytes. 
+
+The *y*-axis is binned by **distance decade**. Decade zero corresponds to an offset of 1 byte. Decade 29 corresponds to an offset of anywhere from 24,577 to 32,768 bytes, refined by extra bits.
+
+> You can find the full table of run-length and distance decades on page 12 of the [rfc-1951](https://tools.ietf.org/html/rfc1951).
+
+The symbol histograms are a useful visual indicator for how a particular LZ77 implementation behaves, how well it is modeling its input, and how efficiently the phrases it emits will be compressed by the huffman coder.
+
+In general:
+
+* More red/orange is better than less, because that means the run-length coder is collapsing many phrases. (As opposed to emitting literals)
+
+* The upper-right corner is good, because these correspond to long matches that take few bits to encode.
+
+* The lower-left corner is bad, because these correspond to short matches that take many bits to encode.
+
+* A few high-frequency bins are better than many low-frequency bins, because this reduces the entropy of the emitted terms, making the subsequent huffman coding more effective.
+
+
+## *further reading* 
+
+1. [PNG tech](http://optipng.sourceforge.net/pngtech/)
+2. [The Effect of Non-Greedy Parsingin Ziv-Lempel Compression Methods](https://webhome.cs.uvic.ca/~nigelh/Publications/LZ-non-greedy.pdf)
+3. [Non-greedy Lempel-Ziv Data Compression](https://scholar.acadiau.ca/islandora/object/theses:625)
+4. [Understanding *zlib*](https://www.euccas.me/zlib/)
+5. [Data Compression Explained](http://mattmahoney.net/dc/dce.html)
+6. [*zlib* Compressed Data Format Specification version 3.3](https://tools.ietf.org/html/rfc1950)
+6. [*DEFLATE* Compressed Data Format Specification version 1.3](https://tools.ietf.org/html/rfc1951)
