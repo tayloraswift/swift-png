@@ -1304,7 +1304,7 @@ extension LZ77
             var meta:Semistatic.Meta 
             var output:Out
             
-            #if DUMP_LZ77_BLOCKS 
+            #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
             // histogram, no match can ever cost more than 17 bits per literal
             var statistics: 
             (
@@ -1729,7 +1729,7 @@ extension LZ77.Inflator.Stream
                 #if DUMP_LZ77_TERMS 
                 print("< literal(\(runliteral.literal))")
                 #endif 
-                #if DUMP_LZ77_BLOCKS 
+                #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
                 self.statistics.literals[runliteral.length] += 1
                 #endif
             }
@@ -1745,7 +1745,7 @@ extension LZ77.Inflator.Stream
                 #if DUMP_LZ77_TERMS 
                 print("< end-of-block\n")
                 #endif 
-                #if DUMP_LZ77_BLOCKS 
+                #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
                 self.statistics.literals[runliteral.length] += 1
                 #endif
                 
@@ -1801,7 +1801,7 @@ extension LZ77.Inflator.Stream
                 #if DUMP_LZ77_TERMS 
                 print("< match(offset: \(-offset), run: \(count))")
                 #endif 
-                #if DUMP_LZ77_BLOCKS 
+                #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
                 let n:Int = 29 * .init(distance.decade) + .init(runliteral.symbol - 257)
                 let m:Int = 
                     runliteral.length + composite.count.extra + 
@@ -1838,15 +1838,17 @@ extension LZ77.Inflator.Stream
         #if DUMP_LZ77_BLOCKS 
         let efficiency:Double = self.statistics.literals.enumerated().reduce(0.0){ $0 + .init($1.0 * $1.1) } / 
             .init(self.statistics.literals.reduce(0, +))
-        print("> average literal coding efficiency: \(efficiency)")
-        print("> match coding efficiency histogram:")
+        print("< average literal coding efficiency: \(efficiency)")
+        print("< match coding efficiency histogram:")
         for (bin, frequency):(Int, Int) in self.statistics.matches.enumerated()
         {
             print("    [\(bin) ..< \(bin + 1) bits]: \(frequency)")
         }
-        print("> run-distance symbol histogram:")
-        print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
+        print("< run-distance symbol histogram:")
         #endif
+        #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
+        print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
+        #endif 
         
         // skip to next byte boundary, read 4 bytes 
         let boundary:Int = (self.b + 7) & ~7

@@ -506,7 +506,10 @@ extension LZ77.Deflator.Window
                 e:UInt16    = self.modular(c &+ 2),
                 f:UInt16    = self.modular(c &+ 3)
             let old:Prefix  = .init(self[d].value, self[e].value, self[f].value)
-            self.head[old]  = nil 
+            if let m:UInt16 = self.head[old], m == d
+            {
+                self.head[old] = nil 
+            }
         }
         if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
         {
@@ -625,15 +628,19 @@ extension LZ77.Deflator.Window
                     return length
                 }(current)
                 
-                let e:Int = .bitWidth - distance.leadingZeroBitCount - 1
+                /* let e:Int = .bitWidth - distance.leadingZeroBitCount - 1
                 if  length     > best.length, 
                     length     > 3 * e
+                {
+                    best = (length: length, distance: distance)
+                } */
+                if  length     > best.length
                 {
                     best = (length: length, distance: distance)
                 }
             }
             
-            return best.length >= 3 ? best : nil
+            return best.length >= 6 ? best : nil
         }
     }
 }
@@ -834,6 +841,7 @@ extension LZ77
         struct Stream 
         {
             var input:In 
+            var queued:(run:Int, extend:Int, distance:Int)?
             var terms:[Term]
             var window:Window
             var output:Out
@@ -992,27 +1000,72 @@ extension LZ77.Deflator.Stream
         while       self.input.count >= 258 || 
             (all && self.input.count !=   0)
         {
-            if self.terms.count >= 1 << 15 
+            // at most two terms will be appended per loop iteration
+            if self.terms.count >= 1 << 15 - 1
             {
                 return ()
             }
             
-            let term:LZ77.Deflator.Term 
             if let match:(length:Int, distance:Int) = self.window.match(self.input) 
             {
-                for _:Int in 0 ..< match.length 
+                if let queued:(run:Int, extend:Int, distance:Int) = self.queued 
                 {
-                    self.window.register(self.input.dequeue())
+                    self.terms.append(.init(run: queued.run, distance: queued.distance))
                 }
-                term = .init(run: match.length, distance: match.distance)
+                
+                if match.length > 6 && false
+                {
+                    for _:Int in 0 ..< match.length - 1
+                    {
+                        self.window.register(self.input.dequeue())
+                    }
+                    self.queued = (run: match.length - 1, extend: 1, distance: match.distance)
+                }
+                else 
+                {
+                    for _:Int in 0 ..< match.length 
+                    {
+                        self.window.register(self.input.dequeue())
+                    }
+                    self.terms.append(.init(run: match.length, distance: match.distance))
+                    self.queued = nil
+                }
+            }
+            else if let queued:(run:Int, extend:Int, distance:Int) = self.queued 
+            {
+                self.window.register(self.input.dequeue())
+                
+                if queued.extend > 1 
+                {
+                    self.queued = (queued.run + 1, queued.extend - 1, queued.distance)
+                }
+                else 
+                {
+                    self.terms.append(.init(run: queued.run + 1, distance: queued.distance))
+                    self.queued = nil
+                }
             }
             else 
             {
                 let literal:UInt8 = self.input.dequeue()
                 self.window.register(literal)
-                term = .init(literal: literal)
+                self.terms.append(.init(literal: literal))
             }
-            self.terms.append(term)
+        }
+        
+        if self.terms.count >= 1 << 15 
+        {
+            return ()
+        }
+        
+        if all, let queued:(run:Int, extend:Int, distance:Int) = self.queued 
+        {
+            for _:Int in 0 ..< queued.extend 
+            {
+                self.window.register(self.input.dequeue())
+            }
+            self.terms.append(.init(run: queued.run + queued.extend, distance: queued.distance))
+            self.queued = nil
         }
         
         return nil 
@@ -1021,7 +1074,7 @@ extension LZ77.Deflator.Stream
     mutating 
     func block(last:Bool) 
     {
-        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 10)
+        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 16)
         self.block(dicing.startIndex, dicing: dicing, last: last)
         // empty literal buffer 
         self.terms.removeAll(keepingCapacity: true)
