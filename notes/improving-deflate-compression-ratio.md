@@ -268,44 +268,44 @@ We can see that Swift *PNG* is finding many more matches than *zlib* is, but mos
 
 Getting Swift *PNG* to impose this condition improves the compression for almost all the test images to the point where they compress about as well as they do under *libpng*/*zlib*.
 
-| Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
-| --------- | -------------- | ------- | ----- |
-| Squared frequencies | Non-greedy | Fixed threshold | Fixed-length blocks |
+| Filter selection    | LZ77 algorithm | LZ77 matches    | Entropic partitioning |
+| ------------------- | -------------- | --------------- | --------------------- |
+| Squared frequencies | Non-greedy     | Fixed threshold | Fixed-length blocks   |
 
 | Image                                 | Baseline      | Swift *PNG*   | Ratio      |
 | ------------------------------------- | ------------- | ------------- | ---------- |
-| `v8-monochrome-photographic`          | 58.3428 KB    | 59.7842 KB    | **1.0247** |
-| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 48.2822 KB    | **1.0259** |
-| `v16-monochrome-photographic`         | 172.1055 KB   | 171.0078 KB   | **0.9936** |
-| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 120.5137 KB   | **1.0003** |
+| `v8-monochrome-photographic`          | 58.3428 KB    | 59.0596 KB    | **1.0123** |
+| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 47.6113 KB    | **1.0117** |
+| `v16-monochrome-photographic`         | 172.1055 KB   | 170.9189 KB   | **0.9931** |
+| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 119.8350 KB   | **0.9947** |
 |   |   |   |   |
-| `va8-monochrome-photographic`         | 74.4922 KB    | 75.8877 KB    | **1.0187** |
-| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 59.7227 KB    | **1.0112** |
-| `va16-monochrome-photographic`        | 204.9824 KB   | 205.2910 KB   | **1.0015** |
-| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 140.8359 KB   | **1.0020** |
+| `va8-monochrome-photographic`         | 74.4922 KB    | 75.7832 KB    | **1.0173** |
+| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 59.6426 KB    | **1.0099** |
+| `va16-monochrome-photographic`        | 204.9824 KB   | 203.8994 KB   | **0.9947** |
+| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 139.4336 KB   | **0.9920** |
 |   |   |   |   |
-| `indexed8-monochrome-photographic`    | 80.0918 KB    | 60.5088 KB    | **0.7555** |
-| `indexed8-color-photographic`         | 63.9521 KB    | 61.3555 KB    | **0.9594** |
-| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 47.1191 KB    | **0.7672** |
-| `indexed8-color-nonphotographic`      | 42.4766 KB    | 45.3438 KB    | **1.0675** |
+| `indexed8-monochrome-photographic`    | 80.0918 KB    | 59.7979 KB    | **0.7466** |
+| `indexed8-color-photographic`         | 63.9521 KB    | 60.9141 KB    | **0.9525** |
+| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 46.3262 KB    | **0.7543** |
+| `indexed8-color-nonphotographic`      | 42.4766 KB    | 45.0293 KB    | **1.0601** |
 |   |   |   |   |
-| `rgb8-monochrome-photographic`        | 89.8662 KB    | 101.9668 KB   | **1.1347** |
-| `rgb8-color-photographic`             | 170.2129 KB   | 175.3096 KB   | **1.0299** |
-| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 84.8887 KB    | **1.1343** |
-| `rgb8-color-nonphotographic`          | 127.5342 KB   | 132.3105 KB   | **1.0375** |
-| `rgb16-monochrome-photographic`       | 370.2275 KB   | 350.9502 KB   | **0.9479** |
-| `rgb16-color-photographic`            | 466.5859 KB   | 465.6855 KB   | **0.9981** |
-| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 234.2822 KB   | **0.9829** |
-| `rgb16-color-nonphotographic`         | 356.6924 KB   | 357.7402 KB   | **1.0029** |
+| `rgb8-monochrome-photographic`        | 89.8662 KB    | 99.6055 KB    | **1.1084** |
+| `rgb8-color-photographic`             | 170.2129 KB   | 172.7793 KB   | **1.0151** |
+| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 82.6133 KB    | **1.1039** |
+| `rgb8-color-nonphotographic`          | 127.5342 KB   | 129.7510 KB   | **1.0174** |
+| `rgb16-monochrome-photographic`       | 370.2275 KB   | 348.8486 KB   | **0.9423** |
+| `rgb16-color-photographic`            | 466.5859 KB   | 464.2285 KB   | **0.9949** |
+| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 230.6641 KB   | **0.9677** |
+| `rgb16-color-nonphotographic`         | 356.6924 KB   | 356.3252 KB   | **0.9990** |
 |   |   |   |   |
-| `rgba8-monochrome-photographic`       | 99.1416 KB    | 101.3145 KB   | **1.0219** |
-| `rgba8-color-photographic`            | 191.9307 KB   | 200.4219 KB   | **1.0442** |
-| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 81.9160 KB    | **0.9974** |
-| `rgba8-color-nonphotographic`         | 143.5771 KB   | 149.3398 KB   | **1.0401** |
-| `rgba16-monochrome-photographic`      | 404.8105 KB   | 399.9043 KB   | **0.9879** |
-| `rgba16-color-photographic`           | 506.2188 KB   | 504.9336 KB   | **0.9975** |
-| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 140.8359 KB   | **1.0020** |
-| `rgba16-color-nonphotographic`        | 385.2471 KB   | 387.3760 KB   | **1.0055** |
+| `rgba8-monochrome-photographic`       | 99.1416 KB    | 101.2959 KB   | **1.0217** |
+| `rgba8-color-photographic`            | 191.9307 KB   | 196.9961 KB   | **1.0264** |
+| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 81.8916 KB    | **0.9971** |
+| `rgba8-color-nonphotographic`         | 143.5771 KB   | 146.5264 KB   | **1.0205** |
+| `rgba16-monochrome-photographic`      | 404.8105 KB   | 399.9033 KB   | **0.9879** |
+| `rgba16-color-photographic`           | 506.2188 KB   | 502.5908 KB   | **0.9928** |
+| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 139.4336 KB   | **0.9920** |
+| `rgba16-color-nonphotographic`        | 385.2471 KB   | 385.1064 KB   | **0.9996** |
 
 ### iv.ii. internal matches
 
@@ -355,6 +355,65 @@ Harmonic matches are easiest to see in monochrome RGB/RGBA images, but they also
 ![Symbol histogram containing less-visible harmonic bands](histogram-iv-4.png)
 
 > A symbol histogram from the test image `rgb8-color-nonphotographic.png`, compressed by Swift *PNG*, with match thresholding turned off. It has visible harmonic banding in the vertical (distance) direction, but not the horizontal (length) direction.
+
+## v. improvement: greedy matching 
+
+With only a few exceptions, all of the test images compress to within 102 percent of the baseline with the improved algorithm in the last section. The two outliers are the 8-bit RGB monochrome images, which are still compressing about 10 percent worse than the baseline. By looking at their symbol histograms, we can see why that’s happening:
+
+![Symbol histograms for `rgb8-monochrome-photographic.png`](histogram-v-1.png)
+
+> Symbol histograms for the test image `rgb8-monochrome-photographic.png` when compressed with *libpng*/*zlib* (top) and Swift *PNG* with match thresholding turned on (bottom). The bottom image is almost 11 percent larger than the top image.
+
+The original *libpng*/*zlib*-encoded image shows strong harmonic banding, while the Swift *PNG*-compressed image shows very weak banding along the match length axis. (Both images have pretty good distance banding.) This indicates that the image that generated the upper histogram has less entropy in its *DEFLATE* terms, which explains why it compresses much better than the second image.
+
+The opposite effect is happening in the images that compress *better* under Swift *PNG* than under *libpng*/*zlib*:
+
+![Symbol histograms for `rgb16-monochrome-photographic`](histogram-v-2.png)
+
+> Symbol histograms for the test image `rgb16-monochrome-photographic.png` when compressed with *libpng*/*zlib* (top) and Swift *PNG* with match thresholding turned on (bottom). The bottom image is about 5.8 percent smaller than the top image.
+
+For images like these, Swift *PNG* is actually doing a better job concentrating match lengths into harmonic bands than *libpng*/*zlib* is, and accordingly, the Swift *PNG*-compressed image is significantly (by compression engineering standards) smaller than the baseline — almost 6 percent smaller! From all this, we can infer that harmonic banding is very important to PNG compression.
+
+One remedy for the under-harmonized images is simple but counterintuitive — turn off all non-greedy matching, and fall back to a greedy LZ77 algorithm. This makes all of the monochrome RGB and RGBA images converge towards the baseline.
+
+| Filter selection    | LZ77 algorithm | LZ77 matches    | Entropic partitioning |
+| ------------------- | -------------- | --------------- | --------------------- |
+| Squared frequencies | Greedy         | Fixed threshold | Fixed-length blocks   |
+
+| Image                                 | Baseline      | Swift *PNG*   | Ratio      |
+| ------------------------------------- | ------------- | ------------- | ---------- |
+| `v8-monochrome-photographic`          | 58.3428 KB    | 58.9941 KB    | **1.0112** |
+| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 47.4023 KB    | **1.0072** |
+| `v16-monochrome-photographic`         | 172.1055 KB   | 170.9229 KB   | **0.9931** |
+| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 119.5029 KB   | **0.9919** |
+|   |   |   |   |
+| `va8-monochrome-photographic`         | 74.4922 KB    | 75.6885 KB    | **1.0161** |
+| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 59.5732 KB    | **1.0087** |
+| `va16-monochrome-photographic`        | 204.9824 KB   | 204.2549 KB   | **0.9965** |
+| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 139.6055 KB   | **0.9932** |
+|   |   |   |   |
+| `indexed8-monochrome-photographic`    | 80.0918 KB    | 59.7285 KB    | **0.7458** |
+| `indexed8-color-photographic`         | 63.9521 KB    | 60.7666 KB    | **0.9502** |
+| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 46.0547 KB    | **0.7499** |
+| `indexed8-color-nonphotographic`      | 42.4766 KB    | 44.8301 KB    | **1.0554** |
+|   |   |   |   |
+| `rgb8-monochrome-photographic`        | 89.8662 KB    | 91.0195 KB    | **1.0128** |
+| `rgb8-color-photographic`             | 170.2129 KB   | 172.2695 KB   | **1.0121** |
+| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 74.5615 KB    | **0.9963** |
+| `rgb8-color-nonphotographic`          | 127.5342 KB   | 128.2813 KB   | **1.0059** |
+| `rgb16-monochrome-photographic`       | 370.2275 KB   | 367.9482 KB   | **0.9938** |
+| `rgb16-color-photographic`            | 466.5859 KB   | 463.7461 KB   | **0.9939** |
+| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 234.8965 KB   | **0.9855** |
+| `rgb16-color-nonphotographic`         | 356.6924 KB   | 355.7207 KB   | **0.9973** |
+|   |   |   |   |
+| `rgba8-monochrome-photographic`       | 99.1416 KB    | 101.2041 KB   | **1.0208** |
+| `rgba8-color-photographic`            | 191.9307 KB   | 196.0762 KB   | **1.0216** |
+| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 81.8359 KB    | **0.9965** |
+| `rgba8-color-nonphotographic`         | 143.5771 KB   | 144.9404 KB   | **1.0095** |
+| `rgba16-monochrome-photographic`      | 404.8105 KB   | 400.8096 KB   | **0.9901** |
+| `rgba16-color-photographic`           | 506.2188 KB   | 501.6387 KB   | **0.9910** |
+| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 139.6055 KB   | **0.9932** |
+| `rgba16-color-nonphotographic`        | 385.2471 KB   | 383.8066 KB   | **0.9963** |
 
 ## *further reading* 
 
