@@ -356,7 +356,7 @@ Harmonic matches are easiest to see in monochrome RGB/RGBA images, but they also
 
 > A symbol histogram from the test image `rgb8-color-nonphotographic.png`, compressed by Swift *PNG*, with match thresholding turned off. It has visible harmonic banding in the vertical (distance) direction, but not the horizontal (length) direction.
 
-## v. improvement: greedy matching 
+## v. improvement: better LZ77 algorithm 
 
 With only a few exceptions, all of the test images compress to within 102 percent of the baseline with the improved algorithm in the last section. The two outliers are the 8-bit RGB monochrome images, which are still compressing about 10 percent worse than the baseline. By looking at their symbol histograms, we can see why that’s happening:
 
@@ -373,6 +373,8 @@ The opposite effect is happening in the images that compress *better* under Swif
 > Symbol histograms for the test image `rgb16-monochrome-photographic.png` when compressed with *libpng*/*zlib* (top) and Swift *PNG* with match thresholding turned on (bottom). The bottom image is about 5.8 percent smaller than the top image.
 
 For images like these, Swift *PNG* is actually doing a better job concentrating match lengths into harmonic bands than *libpng*/*zlib* is, and accordingly, the Swift *PNG*-compressed image is significantly (by compression engineering standards) smaller than the baseline — almost 6 percent smaller! From all this, we can infer that harmonic banding is very important to PNG compression.
+
+### v.i. greedy algorithm
 
 One remedy for the under-harmonized images is simple but counterintuitive — turn off all non-greedy matching, and fall back to a greedy LZ77 algorithm. This makes all of the monochrome RGB and RGBA images converge towards the baseline.
 
@@ -415,10 +417,81 @@ One remedy for the under-harmonized images is simple but counterintuitive — tu
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 139.6055 KB   | **0.9932** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 383.8066 KB   | **0.9963** |
 
+### v.ii. semi-greedy algorithms 
+
+One possibility for a more sophisticated LZ77 algorithm is to allow greedy matching, but only if the match length does not fall on a harmonic decade. In theory, this should encourage the algorithm to both collapse more literals and concentrate match lengths into fewer length decades. In practice, this is exactly what happens — matches migrate from the non-harmonic decades into harmonic decades, and length decade 3 (matches of length 6) gains additional matches from the non-greedy search that the greedy search would not have found. For RGB images, length decade 3 is also a harmonic decade, resulting in more match concentration. But, for reasons that remain unclear, this doesn’t meaningfully improve overall compression, even for RGB images, and sometimes slightly worsens it.
+
+## vi. improvement: better entropic partitioning 
+
+One last thing we can try is see if Swift *PNG* can be a little more intelligent when it comes to determining *DEFLATE* block boundaries. Ideally, it would choose these boundaries such that each block’s probability model (huffman tree) is specialized for its contents. For example, if you have data that looks like `[0, 1, 0, 1, 1, 0, 2, 3, 3, 2]`, it would compress better with two specialized huffman trees coding the subarrays `[0, 1, 0, 1, 1, 0]` and `[2, 3, 3, 2]` than a single generic huffman tree coding the entire array. By itself, this concept suggests that the optimal partitioning for any input array is a sequence of subarrays each containing a single unique value. (For the previous example, it would be `[0], [1], [0], [1, 1], [0], [2], [3, 3], [2]`.) But storing the huffman trees themselves at the beginning of each *DEFLATE* block also imposes an additional size cost, so partitions gradually become less efficient the smaller they get.
+
+We can state the problem \~formally\~ like this:
+
+Given an input array *A*, find a contiguous sequence of index ranges *i*<sub>0</sub>,&nbsp;…&nbsp;,&nbsp;*i*<sub>*k*&nbsp;–&nbsp;1</sub> where 
+
+* *i*<sub>0</sub>&nbsp;=&nbsp;*A*`.startIndex`, 
+* *i*<sub>*k*&nbsp;–&nbsp;1</sub>&nbsp;=&nbsp;*A*`.endIndex`, and
+* *i*<sub>*j*</sub>&nbsp;<&nbsp;*i*<sub>*j*&nbsp;+&nbsp;1</sub>, 
+  
+and which minimizes
+
+Σ (Dynamic(Tree(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>)) + Encode(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>, Tree(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>))) for *j* in 0,&nbsp;…&nbsp;,&nbsp;*k*&nbsp;–&nbsp;2&nbsp;, 
+
+where Tree(\_:\_:) returns an optimal huffman tree for the array slice of *A* given by its arguments, Dynamic(\_:) returns the size of its huffman tree argument when encoded as a dynamic *DEFLATE* block header, and Encode(\_:\_:\_:) returns the size of the entropy-coded bitstream given an array slice and a huffman tree.
+
+This problem has a dynamic programming solution that runs in *O*(*n*<sup>3</sup>) time (and *O*(*n*<sup>2</sup>) space), but the constant factor for the cubic term is so tiny — the cost of a single integer comparison — that it’s completely overshadowed by the quadratic term, which comes from computing the symbol frequencies and huffman tree for each interval. (Both are constant-time operations.)
+
+This optimization is computationally feasable because *n* doesn’t have to be the number of bytes in the input, but some smaller number of atoms determined by a partition granularity *g* of your choice. For example, you can cut *n* by a factor of 256 by only considering block boundaries that fall on multiples of 256. Finer-grained searches make the partitioning more efficient, but below a granularity of *g*&nbsp;≈&nbsp;2<sup>10</sup> symbols there is no noticable improvement in compression. 
+
+Because this algorithm is still super-linear, it also makes sense to impose a *maximum* partition size *h*, where *h* is much bigger than (and ideally a multiple of) *g*. This means we do entropic partitioning by first dividing the *DEFLATE* terms into fixed-size segments of size *h*, and then running the *O*(*h*<sup>2</sup>/*g*<sup>2</sup>)-ish algorithm on each segment.
+
+Just like what happens with decreasing *g*, increasing *h* improves the efficiency of the output, but with diminishing returns. Large values of *h* also increase Swift *PNG*’s memory consumption, since it has to buffer *h* *DEFLATE* terms at a time.
+
+Empirically, the settings *g*&nbsp;=&nbsp;2<sup>12</sup>, *h*&nbsp;=&nbsp;2<sup>18</sup> seem to give good compression; smaller values of *g* and larger values of *h* don’t seem to improve the compression enough to justify the increased computation time and memory usage.
+
+| Filter selection    | LZ77 algorithm | LZ77 matches    | Entropic partitioning |
+| ------------------- | -------------- | --------------- | --------------------- |
+| Squared frequencies | Greedy         | Fixed threshold | Variable-length blocks|
+
+| Image                                 | Baseline      | Swift *PNG*   | Ratio      |
+| ------------------------------------- | ------------- | ------------- | ---------- |
+| `v8-monochrome-photographic`          | 58.3428 KB    | 58.2764 KB    | **0.9989** |
+| `v8-monochrome-nonphotographic`       | 47.0615 KB    | 47.2656 KB    | **1.0043** |
+| `v16-monochrome-photographic`         | 172.1055 KB   | 170.5859 KB   | **0.9912** |
+| `v16-monochrome-nonphotographic`      | 120.4795 KB   | 119.4082 KB   | **0.9911** |
+|   |   |   |   |
+| `va8-monochrome-photographic`         | 74.4922 KB    | 75.1553 KB    | **1.0089** |
+| `va8-monochrome-nonphotographic`      | 59.0605 KB    | 59.3916 KB    | **1.0056** |
+| `va16-monochrome-photographic`        | 204.9824 KB   | 204.0078 KB   | **0.9952** |
+| `va16-monochrome-nonphotographic`     | 140.5615 KB   | 139.4033 KB   | **0.9918** |
+|   |   |   |   |
+| `indexed8-monochrome-photographic`    | 80.0918 KB    | 59.0156 KB    | **0.7368** |
+| `indexed8-color-photographic`         | 63.9521 KB    | 60.3955 KB    | **0.9444** |
+| `indexed8-monochrome-nonphotographic` | 61.4141 KB    | 45.9063 KB    | **0.7475** |
+| `indexed8-color-nonphotographic`      | 42.4766 KB    | 44.7813 KB    | **1.0543** |
+|   |   |   |   |
+| `rgb8-monochrome-photographic`        | 89.8662 KB    | 90.4502 KB    | **1.0065** |
+| `rgb8-color-photographic`             | 170.2129 KB   | 171.3135 KB   | **1.0065** |
+| `rgb8-monochrome-nonphotographic`     | 74.8398 KB    | 74.2842 KB    | **0.9926** |
+| `rgb8-color-nonphotographic`          | 127.5342 KB   | 127.9014 KB   | **1.0029** |
+| `rgb16-monochrome-photographic`       | 370.2275 KB   | 367.5225 KB   | **0.9927** |
+| `rgb16-color-photographic`            | 466.5859 KB   | 463.3730 KB   | **0.9931** |
+| `rgb16-monochrome-nonphotographic`    | 238.3564 KB   | 234.6973 KB   | **0.9846** |
+| `rgb16-color-nonphotographic`         | 356.6924 KB   | 355.3135 KB   | **0.9961** |
+|   |   |   |   |
+| `rgba8-monochrome-photographic`       | 99.1416 KB    | 100.6934 KB   | **1.0157** |
+| `rgba8-color-photographic`            | 191.9307 KB   | 195.2012 KB   | **1.0170** |
+| `rgba8-monochrome-nonphotographic`    | 82.1270 KB    | 81.6318 KB    | **0.9940** |
+| `rgba8-color-nonphotographic`         | 143.5771 KB   | 144.5508 KB   | **1.0068** |
+| `rgba16-monochrome-photographic`      | 404.8105 KB   | 400.3164 KB   | **0.9889** |
+| `rgba16-color-photographic`           | 506.2188 KB   | 501.0264 KB   | **0.9897** |
+| `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 139.4033 KB   | **0.9918** |
+| `rgba16-color-nonphotographic`        | 385.2471 KB   | 383.2969 KB   | **0.9949** |
+
 ## *further reading* 
 
 1. [PNG tech](http://optipng.sourceforge.net/pngtech/)
-2. [The Effect of Non-Greedy Parsingin Ziv-Lempel Compression Methods](https://webhome.cs.uvic.ca/~nigelh/Publications/LZ-non-greedy.pdf)
+2. [The Effect of Non-Greedy Parsing in Ziv-Lempel Compression Methods](https://webhome.cs.uvic.ca/~nigelh/Publications/LZ-non-greedy.pdf)
 3. [Non-greedy Lempel-Ziv Data Compression](https://scholar.acadiau.ca/islandora/object/theses:625)
 4. [Understanding *zlib*](https://www.euccas.me/zlib/)
 5. [Data Compression Explained](http://mattmahoney.net/dc/dce.html)
