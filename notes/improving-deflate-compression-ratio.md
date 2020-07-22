@@ -326,9 +326,21 @@ If we look at the histograms for the monochrome RGB16 images, we can see that th
 
 ### iv.iii. harmonic matches 
 
-A similar but unrelated phenomenon called **harmonic matching** also takes place when compressing monochrome RGB and RGBA images. While internal matches are references to a sequence within the same logical pixel, harmonic matches are references to entire, preceeding pixels.
+A similar but unrelated phenomenon called **harmonic matching** takes place when compressing RGB and RGBA images, as well as some VA images. While internal matches are references to a sequence within the same logical pixel, harmonic matches are references to entire, preceeding pixels.
 
 Harmonic matches occur because PNG filters have a set [delay](http://www.libpng.org/pub/png/spec/1.2/PNG-Filters.html) determined by the logical stride of the image pixels. For an 8-bit RGB image, this delay is three bytes long. For a 16-bit RGBA image, the filter delay is eight bytes long, and so forth. This filter delay tends to create repetitions in the filtered data at integer multiples of the delay length. We can think of this length as the natural wavelength of the PNG image, which creates clusters of matches at certain lengths and offsets. 
+
+| Color format  | Wavelength    | Length decades        | Distance decades  |
+| ------------- | ------------- | --------------------- | ----------------- |
+| V16           | 2 B           | —                     | 1, 3, 4, 5, …     |
+| VA8           | 2 B           | —                     | 1, 3, 4, 5, …     |
+| VA16          | 4 B           | 1, 5, 8, 10, 12, …    | 3, 5, 6, 7, 8<sup>†</sup>, … |
+| RGB8          | 3 B           | 0, 3, 6, 8, 10, …     | 2, 4, 6<sup>†</sup>, 8<sup>†</sup>, … |
+| RGB16         | 6 B           | 3, 8, 11, 13, 14, …   | 4, 6, 8, 10<sup>†</sup>, … |
+| RGBA8         | 4 B           | 1, 5, 8, 10, 12, …    | 3, 5, 6, 7, 8<sup>†</sup>, … |
+| RGBA16        | 8 B           | 5, 10, 13, 15, …      | 5, 7, 8, 9, 10<sup>†</sup>, … |
+
+> † Additional decades from signal aliasing.
 
 We can observe these spectral patterns in the symbol histograms. For example, we can see in the histograms from the last subsection that the column for length decade 3 contains many more matches than either of the adjacent columns. It is no coincidence that length decade 3 corresponds to a match length of 6 bytes, which is the natural wavelength of a 16-bit RGB image. In fact, we can observe secondary peaks in the columns for length decades 8, 11, and 13. These decades contain matches of length 12, 18, and 24, respectively, all of which are integer multiples of 6. Harmonic banding also happens along the vertical (match offset) axis — we can observe a disproportionately high match density in rows 4, 6, and 8, which correspond to offsets of 6, 12, and 18 and 24 (both in decade 8). [Signal aliasing](https://en.wikipedia.org/wiki/Aliasing) creates additional striations in distance decades 10, 12, 14, 16, and so forth.
 
