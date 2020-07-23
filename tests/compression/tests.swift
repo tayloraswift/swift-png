@@ -159,14 +159,16 @@ extension Test
             {
                 return .failure(.init(message: "failed to open file '\(path.out)'"))
             }
-
+            
             let pixels:[PNG.RGBA<UInt16>] = baseline.image.unpack(as: PNG.RGBA<UInt16>.self)
             let filesize:(baseline:Double, output:Double) = 
             (
                 .init(baseline.size),
                 .init(output.size)
             )
-            Self.print(image: pixels, size: baseline.image.size)
+            Swift.print()
+            Swift.print(name)
+            //Self.print(image: pixels, size: baseline.image.size)
             Swift.print("baseline: \(String.init(filesize.baseline / 1024.0, places: 4)) KB, output: \(String.init(filesize.output / 1024.0, places: 4)) KB, ratio: \(String.init(filesize.output / filesize.baseline, places: 4))")
 
             for (i, pair):(Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in

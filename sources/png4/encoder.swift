@@ -343,8 +343,8 @@ extension PNG.Encoder
     func score<C>(_ filtered:C) -> Int
         where C:Sequence, C.Element == UInt8
     {
-        return filtered.reduce(0){ $0 + abs(.init($1)) }
-    } */
+        return filtered.reduce(0){ $0 + abs(.init(Int8.init(bitPattern: $1))) }
+    }  */
 }
 
 extension PNG.Data.Rectangular 
