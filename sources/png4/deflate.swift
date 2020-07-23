@@ -628,13 +628,7 @@ extension LZ77.Deflator.Window
                     return length
                 }(current)
                 
-                /* let e:Int = .bitWidth - distance.leadingZeroBitCount - 1
-                if  length     > best.length, 
-                    length     > 3 * e
-                {
-                    best = (length: length, distance: distance)
-                } */
-                if  length     > best.length
+                if  length > best.length
                 {
                     best = (length: length, distance: distance)
                 }
@@ -997,23 +991,23 @@ extension LZ77.Deflator.Stream
     func compress(all:Bool) -> Void?
     {
         // always maintain at least 258 bytes in the input buffer 
-        while       self.input.count >= 258 || 
+        while       self.input.count >= 259 || 
             (all && self.input.count !=   0)
         {
             // at most two terms will be appended per loop iteration
-            if self.terms.count >= 1 << 15 - 1
+            if self.terms.count >= 1 << 18 - 1
             {
                 return ()
             }
             
-            if let match:(length:Int, distance:Int) = self.window.match(self.input) 
+            if let match:(length:Int, distance:Int) = self.window.match(self.input)
             {
-                if let queued:(run:Int, extend:Int, distance:Int) = self.queued 
+                if let queued:(run:Int, extend:Int, distance:Int) = self.queued
                 {
                     self.terms.append(.init(run: queued.run, distance: queued.distance))
                 }
                 
-                if match.length > 6 && false
+                if false && match.length > 6 
                 {
                     for _:Int in 0 ..< match.length - 1
                     {
@@ -1023,11 +1017,28 @@ extension LZ77.Deflator.Stream
                 }
                 else 
                 {
-                    for _:Int in 0 ..< match.length 
+                    // lazy match 
+                    let first:UInt8 = self.input.dequeue()
+                    self.window.register(first)
+                    if let next:(length:Int, distance:Int) = self.window.match(self.input), 
+                        next.length > match.length 
                     {
-                        self.window.register(self.input.dequeue())
+                        self.terms.append(.init(literal: first))
+                        for _:Int in 0 ..< next.length 
+                        {
+                            self.window.register(self.input.dequeue())
+                        }
+                        self.terms.append(.init(run: next.length, distance: next.distance))
                     }
-                    self.terms.append(.init(run: match.length, distance: match.distance))
+                    else 
+                    {
+                        for _:Int in 1 ..< match.length 
+                        {
+                            self.window.register(self.input.dequeue())
+                        }
+                        self.terms.append(.init(run: match.length, distance: match.distance))
+                    }
+                    
                     self.queued = nil
                 }
             }
@@ -1053,7 +1064,7 @@ extension LZ77.Deflator.Stream
             }
         }
         
-        if self.terms.count >= 1 << 15 
+        if self.terms.count >= 1 << 18 
         {
             return ()
         }
@@ -1074,7 +1085,7 @@ extension LZ77.Deflator.Stream
     mutating 
     func block(last:Bool) 
     {
-        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 16)
+        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 12)
         self.block(dicing.startIndex, dicing: dicing, last: last)
         // empty literal buffer 
         self.terms.removeAll(keepingCapacity: true)
