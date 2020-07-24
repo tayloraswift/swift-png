@@ -1,0 +1,110 @@
+#include <stdio.h>
+#include <png.h>
+
+int main(int const count, char const* const* const arguments) 
+{
+    if (count != 4) 
+    {
+        printf("missing arguments\n");
+        return -1;
+    }
+    int const z = arguments[3][0] - '0'; 
+    if (arguments[3][1] != '\0' || z < 0 || z > 9) 
+    {
+        printf("compression level argument is not a single-digit integer\n");
+    }
+    
+    FILE* source = fopen(arguments[1], "rb");
+    if (!source)
+    {
+        printf("failed to open file\n");
+        return -1;
+    }
+    
+    png_structp png_in = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+    if (!png_in) 
+    {
+        printf("failed to initialize libpng context\n");
+        return -1;
+    }
+    png_infop info = png_create_info_struct(png_in);
+    if (!info) 
+    {
+        png_destroy_read_struct(&png_in, NULL, NULL);
+        return -1;
+    }
+    
+    png_init_io(png_in, source);
+
+    png_read_info(png_in, info);
+    png_uint_32 width, height;
+    int bit_depth, color_type, interlace_type; 
+    png_get_IHDR(png_in, info, &width, &height, &bit_depth, &color_type,
+        &interlace_type, NULL, NULL);
+    png_read_update_info(png_in, info);
+    png_color* palette_in;
+    int palette_count;
+    if (png_get_PLTE(png_in, info, &palette_in, &palette_count) != PNG_INFO_PLTE) 
+    {
+        palette_count = 0;
+    }
+    png_color palette_out[palette_count]; 
+    for (int i = 0; i < palette_count; ++i) 
+    {
+        palette_out[i] = palette_in[i];
+    }
+
+    png_uint_32 const pitch = png_get_rowbytes(png_in, info);
+    png_bytep const data    = png_malloc(png_in, height * pitch);
+    
+    png_bytep rows[height];
+    for (png_uint_32 y = 0; y < height; ++y) 
+    {
+        rows[y] = data + y * pitch;
+    }
+    
+    png_read_image(png_in, rows);
+    png_read_end(png_in, info);
+    
+    png_destroy_read_struct(&png_in, &info, NULL);
+    
+    fclose(source);
+    
+    
+    FILE* destination = fopen(arguments[2], "wb");
+    if (!destination)
+    {
+        printf("failed to open file\n");
+        return -1;
+    }
+    
+    png_structp png_out = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_out == NULL)
+    {
+        fclose(destination);
+        return -1;
+    }
+    info = png_create_info_struct(png_out);
+    if (!info) 
+    {
+        png_destroy_write_struct(&png_out, NULL);
+        return -1;
+    }
+    
+    png_init_io(png_out, destination);
+    
+    png_set_compression_level(png_out, z);
+    png_set_IHDR(png_out, info, width, height, bit_depth, color_type,
+        interlace_type, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    if (palette_count > 0) 
+    {
+        png_set_PLTE(png_out, info, palette_out, palette_count);
+    }
+    png_set_rows(png_out, info, rows);
+    png_write_png(png_out, info, PNG_TRANSFORM_IDENTITY, NULL);
+    
+    png_destroy_write_struct(&png_out, NULL);
+    fclose(destination);
+    return 0;
+}
