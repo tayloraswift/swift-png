@@ -1,0 +1,7 @@
+#!/bin/bash
+
+utils/benchmark-compression photographic > results-photographic
+utils/benchmark-compression nonphotographic > results-nonphotographic
+
+utils/plot.py results-photographic results-photographic.svg
+utils/plot.py results-nonphotographic results-nonphotographic.svg

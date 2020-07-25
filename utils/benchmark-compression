@@ -2,11 +2,11 @@
 
 prefix=benchmarks/encode
 
-clang -Wall -Wpedantic -lpng $prefix/baseline/main.c -o $prefix/baseline/main || exit 1
-swift build -c release --product encode-benchmark || exit 1 
+clang -Wall -Wpedantic -lpng $prefix/baseline/main.c -o $prefix/baseline/main 1>&2 || exit 1
+swift build -c release --product encode-benchmark 1>&2 || exit 1 
 baseline=$prefix/baseline/main
 swift=.build/release/encode-benchmark
-for file in $prefix/in/*.png; do 
+for file in $prefix/in/*-${1}.png; do 
     name=$(basename $file)
     echo "BASELINE:"
     for ((i=0; i<=9; i++)); do
