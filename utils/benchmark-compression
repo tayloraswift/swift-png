@@ -6,6 +6,6 @@ clang -Wall -Wpedantic -lpng $prefix/baseline/main.c -o $prefix/baseline/main ||
 for file in $prefix/in/*.png; do 
     name=$(basename $file)
     for ((i=0; i<=9; i++)); do
-        $prefix/baseline/main $prefix/in/$name $prefix/out/${name}-@${i}.png $i
+        $prefix/baseline/main $prefix/in/$name ${name%.png} $i
     done
 done 
