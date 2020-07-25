@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 800 800">
+<style type="text/css" >
+    <![CDATA[
+        rect.background 
+        {
+            fill:   #ffffffff;
+        }
+        path.curve 
+        {
+            stroke: #3333ffff;
+            stroke-width: 2px;
+            fill:   none;
+        }
+        
+        path.curve.v8-monochrome-photographic,
+        path.curve.v8-monochrome-nonphotographic 
+        {
+            stroke: #aaaaaaff;
+        }
+        circle.curve-point.v8-monochrome-photographic,
+        circle.curve-point.v8-monochrome-nonphotographic 
+        {
+            fill: #aaaaaaff;
+        }
+        
+        path.curve.v16-monochrome-photographic,
+        path.curve.v16-monochrome-nonphotographic 
+        {
+            stroke: #666666ff;
+        }
+        circle.curve-point.v16-monochrome-photographic,
+        circle.curve-point.v16-monochrome-nonphotographic 
+        {
+            fill: #666666ff;
+        }
+        
+        path.curve.va8-monochrome-photographic,
+        path.curve.va8-monochrome-nonphotographic 
+        {
+            stroke: #aa88ffff;
+        }
+        circle.curve-point.va8-monochrome-photographic,
+        circle.curve-point.va8-monochrome-nonphotographic 
+        {
+            fill: #aa88ffff;
+        }
+        path.curve.va16-monochrome-photographic,
+        path.curve.va16-monochrome-nonphotographic 
+        {
+            stroke: #9920ffff;
+        }
+        circle.curve-point.va16-monochrome-photographic,
+        circle.curve-point.va16-monochrome-nonphotographic 
+        {
+            fill: #9920ffff;
+        }
+        
+        path.curve.indexed8-monochrome-photographic,
+        path.curve.indexed8-monochrome-nonphotographic, 
+        path.curve.indexed8-color-photographic,
+        path.curve.indexed8-color-nonphotographic 
+        {
+            stroke: #6688ffff;
+        }
+        circle.curve-point.indexed8-monochrome-photographic,
+        circle.curve-point.indexed8-monochrome-nonphotographic, 
+        circle.curve-point.indexed8-color-photographic,
+        circle.curve-point.indexed8-color-nonphotographic 
+        {
+            fill: #6688ffff;
+        }
+        
+        path.curve.rgb8-monochrome-photographic,
+        path.curve.rgb8-monochrome-nonphotographic, 
+        path.curve.rgb8-color-photographic,
+        path.curve.rgb8-color-nonphotographic 
+        {
+            stroke: #ffaa90ff;
+        }
+        circle.curve-point.rgb8-monochrome-photographic,
+        circle.curve-point.rgb8-monochrome-nonphotographic, 
+        circle.curve-point.rgb8-color-photographic,
+        circle.curve-point.rgb8-color-nonphotographic 
+        {
+            fill: #ffaa90ff;
+        }
+        
+        path.curve.rgb16-monochrome-photographic,
+        path.curve.rgb16-monochrome-nonphotographic,
+        path.curve.rgb16-color-photographic,
+        path.curve.rgb16-color-nonphotographic 
+        {
+            stroke: #ff6040ff;
+        }
+        circle.curve-point.rgb16-monochrome-photographic,
+        circle.curve-point.rgb16-monochrome-nonphotographic,
+        circle.curve-point.rgb16-color-photographic,
+        circle.curve-point.rgb16-color-nonphotographic 
+        {
+            fill: #ff6040ff;
+        }
+        
+        path.curve.rgba8-monochrome-photographic,
+        path.curve.rgba8-monochrome-nonphotographic, 
+        path.curve.rgba8-color-photographic,
+        path.curve.rgba8-color-nonphotographic 
+        {
+            stroke: #ff90aaff;
+        }
+        circle.curve-point.rgba8-monochrome-photographic,
+        circle.curve-point.rgba8-monochrome-nonphotographic, 
+        circle.curve-point.rgba8-color-photographic,
+        circle.curve-point.rgba8-color-nonphotographic 
+        {
+            fill: #ff90aaff;
+        }
+        path.curve.rgba16-monochrome-photographic,
+        path.curve.rgba16-monochrome-nonphotographic, 
+        path.curve.rgba16-color-photographic,
+        path.curve.rgba16-color-nonphotographic 
+        {
+            stroke: #ff4060ff;
+        }
+        circle.curve-point.rgba16-monochrome-photographic,
+        circle.curve-point.rgba16-monochrome-nonphotographic, 
+        circle.curve-point.rgba16-color-photographic,
+        circle.curve-point.rgba16-color-nonphotographic 
+        {
+            fill: #ff4060ff;
+        }
+                
+                
+        path.curve.indexed8-monochrome-photographic,
+        path.curve.indexed8-monochrome-nonphotographic, 
+        path.curve.rgb8-monochrome-photographic,
+        path.curve.rgb8-monochrome-nonphotographic, 
+        path.curve.rgb16-monochrome-photographic,
+        path.curve.rgb16-monochrome-nonphotographic,
+        path.curve.rgba8-monochrome-photographic,
+        path.curve.rgba8-monochrome-nonphotographic, 
+        path.curve.rgba16-monochrome-photographic,
+        path.curve.rgba16-monochrome-nonphotographic
+        {
+            stroke-dasharray: 5;
+        }
+    ]]>
+</style>
+<rect width="800" height="800" class="background"/>
+<g>
+<path class="curve indexed8-color-photographic" d="M 89.36812704179978,547.4521103907873 L 244.3743174674268,645.3062039937486 L 250.33395522107944,648.4437317374682 L 262.1589945128587,650.8967154276429 L 244.20690656008347,648.66349644417 L 244.06494707737824,649.5349087078312 L 247.48345853632452,650.0660514170904 L 243.06333042443956,650.1618617959425 L 251.39201325219915,650.1618617959425 L 252.87056753954244,650.1618617959425"/>
+<circle class="curve-point indexed8-color-photographic" cx="89.36812704179978" cy="547.4521103907873" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="244.3743174674268" cy="645.3062039937486" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="250.33395522107944" cy="648.4437317374682" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="262.1589945128587" cy="650.8967154276429" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="244.20690656008347" cy="648.66349644417" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="244.06494707737824" cy="649.5349087078312" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="247.48345853632452" cy="650.0660514170904" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="243.06333042443956" cy="650.1618617959425" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="251.39201325219915" cy="650.1618617959425" r="2"/>
+<circle class="curve-point indexed8-color-photographic" cx="252.87056753954244" cy="650.1618617959425" r="2"/>
+<path class="curve indexed8-color-photographic" d="M 459.05421318160813,663.2560923508254 "/>
+<circle class="curve-point indexed8-color-photographic" cx="459.05421318160813" cy="663.2560923508254" r="2"/>
+</g>
+<g>
+<path class="curve indexed8-monochrome-photographic" d="M 33.39176960488075,547.4521103907873 L 187.29820151714358,601.9618884770766 L 191.4071195489165,603.6425056227285 L 199.51213540312952,604.4355628821381 L 210.8606962129163,601.1857341865257 L 221.26916107389616,601.4441431011228 L 224.22022414671738,601.4599740838025 L 223.79374334875638,601.4626126935127 L 224.39011294885438,601.4626126935127 L 224.5257364944125,601.4626126935127"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="33.39176960488075" cy="547.4521103907873" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="187.29820151714358" cy="601.9618884770766" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="191.4071195489165" cy="603.6425056227285" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="199.51213540312952" cy="604.4355628821381" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="210.8606962129163" cy="601.1857341865257" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="221.26916107389616" cy="601.4441431011228" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="224.22022414671738" cy="601.4599740838025" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="223.79374334875638" cy="601.4626126935127" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="224.39011294885438" cy="601.4626126935127" r="2"/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="224.5257364944125" cy="601.4626126935127" r="2"/>
+<path class="curve indexed8-monochrome-photographic" d="M 421.24479309600645,667.8400774205384 "/>
+<circle class="curve-point indexed8-monochrome-photographic" cx="421.24479309600645" cy="667.8400774205384" r="2"/>
+</g>
+<g>
+<path class="curve rgb16-color-photographic" d="M 293.3183046627877,161.8612690754394 L 358.65498175565074,218.61465449820798 L 362.4999629733049,220.6620607609443 L 368.4690382470804,222.7501133545702 L 379.42795877906815,218.0979618525521 L 385.5024612675692,218.86715905361507 L 397.23199673814156,219.25255978431187 L 406.57409807498317,219.46516182162713 L 428.1306438737705,219.86158330238322 L 453.0183386263584,220.10014757587487"/>
+<circle class="curve-point rgb16-color-photographic" cx="293.3183046627877" cy="161.8612690754394" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="358.65498175565074" cy="218.61465449820798" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="362.4999629733049" cy="220.6620607609443" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="368.4690382470804" cy="222.7501133545702" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="379.42795877906815" cy="218.0979618525521" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="385.5024612675692" cy="218.86715905361507" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="397.23199673814156" cy="219.25255978431187" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="406.57409807498317" cy="219.46516182162713" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="428.1306438737705" cy="219.86158330238322" r="2"/>
+<circle class="curve-point rgb16-color-photographic" cx="453.0183386263584" cy="220.10014757587487" r="2"/>
+<path class="curve rgb16-color-photographic" d="M 628.0911097715682,221.74190138800623 "/>
+<circle class="curve-point rgb16-color-photographic" cx="628.0911097715682" cy="221.74190138800623" r="2"/>
+</g>
+<g>
+<path class="curve rgb16-monochrome-photographic" d="M 272.74242384978095,161.8612690754394 L 327.6821613202594,355.4224996068524 L 331.5447338501474,358.92887096434197 L 343.0174702653806,363.2016839227663 L 353.4853560794812,268.2253489104719 L 365.1109162030107,269.4638916420413 L 369.9751994161401,269.40472531421074 L 373.32383640576415,269.4570639324288 L 389.2093994678744,269.84601760726355 L 408.2183694255613,270.15973960616293"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="272.74242384978095" cy="161.8612690754394" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="327.6821613202594" cy="355.4224996068524" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="331.5447338501474" cy="358.92887096434197" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="343.0174702653806" cy="363.2016839227663" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="353.4853560794812" cy="268.2253489104719" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="365.1109162030107" cy="269.4638916420413" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="369.9751994161401" cy="269.40472531421074" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="373.32383640576415" cy="269.4570639324288" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="389.2093994678744" cy="269.84601760726355" r="2"/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="408.2183694255613" cy="270.15973960616293" r="2"/>
+<path class="curve rgb16-monochrome-photographic" d="M 589.116070355725,271.97108177185737 "/>
+<circle class="curve-point rgb16-monochrome-photographic" cx="589.116070355725" cy="271.97108177185737" r="2"/>
+</g>
+<g>
+<path class="curve rgb8-color-photographic" d="M 233.18177017841646,311.747789813227 L 287.6591060178931,428.2331378558597 L 292.3128114944782,429.7409969562991 L 307.41232651333485,433.0465401191109 L 327.74293025933207,434.9499596011019 L 345.4436147720578,435.87115335598673 L 371.94594946461507,437.4432710785313 L 381.621526056308,437.886410586545 L 397.6034805495397,438.2783170776215 L 402.72464129417307,438.32052655317966"/>
+<circle class="curve-point rgb8-color-photographic" cx="233.18177017841646" cy="311.747789813227" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="287.6591060178931" cy="428.2331378558597" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="292.3128114944782" cy="429.7409969562991" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="307.41232651333485" cy="433.0465401191109" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="327.74293025933207" cy="434.9499596011019" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="345.4436147720578" cy="435.87115335598673" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="371.94594946461507" cy="437.4432710785313" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="381.621526056308" cy="437.886410586545" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="397.6034805495397" cy="438.2783170776215" r="2"/>
+<circle class="curve-point rgb8-color-photographic" cx="402.72464129417307" cy="438.32052655317966" r="2"/>
+<path class="curve rgb8-color-photographic" d="M 544.2377216290006,437.5657244994036 "/>
+<circle class="curve-point rgb8-color-photographic" cx="544.2377216290006" cy="437.5657244994036" r="2"/>
+</g>
+<g>
+<path class="curve rgb8-monochrome-photographic" d="M 217.70981551934375,311.747789813227 L 263.35528647513274,550.5038114786548 L 266.25249823636796,558.2187619247752 L 284.5875442280135,576.5039955332823 L 287.9901130274241,517.8490421570141 L 305.51414872177844,529.9067168789861 L 342.26316040702216,553.4638421181885 L 368.49666373489276,561.1139253443152 L 430.72372771586606,572.7004627759839 L 453.0810676009119,576.543969589608"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="217.70981551934375" cy="311.747789813227" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="263.35528647513274" cy="550.5038114786548" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="266.25249823636796" cy="558.2187619247752" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="284.5875442280135" cy="576.5039955332823" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="287.9901130274241" cy="517.8490421570141" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="305.51414872177844" cy="529.9067168789861" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="342.26316040702216" cy="553.4638421181885" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="368.49666373489276" cy="561.1139253443152" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="430.72372771586606" cy="572.7004627759839" r="2"/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="453.0810676009119" cy="576.543969589608" r="2"/>
+<path class="curve rgb8-monochrome-photographic" d="M 537.4760045735816,575.2520840307843 "/>
+<circle class="curve-point rgb8-monochrome-photographic" cx="537.4760045735816" cy="575.2520840307843" r="2"/>
+</g>
+<g>
+<path class="curve rgba16-color-photographic" d="M 305.1494961655975,99.63506163046668 L 371.1361447130542,190.2045422702854 L 374.8889662961452,192.9433983322474 L 385.3258722624909,195.2367439896907 L 399.3562460935889,199.09547563440856 L 412.67233999315334,200.08421909171238 L 454.75166832867046,201.03768189892753 L 473.7151025332565,201.45199109797568 L 505.117293382632,202.01952729206914 L 533.8415808931393,202.45742980082287"/>
+<circle class="curve-point rgba16-color-photographic" cx="305.1494961655975" cy="99.63506163046668" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="371.1361447130542" cy="190.2045422702854" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="374.8889662961452" cy="192.9433983322474" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="385.3258722624909" cy="195.2367439896907" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="399.3562460935889" cy="199.09547563440856" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="412.67233999315334" cy="200.08421909171238" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="454.75166832867046" cy="201.03768189892753" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="473.7151025332565" cy="201.45199109797568" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="505.117293382632" cy="202.01952729206914" r="2"/>
+<circle class="curve-point rgba16-color-photographic" cx="533.8415808931393" cy="202.45742980082287" r="2"/>
+<path class="curve rgba16-color-photographic" d="M 661.1932784241599,204.94730936228189 "/>
+<circle class="curve-point rgba16-color-photographic" cx="661.1932784241599" cy="204.94730936228189" r="2"/>
+</g>
+<g>
+<path class="curve rgba16-monochrome-photographic" d="M 283.8024970836525,99.63506163046668 L 338.6789307552553,303.2969538377333 L 342.21347512067405,308.12234902608634 L 350.8237664391439,313.1225343464416 L 366.8766360623314,248.26052942813794 L 381.7959243781101,248.83236295963115 L 418.4172119243995,249.58107502813164 L 431.74230825031333,250.05651595699237 L 450.5283597428712,250.48608953183975 L 475.0604415164708,250.8345397905532"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="283.8024970836525" cy="99.63506163046668" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="338.6789307552553" cy="303.2969538377333" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="342.21347512067405" cy="308.12234902608634" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="350.8237664391439" cy="313.1225343464416" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="366.8766360623314" cy="248.26052942813794" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="381.7959243781101" cy="248.83236295963115" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="418.4172119243995" cy="249.58107502813164" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="431.74230825031333" cy="250.05651595699237" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="450.5283597428712" cy="250.48608953183975" r="2"/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="475.0604415164708" cy="250.8345397905532" r="2"/>
+<path class="curve rgba16-monochrome-photographic" d="M 612.9180137283566,253.31065051798032 "/>
+<circle class="curve-point rgba16-monochrome-photographic" cx="612.9180137283566" cy="253.31065051798032" r="2"/>
+</g>
+<g>
+<path class="curve rgba8-color-photographic" d="M 244.78475813120343,249.55304883420104 L 300.78258523961483,394.8395729874169 L 304.54878691716374,398.10685189638343 L 322.0709113043828,402.7031788528434 L 341.00390579896873,406.7136831991247 L 360.125172029184,408.52363435918323 L 393.88224753711927,410.7223066833717 L 410.9731910641683,411.4568998335867 L 442.618240322435,412.180790982673 L 457.7042891098957,412.33378792252734"/>
+<circle class="curve-point rgba8-color-photographic" cx="244.78475813120343" cy="249.55304883420104" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="300.78258523961483" cy="394.8395729874169" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="304.54878691716374" cy="398.10685189638343" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="322.0709113043828" cy="402.7031788528434" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="341.00390579896873" cy="406.7136831991247" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="360.125172029184" cy="408.52363435918323" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="393.88224753711927" cy="410.7223066833717" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="410.9731910641683" cy="411.4568998335867" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="442.618240322435" cy="412.180790982673" r="2"/>
+<circle class="curve-point rgba8-color-photographic" cx="457.7042891098957" cy="412.33378792252734" r="2"/>
+<path class="curve rgba8-color-photographic" d="M 571.712987111237,409.9749500722346 "/>
+<circle class="curve-point rgba8-color-photographic" cx="571.712987111237" cy="409.9749500722346" r="2"/>
+</g>
+<g>
+<path class="curve rgba8-monochrome-photographic" d="M 229.64127017761956,249.55304883420104 L 270.8248159948098,543.5828976255048 L 274.5342045054623,548.4122511947971 L 294.7207805198748,559.3734868650363 L 295.4277710785142,498.852278601275 L 313.48863616256926,520.8060618015397 L 354.63530788141156,543.334654673351 L 385.46790569706667,549.0616236913729 L 463.6100414492375,554.1837082265247 L 483.1672163277706,555.2872010596193"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="229.64127017761956" cy="249.55304883420104" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="270.8248159948098" cy="543.5828976255048" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="274.5342045054623" cy="548.4122511947971" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="294.7207805198748" cy="559.3734868650363" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="295.4277710785142" cy="498.852278601275" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="313.48863616256926" cy="520.8060618015397" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="354.63530788141156" cy="543.334654673351" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="385.46790569706667" cy="549.0616236913729" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="463.6100414492375" cy="554.1837082265247" r="2"/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="483.1672163277706" cy="555.2872010596193" r="2"/>
+<path class="curve rgba8-monochrome-photographic" d="M 571.4817544259965,551.9199939821024 "/>
+<circle class="curve-point rgba8-monochrome-photographic" cx="571.4817544259965" cy="551.9199939821024" r="2"/>
+</g>
+<g>
+<path class="curve v16-monochrome-photographic" d="M 234.1960886153809,399.3828935918227 L 289.86961345749376,432.9847530802399 L 290.81496527399395,433.5196134054481 L 294.3614534902114,433.91706579317906 L 305.88245040866576,435.7472009906146 L 307.4069583457383,435.823282146589 L 312.55496850593374,435.8772914564511 L 316.0527710611166,435.9006178261475 L 325.2629509355519,435.9264025288194 L 327.54016772408465,435.9276304484397"/>
+<circle class="curve-point v16-monochrome-photographic" cx="234.1960886153809" cy="399.3828935918227" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="289.86961345749376" cy="432.9847530802399" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="290.81496527399395" cy="433.5196134054481" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="294.3614534902114" cy="433.91706579317906" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="305.88245040866576" cy="435.7472009906146" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="307.4069583457383" cy="435.823282146589" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="312.55496850593374" cy="435.8772914564511" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="316.0527710611166" cy="435.9006178261475" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="325.2629509355519" cy="435.9264025288194" r="2"/>
+<circle class="curve-point v16-monochrome-photographic" cx="327.54016772408465" cy="435.9276304484397" r="2"/>
+<path class="curve v16-monochrome-photographic" d="M 530.7249419645821,437.87525908109546 "/>
+<circle class="curve-point v16-monochrome-photographic" cx="530.7249419645821" cy="437.87525908109546" r="2"/>
+</g>
+<g>
+<path class="curve v8-monochrome-photographic" d="M 180.95455291230985,549.0554102668457 L 225.30066188110595,646.4368470050877 L 229.30917931530513,648.4437317374682 L 239.39569621929738,650.7674387043749 L 256.80859468030246,669.1348383413801 L 270.2610156705671,669.2178230434324 L 290.5374064092974,669.8973285564352 L 298.16400903290105,670.0059579624376 L 302.5669383052965,670.0276903886738 L 303.41163055110286,670.0276903886738"/>
+<circle class="curve-point v8-monochrome-photographic" cx="180.95455291230985" cy="549.0554102668457" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="225.30066188110595" cy="646.4368470050877" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="229.30917931530513" cy="648.4437317374682" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="239.39569621929738" cy="650.7674387043749" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="256.80859468030246" cy="669.1348383413801" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="270.2610156705671" cy="669.2178230434324" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="290.5374064092974" cy="669.8973285564352" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="298.16400903290105" cy="670.0059579624376" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="302.5669383052965" cy="670.0276903886738" r="2"/>
+<circle class="curve-point v8-monochrome-photographic" cx="303.41163055110286" cy="670.0276903886738" r="2"/>
+<path class="curve v8-monochrome-photographic" d="M 425.14130360585943,670.5680802245033 "/>
+<circle class="curve-point v8-monochrome-photographic" cx="425.14130360585943" cy="670.5680802245033" r="2"/>
+</g>
+<g>
+<path class="curve va16-monochrome-photographic" d="M 255.66279508654867,249.55304883420104 L 308.5837166954186,373.052485034621 L 314.94911133806784,375.60941248072595 L 335.50973401567677,381.3284290239121 L 347.8337323315842,391.3588964741375 L 367.5490785717559,392.40175263573656 L 424.44947962839257,393.9355689918316 L 457.86650000029914,396.0821376083727 L 494.65554492712073,397.8574871628707 L 511.18905995476916,398.09654187498336"/>
+<circle class="curve-point va16-monochrome-photographic" cx="255.66279508654867" cy="249.55304883420104" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="308.5837166954186" cy="373.052485034621" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="314.94911133806784" cy="375.60941248072595" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="335.50973401567677" cy="381.3284290239121" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="347.8337323315842" cy="391.3588964741375" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="367.5490785717559" cy="392.40175263573656" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="424.44947962839257" cy="393.9355689918316" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="457.86650000029914" cy="396.0821376083727" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="494.65554492712073" cy="397.8574871628707" r="2"/>
+<circle class="curve-point va16-monochrome-photographic" cx="511.18905995476916" cy="398.09654187498336" r="2"/>
+<path class="curve va16-monochrome-photographic" d="M 592.0063954700745,399.3766709362385 "/>
+<circle class="curve-point va16-monochrome-photographic" cx="592.0063954700745" cy="399.3766709362385" r="2"/>
+</g>
+<g>
+<path class="curve va8-monochrome-photographic" d="M 197.59425517358625,399.3828935918227 L 240.08152332923703,596.8935924823336 L 244.9891060073656,597.9346594467088 L 265.85248934417666,606.372974933191 L 273.18377515814393,610.1687305247892 L 298.2554848265917,610.9199486324619 L 350.59402835513794,614.0630174185471 L 379.11475125127413,615.373091713976 L 446.19142581915617,616.8809052900428 L 474.8325955837966,617.147416519982"/>
+<circle class="curve-point va8-monochrome-photographic" cx="197.59425517358625" cy="399.3828935918227" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="240.08152332923703" cy="596.8935924823336" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="244.9891060073656" cy="597.9346594467088" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="265.85248934417666" cy="606.372974933191" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="273.18377515814393" cy="610.1687305247892" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="298.2554848265917" cy="610.9199486324619" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="350.59402835513794" cy="614.0630174185471" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="379.11475125127413" cy="615.373091713976" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="446.19142581915617" cy="616.8809052900428" r="2"/>
+<circle class="curve-point va8-monochrome-photographic" cx="474.8325955837966" cy="617.147416519982" r="2"/>
+<path class="curve va8-monochrome-photographic" d="M 539.4260532001595,617.0112846705779 "/>
+<circle class="curve-point va8-monochrome-photographic" cx="539.4260532001595" cy="617.0112846705779" r="2"/>
+</g>
+</svg>
