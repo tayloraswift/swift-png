@@ -23,15 +23,15 @@ let package = Package(
     name: "PNG",
     products:
     [
-        .library(   name: "PNG",                targets: ["PNG"]),
         .library(   name: "png",                targets: ["PNG4"]),
-        
         .executable(name: "unit-test",          targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",   targets: ["PNGIntegrationTests"]),
         .executable(name: "compression-test",   targets: ["PNGCompressionTests"]),
+        .executable(name: "decode-benchmark",   targets: ["PNGDecodingBenchmarks"]), 
+        .executable(name: "encode-benchmark",   targets: ["PNGEncodingBenchmarks"]), 
         
+        .library(   name: "PNG",                targets: ["PNG"]),
         .executable(name: "benchmarks3",        targets: ["PNGBenchmarks3"]), 
-        .executable(name: "benchmarks",         targets: ["PNGBenchmarks"]), 
         .executable(name: "examples",           targets: ["PNGExamples"])
     ],
     targets: core +
@@ -41,8 +41,10 @@ let package = Package(
         .target(name: "PNGUnitTests",           dependencies: ["PNG4"], path: "tests/unit"),
         .target(name: "PNGIntegrationTests",    dependencies: ["PNG4"], path: "tests/integration"),
         .target(name: "PNGCompressionTests",    dependencies: ["PNG4"], path: "tests/compression"),
+        .target(name: "PNGDecodingBenchmarks",  dependencies: ["PNG4"], path: "benchmarks/decode/swift"), 
+        .target(name: "PNGEncodingBenchmarks",  dependencies: ["PNG4"], path: "benchmarks/encode/swift"), 
+        
         .target(name: "PNGBenchmarks3",         dependencies: ["PNG"],  path: "benchmarks3"), 
-        .target(name: "PNGBenchmarks",          dependencies: ["PNG4"], path: "benchmarks/speed/swift"), 
         .target(name: "PNGExamples",            dependencies: ["PNG"],  path: "examples")
     ],
     swiftLanguageVersions: [.v4_2, .v5]
