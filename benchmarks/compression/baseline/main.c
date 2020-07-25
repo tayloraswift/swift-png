@@ -1,5 +1,39 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include <png.h>
+
+typedef struct blob_t
+{
+    char* buffer;
+    size_t count;
+    size_t capacity;
+} blob_t;
+
+
+void blob_write(png_structp const context, png_bytep const data, png_size_t const count)
+{
+    blob_t* const blob = (blob_t*) png_get_io_ptr(context); 
+    size_t const total = blob->count + count;
+    if (total >= blob->capacity) 
+    {
+        while (blob->capacity < total) 
+        {
+            blob->capacity += (blob->capacity >> 1) + 16;
+        }
+        blob->buffer = realloc(blob->buffer, blob->capacity);
+    }
+
+    /* copy new bytes to end of buffer */
+    memcpy(blob->buffer + blob->count, data, count);
+    blob->count = total;
+}
+
+void
+blob_flush(png_structp const context)
+{
+}
 
 int main(int const count, char const* const* const arguments) 
 {
@@ -71,18 +105,11 @@ int main(int const count, char const* const* const arguments)
     
     fclose(source);
     
-    
-    FILE* destination = fopen(arguments[2], "wb");
-    if (!destination)
-    {
-        printf("failed to open file\n");
-        return -1;
-    }
+    double const start = ((double) clock()) / CLOCKS_PER_SEC;
     
     png_structp png_out = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (png_out == NULL)
     {
-        fclose(destination);
         return -1;
     }
     info = png_create_info_struct(png_out);
@@ -92,7 +119,9 @@ int main(int const count, char const* const* const arguments)
         return -1;
     }
     
-    png_init_io(png_out, destination);
+    //png_init_io(png_out, destination);
+    blob_t blob = { .buffer = NULL, .count = 0 , .capacity = 0 };
+    png_set_write_fn(png_out, &blob, blob_write, blob_flush);
     
     png_set_compression_level(png_out, z);
     png_set_IHDR(png_out, info, width, height, bit_depth, color_type,
@@ -105,6 +134,18 @@ int main(int const count, char const* const* const arguments)
     png_write_png(png_out, info, PNG_TRANSFORM_IDENTITY, NULL);
     
     png_destroy_write_struct(&png_out, NULL);
-    fclose(destination);
+    
+    double const stop = ((double) clock()) / CLOCKS_PER_SEC;
+    printf("%d %lf %lu %s\n", z, 1000.0 * (stop - start), blob.count, arguments[2]);
+    
+    free(blob.buffer);
+    // FILE* destination = fopen(arguments[2], "wb");
+    // if (!destination)
+    // {
+    //     printf("failed to open file\n");
+    //     return -1;
+    // }
+    // fwrite(blob.buffer, 1, blob.count, destination);
+    // fclose(destination);
     return 0;
 }
