@@ -5,4 +5,4 @@ Package.resolved
 /*.xcodeproj
 /tests/*.png
 /benchmarks/*.png.png
-/benchmarks/compression/out/*.png
+/benchmarks/encode/out/*.png
