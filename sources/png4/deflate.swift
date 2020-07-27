@@ -433,9 +433,10 @@ extension LZ77.Deflator
         
         let exponent:Int 
         private 
-        var storage:ManagedBuffer<Void, Element>, 
-            head:[Prefix: UInt16] // modular index 
-        private 
+        var storage:ManagedBuffer<Void, Element>
+        private(set)
+        var head:[Prefix: UInt16] // modular index 
+        private(set) 
         var endIndex:Int // absolute index
     }
 }
@@ -467,13 +468,11 @@ extension LZ77.Deflator.Window
         }
     }
     
-    private 
     func modular<T>(_ x:T) -> UInt16 where T:BinaryInteger
     {
         .init(truncatingIfNeeded: x) & ~(.max << self.exponent)
     }
     
-    private 
     func distance(from a:UInt16, to b:UInt16) -> Int 
     {
         .init((b &- a) & ~(.max << self.exponent))
@@ -636,6 +635,304 @@ extension LZ77.Deflator.Window
             
             return best.length >= 6 ? best : nil
         }
+    }
+}
+extension LZ77.Deflator 
+{
+    struct Graph 
+    {
+        //  upstream token layout:
+        //  32          24          16          8           0
+        //  ┌───────────┬───────────┬───────────┬───────────┐     ┌───────────┬───────────┐
+        //  │                       ╎           │           │ ... │ distance  ╎ maxlength │
+        //  └───────────┴───────────┴───────────┴───────────┘     └───────────┴───────────┘
+        //                         ↗↗↗
+        //  ┌───────────┬───────────┬───────────┬───────────┐
+        //  │      length > 2       ╎  decade   │           │
+        //  └───────────┴───────────┴───────────┴───────────┘
+        //
+        //  ┌───────────┬───────────┬───────────┬───────────┐
+        //  │                       ╎           │  literal  │
+        //  └───────────┴───────────┴───────────┴───────────┘
+        //                         ↗↗↗
+        //  ┌───────────┬───────────┬───────────┬───────────┐
+        //  │      length == 1      ╎           │           │
+        //  └───────────┴───────────┴───────────┴───────────┘
+        //  ╵                                               ╵
+        //  ╵           ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+        //  ╵           ╵
+        // +0          +4          +8          +12         +16  +124        +128
+        //  ┌─────┬──┬──┬───────────┬─────┬─────┬─────┬─────┐     ┌─────┬─────┐   0
+        //  │  upstream │   depth   │     0     │     1     │ ... │    29     │
+        //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 128
+        //  │        │  │           │           │           │ ... │           │
+        //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 256
+        //  │        │  │           │           │           │ ... │           │
+        //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 384
+        //  ╎        ╎  ╎           ╎           ╎           ╎     ╎           ╎
+
+        private 
+        var storage:ManagedBuffer<Void, UInt32>
+        private(set)
+        var count:Int 
+        let capacity:Int
+    }
+}
+extension LZ77.Deflator.Graph 
+{
+    init(capacity:Int) 
+    {
+        self.storage    = .create(minimumCapacity: 32 * capacity){ _ in () }
+        self.capacity   = capacity 
+        self.count      = 0 
+    }
+    
+    var startIndex:Int 
+    {
+        0
+    }
+    var endIndex:Int 
+    {
+        self.count
+    }
+    
+    subscript(offset offset:Int) -> UInt32 
+    {
+        get 
+        {
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                $0[offset]
+            }
+        }
+        set(value)
+        {
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                $0[offset] = value
+            }
+        }
+    }
+    
+    subscript(index:Int) -> (upstream:UInt32, depth:UInt32) 
+    {
+        get 
+        {
+            (self[offset: index << 5], self[offset: index << 5 | 1])
+        }
+        set(value)
+        {
+            (self[offset: index << 5], self[offset: index << 5 | 1]) = value
+        }
+    }
+    
+    subscript(index:Int, decade decade:UInt8) -> Int 
+    {
+        self.storage.withUnsafeMutablePointerToElements 
+        {
+            .init($0[index << 5 | (.init(decade) + 2)] & 0x00_00_ff_ff)
+        }
+    }
+    
+    mutating 
+    func fill(_ window:LZ77.Deflator.Window, _ lookahead:LZ77.Deflator.In)
+    {
+        lookahead.withUnsafeBufferPointer 
+        {
+            (buffer:UnsafeBufferPointer<UInt8>) in 
+            // cannot encode run longer than 258 elements 
+            let limit:Int       = min(buffer.count, 258) 
+            let front:UInt16    = window.modular(window.endIndex)
+            
+            //  these always succeed, but may contain garbage values if 
+            //  window.endIndex < 2
+            let a:UInt8         = window[window.modular(front &- 1)].value, 
+                b:UInt8         = window[window.modular(front &- 2)].value
+            // clear node 
+            // store literal 
+            self[offset:   self.endIndex << 5    ] = .init(buffer[0]) 
+            // initialize depth to infinity
+            self[offset:   self.endIndex << 5 | 1] = .max 
+            let base:Int = self.endIndex << 5 | 2
+            for decade:Int in 0 ..< 30
+            {
+                self[offset: base + decade] = 0
+            }
+            
+            self.count += 1
+            
+            guard buffer.count >= 3 
+            else 
+            {
+                return 
+            }
+            //  check for internal matches 
+            //      A | A : A : A
+            if  window.endIndex > 0, 
+                buffer[0] == a, 
+                buffer[1] == a, 
+                buffer[2] == a 
+            {
+                var length:Int = 3
+                while length < limit, buffer[length] == a 
+                {
+                    length += 1
+                }
+                // (distance: 1) is the only distance in decade 0
+                self[offset: base    ] = 1 << 16 | .init(length)
+            }
+            //  B : A | B : A : B
+            if  window.endIndex > 1, 
+                buffer[0] == b, 
+                buffer[1] == a, 
+                buffer[2] == b 
+            {
+                var length:Int = 3
+                while length < limit, buffer[length] == a 
+                {
+                    length += 1
+                    guard length < limit, buffer[length] == b 
+                    else 
+                    {
+                        break 
+                    } 
+                    length += 1
+                }
+                
+                // (distance: 2) is the only distance in decade 1
+                self[offset: base + 1] = 2 << 16 | .init(length)
+            }
+            
+            //  |<----- window ---->|<--- lookahead --->|
+            //  [   :   :   :   :   |   :   :   :   :   ]
+            //                      ~~~~~~~~~~~~
+            //                         prefix
+            let prefix:LZ77.Deflator.Window.Prefix = .init(buffer[0], buffer[1], buffer[2])
+            var distance:Int    = 0
+            var last:UInt16     = front, 
+                next:UInt16?    = window.head[prefix] 
+            while let current:UInt16 = next
+            {
+                distance += window.distance(from: current, to: last)
+                guard distance < 1 << window.exponent 
+                else 
+                {
+                    break 
+                }
+                last = current 
+                next = window[current].next 
+                
+                let decade:Int  = .init(LZ77.Decades[distance: distance])
+                let best:UInt32 = self[offset: base + decade] & 0x00_00_ff_ff
+                guard best < limit 
+                else 
+                {
+                    continue 
+                }
+                
+                let length:UInt32   = 
+                {
+                    (start:UInt16) in 
+                    
+                    var length:Int  =                         3, 
+                        m:UInt16    = window.modular(start &+ 3) 
+                    while length < limit, m != front
+                    {
+                        // match up to front 
+                        guard window[m].value == buffer[length]
+                        else 
+                        {
+                            return .init(length)
+                        }
+                        
+                        m       = window.modular(m &+ 1)
+                        length += 1
+                    }
+                    // match lookahead 
+                    let delay:Int = length
+                    while length < limit, buffer[length - delay] == buffer[length]
+                    {
+                        length += 1
+                    }
+                    return .init(length)
+                }(current)
+                
+                if length > best
+                {
+                    self[offset: base + decade] = .init(distance) << 16 | length
+                }
+            }
+        }
+    }
+    
+    mutating 
+    func explore(from index:Int) 
+    {
+        assert(index < self.endIndex - 1)
+        
+        let current:(upstream:UInt32, depth:UInt32) = self[index    ], 
+            next:(upstream:UInt32, depth:UInt32)    = self[index + 1]
+            
+        let literal:(value:UInt8, depth:UInt32)
+        literal.value = .init(truncatingIfNeeded: current.upstream)
+        literal.depth = current.depth + Self.depth(literal: literal.value)
+        if literal.depth < next.depth
+        {
+            self[index + 1] = 
+            (
+                // length = 1, decade = 0 (undefined)
+                upstream:   0x00_01_00_00 | next.upstream & 0x00_00_00_ff, 
+                depth:      literal.depth
+            )
+        }
+        
+        // no point exploring any matches if there is less than the minimum 
+        // match length’s worth of nodes in the graph remaining 
+        let remaining:Int = self.endIndex - index 
+        guard remaining >= 3 
+        else 
+        {
+            return 
+        }
+        
+        for decade:UInt8 in 0 ..< 30 
+        {
+            let suffix:UInt32 = Self.depth(distance: decade)
+            let maxlength:Int = min(self[index, decade: decade], remaining)
+            for length:Int in 3 ..< maxlength 
+            {
+                let depth:UInt32 = suffix + Self.depth(run: LZ77.Decades[run: length])
+                let next:(upstream:UInt32, depth:UInt32) = self[index + length]
+                guard depth < next.depth 
+                else
+                {
+                    continue 
+                }
+                
+                let slug:UInt32 = .init(length) << 16 | .init(decade) << 8
+                self[index + length] = 
+                (
+                    upstream:   slug | next.upstream & 0x00_00_00_ff, 
+                    depth:      depth
+                )
+            }
+        }
+    }
+    
+    private static 
+    func depth(literal:UInt8) -> UInt32 
+    {
+        5
+    }
+    private static 
+    func depth(run decade:UInt8) -> UInt32 
+    {
+        7 + .init(LZ77.Composites[run: decade].extra)
+    }
+    private static 
+    func depth(distance decade:UInt8) -> UInt32 
+    {
+        4 + .init(LZ77.Composites[distance: decade].extra)
     }
 }
 
