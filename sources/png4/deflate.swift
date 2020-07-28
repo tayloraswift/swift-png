@@ -641,50 +641,158 @@ extension LZ77.Deflator
 {
     struct Graph 
     {
-        //  upstream token layout:
-        //  32          24          16          8           0
-        //  ┌───────────┬───────────┬───────────┬───────────┐     ┌───────────┬───────────┐
-        //  │                       ╎           │           │ ... │ distance  ╎ maxlength │
-        //  └───────────┴───────────┴───────────┴───────────┘     └───────────┴───────────┘
-        //                         ↗↗↗
-        //  ┌───────────┬───────────┬───────────┬───────────┐
-        //  │      length > 2       ╎  decade   │           │
-        //  └───────────┴───────────┴───────────┴───────────┘
-        //
-        //  ┌───────────┬───────────┬───────────┬───────────┐
-        //  │                       ╎           │  literal  │
-        //  └───────────┴───────────┴───────────┴───────────┘
-        //                         ↗↗↗
-        //  ┌───────────┬───────────┬───────────┬───────────┐
-        //  │      length == 1      ╎           │           │
-        //  └───────────┴───────────┴───────────┴───────────┘
-        //  ╵                                               ╵
-        //  ╵           ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
-        //  ╵           ╵
-        // +0          +4          +8          +12         +16  +124        +128
-        //  ┌─────┬──┬──┬───────────┬─────┬─────┬─────┬─────┐     ┌─────┬─────┐   0
-        //  │  upstream │   depth   │     0     │     1     │ ... │    29     │
-        //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 128
-        //  │        │  │           │           │           │ ... │           │
-        //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 256
-        //  │        │  │           │           │           │ ... │           │
-        //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 384
-        //  ╎        ╎  ╎           ╎           ╎           ╎     ╎           ╎
-
         private 
         var storage:ManagedBuffer<Void, UInt32>
         private(set)
         var count:Int 
-        let capacity:Int
+        let capacity:Int 
+        
+        private 
+        var depths:Depths 
+        
+        struct Depths 
+        {
+            private 
+            var storage:[UInt8]
+        }
+    }
+}
+extension LZ77.Deflator.Graph.Depths 
+{
+    //  depth table layout:
+    // 
+    //    0 ┌───────────────────────┐   0
+    //      │                       │ 
+    //      │     256 literals      │ 
+    //      │                       │ 
+    //  256 ├───────────────────────┤ 256/3
+    //      │                       │ 
+    //      │     256 lengths       │ 
+    //      │                       │ 
+    //  512 ├───────────────────────┤ 258/0
+    //      │  30 distance decades  │ 
+    //  542 └───────────────────────┘  30
+    // 
+    //  to take full advantage of the 8-bit storage space, we use 0.125-bit 
+    //  fixed-point fractional bit lengths 
+    
+    private static // literal cost: 8.25 bps 
+    let `default`:[UInt8] = .init(repeating: 66, count: 256) 
+    // base run composite cost: 7.5 bps
+    + (3 ... 258).map 
+    {
+        (run:Int) -> UInt8 in
+        60 + .init(LZ77.Composites[run: LZ77.Decades[run: run]].extra) << 3
+    }
+    // base distance composite cost: 4.875 bps 
+    + (0 ... 29).map 
+    {
+        (decade:UInt8) -> UInt8 in
+        39 + .init(LZ77.Composites[distance: decade           ].extra) << 3
+    }
+    
+    init() 
+    {
+        self.storage = Self.default
+    }
+    
+    mutating 
+    func update(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
+    {
+        for (length, level):(UInt8, Range<Int>) in zip(1 ... 15, runliteral.levels)
+        {
+            for symbol:UInt16 in runliteral.symbols[level] 
+            {
+                if      symbol < 256 
+                {
+                    self.storage[.init(symbol)] = length << 3
+                }
+                else if symbol > 256 
+                {
+                    let decade:(extra:UInt16, base:UInt16) = 
+                        LZ77.Composites[run: .init(truncatingIfNeeded: symbol)]
+                    let length:UInt8    = length + .init(decade.extra)
+                    let base:Int        = 253 +    .init(decade.base ), 
+                        count:Int       =   1 <<         decade.extra 
+                    for l:Int in base ..< base + count 
+                    {
+                        self.storage[l] = length << 3
+                    }
+                }
+            }
+        }
+        for (length, level):(UInt8, Range<Int>) in zip(1 ... 15, distance.levels)
+        {
+            for symbol:UInt8 in distance.symbols[level] 
+            {
+                let extra:UInt8 = .init(LZ77.Composites[distance: symbol].extra)
+                self.storage[512 + .init(symbol)] = (length + extra) << 3
+            }
+        }
+    }
+    mutating 
+    func generalize() 
+    {
+        for i:Int in self.storage.indices 
+        {
+            let specialized:UInt8 = self.storage[i], 
+                generalized:UInt8 = Self.default[i]
+            self.storage[i] = (specialized & generalized) &+ (specialized ^ generalized) >> 1
+        }
+    }
+    
+    subscript(literal literal:UInt8) -> UInt32 
+    {
+        .init(self.storage[.init(literal)])
+    }
+    subscript(run run:Int) -> UInt32 
+    {
+        .init(self.storage[253 + run])
+    }
+    subscript(distance decade:UInt8) -> UInt32 
+    {
+        .init(self.storage[512 + .init(decade)])
     }
 }
 extension LZ77.Deflator.Graph 
 {
+    //  upstream token layout:
+    //  32          24          16          8           0
+    //  ┌───────────┬───────────┬───────────┬───────────┐     ┌───────────┬───────────┐
+    //  │                       ╎           │           │ ... │ distance  ╎ maxlength │
+    //  └───────────┴───────────┴───────────┴───────────┘     └───────────┴───────────┘
+    //                         ↗↗↗
+    //  ┌───────────┬───────────┬───────────┬───────────┐
+    //  │      length > 2       ╎  decade   │           │
+    //  └───────────┴───────────┴───────────┴───────────┘
+    //
+    //  ┌───────────┬───────────┬───────────┬───────────┐
+    //  │                       ╎           │  literal  │
+    //  └───────────┴───────────┴───────────┴───────────┘
+    //                         ↗↗↗
+    //  ┌───────────┬───────────┬───────────┬───────────┐
+    //  │      length == 1      ╎           │           │
+    //  └───────────┴───────────┴───────────┴───────────┘
+    //  ╵                                               ╵
+    //  ╵           ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+    //  ╵           ╵
+    // +0          +4          +8          +12         +16  +124        +128
+    //  ┌─────┬──┬──┬───────────┬─────┬─────┬─────┬─────┐     ┌─────┬─────┐   0
+    //  │  upstream │   depth   │     0     │     1     │ ... │    29     │
+    //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 128
+    //  │        │  │           │           │           │ ... │           │
+    //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 256
+    //  │        │  │           │           │           │ ... │           │
+    //  ├─────┼──┼──┼───────────┼─────┼─────┼─────┼─────┤     ├─────┼─────┤ 384
+    //  ╎        ╎  ╎           ╎           ╎           ╎     ╎           ╎
+
     init(capacity:Int) 
     {
         self.storage    = .create(minimumCapacity: 32 * capacity){ _ in () }
         self.capacity   = capacity 
         self.count      = 0 
+        
+        self.depths     = .init()
     }
     
     var startIndex:Int 
@@ -694,6 +802,10 @@ extension LZ77.Deflator.Graph
     var endIndex:Int 
     {
         self.count
+    }
+    var indices:Range<Int> 
+    {
+        self.startIndex ..< self.endIndex
     }
     
     subscript(offset offset:Int) -> UInt32 
@@ -875,7 +987,7 @@ extension LZ77.Deflator.Graph
             
         let literal:(value:UInt8, depth:UInt32)
         literal.value = .init(truncatingIfNeeded: current.upstream)
-        literal.depth = current.depth + Self.depth(literal: literal.value)
+        literal.depth = current.depth + self.depths[literal: literal.value]
         if literal.depth < next.depth
         {
             self[index + 1] = 
@@ -897,11 +1009,11 @@ extension LZ77.Deflator.Graph
         
         for decade:UInt8 in 0 ..< 30 
         {
-            let suffix:UInt32 = Self.depth(distance: decade)
+            let suffix:UInt32 = self.depths[distance: decade]
             let maxlength:Int = min(self[index, decade: decade], remaining)
             for length:Int in 3 ..< maxlength 
             {
-                let depth:UInt32 = suffix + Self.depth(run: LZ77.Decades[run: length])
+                let depth:UInt32 = suffix + self.depths[run: length]
                 let next:(upstream:UInt32, depth:UInt32) = self[index + length]
                 guard depth < next.depth 
                 else
@@ -919,20 +1031,81 @@ extension LZ77.Deflator.Graph
         }
     }
     
-    private static 
-    func depth(literal:UInt8) -> UInt32 
+    mutating 
+    func pave() -> [Int] 
     {
-        5
+        var frequencies:[Int]   = .init(repeating: 0, count: 318)
+        var current:(index:Int, upstream:UInt32) 
+        current.index           = self.endIndex - 1 
+        current.upstream        = self[offset: current.index << 5]
+        repeat 
+        {
+            let length:Int = .init(current.upstream >> 16)
+            if length == 1 
+            {
+                let literal:Int         = .init(current.upstream & 0x00_00_00_ff)
+                frequencies[literal]   += 1
+            }
+            else 
+            {
+                let decade:(run:Int, distance:Int) = 
+                (
+                    .init(LZ77.Decades[run: length]),
+                    .init(current.upstream >> 8 & 0x00_00_00_ff)
+                )
+                
+                frequencies[256 | decade.run     ] += 1
+                frequencies[288 + decade.distance] += 1
+            }
+            
+            let next:(index:Int, upstream:UInt32) 
+            next.index          = current.index - length 
+            next.upstream       = self[offset: next.index << 5]
+            
+            self[offset: next.index << 5] = 
+                current.upstream & 0xff_ff_ff_00 |
+                next.upstream    & 0x00_00_00_ff 
+            
+            current = next 
+        }
+        while current.index > self.startIndex
+        
+        return frequencies
     }
-    private static 
-    func depth(run decade:UInt8) -> UInt32 
+    mutating 
+    func minimize(iterations:Int) 
+        -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
     {
-        7 + .init(LZ77.Composites[run: decade].extra)
+        for i:Int in (0 ..< iterations).reversed()
+        {
+            for node:Int in self.indices
+            {
+                self.explore(from: node)
+            }
+            
+            let frequencies:[Int] = self.pave()
+            let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
+            (
+                .init(frequencies: frequencies[0   ..< 286], limit: 15),
+                .init(frequencies: frequencies[288 ..< 318], limit: 15)
+            )
+            
+            guard i > 0 
+            else 
+            {
+                return tree
+            }
+            
+            self.depths.update(runliteral: tree.runliteral, distance: tree.distance)
+            self.reset()
+        }
+        
+        fatalError("unreachable")
     }
-    private static 
-    func depth(distance decade:UInt8) -> UInt32 
+    
+    mutating 
+    func reset() 
     {
-        4 + .init(LZ77.Composites[distance: decade].extra)
     }
 }
 
@@ -1287,6 +1460,32 @@ extension LZ77.Deflator.Stream
     mutating 
     func compress(all:Bool) -> Void?
     {
+        /* while       self.input.count >= 259 || 
+            (all && self.input.count !=   0)
+        {
+            guard let _:Void = self.graph.fill(self.window, self.input) 
+            else 
+            {
+                let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+                let terms:[LZ77.Deflator.Term]
+                (tree, terms) = self.graph.trace(iterations: 2)
+                
+                return ()
+            }
+        }
+        
+        if all 
+        {
+            let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+            let terms:[LZ77.Deflator.Term]
+            (tree, terms) = self.graph.trace(iterations: 2)
+            return ()
+        }
+        else 
+        {
+            return nil 
+        } */
+        
         // always maintain at least 258 bytes in the input buffer 
         while       self.input.count >= 259 || 
             (all && self.input.count !=   0)
