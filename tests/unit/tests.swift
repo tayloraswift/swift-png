@@ -206,6 +206,7 @@ extension Test
     func compressZ(count:Int) -> Result<Void, Failure> 
     {
         let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
+        print(input)
         var deflator:LZ77.Deflator = .init(exponent: 8, hint: 16)
         deflator.push(input, last: true)
         var compressed:[UInt8] = []
