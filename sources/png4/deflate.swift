@@ -677,18 +677,18 @@ extension LZ77.Deflator.Graph.Depths
     //  fixed-point fractional bit lengths 
     
     private static // literal cost: 8.25 bps 
-    let `default`:[UInt8] = .init(repeating: 66, count: 256) 
+    let `default`:[UInt8] = .init(repeating: 33, count: 256) 
     // base run composite cost: 7.5 bps
     + (3 ... 258).map 
     {
         (run:Int) -> UInt8 in
-        60 + .init(LZ77.Composites[run: LZ77.Decades[run: run]].extra) << 3
+        30 + .init(LZ77.Composites[run: LZ77.Decades[run: run]].extra) << 2
     }
-    // base distance composite cost: 4.875 bps 
+    // base distance composite cost: 4.75 bps 
     + (0 ... 29).map 
     {
         (decade:UInt8) -> UInt8 in
-        39 + .init(LZ77.Composites[distance: decade           ].extra) << 3
+        19 + .init(LZ77.Composites[distance: decade           ].extra) << 2
     }
     
     init() 
@@ -705,7 +705,7 @@ extension LZ77.Deflator.Graph.Depths
             {
                 if      symbol < 256 
                 {
-                    self.storage[.init(symbol)] = length << 3
+                    self.storage[.init(symbol)] = length << 2
                 }
                 else if symbol > 256 
                 {
@@ -716,7 +716,7 @@ extension LZ77.Deflator.Graph.Depths
                         count:Int       =   1 <<         decade.extra 
                     for l:Int in base ..< base + count 
                     {
-                        self.storage[l] = length << 3
+                        self.storage[l] = length << 2
                     }
                 }
             }
@@ -726,7 +726,7 @@ extension LZ77.Deflator.Graph.Depths
             for symbol:UInt8 in distance.symbols[level] 
             {
                 let extra:UInt8 = .init(LZ77.Composites[distance: symbol].extra)
-                self.storage[512 + .init(symbol)] = (length + extra) << 3
+                self.storage[512 + .init(symbol)] = (length + extra) << 2
             }
         }
     }
@@ -847,11 +847,25 @@ extension LZ77.Deflator.Graph
     }
     
     mutating 
-    func fill(_ window:LZ77.Deflator.Window, _ lookahead:LZ77.Deflator.In)
+    func reset() 
     {
-        lookahead.withUnsafeBufferPointer 
+        self.count = 0 
+        self.depths.generalize()
+    }
+    
+    mutating 
+    func fill(_ window:LZ77.Deflator.Window, _ lookahead:LZ77.Deflator.In) -> Void?
+    {
+        // must be one empty space at the end to be the sink node
+        guard self.endIndex < self.capacity - 1 
+        else 
         {
-            (buffer:UnsafeBufferPointer<UInt8>) in 
+            return nil 
+        }
+        
+        return lookahead.withUnsafeBufferPointer 
+        {
+            (buffer:UnsafeBufferPointer<UInt8>) -> Void in 
             // cannot encode run longer than 258 elements 
             let limit:Int       = min(buffer.count, 258) 
             let front:UInt16    = window.modular(window.endIndex)
@@ -978,22 +992,111 @@ extension LZ77.Deflator.Graph
     }
     
     mutating 
+    func minimize(iterations:Int) 
+        -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+    {
+        var i:Int = 0
+        while true 
+        {
+            let frequencies:[Int] = self.minimize()
+            let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
+            (
+                .init(frequencies: frequencies[0   ..< 286], limit: 15),
+                .init(frequencies: frequencies[288 ..< 318], limit: 15)
+            )
+            
+            i += 1
+            
+            guard i < iterations  
+            else 
+            {
+                return tree
+            }
+            
+            self.depths.update(runliteral: tree.runliteral, distance: tree.distance)
+            // reset vertex depths 
+            for i:Int in self.indices 
+            {
+                self[offset: i << 5 | 1] = .max 
+            }
+        }
+    }
+    
+    // after calling this function, the graph contains a linked list starting 
+    // from self.startIndex and ending at self.endIndex
+    private mutating 
+    func minimize() -> [Int] 
+    {
+        // perform minimum-cost search, after this, there is a linked list 
+        // containing the minimum-cost path starting at self.endIndex and 
+        // ending at self.startIndex
+        
+        // initialize source node 
+        self[offset: self.startIndex << 5 | 1] = 0
+        // initialize sink node 
+        self[offset: self.endIndex   << 5 | 1] = .max 
+        
+        for node:Int in self.indices
+        {
+            self.explore(from: node)
+        }
+        // tally symbol frequencies and reverse the linked list
+        var frequencies:[Int]   = .init(repeating: 0, count: 318)
+        var current:(index:Int, upstream:UInt32) 
+        current.index           = self.endIndex
+        current.upstream        = self[offset: current.index << 5]
+        repeat 
+        {
+            let length:Int      = .init(current.upstream >> 16)
+            let next:(index:Int, upstream:UInt32) 
+            next.index          = current.index - length 
+            next.upstream       = self[offset: next.index << 5]
+            
+            self[offset: next.index << 5] = 
+                current.upstream & 0xff_ff_ff_00 |
+                next.upstream    & 0x00_00_00_ff 
+            
+            if length == 1 
+            {
+                let symbol:Int          = .init(next.upstream & 0x00_00_00_ff)
+                frequencies[symbol]    += 1
+            }
+            else 
+            {
+                let symbol:(run:Int, distance:Int) = 
+                (
+                    256 | .init(LZ77.Decades[run: length]),
+                    288 + .init(current.upstream >> 8 & 0x00_00_00_ff)
+                )
+                
+                frequencies[symbol.run     ] += 1
+                frequencies[symbol.distance] += 1
+            }
+            
+            current = next 
+        }
+        while current.index > self.startIndex
+        
+        // set end-of-block symbol frequency to 1 
+        frequencies[256] = 1
+        return frequencies
+    }
+    
+    private mutating 
     func explore(from index:Int) 
     {
-        assert(index < self.endIndex - 1)
-        
         let current:(upstream:UInt32, depth:UInt32) = self[index    ], 
             next:(upstream:UInt32, depth:UInt32)    = self[index + 1]
-            
         let literal:(value:UInt8, depth:UInt32)
         literal.value = .init(truncatingIfNeeded: current.upstream)
         literal.depth = current.depth + self.depths[literal: literal.value]
+        
         if literal.depth < next.depth
         {
             self[index + 1] = 
             (
-                // length = 1, decade = 0 (undefined)
-                upstream:   0x00_01_00_00 | next.upstream & 0x00_00_00_ff, 
+                // length = 1, decade = undefined
+                upstream:   0x00_01_ff_00 | next.upstream & 0x00_00_00_ff, 
                 depth:      literal.depth
             )
         }
@@ -1009,11 +1112,16 @@ extension LZ77.Deflator.Graph
         
         for decade:UInt8 in 0 ..< 30 
         {
-            let suffix:UInt32 = self.depths[distance: decade]
             let maxlength:Int = min(self[index, decade: decade], remaining)
-            for length:Int in 3 ..< maxlength 
+            guard maxlength > 0 
+            else 
             {
-                let depth:UInt32 = suffix + self.depths[run: length]
+                continue 
+            }
+            let depth:UInt32 = current.depth + self.depths[distance: decade]
+            for length:Int in 3 ... maxlength 
+            {
+                let depth:UInt32 = depth + self.depths[run: length]
                 let next:(upstream:UInt32, depth:UInt32) = self[index + length]
                 guard depth < next.depth 
                 else
@@ -1029,83 +1137,6 @@ extension LZ77.Deflator.Graph
                 )
             }
         }
-    }
-    
-    mutating 
-    func pave() -> [Int] 
-    {
-        var frequencies:[Int]   = .init(repeating: 0, count: 318)
-        var current:(index:Int, upstream:UInt32) 
-        current.index           = self.endIndex - 1 
-        current.upstream        = self[offset: current.index << 5]
-        repeat 
-        {
-            let length:Int = .init(current.upstream >> 16)
-            if length == 1 
-            {
-                let literal:Int         = .init(current.upstream & 0x00_00_00_ff)
-                frequencies[literal]   += 1
-            }
-            else 
-            {
-                let decade:(run:Int, distance:Int) = 
-                (
-                    .init(LZ77.Decades[run: length]),
-                    .init(current.upstream >> 8 & 0x00_00_00_ff)
-                )
-                
-                frequencies[256 | decade.run     ] += 1
-                frequencies[288 + decade.distance] += 1
-            }
-            
-            let next:(index:Int, upstream:UInt32) 
-            next.index          = current.index - length 
-            next.upstream       = self[offset: next.index << 5]
-            
-            self[offset: next.index << 5] = 
-                current.upstream & 0xff_ff_ff_00 |
-                next.upstream    & 0x00_00_00_ff 
-            
-            current = next 
-        }
-        while current.index > self.startIndex
-        
-        return frequencies
-    }
-    mutating 
-    func minimize(iterations:Int) 
-        -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
-    {
-        for i:Int in (0 ..< iterations).reversed()
-        {
-            for node:Int in self.indices
-            {
-                self.explore(from: node)
-            }
-            
-            let frequencies:[Int] = self.pave()
-            let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) = 
-            (
-                .init(frequencies: frequencies[0   ..< 286], limit: 15),
-                .init(frequencies: frequencies[288 ..< 318], limit: 15)
-            )
-            
-            guard i > 0 
-            else 
-            {
-                return tree
-            }
-            
-            self.depths.update(runliteral: tree.runliteral, distance: tree.distance)
-            self.reset()
-        }
-        
-        fatalError("unreachable")
-    }
-    
-    mutating 
-    func reset() 
-    {
     }
 }
 
@@ -1305,9 +1336,10 @@ extension LZ77
         struct Stream 
         {
             var input:In 
-            var queued:(run:Int, extend:Int, distance:Int)?
-            var terms:[Term]
+            //var queued:(run:Int, extend:Int, distance:Int)?
+            //var terms:[Term]
             var window:Window
+            var graph:Graph
             var output:Out
             
             init(exponent:Int, hint:Int) 
@@ -1315,8 +1347,9 @@ extension LZ77
                 precondition(8 ..< 16 ~= exponent, "exponent cannot be less than 8 or greater than 15")
                 
                 self.input  = .init()
-                self.terms  = []
+                //self.terms  = []
                 self.window = .init(exponent: exponent)
+                self.graph  = .init(capacity: 1 << 16)
                 self.output = .init(hint: hint)
             }
         }
@@ -1427,11 +1460,11 @@ extension LZ77.Deflator
         }
         while let _:Void = self.stream.compress(all: last) 
         {
-            self.stream.block(last: false)
+            self.stream.block(final: false)
         }
         if last 
         {
-            self.stream.block(last: true)
+            self.stream.block(final: true)
             self.stream.checksum()
         }
     }
@@ -1460,32 +1493,20 @@ extension LZ77.Deflator.Stream
     mutating 
     func compress(all:Bool) -> Void?
     {
-        /* while       self.input.count >= 259 || 
+        while       self.input.count >= 258 || 
             (all && self.input.count !=   0)
         {
             guard let _:Void = self.graph.fill(self.window, self.input) 
             else 
             {
-                let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
-                let terms:[LZ77.Deflator.Term]
-                (tree, terms) = self.graph.trace(iterations: 2)
-                
                 return ()
             }
+            
+            self.window.register(self.input.dequeue())
         }
         
-        if all 
-        {
-            let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
-            let terms:[LZ77.Deflator.Term]
-            (tree, terms) = self.graph.trace(iterations: 2)
-            return ()
-        }
-        else 
-        {
-            return nil 
-        } */
-        
+        return nil 
+        /*
         // always maintain at least 258 bytes in the input buffer 
         while       self.input.count >= 259 || 
             (all && self.input.count !=   0)
@@ -1576,18 +1597,231 @@ extension LZ77.Deflator.Stream
         }
         
         return nil 
-    }
-    
-    mutating 
-    func block(last:Bool) 
-    {
-        let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 12)
-        self.block(dicing.startIndex, dicing: dicing, last: last)
-        // empty literal buffer 
-        self.terms.removeAll(keepingCapacity: true)
+        */
     }
     
     private mutating 
+    func blockStart(final:Bool, runliterals:Int, distances:Int, metatree:LZ77.Huffman<UInt8>)  
+    {
+        let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19) 
+        {
+            $0.initialize(repeating: 0)
+            for (length, level):(UInt16, Range<Int>) in zip(1 ... 8, metatree.levels)
+            {
+                for symbol:UInt8 in metatree.symbols[level] 
+                {
+                    let z:Int = 
+                    [
+                        3, 17, 15, 13, 11,  9,  7,  5, 
+                        4,  6,  8, 10, 12, 14, 16, 18, 
+                        0, 1, 2
+                    ][.init(symbol)]
+                    
+                    $0[z] = length
+                }
+            }
+            // max(4, _) because HCLEN cannot be less than 4
+            $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
+        }
+        
+        self.output.append(final ? 0b10_1 : 0b10_0,        count: 3)
+        
+        self.output.append(.init(runliterals       - 257), count: 5)
+        self.output.append(.init(distances         -   1), count: 5)
+        self.output.append(.init(codelengths.count -   4), count: 4)
+        for codelength:UInt16 in codelengths 
+        {
+            self.output.append(codelength, count: 3)
+        }
+    }
+    
+    private mutating 
+    func blockTables(_ metaterms:[LZ77.Deflator.Term.Meta], semistatic:LZ77.Deflator.Semistatic) 
+    {
+        for metaterm:LZ77.Deflator.Term.Meta in metaterms 
+        {
+            let codeword:LZ77.Codeword = semistatic[meta: metaterm.symbol]
+            self.output.append(codeword.bits, count: codeword.length)
+            self.output.append(metaterm.bits, count: codeword.extra)
+        }
+    }
+    
+    private mutating 
+    func blockCompressed(semistatic:LZ77.Deflator.Semistatic) 
+    {
+        var index:Int = self.graph.startIndex 
+        while index < self.graph.endIndex 
+        {
+            let upstream:UInt32 = self.graph[offset: index << 5]
+            let count:Int       = .init(upstream >> 16) 
+            if count == 1 
+            {
+                let literal:UInt16 = .init(upstream & 0x00_00_00_ff)
+                let codeword:LZ77.Codeword = semistatic[runliteral: literal]
+                self.output.append(codeword.bits, count: codeword.length)
+            }
+            else 
+            {
+                let decade:(run:UInt8, distance:UInt8) = 
+                (
+                    run:        LZ77.Decades[run: count], 
+                    distance:   .init(truncatingIfNeeded: upstream >> 8)
+                )
+                let offset:UInt16 = .init(self.graph[offset: index << 5 | (2 + .init(decade.distance))] >> 16)
+                
+                let bits:(run:UInt16, distance:UInt16) = 
+                (
+                    run:        .init(count) - LZ77.Composites[run: decade.run].base, 
+                    distance:   offset - LZ77.Composites[distance: decade.distance].base 
+                )
+                
+                let codeword:(run:LZ77.Codeword, distance:LZ77.Codeword) = 
+                (
+                    run:        semistatic[runliteral:  256 | .init(decade.run)],
+                    distance:   semistatic[distance:    decade.distance]
+                )
+                
+                self.output.append(codeword.run.bits,      count: codeword.run.length)
+                self.output.append(bits.run,               count: codeword.run.extra)
+                self.output.append(codeword.distance.bits, count: codeword.distance.length)
+                self.output.append(bits.distance,          count: codeword.distance.extra)
+            }
+            
+            index += count 
+        }
+        // emit end-of-block code 
+        let end:LZ77.Codeword = semistatic[runliteral: 256]
+        self.output.append(end.bits, count: end.length)
+        
+        self.graph.reset()
+    }
+    
+    mutating 
+    func block(final:Bool) 
+    {
+        let tree:
+        (
+            runliteral:LZ77.Huffman<UInt16>, 
+            distance:LZ77.Huffman<UInt8>, 
+            meta:LZ77.Huffman<UInt8>
+        ) 
+        
+        (tree.runliteral, tree.distance) = self.graph.minimize(iterations: 8)
+        
+        // there really should be a maximum of 316 combined symbols, not 
+        // 318, but the rfc 1951 specifies 218 for some reason 
+        var lengths:[UInt8] = .init(repeating: 0, count: 318) 
+        
+        for (length, level):(UInt8, Range<Int>) in 
+            zip(1 ... 15, tree.runliteral.levels) 
+        {
+            for symbol:UInt16 in tree.runliteral.symbols[level] 
+            {
+                lengths[      .init(symbol)] = length
+            }
+        }
+        // minimum of 257 runliteral codes
+        let r:Int = max(257, lengths.prefix(286).reversed().drop{ $0 == 0 }.count)
+        for (length, level):(UInt8, Range<Int>) in 
+            zip(1 ... 15, tree.distance.levels) 
+        {
+            for symbol:UInt8 in tree.distance.symbols[level] 
+            {
+                lengths[r + .init(symbol)] = length
+            }
+        }
+        // minimum of 1 distance code
+        let d:Int = max(1, lengths.dropFirst(r).prefix(32).reversed().drop{ $0 == 0 }.count)
+        
+        // segment into metaterms 
+        var repetitions:Int = 1, 
+            last:UInt8      = lengths[0]
+        var iterator:ArraySlice<UInt8>.Iterator = lengths[1 ..< r + d].makeIterator(), 
+            terms:[LZ77.Deflator.Term.Meta]     = []
+        while true 
+        {
+            let current:UInt8? = iterator.next()
+            
+            if let literal:UInt8 = current, literal == last 
+            {
+                repetitions += 1
+            }
+            else 
+            {
+                if last == 0 
+                {
+                    while repetitions > 138 
+                    {
+                        terms.append(.zeros(count: 138))
+                        repetitions -= 138
+                    }
+                    if repetitions > 2 
+                    {
+                        terms.append(.zeros(count: repetitions))
+                    }
+                    else 
+                    {
+                        terms.append(contentsOf: 
+                            repeatElement(.literal(last), count: repetitions))
+                    }
+                }
+                else 
+                {
+                    terms.append(.literal(last))
+                    repetitions -= 1
+                    while repetitions > 6
+                    {
+                        terms.append(.repeat(count: 6))
+                        repetitions -= 6
+                    }
+                    if repetitions > 2 
+                    {
+                        terms.append(.repeat(count: repetitions))
+                    }
+                    else 
+                    {
+                        terms.append(contentsOf: 
+                            repeatElement(.literal(last), count: repetitions))
+                    }
+                }
+                
+                guard let literal:UInt8 = current 
+                else 
+                {
+                    break 
+                }
+                
+                last        = literal 
+                repetitions = 1
+            }
+        } 
+        
+        // construct metatree 
+        var frequencies:[Int] = .init(repeating: 0, count: 19)
+        for term:LZ77.Deflator.Term.Meta in terms 
+        {
+            frequencies[.init(term.symbol)] += 1
+        }
+        
+        tree.meta = .init(frequencies: frequencies, limit: 7)
+        
+        self.blockStart(final: final, runliterals: r, distances: d, metatree: tree.meta)
+        
+        let semistatic:LZ77.Deflator.Semistatic = .init(
+            runliteral: tree.runliteral, 
+            distance: tree.distance, 
+            meta: tree.meta)
+        
+        self.blockTables(terms, semistatic: semistatic)
+        self.blockCompressed(semistatic: semistatic)
+        
+        /* let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 12)
+        self.block(dicing.startIndex, dicing: dicing, last: last)
+        // empty literal buffer 
+        self.terms.removeAll(keepingCapacity: true) */
+    }
+    
+    /* private mutating 
     func block(_ index:Int, dicing:LZ77.Deflator.Dicing, last:Bool)
     {
         let semistatic:LZ77.Deflator.Semistatic, 
@@ -1659,7 +1893,7 @@ extension LZ77.Deflator.Stream
         // end-of-block symbol 
         let end:LZ77.Codeword = semistatic[runliteral: 256]
         self.output.append(end.bits, count: end.length)
-    }
+    } */
     
     mutating 
     func checksum() 
@@ -1781,7 +2015,7 @@ extension LZ77.Deflator
         let memo:[Element]
     }
 }
-extension LZ77.Deflator.Dicing 
+/* extension LZ77.Deflator.Dicing 
 {
     subscript(index:Int) -> Node
     {
@@ -2201,4 +2435,4 @@ extension LZ77.Deflator.Dicing
             mass:Int                        = metatree.mass(frequencies: frequencies)
         return (metatree, mass: mass, runliterals: r, distances: d, terms)
     }
-}
+} */
