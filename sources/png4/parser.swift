@@ -1548,7 +1548,7 @@ extension PNG.Text
         
         if self.compressed 
         {
-            var deflator:LZ77.Deflator = .init(exponent: 15, hint: 4096)
+            var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
             deflator.push(.init(self.content.utf8), last: true)
             while true 
             {

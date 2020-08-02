@@ -140,10 +140,10 @@ extension Test
             
             while input.count > (s == segments.count - 1 ? 0 : 10)
             {
-                if let match:(length:Int, distance:Int) = window.match(input) 
+                if let match:(run:Int, distance:Int) = window.match(input, threshold: 5) 
                 {
                     var run:[UInt8] = []
-                    for _:Int in 0 ..< match.length 
+                    for _:Int in 0 ..< match.run
                     {
                         let literal:UInt8 = input.dequeue()
                         run.append(literal)
@@ -206,7 +206,6 @@ extension Test
     func compressZ(count:Int) -> Result<Void, Failure> 
     {
         let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
-        print(input)
         var deflator:LZ77.Deflator = .init(exponent: 8, hint: 16)
         deflator.push(input, last: true)
         var compressed:[UInt8] = []

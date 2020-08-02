@@ -135,11 +135,11 @@ extension PNG
 }
 extension PNG.Encoder 
 {
-    init(interlaced:Bool, hint:Int = 1 << 15)
+    init(interlaced:Bool, level:Int, hint:Int = 1 << 15)
     {
         self.row        = nil
         self.pass       = interlaced ? .subimage(0) : .image
-        self.deflator   = .init(hint: hint)
+        self.deflator   = .init(level: level, hint: hint)
     }
     
     mutating 
@@ -350,7 +350,7 @@ extension PNG.Encoder
 extension PNG.Data.Rectangular 
 {
     public 
-    func compress<Destination>(stream:inout Destination) throws
+    func compress<Destination>(stream:inout Destination, level:Int = 9) throws
         where Destination:PNG.Bytestream.Destination
     {
         try stream.signature()
@@ -425,7 +425,7 @@ extension PNG.Data.Rectangular
             try stream.format(type: type, data: data)
         }
         
-        var encoder:PNG.Encoder = .init(interlaced: self.layout.interlaced)
+        var encoder:PNG.Encoder = .init(interlaced: self.layout.interlaced, level: level)
         while let data:[UInt8] = encoder.pull(size: self.size, 
             pixel:      self.layout.format.pixel, 
             delegate:   self.collect(scanline:at:stride:))  
