@@ -148,7 +148,7 @@ extension Test
                 return .failure(.init(message: "failed to open file '\(path.png)'"))
             }
             
-            try baseline.image.compress(path: path.out)
+            try baseline.image.compress(path: path.out, level: 9)
             
             guard let output:(image:PNG.Data.Rectangular, size:Int) = 
                 (try System.File.Source.open(path: path.out) 

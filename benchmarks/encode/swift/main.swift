@@ -58,7 +58,7 @@ func main() throws
     
     let start:Int   = clock()
     var blob:Blob   = .init()
-    try image.compress(stream: &blob)
+    try image.compress(stream: &blob, level: level)
     let stop:Int    = clock()
     print("\(level) \(1000.0 * .init(stop - start) / .init(CLOCKS_PER_SEC)) \(blob.count) \(name)")
 }
