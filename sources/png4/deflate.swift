@@ -455,6 +455,24 @@ extension LZ77.Deflator.Window
         self.storage    = .create(minimumCapacity: 1 << exponent){ _ in () }
     }
     
+    subscript(_extended modular:Int) -> Element
+    {
+        get
+        {
+            self.storage.withUnsafeMutablePointerToElements
+            {
+                $0[modular]
+            }
+        }
+        set(value)
+        {
+            self.storage.withUnsafeMutablePointerToElements
+            {
+                $0[modular] = value
+            }
+        }
+    }
+    
     subscript(modular:UInt16) -> Element 
     {
         get 
@@ -473,55 +491,15 @@ extension LZ77.Deflator.Window
         }
     }
     
-    func modular<T>(_ x:T) -> UInt16 where T:BinaryInteger
-    {
-        .init(truncatingIfNeeded: x) & ~(.max << self.exponent)
-    }
+    // func modular<T>(_ x:T) -> UInt16 where T:BinaryInteger
+    // {
+    //     .init(truncatingIfNeeded: x) & ~(.max << self.exponent)
+    // }
     
-    func distance(from a:UInt16, to b:UInt16) -> Int 
-    {
-        .init((b &- a) & ~(.max << self.exponent))
-    }
-    
-    mutating 
-    func register(_ value:UInt8) 
-    {
-        //  a   b   c   d   e  e+1
-        //  [   :   |   :   :   ]
-        //  ^~~~~~~~~~~~^~~~~~~~~~~~
-        //  add         remove
-        let c:UInt16        = self.modular(self.endIndex)
-        self[c]             = .init(value: value)
-        
-        self.endIndex      += 1
-        guard self.endIndex > 2 
-        else 
-        {
-            return 
-        }
-        
-        let a:UInt16        = self.modular(c &- 2),
-            b:UInt16        = self.modular(c &- 1)
-        let new:Prefix      = .init(self[a].value, self[b].value, value)
-        if self.endIndex   >= 1 << self.exponent 
-        {
-            // remove overwritten entry 
-            let d:UInt16    = self.modular(c &+ 1),
-                e:UInt16    = self.modular(c &+ 2),
-                f:UInt16    = self.modular(c &+ 3)
-            let old:Prefix  = .init(self[d].value, self[e].value, self[f].value)
-            if let m:UInt16 = self.head[old], m == d
-            {
-                self.head[old] = nil 
-            }
-        }
-        if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
-        {
-            // we know `m` is within the window range, because we preemptively 
-            // remove dictionary entries when they go out of range
-            self[a].next    = m
-        }
-    }
+    //func distance(from a:UInt16, to b:UInt16) -> Int
+    //{
+    //    .init((b &- a) & ~(.max << self.exponent))
+    //}
     
     func match(_ lookahead:LZ77.Deflator.In, threshold:Int, attempts:Int, goal:Int) 
         -> (run:Int, distance:Int)?
@@ -551,14 +529,19 @@ extension LZ77.Deflator.Window
                 return
             }
             
+            let mask:Int        = ~(.max << self.exponent)
+            
             // cannot encode run longer than 258 elements 
-            let limit:Int       = min(buffer.count, 258) 
-            let front:UInt16    = self.modular(self.endIndex)
+            let limit:Int       = min(buffer.count, 258)
+            let front:Int       = self.endIndex & mask
+            // let front:UInt16    = self.modular(self.endIndex)
             
             //  these always succeed, but may contain garbage values if 
             //  self.endIndex < 2
-            let a:UInt8         = self[self.modular(front &- 1)].value, 
-                b:UInt8         = self[self.modular(front &- 2)].value
+            let a:UInt8         = self[_extended: (front &- 1) & mask].value,
+                b:UInt8         = self[_extended: (front &- 2) & mask].value
+            // let a:UInt8         = self[self.modular(front &- 1)].value,
+            //     b:UInt8         = self[self.modular(front &- 2)].value
             
             //  check for internal matches 
             //      A | A : A : A
@@ -616,35 +599,36 @@ extension LZ77.Deflator.Window
             let prefix:LZ77.Deflator.Window.Prefix = .init(buffer[0], buffer[1], buffer[2])
             var distance:Int    = 0, 
                 attempt:Int     = 3
-            var last:UInt16     = front, 
-                next:UInt16?    = self.head[prefix] 
-            while let current:UInt16 = next
+            var last:Int        = front,
+                next:Int?       = self.head[prefix].map(Int.init(_:))
+            while let current:Int = next
             {
-                distance += self.distance(from: current, to: last)
-                guard distance < 1 << self.exponent 
+                // distance += self.distance(from: current, to: last)
+                distance += (last &- current) & mask
+                guard distance | mask == mask // distance < 1 << self.exponent
                 else 
                 {
                     break 
                 }
                 last = current 
-                next = self[current].next 
+                next = self[_extended: current].next.map(Int.init(_:))
                 
                 let length:Int = 
                 {
-                    (start:UInt16) in 
+                    (start:Int) in
                     
-                    var length:Int  =                       3, 
-                        m:UInt16    = self.modular(start &+ 3) 
+                    var length:Int  =           3,
+                        m:Int       = (start &+ 3) & mask
                     while length < limit, m != front
                     {
                         // match up to front 
-                        guard self[m].value == buffer[length]
+                        guard self[_extended: m].value == buffer[length]
                         else 
                         {
                             return length
                         }
                         
-                        m       = self.modular(m &+ 1)
+                        m       = (m &+ 1) & mask
                         length += 1
                     }
                     // match lookahead 
@@ -666,122 +650,50 @@ extension LZ77.Deflator.Window
                 attempt += 1
             }
         }
+    }
+    
+    mutating
+    func register(_ value:UInt8)
+    {
+        //  a   b   c   d   e  e+1
+        //  [   :   |   :   :   ]
+        //  ^~~~~~~~~~~~^~~~~~~~~~~~
+        //  add         remove
+        let mask:Int        = ~(.max << self.exponent)
         
-        /* lookahead.withUnsafeBufferPointer 
+        let c:Int           = self.endIndex & mask
+        self[_extended: c]  = .init(value: value)
+        
+        guard self.endIndex > 1
+        else
         {
-            (buffer:UnsafeBufferPointer<UInt8>) in 
-            
-            guard buffer.count >= 3 
-            else 
+            self.endIndex  += 1
+            return
+        }
+        
+        let a:Int           = (c &- 2) & mask,
+            b:Int           = (c &- 1) & mask
+        let new:Prefix      = .init(self[_extended: a].value, self[_extended: b].value, value)
+        if self.endIndex >= mask // self.endIndex >= 1 << self.exponent
+        {
+            // remove overwritten entry
+            let d:Int       = (c &+ 1) & mask,
+                e:Int       = (c &+ 2) & mask,
+                f:Int       = (c &+ 3) & mask
+            let old:Prefix  = .init(self[_extended: d].value, self[_extended: e].value, self[_extended: f].value)
+            if let m:UInt16 = self.head[old], m == .init(d)
             {
-                return nil 
+                self.head[old] = nil
             }
-            
-            // cannot encode run longer than 258 elements 
-            let limit:Int       = min(buffer.count, 258) 
-            let front:UInt16    = self.modular(self.endIndex)
-            
-            //  these always succeed, but may contain garbage values if 
-            //  self.endIndex < 2
-            let a:UInt8         = self[self.modular(front &- 1)].value, 
-                b:UInt8         = self[self.modular(front &- 2)].value
-            var best:(length:Int, distance:Int) = (length: .min, distance: 0)
-            //  check for internal matches 
-            //      A | A : A : A
-            if  self.endIndex > 0, 
-                buffer[0] == a, 
-                buffer[1] == a, 
-                buffer[2] == a 
-            {
-                var length:Int = 3
-                while length < limit, buffer[length] == a 
-                {
-                    length += 1
-                }
-                
-                if length > best.length 
-                {
-                    best = (length: length, distance: 1)
-                }
-            }
-            //  B : A | B : A : B
-            if  self.endIndex > 1, 
-                buffer[0] == b, 
-                buffer[1] == a, 
-                buffer[2] == b 
-            {
-                var length:Int = 3
-                while length < limit, buffer[length] == a 
-                {
-                    length += 1
-                    guard length < limit, buffer[length] == b 
-                    else 
-                    {
-                        break 
-                    } 
-                    length += 1
-                }
-                
-                if length > best.length 
-                {
-                    best = (length: length, distance: 2)
-                }
-            }
-            
-            //  |<----- window ---->|<--- lookahead --->|
-            //  [   :   :   :   :   |   :   :   :   :   ]
-            //                      ~~~~~~~~~~~~
-            //                         prefix
-            let prefix:Prefix   = .init(buffer[0], buffer[1], buffer[2])
-            var distance:Int    = 0
-            var last:UInt16     = front, 
-                next:UInt16?    = self.head[prefix] 
-            while let current:UInt16 = next, best.length <= limit 
-            {
-                distance += self.distance(from: current, to: last)
-                guard distance < 1 << self.exponent 
-                else 
-                {
-                    break 
-                }
-                last = current 
-                next = self[current].next 
-                
-                let length:Int = 
-                {
-                    (start:UInt16) in 
-                    
-                    var length:Int  =                       3, 
-                        m:UInt16    = self.modular(start &+ 3) 
-                    while length < limit, m != front
-                    {
-                        // match up to front 
-                        guard self[m].value == buffer[length]
-                        else 
-                        {
-                            return length
-                        }
-                        
-                        m       = self.modular(m &+ 1)
-                        length += 1
-                    }
-                    // match lookahead 
-                    let delay:Int = length
-                    while length < limit, buffer[length - delay] == buffer[length]
-                    {
-                        length += 1
-                    }
-                    return length
-                }(current)
-                
-                if  length > best.length
-                {
-                    best = (length: length, distance: distance)
-                }
-            }
-            
-            return best.length >= 6 ? best : nil
-        } */
+        }
+        if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
+        {
+            // we know `m` is within the window range, because we preemptively
+            // remove dictionary entries when they go out of range
+            self[_extended: a].next    = m
+        }
+        
+        self.endIndex      += 1
     }
 }
 extension LZ77.Deflator 
