@@ -36,6 +36,11 @@ struct Blob:PNG.Bytestream.Destination
 
 func main() throws
 {
+    //__test_dictionary_semantics()
+    //__test_dictionary()
+    //return 
+    //
+    //
     guard CommandLine.arguments.count == 4 
     else 
     {

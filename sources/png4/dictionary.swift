@@ -175,7 +175,8 @@ extension General.Dictionary
         // initialize memory to zero 
         self.withUnsafeMutableAlignedBytes 
         {
-            $0.initializeMemory(as: UInt8.self, repeating: 0, count: districts << 7)
+            (buffer:UnsafeMutableRawPointer) -> () in
+            buffer.initializeMemory(as: UInt8.self, repeating: 0, count: districts << 7)
         }
     }
     
@@ -498,7 +499,7 @@ func clock() -> Int
 }
 #endif */
 
-public 
+/* public 
 func __test_dictionary() 
 {
     let data:[UInt32] = (0 ..< 1 << 22).map{ _ in .random(in: .min ... .max) }
@@ -551,4 +552,4 @@ func __test_dictionary()
     }(data)
     
     print(b)
-}
+} */
