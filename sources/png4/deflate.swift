@@ -439,8 +439,15 @@ extension LZ77.Deflator
         let exponent:Int 
         private 
         var storage:ManagedBuffer<Void, Element>
+        
+        #if DICTIONARY14
+        private 
+        let head:General.Dictionary
+        #else 
         private(set)
         var head:[Prefix: UInt16] // modular index 
+        #endif 
+        
         private(set) 
         var endIndex:Int // absolute index
     }
@@ -451,7 +458,13 @@ extension LZ77.Deflator.Window
     {
         self.exponent   = exponent 
         self.endIndex   = 0
+        
+        #if DICTIONARY14 
+        self.head       = .init(exponent: exponent)
+        #else
         self.head       = [:]
+        #endif
+        
         self.storage    = .create(minimumCapacity: 1 << exponent){ _ in () }
     }
     
@@ -596,11 +609,19 @@ extension LZ77.Deflator.Window
             //  [   :   :   :   :   |   :   :   :   :   ]
             //                      ~~~~~~~~~~~~
             //                         prefix
-            let prefix:LZ77.Deflator.Window.Prefix = .init(buffer[0], buffer[1], buffer[2])
             var distance:Int    = 0, 
                 attempt:Int     = 3
-            var last:Int        = front,
-                next:Int?       = self.head[prefix].map(Int.init(_:))
+            var last:Int        = front
+            
+            #if DICTIONARY14
+            let key:UInt32      = .init(buffer[0])
+                                | .init(buffer[1]) <<  8 
+                                | .init(buffer[2]) << 16 
+            var next:Int?       = self.head.find(key).map(Int.init(_:))
+            #else
+            let prefix:LZ77.Deflator.Window.Prefix = .init(buffer[0], buffer[1], buffer[2])
+            var next:Int?       = self.head[prefix].map(Int.init(_:))
+            #endif
             while let current:Int = next
             {
                 // distance += self.distance(from: current, to: last)
@@ -673,25 +694,47 @@ extension LZ77.Deflator.Window
         
         let a:Int           = (c &- 2) & mask,
             b:Int           = (c &- 1) & mask
+        #if DICTIONARY14
+        let new:UInt32  = .init(self[_extended: a].value)
+                        | .init(self[_extended: b].value) <<  8
+                        | .init(                   value) << 16
+        #else 
         let new:Prefix      = .init(self[_extended: a].value, self[_extended: b].value, value)
+        #endif 
         if self.endIndex >= mask // self.endIndex >= 1 << self.exponent
         {
             // remove overwritten entry
             let d:Int       = (c &+ 1) & mask,
                 e:Int       = (c &+ 2) & mask,
                 f:Int       = (c &+ 3) & mask
+            #if DICTIONARY14 
+            let old:UInt32  = .init(self[_extended: d].value)
+                            | .init(self[_extended: e].value) <<  8
+                            | .init(self[_extended: f].value) << 16
+            self.head.remove(key: old, value: .init(d))
+            #else 
             let old:Prefix  = .init(self[_extended: d].value, self[_extended: e].value, self[_extended: f].value)
             if let m:UInt16 = self.head[old], m == .init(d)
             {
                 self.head[old] = nil
             }
+            #endif
         }
+        #if DICTIONARY14 
+        if let m:UInt16     = self.head.update(key: new, value: .init(a))
+        {
+            // we know `m` is within the window range, because we preemptively
+            // remove dictionary entries when they go out of range
+            self[_extended: a].next    = m
+        }
+        #else 
         if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
         {
             // we know `m` is within the window range, because we preemptively
             // remove dictionary entries when they go out of range
             self[_extended: a].next    = m
         }
+        #endif 
         
         self.endIndex      += 1
     }
