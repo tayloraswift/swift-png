@@ -232,7 +232,15 @@ extension Test
         }
         +       suite.map 
         {
-            ("encode-\($0.name)", .string(Self.encode(_:), $0.members))
+            ("encode-greedy-\($0.name)", .string(Self.encodeGreedy(_:), $0.members))
+        }
+        +       suite.map 
+        {
+            ("encode-lazy-\($0.name)", .string(Self.encodeLazy(_:), $0.members))
+        }
+        +       suite.map 
+        {
+            ("encode-full-\($0.name)", .string(Self.encodeFull(_:), $0.members))
         }
     }
     private static 
@@ -299,12 +307,15 @@ extension Test
 
             let image:[PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
             
-            Self.print(image: image, size: rectangular.size)
-            for text in rectangular.metadata.text 
+            if !Global.options.contains(.compact) 
             {
-                Swift.print(text)
+                Self.print(image: image, size: rectangular.size)
+                for text in rectangular.metadata.text 
+                {
+                    Swift.print(text)
+                }
+                Swift.print()
             }
-            Swift.print()
 
             guard let result:[PNG.RGBA<UInt16>]? = (System.File.Source.open(path: path.rgba)
             {
@@ -357,7 +368,22 @@ extension Test
     }
     
     static 
-    func encode(_ name:String) -> Result<Void, Failure>
+    func encodeGreedy(_ name:String) -> Result<Void, Failure>
+    {
+        Self.encode(name, level: 4)
+    }
+    static 
+    func encodeLazy(_ name:String) -> Result<Void, Failure>
+    {
+        Self.encode(name, level: 7)
+    }
+    static 
+    func encodeFull(_ name:String) -> Result<Void, Failure>
+    {
+        Self.encode(name, level: 10)
+    }
+    static 
+    func encode(_ name:String, level:Int) -> Result<Void, Failure>
     {
         let path:(png:String, rgba:String, out:String) = 
         (
@@ -374,7 +400,7 @@ extension Test
                 return .failure(.init(message: "failed to open file '\(path.png)'"))
             }
             
-            try rectangular.compress(path: path.out)
+            try rectangular.compress(path: path.out, level: level)
         }
         catch
         {

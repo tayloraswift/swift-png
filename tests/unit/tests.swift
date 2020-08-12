@@ -9,7 +9,9 @@ extension Test
             ("decode-bitstream",            .void(Self.decodeBitstream)),
             ("encode-bitstream",            .void(Self.encodeBitstream)),
             ("match-lz77",                  .void(Self.matchLZ77)),
-            ("compress-swift-z",            .int(Self.compressZ(count:),  [5, 15, 100, 200, 2000, 5000])),
+            ("compress-lz77-greedy",        .int(Self.compressZGreedy(count:), [5, 15, 100, 200, 2000, 5000])),
+            ("compress-lz77-lazy",          .int(Self.compressZLazy(count:),   [5, 15, 100, 200, 2000, 5000])),
+            ("compress-lz77-full",          .int(Self.compressZFull(count:),   [5, 15, 100, 200, 2000, 5000])),
             ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
             ("premultiplication-8-bit",     .void(Self.premultiplication8)),
             ("premultiplication-16-bit",    .void(Self.premultiplication16)),
@@ -138,26 +140,46 @@ extension Test
         {
             input.enqueue(contentsOf: segment)
             
-            while input.count > (s == segments.count - 1 ? 0 : 10)
+            let lookahead:Int = (s == segments.count - 1 ? 0 : 10)
+            while   window.endIndex < 0, 
+                    input.count > lookahead
             {
-                if let match:(run:Int, distance:Int) = 
-                    window.match(input, threshold: 5, attempts: .max, goal: .max) 
+                window.initialize(with: input.dequeue())
+            }
+            while   input.count > lookahead
+            {
+                let head:(index:Int, next:UInt16?)      = 
+                    window.update(with: input.dequeue())
+                if let match:(run:Int, distance:Int)    = 
+                    window.match(from: head, lookahead: input, 
+                        threshold: 5, attempts: .max, goal: .max) 
                 {
-                    var run:[UInt8] = []
-                    for _:Int in 0 ..< match.run
+                    var run:[UInt8] = [window.literal]
+                    for _:Int in 1 ..< match.run
                     {
-                        let literal:UInt8 = input.dequeue()
-                        run.append(literal)
-                        window.register(literal)
+                        window.update(with: input.dequeue())
+                        run.append(window.literal)
                     }
                     output.append(run)
                 }
                 else 
                 {
-                    let literal:UInt8 = input.dequeue()
-                    window.register(literal)
-                    output.append([literal])
+                    output.append([window.literal])
                 }
+            }
+            
+            guard s == segments.count - 1 
+            else 
+            {
+                continue 
+            }
+            
+            // epilogue: get the matches still sitting in the pipeline 
+            let epilogue:Int = -3 - min(0, window.endIndex)
+            while   input.count > epilogue
+            {
+                window.update(with: input.dequeue())
+                output.append([window.literal])
             }
         }
         guard output == 
@@ -204,10 +226,25 @@ extension Test
     }
     
     static 
-    func compressZ(count:Int) -> Result<Void, Failure> 
+    func compressZGreedy(count:Int) -> Result<Void, Failure> 
+    {
+        Self.compressZ(count: count, level: 4)
+    }
+    static 
+    func compressZLazy(count:Int) -> Result<Void, Failure> 
+    {
+        Self.compressZ(count: count, level: 7)
+    }
+    static 
+    func compressZFull(count:Int) -> Result<Void, Failure> 
+    {
+        Self.compressZ(count: count, level: 9)
+    }
+    static 
+    func compressZ(count:Int, level:Int) -> Result<Void, Failure> 
     {
         let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
-        var deflator:LZ77.Deflator = .init(level: 13, exponent: 8, hint: 16)
+        var deflator:LZ77.Deflator = .init(level: level, exponent: 8, hint: 16)
         deflator.push(input, last: true)
         var compressed:[UInt8] = []
         while true 
