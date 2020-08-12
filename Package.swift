@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version:5.3
 import PackageDescription
 
 let core:[Target]
@@ -39,13 +39,44 @@ let package = Package(
         .target(name: "PNG4",                       dependencies: [],       path: "sources/png4"),
         
         .target(name: "PNGUnitTests",               dependencies: ["PNG4"], path: "tests/unit"),
-        .target(name: "PNGIntegrationTests",        dependencies: ["PNG4"], path: "tests/integration"),
-        .target(name: "PNGCompressionTests",        dependencies: ["PNG4"], path: "tests/compression"),
+        .target(name: "PNGIntegrationTests",        dependencies: ["PNG4"], path: "tests/integration", 
+            exclude: 
+            [
+                "PngSuite.LICENSE",
+                "PngSuite.README",
+                "rgba/",
+                "png/",
+                "out/",
+            ]),
+        .target(name: "PNGCompressionTests",        dependencies: ["PNG4"], path: "tests/compression", 
+            exclude: 
+            [
+                "baseline/",
+                "out/",
+            ]),
         .target(name: "PNGCompressionBenchmarks",   dependencies: ["PNG4"], path: "benchmarks/encode/swift"), 
-        .target(name: "PNGDecompressionBenchmarks", dependencies: ["PNG4"], path: "benchmarks/decode/swift"), 
+        .target(name: "PNGDecompressionBenchmarks", dependencies: ["PNG4"], path: "benchmarks/decode/swift", 
+            exclude: 
+            [
+                "apollo17.png"
+            ]), 
         
         .target(name: "PNGBenchmarks3",             dependencies: ["PNG"],  path: "benchmarks3"), 
-        .target(name: "PNGExamples",                dependencies: ["PNG"],  path: "examples")
+        .target(name: "PNGExamples",                dependencies: ["PNG"],  path: "examples", 
+            exclude: 
+            [
+                "LICENSE",
+                "example-indexing-output.png",
+                "example-border-output.png",
+                "example-sepia-input.png",
+                "example-luminance-input.png",
+                "example-sepia-output.png",
+                "example-indexing-input.png",
+                "example-crop-output.png",
+                "example-crop-input.png",
+                "example-border-input.png",
+                "example-luminance-output.png",
+            ])
     ],
-    swiftLanguageVersions: [.v4_2, .v5]
+    swiftLanguageVersions: [.v5]
 )
