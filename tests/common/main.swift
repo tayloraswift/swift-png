@@ -1,26 +1,63 @@
 import func Foundation.exit
 
-let filters:[String: Set<String>] = [String: [(name:String, case:String?)]].init(grouping: 
-    CommandLine.arguments.dropFirst().map 
+enum Global 
 {
-    (pattern:String) -> (name:String, case:String?) in 
-    let fragments:[String] = pattern.split(separator: ":").map(String.init(_:))
-    guard let name:String = fragments.first, fragments.count <= 2
+    enum Option 
+    {
+        case compact 
+    }
+    
+    static 
+    var filters:[String: Set<String>]   = [:], 
+        options:Set<Option>             = []
+}
+
+for argument:String in CommandLine.arguments.dropFirst() 
+{
+    if argument.starts(with: "-") 
+    {
+        switch argument 
+        {
+        case "--compact", "-c":
+            Global.options.insert(.compact)
+        default:
+            print("'\(argument)' is not a valid option")
+            Foundation.exit(-2)
+        }
+    }
     else 
     {
-        print("'\(pattern)' is not a valid test case filter")
-        Foundation.exit(-2)
+        let fragments:[String] = argument.split(separator: ":").map(String.init(_:))
+        guard let name:String = fragments.first, fragments.count <= 2
+        else 
+        {
+            print("'\(argument)' is not a valid test case filter")
+            Foundation.exit(-2)
+        }
+        
+        if let `case`:String = fragments.dropFirst().first 
+        {
+            if let cases:Set<String> = Global.filters[name], !cases.isEmpty 
+            {
+                Global.filters[name]?.insert(`case`)
+            }
+            else 
+            {
+                Global.filters[name] = [`case`]
+            }
+        }
+        else 
+        {
+            Global.filters[name] = []
+        }
     }
-    return (name, fragments.dropFirst().first)
-}, by: \.name).mapValues 
-{
-    $0.allSatisfy{ $0.case != nil } ? .init($0.compactMap(\.case)) : []
 }
 
 var failed = false 
 for (name, function):(String, Test.Function) in Test.cases 
 {
-    guard let cases:Set<String> = filters[name] ?? (filters.isEmpty ? [] : nil)
+    guard let cases:Set<String> = 
+        Global.filters[name] ?? (Global.filters.isEmpty ? [] : nil)
     else 
     {
         continue 

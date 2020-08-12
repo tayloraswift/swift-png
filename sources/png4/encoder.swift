@@ -328,7 +328,7 @@ extension PNG.Encoder
     
     // returns sum of squares of byte frequencies. this biases the score 
     // towards scanlines with many repeated bytes
-    private static
+    /* private static
     func score<C>(_ filtered:C) -> Int
         where C:Sequence, C.Element == UInt8
     {
@@ -338,13 +338,13 @@ extension PNG.Encoder
             frequencies[.init(byte)] += 1
         }
         return -frequencies.reduce(0){ $0 + $1 * $1 }
-    } 
-    /* private static
+    }  */
+    private static
     func score<C>(_ filtered:C) -> Int
         where C:Sequence, C.Element == UInt8
     {
         return filtered.reduce(0){ $0 + abs(.init(Int8.init(bitPattern: $1))) }
-    }  */
+    }
 }
 
 extension PNG.Data.Rectangular 

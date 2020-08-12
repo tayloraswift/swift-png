@@ -321,8 +321,7 @@ extension LZ77.Deflator.In
     mutating 
     func dequeue() -> UInt8
     {
-        assert(self.count > 0)
-        let value:UInt8 = self.first
+        let value:UInt8  = self.first
         self.startIndex += 1
         return value 
     }
@@ -330,7 +329,9 @@ extension LZ77.Deflator.In
     mutating 
     func enqueue(contentsOf elements:[UInt8]) 
     {
-        self.reserve(elements.count)
+        // always allocate 4 extra tail elements to allow for limited reads 
+        // from beyond the end of the buffer 
+        self.reserve(elements.count + 4)
         self.storage.withUnsafeMutablePointerToElements 
         {
             ($0 + self.endIndex).assign(from: elements, count: elements.count)
@@ -415,60 +416,43 @@ extension LZ77.Deflator
 {
     struct Window 
     {
+        private 
         struct Element 
         {
             // stores a modular index
             var next:UInt16?
             let value:UInt8 
         }
-        struct Prefix:Hashable
-        {
-            // can change this to a tuple in 5.4
-            let a:UInt8, 
-                b:UInt8, 
-                c:UInt8
-            
-            init(_ a:UInt8, _ b:UInt8, _ c:UInt8) 
-            {
-                self.a = a
-                self.b = b
-                self.c = c
-            }
-        }
         
-        let exponent:Int 
         private 
-        var storage:ManagedBuffer<Void, Element>
-        
-        #if DICTIONARY14
-        private 
-        let head:General.Dictionary
-        #else 
-        private(set)
-        var head:[Prefix: UInt16] // modular index 
-        #endif 
+        var storage:ManagedBuffer<Void, Element>, 
+            head:General.Dictionary
         
         private(set) 
         var endIndex:Int // absolute index
+        private 
+        var w:UInt32, 
+            v:UInt32
+        
+        private 
+        let mask:Int
     }
 }
 extension LZ77.Deflator.Window 
 {
     init(exponent:Int) 
     {
-        self.exponent   = exponent 
-        self.endIndex   = 0
-        
-        #if DICTIONARY14 
-        self.head       = .init(exponent: exponent)
-        #else
-        self.head       = [:]
-        #endif
+        self.endIndex   = -3
+        self.w          = 0 
+        self.v          = 0
+        self.mask       = ~(.max << exponent)
         
         self.storage    = .create(minimumCapacity: 1 << exponent){ _ in () }
+        self.head       = .init(exponent: exponent)
     }
     
-    subscript(_extended modular:Int) -> Element
+    private 
+    subscript(modular:Int) -> Element
     {
         get
         {
@@ -486,39 +470,74 @@ extension LZ77.Deflator.Window
         }
     }
     
-    subscript(modular:UInt16) -> Element 
+    var literal:UInt8 
     {
-        get 
-        {
-            self.storage.withUnsafeMutablePointerToElements 
-            {
-                $0[.init(modular)]
-            }
-        }
-        set(value) 
-        {
-            self.storage.withUnsafeMutablePointerToElements 
-            {
-                $0[.init(modular)] = value
-            }
-        }
+        .init(self.v >> 24)
     }
     
-    // func modular<T>(_ x:T) -> UInt16 where T:BinaryInteger
-    // {
-    //     .init(truncatingIfNeeded: x) & ~(.max << self.exponent)
-    // }
+    mutating 
+    func initialize(with v:UInt8)
+    {
+        assert(self.endIndex < 0)
+        // we don’t need to update `self.w` because `self.mask` is always at 
+        // least 255.
+        self.v = self.v << 8 | .init(v)
+        //               01..11  00..00  00..01  00..10  00..11
+        //  ╴╴╴╴╴╴╴╴┬───────┬───────┰───────┬───────┬───────┬───────┬╶╶╶╶╶╶╶╶
+        //          │  ///  ╎  ///  ╏  w.1  ╎  w.0  │       ╎       ╎        
+        //  ╴╴╴╴╴╴╴╴┴───────┴───────┸───────┴───────┴───────┴───────┴╶╶╶╶╶╶╶╶
+        //          a      a+1     a+2      b      b+1
+        //                          ┌───────┬───────┬───────┬───────┬╶╶╶╶╶╶╶╶
+        //             ///     ///  │  v.1  ╎  v.0  │       ╎       ╎        
+        //                          └───────┴───────┴───────┴───────┴╶╶╶╶╶╶╶╶
+        self.endIndex += 1
+    }
     
-    //func distance(from a:UInt16, to b:UInt16) -> Int
-    //{
-    //    .init((b &- a) & ~(.max << self.exponent))
-    //}
+    @discardableResult
+    mutating 
+    func update(with v:UInt8) -> (index:Int, next:UInt16?) 
+    {
+        assert(self.endIndex >= 0)
+        
+        let a:Int       =  self.endIndex       & self.mask, 
+            b:Int       = (self.endIndex &+ 3) & self.mask 
+        let w:UInt8     =  self[b].value
+        
+        self.w = self.w << 8 | .init(w)
+        self.v = self.v << 8 | .init(v)
+        
+        if self.endIndex > self.mask
+        {
+            //               01..11  10..00  10..01  10..10  10..11
+            //  ╴╴╴╴╴╴╴╴┬───────┬───────┰───────┬───────┬───────┬───────┬╶╶╶╶╶╶╶╶
+            //          ╎       ╎       ┃  w.3  ╎  w.2  ╎  w.1  ╎  w.0  │        
+            //  ╴╴╴╴╴╴╴╴┴───────┴───────┸───────┴───────┴───────┴───────┴╶╶╶╶╶╶╶╶
+            //                          a      a+1     a+2      b      b+1
+            //                          ┌───────┬───────┬───────┬───────┬╶╶╶╶╶╶╶╶
+            //                          │  v.3  ╎  v.2  ╎  v.1  ╎  v.0  │        
+            //                          └───────┴───────┴───────┴───────┴╶╶╶╶╶╶╶╶
+            // a match has gone out of range. delete the match corresponding 
+            // to the key in the window at the current position, but only if 
+            // it has not already been overwritten with a more recent position.
+            self.head.remove(key: self.w, value: .init(a))
+        }
+        let next:UInt16?    = 
+            self.head.update(key: self.v, value: .init(a))
+        self[a]             = .init(next: next, value: self.literal)
+        
+        self.endIndex += 1
+        
+        // print("lookup (\(self.v >> 24), \(self.v >> 16 & 0xff), \(self.v >> 8 & 0xff), \(self.v & 0xff)): \(next)")
+        
+        return (a, next)
+    }
     
-    func match(_ lookahead:LZ77.Deflator.In, threshold:Int, attempts:Int, goal:Int) 
+    func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In, 
+        threshold:Int, attempts:Int, goal:Int) 
         -> (run:Int, distance:Int)?
     {
-        var best:(run:Int, distance:Int)    = (run: 0, distance: 1)
-        self.match(lookahead, attempts: attempts, goal: goal)
+        var best:(run:Int, distance:Int)    = (run: threshold, distance: 1)
+        self.match(from: head, lookahead: lookahead, attempts: attempts, goal: goal)
         {
             (run:Int, distance:Int) in
             if best.run < run 
@@ -529,214 +548,113 @@ extension LZ77.Deflator.Window
         return best.run > threshold ? best : nil
     }
     
-    func match(_ lookahead:LZ77.Deflator.In, attempts:Int, goal:Int,
-        delegate:(_ run:Int, _ distance:Int) throws -> ()) rethrows
+    func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In, 
+        attempts:Int, goal:Int, delegate:(_ run:Int, _ distance:Int) throws -> ()) 
+        rethrows
     {
         try lookahead.withUnsafeBufferPointer 
         {
-            (buffer:UnsafeBufferPointer<UInt8>) in 
+            (lookahead:UnsafeBufferPointer<UInt8>) in 
             
-            guard buffer.count >= 3 
-            else 
-            {
-                return
-            }
+            var (previous, next):(Int, UInt16?) = head
             
-            let mask:Int        = ~(.max << self.exponent)
-            
-            // cannot encode run longer than 258 elements 
-            let limit:Int       = min(buffer.count, 258)
-            let front:Int       = self.endIndex & mask
-            // let front:UInt16    = self.modular(self.endIndex)
-            
-            //  these always succeed, but may contain garbage values if 
-            //  self.endIndex < 2
-            let a:UInt8         = self[_extended: (front &- 1) & mask].value,
-                b:UInt8         = self[_extended: (front &- 2) & mask].value
-            // let a:UInt8         = self[self.modular(front &- 1)].value,
-            //     b:UInt8         = self[self.modular(front &- 2)].value
-            
-            //  check for internal matches 
-            //      A | A : A : A
-            if  self.endIndex > 0, 
-                buffer[0] == a, 
-                buffer[1] == a, 
-                buffer[2] == a 
-            {
-                var length:Int = 3
-                while length < limit, buffer[length] == a 
-                {
-                    length += 1
-                }
-                // (distance: 1) is the only distance in decade 0
-                try delegate(length, 1)
-                guard 1 < attempts, length < goal 
-                else 
-                {
-                    return 
-                }
-                //self[offset: base    ] = 1 << 16 | .init(length)
-            }
-            //  B : A | B : A : B
-            if  self.endIndex > 1, 
-                buffer[0] == b, 
-                buffer[1] == a, 
-                buffer[2] == b 
-            {
-                var length:Int = 3
-                while length < limit, buffer[length] == a 
-                {
-                    length += 1
-                    guard length < limit, buffer[length] == b 
-                    else 
-                    {
-                        break 
-                    } 
-                    length += 1
-                }
-                
-                // (distance: 2) is the only distance in decade 1
-                try delegate(length, 2)
-                guard 2 < attempts, length < goal
-                else 
-                {
-                    return 
-                }
-                //self[offset: base + 1] = 2 << 16 | .init(length)
-            }
-            
-            //  |<----- window ---->|<--- lookahead --->|
-            //  [   :   :   :   :   |   :   :   :   :   ]
-            //                      ~~~~~~~~~~~~
-            //                         prefix
             var distance:Int    = 0, 
-                attempt:Int     = 3
-            var last:Int        = front
-            
-            #if DICTIONARY14
-            let key:UInt32      = .init(buffer[0])
-                                | .init(buffer[1]) <<  8 
-                                | .init(buffer[2]) << 16 
-            var next:Int?       = self.head.find(key).map(Int.init(_:))
-            #else
-            let prefix:LZ77.Deflator.Window.Prefix = .init(buffer[0], buffer[1], buffer[2])
-            var next:Int?       = self.head[prefix].map(Int.init(_:))
-            #endif
-            while let current:Int = next
+                attempt:Int     = 0
+            let limit:Int       = min(lookahead.count, 258 - 4)
+            // traverse the hash chain 
+            while let current:Int = next.map(Int.init(_:))
             {
-                // distance += self.distance(from: current, to: last)
-                distance += (last &- current) & mask
-                guard distance | mask == mask // distance < 1 << self.exponent
+                distance       += (previous &- current) & self.mask
+                guard distance <= self.mask 
                 else 
                 {
                     break 
                 }
-                last = current 
-                next = self[_extended: current].next.map(Int.init(_:))
                 
-                let length:Int = 
+                previous    =      current 
+                next        = self[current].next
+                
+                let run:Int = 
                 {
                     (start:Int) in
                     
-                    var length:Int  =           3,
-                        m:Int       = (start &+ 3) & mask
-                    while length < limit, m != front
+                    var i:Int = (start &+ 4) & self.mask, 
+                        j:Int =           0
+                    
+                    if distance > 3 
                     {
-                        // match up to front 
-                        guard self[_extended: m].value == buffer[length]
+                        // at distance = 4, the first tail byte is the last 
+                        // literal byte in the match buffer 
+                        while j < limit
+                        {
+                            guard lookahead[j] == self[i].value
+                            else 
+                            {
+                                return j + 4
+                            }
+                            
+                            j += 1
+                            
+                            guard i != head.index
+                            else 
+                            {
+                                break 
+                            }
+                            
+                            i  = (i &+ 1) & self.mask
+                        }
+                    }
+                    if distance > 2 
+                    {
+                        guard   j < limit, 
+                                lookahead[j] == .init(truncatingIfNeeded: self.v >> 16)
                         else 
                         {
-                            return length
+                            return j + 4
                         }
-                        
-                        m       = (m &+ 1) & mask
-                        length += 1
+                        j += 1
                     }
-                    // match lookahead 
-                    let delay:Int = length
-                    while length < limit, buffer[length - delay] == buffer[length]
+                    if distance > 1 
                     {
-                        length += 1
+                        guard   j < limit, 
+                                lookahead[j] == .init(truncatingIfNeeded: self.v >>  8)
+                        else 
+                        {
+                            return j + 4
+                        }
+                        j += 1
                     }
-                    return length
+                    guard   j < limit, 
+                            lookahead[j] == .init(truncatingIfNeeded: self.v)
+                    else 
+                    {
+                        return j + 4
+                    }
+                    j += 1
+
+                    // match lookahead 
+                    i = 0
+                    while   j < limit, 
+                            lookahead[j] == lookahead[i]
+                    {
+                        i += 1
+                        j += 1
+                    }
+                    
+                    return j + 4
                 }(current)
                 
-                try delegate(length, distance)
-                guard attempt < attempts, length < goal 
-                else 
-                {
-                    return 
-                }
+                try delegate(run, distance)
                 
                 attempt += 1
+                
+                guard attempt < attempts, run < goal 
+                else 
+                {
+                    break 
+                }
             }
         }
-    }
-    
-    mutating
-    func register(_ value:UInt8)
-    {
-        //  a   b   c   d   e  e+1
-        //  [   :   |   :   :   ]
-        //  ^~~~~~~~~~~~^~~~~~~~~~~~
-        //  add         remove
-        let mask:Int        = ~(.max << self.exponent)
-        
-        let c:Int           = self.endIndex & mask
-        self[_extended: c]  = .init(value: value)
-        
-        guard self.endIndex > 1
-        else
-        {
-            self.endIndex  += 1
-            return
-        }
-        
-        let a:Int           = (c &- 2) & mask,
-            b:Int           = (c &- 1) & mask
-        #if DICTIONARY14
-        let new:UInt32  = .init(self[_extended: a].value)
-                        | .init(self[_extended: b].value) <<  8
-                        | .init(                   value) << 16
-        #else 
-        let new:Prefix      = .init(self[_extended: a].value, self[_extended: b].value, value)
-        #endif 
-        if self.endIndex >= mask // self.endIndex >= 1 << self.exponent
-        {
-            // remove overwritten entry
-            let d:Int       = (c &+ 1) & mask,
-                e:Int       = (c &+ 2) & mask,
-                f:Int       = (c &+ 3) & mask
-            #if DICTIONARY14 
-            let old:UInt32  = .init(self[_extended: d].value)
-                            | .init(self[_extended: e].value) <<  8
-                            | .init(self[_extended: f].value) << 16
-            self.head.remove(key: old, value: .init(d))
-            #else 
-            let old:Prefix  = .init(self[_extended: d].value, self[_extended: e].value, self[_extended: f].value)
-            if let m:UInt16 = self.head[old], m == .init(d)
-            {
-                self.head[old] = nil
-            }
-            #endif
-        }
-        #if DICTIONARY14 
-        if let m:UInt16     = self.head.update(key: new, value: .init(a))
-        {
-            // we know `m` is within the window range, because we preemptively
-            // remove dictionary entries when they go out of range
-            self[_extended: a].next    = m
-        }
-        #else 
-        if let m:UInt16     = self.head.updateValue(.init(a), forKey: new)
-        {
-            // we know `m` is within the window range, because we preemptively
-            // remove dictionary entries when they go out of range
-            self[_extended: a].next    = m
-        }
-        #endif 
-        
-        self.endIndex      += 1
     }
 }
 extension LZ77.Deflator 
@@ -1583,17 +1501,22 @@ extension LZ77.Deflator
     init(level:Int, exponent:Int = 15, hint:Int = 1 << 12) 
     {
         self.stream = .init(level: level, exponent: exponent, hint: hint)
-        self.stream.start()
+        self.stream.start(exponent: exponent)
     }
     mutating 
     func push(_ data:[UInt8], last:Bool = false) 
     {
-        // print("out", data)
         // rebase input buffer 
         if !data.isEmpty 
         {
             self.stream.input.enqueue(contentsOf: data) 
         }
+        guard self.stream.input.count > 4096 || last 
+        else 
+        {
+            return 
+        }
+        
         while let _:Void = self.stream.compress(all: last) 
         {
             self.stream.block(final: false)
@@ -1618,9 +1541,9 @@ extension LZ77.Deflator
 extension LZ77.Deflator.Stream 
 {
     mutating 
-    func start() 
+    func start(exponent:Int) 
     {
-        let unpaired:UInt16 = .init(self.window.exponent - 8) << 4 | 0x08
+        let unpaired:UInt16 = .init(exponent - 8) << 4 | 0x08
         let check:UInt16    = ~((unpaired << 8 | unpaired >> 8) % 31) & 31
         
         self.output.append(check << 8 | unpaired, count: 16)
@@ -1629,40 +1552,216 @@ extension LZ77.Deflator.Stream
     mutating 
     func compress(all:Bool) -> Void?
     {
+        //         -3      -2      -1       0       1       2       3       4       5       6
+        //          ┌╴╴╴╴╴╴╴┬╴╴╴╴╴╴╴┬╴╴╴╴╴╴╴┰───────┬───────┬───────┬───────┬───────┬───────┬
+        //          │  ???  ╎  ???  ╎  ???  ┃       ╎       ╎       ╎       ╎       ╎       ╎
+        //          └╴╴╴╴╴╴╴┴╴╴╴╴╴╴╴┴╴╴╴╴╴╴╴┸───────┴───────┴───────┴───────┴───────┴───────┴
+        //          a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬───────┬───────┬───────┬───────┬
+        //                                  │  x.0  ╎  x.1  ╎  x.2  ╎  x.3  ╎  x.4  ╎  x.5  ╎
+        //                                  └───────┴───────┴───────┴───────┴───────┴───────┴
+        //                                  n      n-1     n-2     n-3     n-4     n-5     n-6
+        //
+        //  PROLOGUE (while a < 0)
+        //
+        // -3      -2      -1       0       1       2       3       4       5       6       7
+        //  ┌╴╴╴╴╴╴╴┬╴╴╴╴╴╴╴┬╴╴╴╴╴╴╴┰───────┬───────┬───────┬───────┬───────┬───────┬───────┬
+        //  │  ???  ╎  ???  ╎  ???  ╏  x.0  │       ╎       ╎       ╎       ╎       ╎       ╎
+        //  └╴╴╴╴╴╴╴┴╴╴╴╴╴╴╴┴╴╴╴╴╴╴╴┸───────┴───────┴───────┴───────┴───────┴───────┴───────┴
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬───────┬───────┬───────┬───────┬
+        //                                  │  x.1  ╎  x.2  ╎  x.3  ╎  x.4  ╎  x.5  ╎  x.6  ╎
+        //                                  └───────┴───────┴───────┴───────┴───────┴───────┴
+        //                                 n-1     n-2     n-3     n-4     n-5     n-6     n-7
+        //
+        // -2      -1       0       1       2       3       4       5       6       7       8
+        //  ┬╴╴╴╴╴╴╴┬╴╴╴╴╴╴╴┰───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬
+        //  │  ???  ╎  ???  ╏  x.0  ╎  x.1  │       ╎       ╎       ╎       ╎       ╎       ╎
+        //  ┴╴╴╴╴╴╴╴┴╴╴╴╴╴╴╴┸───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬───────┬───────┬───────┬───────┬
+        //                                  │  x.2  ╎  x.3  ╎  x.4  ╎  x.5  ╎  x.6  ╎  x.8  ╎
+        //                                  └───────┴───────┴───────┴───────┴───────┴───────┴
+        //                                 n-2     n-3     n-4     n-5     n-6     n-7     n-8
+        //
+        // -1       0       1       2       3       4       5       6       7       8       9
+        //  ┬╴╴╴╴╴╴╴┰───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬
+        //  │  ???  ╏  x.0  ╎  x.1  ╎  x.2  │       ╎       ╎       ╎       ╎       ╎       ╎
+        //  ┴╴╴╴╴╴╴╴┸───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬───────┬───────┬───────┬───────┬
+        //                                  │  x.3  ╎  x.4  ╎  x.5  ╎  x.6  ╎  x.7  ╎  x.8  ╎
+        //                                  └───────┴───────┴───────┴───────┴───────┴───────┴
+        //                                 n-3     n-4     n-5     n-6     n-7     n-8     n-9
+        // 
+        //  BODY (while b > 0, match.run <= b)
+        //
+        //  0       1       2       3       4       5       6       7       8       9      10
+        //  ┰───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬
+        //  ╏  x.0  ╎  x.1  ╎  x.2  ╎  x.3  │       ╎       ╎       ╎       ╎       ╎       ╎
+        //  ┸───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬───────┬───────┬───────┬───────┬
+        //                                  │  x.4  ╎  x.5  ╎  x.6  ╎  x.7  ╎  x.8  ╎  x.9  ╎
+        //                                  └───────┴───────┴───────┴───────┴───────┴───────┴
+        //                                 n-4     n-5     n-6     n-7     n-8     n-9     n-10
+        //
+        //                                  . . .
+        // 
+        //  |<--------- match (6 ..< 11) ---------->|
+        //  6       7       8       9      10      11      12      n=13
+        //  ┼───────┬───────┬───────┬───────┬───────┼───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬
+        //  │  x.6  ╎  x.7  ╎  x.8  ╎  x.9  │       │       ╎       │       ╎       ╎       ╎
+        //  ┼───────┴───────┴───────┴───────┴───────┼───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬
+        //                                  │  x.10 ╎  x.11 ╎  x.12 │  ???  ╎  ???  ╎  ???  ╎
+        //                                  └───────┴───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴
+        //                                 n-10     2       1       0      -1      -2      -3
+        // 
+        //  CONSUME (while a <= match.end)
+        // 
+        //  --- match (6 ..< 11) ---------->|
+        //  7       8       9      10      11      12      n=13
+        //  ┬───────┬───────┬───────┬───────┼───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  ╎  x.7  ╎  x.8  ╎  x.9  ╎  x.10 │       ╎       │       ╎       ╎       ╎       │
+        //  ┴───────┴───────┴───────┴───────┼───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //                                  │  x.11 ╎  x.12 │  ???  ╎  ???  ╎  ???  ╎  ???  │
+        //                                  └───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        //                                 n-11     1       0      -1      -2      -3      -4
+        //
+        //    (6 ..< 11) ---------->|
+        //  8       9      10      11      12      n=13
+        //  ┬───────┬───────┬───────┼───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  ╎  x.8  ╎  x.9  ╎  x.10 │  x.11 ╎       │       ╎       ╎       ╎       │
+        //  ┴───────┴───────┴───────┼───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //                                  │  x.12 │  ???  ╎  ???  ╎  ???  ╎  ???  │
+        //                                  └───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        //                                  1       0      -1      -2      -3      -4
+        //
+        //       ---------->|
+        //  9      10      11      12      n=13
+        //  ┬───────┬───────┼───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  ╎  x.9  ╎  x.10 │  x.11 ╎  x.12 │       ╎       ╎       ╎       │
+        //  ┴───────┴───────┼───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //                                  │  ???  ╎  ???  ╎  ???  ╎  ???  │
+        //                                  └╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        //                                  0      -1      -2      -3      -4
+        //
+        //  ------->|
+        // 10      11      12      n=13
+        //  ┬───────┼───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  ╎  x.10 │  x.11 ╎  x.12 │  ???  ╎       ╎       ╎       │
+        //  ┴───────┼───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b      b-1     b-2     b-3
+        //                                  ┌╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //                                  │  ???  ╎  ???  ╎  ???  │
+        //                                  └╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        //                                 -1      -2      -3      -4
+        //
+        //  |
+        // 11      12      n=13
+        //  ┼───────┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  │  x.11 ╎  x.12 │  ???  ╎  ???  ╎       ╎       │
+        //  ┼───────┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b      b-1     b-2
+        //                                  ┌╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //                                  │  ???  ╎  ???  │
+        //                                  └╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        //                                 -2      -3      -4
+        // 
+        //  EPILOGUE (while b > -3)
+        //  
+        // 12      n=13
+        //  ┬───────┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  ╎  x.12 │  ???  ╎  ???  ╎  ???  ╎       │
+        //  ┴───────┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b      b-1
+        //                                  ┌╶╶╶╶╶╶╶┐
+        //                                  │  ???  │
+        //                                  └╶╶╶╶╶╶╶┘
+        //                                 -3      -4
+        //  
+        // n=13
+        //  ┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┬╶╶╶╶╶╶╶┐
+        //  │  ???  ╎  ???  ╎  ???  ╎  ???  │
+        //  ┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┴╶╶╶╶╶╶╶┘
+        // head     a      a+1     a+2      b
         switch self.search 
         {
         case .greedy(attempts: let attempts, goal: let goal):
-            while       self.input.count >= 258 || 
-                (all && self.input.count !=   0)
+            let lookahead:Int = all ? 0 : 258
+            while   self.window.endIndex < 0, 
+                    self.input.count > lookahead
             {
-                guard self.matches.unfilled > 0
+                self.window.initialize(with: self.input.dequeue())
+            }
+            
+            while   self.input.count > lookahead 
+            {
+                guard self.matches.unfilled > 0 
                 else 
                 {
                     return ()
                 }
                 
-                if let match:(run:Int, distance:Int) = self.window.match(self.input, 
-                    threshold: 5, attempts: attempts, goal: goal) 
+                let head:(index:Int, next:UInt16?)  = 
+                    self.window.update(with: self.input.dequeue())
+                
+                if  let match:(run:Int, distance:Int)   = 
+                    self.window.match(from: head, lookahead: self.input, 
+                        threshold: 5, attempts: attempts, goal: goal) 
                 {
-                    for _:Int in 0 ..< match.run 
+                    // consume match. this may cause `self.input.count` to go negative 
+                    // (in which case, garbage values will be written, which is okay.)
+                    for _:Int in 1 ..< match.run 
                     {
-                        self.window.register(self.input.dequeue())
+                        self.window.update(with: self.input.dequeue())
                     }
                     
                     self.matches.store(match: match)
                 }
                 else 
                 {
-                    let literal:UInt8 = self.input.dequeue()
-                    
-                    self.window.register(literal)
-                    self.matches.store(literal: literal)
+                    self.matches.store(literal: self.window.literal)
                 }
             }
+            
+            guard all 
+            else 
+            {
+                return nil 
+            }
+            
+            // epilogue: get the matches still sitting in the pipeline 
+            let epilogue:Int = -3 - min(0, self.window.endIndex)
+            while   self.input.count > epilogue
+            {
+                guard self.matches.unfilled > 0 
+                else 
+                {
+                    return ()
+                }
+                
+                self.window.update(with: self.input.dequeue())
+                self.matches.store(literal: self.window.literal)
+            }
+
         
         case .lazy(attempts: let attempts, goal: let goal):
-            while       self.input.count >= 259 || 
-                (all && self.input.count !=   0)
+            let lookahead:Int = all ? 0 : 259
+            while   self.window.endIndex < 0, 
+                    self.input.count > lookahead
+            {
+                self.window.initialize(with: self.input.dequeue())
+            }
+            while self.input.count > lookahead 
             {
                 guard self.matches.unfilled > 1 
                 else 
@@ -1670,47 +1769,75 @@ extension LZ77.Deflator.Stream
                     return ()
                 }
                 
-                if let match:(run:Int, distance:Int) = self.window.match(self.input, 
-                    threshold: 5, attempts: attempts, goal: goal) 
+                let head:(index:Int, next:UInt16?)  = 
+                    self.window.update(with: self.input.dequeue())
+                let first:UInt8                     = 
+                    self.window.literal
+                
+                if  let eager:(run:Int, distance:Int)   = 
+                    self.window.match(from: head, lookahead: self.input, 
+                        threshold: 5, attempts: attempts, goal: goal) 
                 {
-                    let literal:UInt8 = self.input.dequeue()
-                    
-                    self.window.register(literal)
-                    
-                    if let next:(run:Int, distance:Int) = self.window.match(self.input, 
-                        threshold: 6, attempts: attempts, goal: goal), 
-                        match.run < next.run
+                    // save the literal at `head`
+                    let head:(index:Int, next:UInt16?)      = 
+                        self.window.update(with: self.input.dequeue())
+                    // look for a better match at offset a+1 
+                    if  let lazy:(run:Int, distance:Int)    = 
+                        self.window.match(from: head, lookahead: self.input, 
+                            threshold: 6, attempts: attempts, goal: goal), 
+                        eager.run < lazy.run
                     {
-                        for _:Int in 0 ..< next.run 
+                        // found a longer match. emit the leading literal, and the 
+                        // improved match. 
+                        self.matches.store(literal: first)
+                        self.matches.store(match: lazy)
+                        for _:Int in 1 ..< lazy.run 
                         {
-                            self.window.register(self.input.dequeue())
+                            self.window.update(with: self.input.dequeue())
                         }
-                        
-                        self.matches.store(literal: literal)
-                        self.matches.store(match: next)
                     }
                     else 
                     {
-                        for _:Int in 1 ..< match.run 
+                        self.matches.store(match: eager)
+                        for _:Int in 2 ..< eager.run 
                         {
-                            self.window.register(self.input.dequeue())
+                            self.window.update(with: self.input.dequeue())
                         }
-                        
-                        self.matches.store(match: match)
                     }
                 }
                 else 
                 {
-                    let literal:UInt8 = self.input.dequeue()
-                    
-                    self.window.register(literal)
-                    self.matches.store(literal: literal)
+                    self.matches.store(literal: first)
                 }
+            }
+            
+            guard all 
+            else 
+            {
+                return nil 
+            }
+            
+            let epilogue:Int = -3 - min(0, self.window.endIndex)
+            while   self.input.count > epilogue
+            {
+                guard self.matches.unfilled > 0 
+                else 
+                {
+                    return ()
+                }
+                
+                self.window.update(with: self.input.dequeue())
+                self.matches.store(literal: self.window.literal)
             }
         
         case .full(attempts: let attempts, goal: let goal, iterations: _):
-            while       self.input.count >= 258 || 
-                (all && self.input.count !=   0)
+            let lookahead:Int = all ? 0 : 258
+            while   self.window.endIndex < 0, 
+                    self.input.count > lookahead
+            {
+                self.window.initialize(with: self.input.dequeue())
+            }
+            while   self.input.count > lookahead 
             {
                 guard self.matches.unfilled > 0 
                 else 
@@ -1719,9 +1846,13 @@ extension LZ77.Deflator.Stream
                 }
                 
                 // must save base index because this call increments the endindex
-                let index:Int   = self.matches.store(vertex: self.input.first)
+                let head:(index:Int, next:UInt16?)  = 
+                    self.window.update(with: self.input.dequeue())
+                
+                let index:Int   = self.matches.store(vertex: self.window.literal)
                 var extent:Int  = 1
-                self.window.match(self.input, attempts: attempts, goal: goal) 
+                self.window.match(from: head, lookahead: self.input, 
+                    attempts: attempts, goal: goal) 
                 {
                     (run:Int, distance:Int) in 
                     
@@ -1729,113 +1860,36 @@ extension LZ77.Deflator.Stream
                     self.matches.set(edge: (run: run, distance: distance), at: index)
                 }
                 
-                self.window.register(self.input.dequeue())
                 // for long matches, skip some of the intermediate vertices 
                 // to avoid degenerate behavior
                 for _:Int in 0 ..< max(0, min(extent - 100, self.matches.unfilled))
                 {
-                    let literal:UInt8 = self.input.dequeue()
-                    
-                    self.window.register(literal)
-                    self.matches.store(vertex: literal)
-                }
-            }
-        }
-
-        
-        return nil 
-        /*
-        // always maintain at least 258 bytes in the input buffer 
-        while       self.input.count >= 259 || 
-            (all && self.input.count !=   0)
-        {
-            // at most two terms will be appended per loop iteration
-            if self.terms.count >= 1 << 18 - 1
-            {
-                return ()
-            }
+                    self.window.update(with: self.input.dequeue())
+                    self.matches.store(vertex: self.window.literal)
+                } 
+            } 
             
-            if let match:(length:Int, distance:Int) = self.window.match(self.input)
-            {
-                if let queued:(run:Int, extend:Int, distance:Int) = self.queued
-                {
-                    self.terms.append(.init(run: queued.run, distance: queued.distance))
-                }
-                
-                if false && match.length > 6 
-                {
-                    for _:Int in 0 ..< match.length - 1
-                    {
-                        self.window.register(self.input.dequeue())
-                    }
-                    self.queued = (run: match.length - 1, extend: 1, distance: match.distance)
-                }
-                else 
-                {
-                    // lazy match 
-                    let first:UInt8 = self.input.dequeue()
-                    self.window.register(first)
-                    if let next:(length:Int, distance:Int) = self.window.match(self.input), 
-                        next.length > match.length 
-                    {
-                        self.terms.append(.init(literal: first))
-                        for _:Int in 0 ..< next.length 
-                        {
-                            self.window.register(self.input.dequeue())
-                        }
-                        self.terms.append(.init(run: next.length, distance: next.distance))
-                    }
-                    else 
-                    {
-                        for _:Int in 1 ..< match.length 
-                        {
-                            self.window.register(self.input.dequeue())
-                        }
-                        self.terms.append(.init(run: match.length, distance: match.distance))
-                    }
-                    
-                    self.queued = nil
-                }
-            }
-            else if let queued:(run:Int, extend:Int, distance:Int) = self.queued 
-            {
-                self.window.register(self.input.dequeue())
-                
-                if queued.extend > 1 
-                {
-                    self.queued = (queued.run + 1, queued.extend - 1, queued.distance)
-                }
-                else 
-                {
-                    self.terms.append(.init(run: queued.run + 1, distance: queued.distance))
-                    self.queued = nil
-                }
-            }
+            guard all 
             else 
             {
-                let literal:UInt8 = self.input.dequeue()
-                self.window.register(literal)
-                self.terms.append(.init(literal: literal))
+                return nil 
             }
-        }
-        
-        if self.terms.count >= 1 << 18 
-        {
-            return ()
-        }
-        
-        if all, let queued:(run:Int, extend:Int, distance:Int) = self.queued 
-        {
-            for _:Int in 0 ..< queued.extend 
+            
+            let epilogue:Int = -3 - min(0, self.window.endIndex)
+            while   self.input.count > epilogue
             {
-                self.window.register(self.input.dequeue())
+                guard self.matches.unfilled > 0 
+                else 
+                {
+                    return ()
+                }
+                
+                self.window.update(with: self.input.dequeue())
+                self.matches.store(vertex: self.window.literal)
             }
-            self.terms.append(.init(run: queued.run + queued.extend, distance: queued.distance))
-            self.queued = nil
         }
         
         return nil 
-        */
     }
     
     private mutating 
