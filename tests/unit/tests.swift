@@ -152,7 +152,7 @@ extension Test
                     window.update(with: input.dequeue())
                 if let match:(run:Int, distance:Int)    = 
                     window.match(from: head, lookahead: input, 
-                        threshold: 5, attempts: .max, goal: .max) 
+                        attempts: .max, goal: .max) 
                 {
                     var run:[UInt8] = [window.literal]
                     for _:Int in 1 ..< match.run
