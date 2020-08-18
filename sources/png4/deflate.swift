@@ -269,8 +269,10 @@ extension LZ77.Deflator.In
             capacity = $0.capacity 
             return ()
         }
-        self.startIndex     = 0 
-        self.endIndex       = 0 
+        // self.startIndex     = 0 
+        // self.endIndex       = 0 
+        self.startIndex     = 4 
+        self.endIndex       = 4 
         self.capacity       = capacity
         
         self.integral       = (1, 0)
@@ -348,7 +350,7 @@ extension LZ77.Deflator.In
         }
     }
     
-    private mutating 
+    /* private mutating 
     func shift(allocating extra:Int) 
     {
         // optimal new capacity
@@ -388,7 +390,49 @@ extension LZ77.Deflator.In
                 return new 
             }
         }
-    }
+    } */
+    
+    private mutating 
+    func shift(allocating extra:Int) 
+    {
+        // optimal new capacity. buffer 4 old elements at the beginning
+        let capacity:Int  = (4 + self.count + Swift.max(16, extra)).nextPowerOfTwo
+        if self.capacity >= capacity 
+        {
+            // rebase without reallocating 
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                self.integral   = LZ77.MRC32.update(self.integral, 
+                            from: $0 + 4,                   count: self.startIndex - 4)
+                $0.assign(  from: $0 - 4 + self.startIndex, count: self.count      + 4)
+                self.endIndex   = 4 + self.count 
+                self.startIndex = 4
+            }
+        }
+        else 
+        {
+            self.storage = self.storage.withUnsafeMutablePointerToElements 
+            {
+                (body:UnsafeMutablePointer<UInt8>) in 
+                
+                let new:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: capacity)
+                {
+                    self.capacity = $0.capacity
+                    return ()
+                }
+                
+                new.withUnsafeMutablePointerToElements 
+                {
+                    self.integral   = LZ77.MRC32.update(self.integral,
+                                from: body + 4,                   count: self.startIndex - 4)
+                    $0.assign(  from: body - 4 + self.startIndex, count: self.count      + 4)
+                }
+                self.endIndex   = 4 + self.count 
+                self.startIndex = 4
+                return new 
+            }
+        }
+    } 
     
     mutating 
     func checksum() -> UInt32 
@@ -397,19 +441,29 @@ extension LZ77.Deflator.In
         self.storage.withUnsafeMutablePointerToElements 
         {
             let (single, double):(UInt32, UInt32) = 
-                LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
+                //LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
+                LZ77.MRC32.update(self.integral, from: $0 + 4, count: self.endIndex - 4)
             return double << 16 | single
         }
     }
     
-    func withUnsafeBufferPointer<R>(_ body:(UnsafeBufferPointer<UInt8>) throws -> R) 
+    // pointer to offset at -4
+    func withUnsafePointer<R>(_ body:(UnsafePointer<UInt8>) throws -> R) 
+        rethrows -> R 
+    {
+        try self.storage.withUnsafeMutablePointerToElements 
+        {
+            try body($0 - 4 + self.startIndex)
+        }
+    }
+    /* func withUnsafeBufferPointer<R>(_ body:(UnsafeBufferPointer<UInt8>) throws -> R) 
         rethrows -> R 
     {
         try self.storage.withUnsafeMutablePointerToElements 
         {
             try body(.init(start: $0 + self.startIndex, count: self.count))
         }
-    }
+    } */
 }
 
 extension LZ77.Deflator 
@@ -532,11 +586,10 @@ extension LZ77.Deflator.Window
         return (a, next)
     }
     
-    func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In, 
-        threshold:Int, attempts:Int, goal:Int) 
+    func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In, attempts:Int, goal:Int) 
         -> (run:Int, distance:Int)?
     {
-        var best:(run:Int, distance:Int)    = (run: threshold, distance: 1)
+        var best:(run:Int, distance:Int) = (run: 5, distance: 1)
         self.match(from: head, lookahead: lookahead, attempts: attempts, goal: goal)
         {
             (run:Int, distance:Int) in
@@ -545,14 +598,89 @@ extension LZ77.Deflator.Window
                 best = (run: run, distance: distance)
             }
         }
-        return best.run > threshold ? best : nil
+        return best.run > 5 ? best : nil
     }
     
     func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In, 
-        attempts:Int, goal:Int, delegate:(_ run:Int, _ distance:Int) throws -> ()) 
-        rethrows
+        attempts:Int, goal:Int, delegate:(_ run:Int, _ distance:Int) -> ()) 
     {
-        try lookahead.withUnsafeBufferPointer 
+        lookahead.withUnsafePointer 
+        {
+            (v:UnsafePointer<UInt8>) in 
+            
+            self.storage.withUnsafeMutablePointerToElements 
+            {
+                (w:UnsafeMutablePointer<Element>) in 
+                
+                guard let next:UInt16 = head.next
+                else 
+                {
+                    return 
+                }
+                
+                let limit:Int       = min(lookahead.count + 4, 258)
+                
+                let mask:Int        = self.mask 
+                var current:Int     = .init(next)
+                var distance:Int    = (head.index &- current) & mask 
+                var remaining:Int   = attempts
+                while true 
+                {
+                    var run:Int = 4
+                    scan: 
+                    do 
+                    {
+                        let a:Int = min(distance, limit)
+                        while run < a
+                        {
+                            let i:Int = (current &+ run) & mask
+                            guard w[i].value == v[run] 
+                            else 
+                            {
+                                break scan
+                            }
+                            run += 1
+                        }
+                        
+                        var i:Int = max(0, 4 - distance)
+                        while run < limit, v[i] == v[run]
+                        {
+                            i   += 1
+                            run += 1
+                        }
+                    }
+                    
+                    delegate(run, distance)
+                    
+                    remaining -= 1
+                    
+                    guard remaining > 0, goal > run  
+                    else 
+                    {
+                        break 
+                    }
+                    
+                    guard let next:UInt16 = self[current].next 
+                    else 
+                    {
+                        break 
+                    }
+                    
+                    let previous:Int    = current
+                    current             = .init(next)
+                    distance           += (previous &- current) & mask 
+                    
+                    guard distance < mask 
+                    else 
+                    {
+                        break 
+                    }
+                }
+            }
+        } 
+        
+        /*
+        lookahead.withUnsafeBufferPointer 
         {
             (lookahead:UnsafeBufferPointer<UInt8>) in 
             
@@ -644,7 +772,7 @@ extension LZ77.Deflator.Window
                     return j + 4
                 }(current)
                 
-                try delegate(run, distance)
+                delegate(run, distance)
                 
                 attempt += 1
                 
@@ -654,7 +782,8 @@ extension LZ77.Deflator.Window
                     break 
                 }
             }
-        }
+        } 
+        */
     }
 }
 extension LZ77.Deflator 
@@ -1716,7 +1845,7 @@ extension LZ77.Deflator.Stream
                 
                 if  let match:(run:Int, distance:Int)   = 
                     self.window.match(from: head, lookahead: self.input, 
-                        threshold: 5, attempts: attempts, goal: goal) 
+                        attempts: attempts, goal: goal) 
                 {
                     // consume match. this may cause `self.input.count` to go negative 
                     // (in which case, garbage values will be written, which is okay.)
@@ -1776,7 +1905,7 @@ extension LZ77.Deflator.Stream
                 
                 if  let eager:(run:Int, distance:Int)   = 
                     self.window.match(from: head, lookahead: self.input, 
-                        threshold: 5, attempts: attempts, goal: goal) 
+                        attempts: attempts, goal: goal) 
                 {
                     // save the literal at `head`
                     let head:(index:Int, next:UInt16?)      = 
@@ -1784,7 +1913,7 @@ extension LZ77.Deflator.Stream
                     // look for a better match at offset a+1 
                     if  let lazy:(run:Int, distance:Int)    = 
                         self.window.match(from: head, lookahead: self.input, 
-                            threshold: 6, attempts: attempts, goal: goal), 
+                            attempts: attempts, goal: goal), 
                         eager.run < lazy.run
                     {
                         // found a longer match. emit the leading literal, and the 
