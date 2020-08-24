@@ -1580,23 +1580,23 @@ extension LZ77
                 case  1:
                     self.search = .greedy(attempts:   2, goal:   8)
                 case  2:
-                    self.search = .greedy(attempts:   6, goal:  10)
+                    self.search = .greedy(attempts:   4, goal:  10)
                 case  3:
-                    self.search = .greedy(attempts:  12, goal:  14)
-                case  4:
-                    self.search = .greedy(attempts:  24, goal:  24)
+                    self.search = .greedy(attempts:  40, goal:  24)
                 
+                case  4:
+                    self.search = .lazy(  attempts:  20, goal:  32)
                 case  5:
-                    self.search = .lazy(  attempts:  20, goal:  30)
+                    self.search = .lazy(  attempts:  40, goal:  54)
                 case  6:
-                    self.search = .lazy(  attempts:  40, goal:  65)
+                    self.search = .lazy(  attempts:  64, goal:  80)
                 case  7:
-                    self.search = .lazy(  attempts: 100, goal: 130)
+                    self.search = .lazy(  attempts: 100, goal: 160)
                 
                 case  8:
-                    self.search = .full(  attempts:  12, goal:  20, iterations: 1)
+                    self.search = .full(  attempts:  14, goal:  20, iterations: 1)
                 case  9:
-                    self.search = .full(  attempts:  16, goal:  26, iterations: 2)
+                    self.search = .full(  attempts:  20, goal:  32, iterations: 2)
                 case 10:
                     self.search = .full(  attempts:  30, goal:  50, iterations: 3)
                 case 11:
