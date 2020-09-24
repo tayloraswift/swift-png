@@ -6,3 +6,4 @@ Package.resolved
 /tests/*.png
 /benchmarks/*.png.png
 /benchmarks/encode/out/*.png
+/benchmarks/encode/baseline/main
