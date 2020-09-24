@@ -1,6 +1,6 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+//  This Source Code Form is subject to the terms of the Mozilla Public
+//  License, v. 2.0. If a copy of the MPL was not distributed with this
+//  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
 /// enum General 
 ///     A namespace for general functionality.
@@ -226,4 +226,83 @@ extension General.Heap:ExpressibleByArrayLiteral
     {
         self.init(arrayLiteral)
     }
-} 
+}
+
+extension Array where Element == UInt8
+{
+    /// Loads a misaligned big-endian integer value from the given byte offset
+    /// and casts it to a desired format.
+    /// - Parameters:
+    ///     - bigEndian: The size and type to interpret the data to load as.
+    ///     - type: The type to cast the read integer value to.
+    ///     - byte: The byte offset to load the big-endian integer from.
+    /// - Returns: The read integer value, cast to `U`.
+    func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U
+        where T:FixedWidthInteger, U:BinaryInteger
+    {
+        return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
+    }
+    
+    /* mutating
+    func append(bigEndian:UInt16)
+    {
+        self.append(.init(truncatingIfNeeded: bigEndian >> 8))
+        self.append(.init(truncatingIfNeeded: bigEndian     ))
+    } */
+}
+extension UnsafeMutableBufferPointer where Element == UInt8 
+{
+    func store<U, T>(_ value:U, asBigEndian type:T.Type, at byte:Int = 0)
+        where U:BinaryInteger, T:FixedWidthInteger
+    {
+        let cast:T = .init(truncatingIfNeeded: value)
+        withUnsafeBytes(of: cast.bigEndian) 
+        {
+            guard   let source:UnsafeRawPointer             = $0.baseAddress, 
+                    let destination:UnsafeMutableRawPointer = 
+                self.baseAddress.map(UnsafeMutableRawPointer.init(_:))
+            else 
+            {
+                return 
+            }
+            
+            (destination + byte).copyMemory(from: source, byteCount: MemoryLayout<T>.size)
+        }
+    }
+}
+
+extension ArraySlice where Element == UInt8
+{
+    /// Loads this array slice as a misaligned big-endian integer value,
+    /// and casts it to a desired format.
+    /// - Parameters:
+    ///     - bigEndian: The size and type to interpret this array slice as.
+    ///     - type: The type to cast the read integer value to.
+    /// - Returns: The read integer value, cast to `U`.
+    func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U
+        where T:FixedWidthInteger, U:BinaryInteger
+    {
+        return self.withUnsafeBufferPointer
+        {
+            (buffer:UnsafeBufferPointer<UInt8>) in
+
+            assert(buffer.count >= MemoryLayout<T>.size,
+                "attempt to load \(T.self) from slice of size \(buffer.count)")
+
+            var storage:T = .init()
+            let value:T   = withUnsafeMutablePointer(to: &storage)
+            {
+                $0.deinitialize(count: 1)
+
+                let source:UnsafeRawPointer     = .init(buffer.baseAddress!),
+                    raw:UnsafeMutableRawPointer = .init($0)
+
+                raw.copyMemory(from: source, byteCount: MemoryLayout<T>.size)
+
+                return raw.load(as: T.self)
+            }
+
+            return U(T(bigEndian: value))
+        }
+    }
+}

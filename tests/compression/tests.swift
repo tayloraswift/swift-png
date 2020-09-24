@@ -1,4 +1,4 @@
-import PNG4
+import PNG
 
 extension Test 
 {

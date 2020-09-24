@@ -24,6 +24,43 @@ enum LZ77
     }
 }
 
+// modular redundancy check (similar to PNG.CRC32)
+extension LZ77 
+{
+    // no more algorithms named after white man the world has 
+    // progressed past the need for white men <3
+    enum MRC32 
+    {
+        // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
+        // link also says to use simd vectorization, but that just seems to slow 
+        // things down (probably because llvm is already autovectorizing it)
+        static 
+        func update(_ checksum:(single:UInt32, double:UInt32), 
+            from start:UnsafePointer<UInt8>, count:Int) 
+            -> (single:UInt32, double:UInt32)
+        {
+            let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
+            var (single, double):(UInt32, UInt32) = checksum
+            for i:Int in 0 ..< q 
+            {
+                for j:Int in 5552 * i ..< 5552 * (i + 1)
+                {
+                    single &+= .init(start[j])
+                    double &+= single 
+                }
+                single %= 65521
+                double %= 65521
+            }
+            for j:Int in 5552 * q ..< 5552 * q + r
+            {
+                single &+= .init(start[j])
+                double &+= single 
+            }
+            return (single % 65521, double % 65521)
+        }
+    }
+}
+
 // huffman tables
 extension LZ77 
 {
@@ -189,105 +226,153 @@ extension LZ77.Huffman
         }
     }
 }
+extension LZ77
+{
+    enum FixedHuffman 
+    {
+    }
+}
+extension LZ77.FixedHuffman 
+{
+    static 
+    let runliteral:LZ77.Huffman<UInt16> = .init(
+        symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
+        levels:
+            .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
+            [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
+            .init(repeating: 288 ..< 288, count: 6)   // L10 ... L15
+        )
+    static 
+    let distance:LZ77.Huffman<UInt8> = .init(
+        symbols: .init(0 ... 31),
+        levels:
+            .init(repeating:  0 ..<  0, count:  4)  +
+            [0 ..< 32]                              +
+            .init(repeating: 32 ..< 32, count: 10)
+        )
+}
 extension LZ77 
 {
-    struct Semistatic 
+    enum Decades 
     {
-        private 
-        typealias Decade = (extra:UInt16, base:UInt16)
-        
-        private 
-        let storage:ManagedBuffer<Void, UInt8>,
-            fence:(runliteral:Int, distance:Int),
-            offset:Int
-            //runliteral:(fence:Int, fold:Int),
-            //distance:(offset:Int, fence:Int, fold:Int)
-        //               stack
-        //    0 ┌───────────────────────┐ : Buffer pointer 
-        //      ├───────────────────────┤ : Run-literal fence
-        //      ├───────────────────────┤ : Distance fence
-        //      ├───────────────────────┤ : Distance table offset
-        //   32 └───────────────────────┘
-        //                heap
-        //    0 ┌───────────────────────┐
-        //      │                       │
-        //      │  byte reversal table  │ : 256 * UInt8
-        //      │                       │
-        //  256 ├───────────────────────┤
-        //      │   Run decade table    │ : 32 * (UInt16, UInt16) 
-        //  384 ├───────────────────────┤
-        //      │ Distance decade table │ : 32 * (UInt16, UInt16) 
-        //  512 ├───────────────────────┤ 
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │   Run-literal table   │
-        //      │        (1-8 KB)       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      ├───────────────────────┤
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │     Distance table    │
-        //      │        (1-4 KB)       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      │                       │
-        //      └───────────────────────┘
+        static 
+        subscript(run run:Int) -> UInt8 
+        {
+            assert(3 ...   258 ~= run)
+            return Self.table[run - 3]
+        }
+        static 
+        subscript(distance distance:Int) -> UInt8 
+        {
+            assert(1 ... 32768 ~= distance)
+            return distance <= 256 ? 
+                Self.table[256 | (distance - 1)     ] : 
+                Self.table[512 | (distance - 1) >> 7]
+        }
+
         private static 
-        let reversed:[UInt8] =
+        let table:[UInt8] =
         [
-            0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 
-            0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
-            0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 
-            0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
-            0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 
-            0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
-            0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 
-            0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
-            0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 
-            0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
-            0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 
-            0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
-            0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 
-            0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
-            0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 
-            0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
-            0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 
-            0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
-            0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 
-            0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
-            0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 
-            0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
-            0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 
-            0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
-            0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 
-            0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
-            0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 
-            0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
-            0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 
-            0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
-            0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 
-            0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
+            // length codes
+            // 257 ... 264
+             1,  2,  3,  4,  5,  6,  7,  8, 
+            // 265 ... 268
+             9,  9, 10, 10, 11, 11, 12, 12, 
+            // 269 ... 272
+            13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 
+            // 273 ... 274
+            17, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 
+            // 275 ... 276
+            19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 
+            // 277 ... 280
+            21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 
+            22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 
+            23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 
+            24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
+            // 281
+            25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 
+            25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 
+            // 282
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            // 283
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            // 284 ... 285 (there is an overlapping composite for length = 258)
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 29, 
+            // distance codes 
+            // 0 ... 3
+             0,  1,  2,  3,  
+            // 4 ... 5
+             4,  4,  5,  5, 
+            // 6 ... 7
+             6,  6,  6,  6,  7,  7,  7,  7, 
+            // 8 ... 9
+             8,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9, 
+            // 10 ... 11
+            10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 
+            11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 
+            
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 
+            
+            13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 
+            13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 
+            
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
+            14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
+            
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+            15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
+            // ~~~ 7-bit fold ~~~
+             0,  0, // padding, to simplify index calculation
+            16, 17,
+            18, 18, 19, 19, 
+            20, 20, 20, 20, 21, 21, 21, 21, 
+            22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 
+            
+            24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
+            25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+            
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
+            
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
+            
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
+            
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
+            29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29
         ]
-        private static 
-        let decades:[Decade] = 
+    }
+    enum Composites 
+    {
+        // these are only used by the deflator in deflate.swift,, the inflator 
+        // reads these values from the Semistatic table, for memory locality
+        static 
+        subscript(run decade:UInt8) -> (extra:UInt16, base:UInt16) 
+        {
+            return Self.table[.init(decade)]
+        }
+        static 
+        subscript(distance decade:UInt8) -> (extra:UInt16, base:UInt16) 
+        {
+            return Self.table[.init(32 | decade)]
+        }
+        
+        fileprivate static 
+        let table:[(extra:UInt16, base:UInt16)] = 
         [
             // front-padding, which allows us to use a bitmask to 
             // get the decade index
@@ -381,27 +466,138 @@ extension LZ77
             ( 0,     0),
         ]
     }
-}
-extension LZ77.Semistatic 
-{        
-    static 
-    func create(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
-        -> Self 
+    enum Reversed 
     {
-        let start:Int   = 256    + MemoryLayout<Decade>.stride * 64
+        // these are only used by the deflator in deflate.swift,, the inflator 
+        // reads these values from the Semistatic table, for memory locality
+        static 
+        subscript<T>(byte:T) -> T where T:BinaryInteger 
+        {
+            self.table.withUnsafeBufferPointer
+            {
+                .init($0[.init(byte)])
+            }
+        }
+        
+        fileprivate static 
+        let table:[UInt8] =
+        [
+            0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 
+            0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
+            0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 
+            0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
+            0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 
+            0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
+            0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 
+            0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
+            0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 
+            0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
+            0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 
+            0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
+            0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 
+            0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
+            0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 
+            0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
+            0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 
+            0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
+            0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 
+            0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
+            0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 
+            0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
+            0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 
+            0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
+            0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 
+            0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
+            0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 
+            0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
+            0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 
+            0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
+            0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 
+            0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
+        ]
+    }
+}
+extension LZ77.Inflator 
+{
+    struct Semistatic 
+    {
+        private 
+        typealias Composite = (extra:UInt16, base:UInt16)
+        
+        private 
+        let storage:ManagedBuffer<Void, UInt8>,
+            fence:(runliteral:Int, distance:Int),
+            offset:Int
+            //runliteral:(fence:Int, fold:Int),
+            //distance:(offset:Int, fence:Int, fold:Int)
+        //               stack
+        //    0 ┌───────────────────────┐ : Buffer pointer 
+        //      ├───────────────────────┤ : Run-literal fence
+        //      ├───────────────────────┤ : Distance fence
+        //      ├───────────────────────┤ : Distance table offset
+        //   32 └───────────────────────┘
+        //                heap
+        //    0 ┌───────────────────────┐
+        //      │                       │
+        //      │  byte reversal table  │ : 256 * UInt8
+        //      │                       │
+        //  256 ├───────────────────────┤
+        //      │   Run decade table    │ : 32 * (UInt16, UInt16) 
+        //  384 ├───────────────────────┤
+        //      │ Distance decade table │ : 32 * (UInt16, UInt16) 
+        //  512 ├───────────────────────┤ 
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │   Run-literal table   │
+        //      │        (1-8 KB)       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      ├───────────────────────┤
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │     Distance table    │
+        //      │        (1-4 KB)       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      │                       │
+        //      └───────────────────────┘
+    }
+}
+extension LZ77.Inflator.Semistatic 
+{        
+    init(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) 
+    {
+        let start:Int   = 256    + MemoryLayout<Composite>.stride * 64
         let offset:Int  = start  + MemoryLayout<LZ77.Symbol.RunLiteral>.stride * runliteral.size.z 
         let size:Int    = offset + MemoryLayout<LZ77.Symbol.Distance  >.stride *   distance.size.z
-        let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
-        storage.withUnsafeMutablePointerToElements 
+        self.storage = .create(minimumCapacity: size){ _ in () }
+        self.storage.withUnsafeMutablePointerToElements 
         {
             (base:UnsafeMutablePointer<UInt8>) in 
             
             // write byte reversal table 
-            (base         ).initialize(from: Self.reversed, count: 256)
+            (base         ).initialize(from: LZ77.Reversed.table, count: 256)
             // write decade tables 
-            (base +    256).withMemoryRebound(to: Decade.self, capacity: 64) 
+            (base +    256).withMemoryRebound(to: Composite.self, capacity: 64) 
             {
-                $0.initialize(from: Self.decades, count: 64)
+                $0.initialize(from: LZ77.Composites.table, count: 64)
             }
             // write huffman tables 
             (base +  start).withMemoryRebound(to: LZ77.Symbol.RunLiteral.self, 
@@ -416,8 +612,8 @@ extension LZ77.Semistatic
             }
         }
         
-        return .init(storage: storage,
-            fence: (runliteral: runliteral.size.n, distance: distance.size.n), offset: offset)
+        self.fence  = (runliteral: runliteral.size.n, distance: distance.size.n)
+        self.offset = offset
     }
     
     // bits in lower half of the uint16
@@ -446,7 +642,7 @@ extension LZ77.Semistatic
         {
             let raw:UnsafeRawPointer = .init($0)
             // should get constant-folded
-            let start:Int  = 256    + 64 * MemoryLayout<Decade>.stride
+            let start:Int  = 256    + 64 * MemoryLayout<Composite>.stride
             let offset:Int = start &+ MemoryLayout<LZ77.Symbol.RunLiteral>.stride &* 
                 self.index(codeword, fence: self.fence.runliteral)
             return raw.load(fromByteOffset: offset, as: LZ77.Symbol.RunLiteral.self)
@@ -463,67 +659,82 @@ extension LZ77.Semistatic
         }
     }
     
-    func decade(_ runliteral:LZ77.Symbol.RunLiteral) -> (extra:Int, base:Int) 
+    func composite(decade runliteral:LZ77.Symbol.RunLiteral) -> (extra:Int, base:Int) 
     {
         self.storage.withUnsafeMutablePointerToElements 
         {
             let raw:UnsafeRawPointer = .init($0)
-            let offset:Int = 256 &+ 
-                MemoryLayout<Decade>.stride &* runliteral.decadeIndex
-            let decade:Decade = raw.load(fromByteOffset: offset, as: Decade.self)
-            return (extra: .init(decade.extra), base: .init(decade.base))
+            let offset:Int          = 256 &+ 
+                MemoryLayout<Composite>.stride &* runliteral.decade
+            let composite:Composite = raw.load(fromByteOffset: offset, as: Composite.self)
+            return (extra: .init(composite.extra), base: .init(composite.base))
         }
     }
-    func decade(_ distance:LZ77.Symbol.Distance) -> (extra:Int, base:Int) 
+    func composite(decade distance:LZ77.Symbol.Distance) -> (extra:Int, base:Int) 
     {
         self.storage.withUnsafeMutablePointerToElements 
         {
             let raw:UnsafeRawPointer = .init($0)
             // should get constant-folded
-            let offset:Int = (256 + 32 * MemoryLayout<Decade>.stride) &+ 
-                MemoryLayout<Decade>.stride &* distance.decadeIndex
-            let decade:Decade = raw.load(fromByteOffset: offset, as: Decade.self)
-            return (extra: .init(decade.extra), base: .init(decade.base))
+            let offset:Int          = (256 + 32 * MemoryLayout<Composite>.stride) &+ 
+                MemoryLayout<Composite>.stride &* distance.decade
+            let composite:Composite = raw.load(fromByteOffset: offset, as: Composite.self)
+            return (extra: .init(composite.extra), base: .init(composite.base))
         }
     }
     
     static 
-    let fixed:Self = .create(
-        runliteral: .init(
-            symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
-            levels:
-                .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
-                [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
-                .init(repeating: 288 ..< 288, count: 6)   // L10 ... L15
-            ), 
-        distance:   .init(
-            symbols: .init(0 ... 31),
-            levels:
-                .init(repeating:  0 ..<  0, count:  4)   +
-                [0 ..< 32]                              +
-                .init(repeating: 32 ..< 32, count: 10)
-            ))
+    let fixed:Self = .init(
+        runliteral: LZ77.FixedHuffman.runliteral, 
+        distance:   LZ77.FixedHuffman.distance)
 }
-extension LZ77.Semistatic 
+extension LZ77.Inflator.Semistatic 
 {
     struct Meta 
     {
         private 
-        let storage:ManagedBuffer<Void, UInt8>
+        var storage:ManagedBuffer<Void, UInt8>
     }
 }
-extension LZ77.Semistatic.Meta 
+extension LZ77.Inflator.Semistatic.Meta 
 {
-    static 
-    func create() -> Self 
+    private static 
+    var size:Int 
     {
-        let size:Int = 256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
-        let storage:ManagedBuffer<Void, UInt8> = .create(minimumCapacity: size){ _ in () }
-        storage.withUnsafeMutablePointerToElements 
+        256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
+    }
+    
+    init()  
+    {
+        self.storage = .create(minimumCapacity: Self.size){ _ in () }
+        self.storage.withUnsafeMutablePointerToElements 
         {
-            $0.initialize(from: LZ77.Semistatic.reversed, count: 256)
+            $0.initialize(from: LZ77.Reversed.table, count: 256)
         }
-        return .init(storage: storage)
+    }
+    
+    mutating 
+    func exclude() 
+    {
+        if !isKnownUniquelyReferenced(&self.storage)
+        {
+            #if WARN_COPY_ON_WRITE
+            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+            #endif 
+            
+            self.storage = self.storage.withUnsafeMutablePointerToElements 
+            {
+                (body:UnsafeMutablePointer<UInt8>) in 
+                
+                let new:ManagedBuffer<Void, UInt8> = 
+                    .create(minimumCapacity: Self.size){ _ in () }
+                new.withUnsafeMutablePointerToElements 
+                {
+                    $0.initialize(from: body, count: Self.size)
+                }
+                return new 
+            } 
+        }
     }
     
     func replace(tree:LZ77.Huffman<UInt8>) 
@@ -604,7 +815,7 @@ extension LZ77
             {
                 .init(truncatingIfNeeded: self.storage)
             }
-            var decadeIndex:Int 
+            var decade:Int 
             {
                 .init(self.storage & 0b0000_0000_1111_1111)
             }
@@ -628,7 +839,7 @@ extension LZ77
             private 
             let storage:UInt16 
             
-            var decadeIndex:Int 
+            var decade:Int 
             {
                 .init(self.storage & 0x00ff)
             }
@@ -711,7 +922,15 @@ extension LZ77.Inflator.In
         // calculate new buffer size 
         let rollover:Int    = self.bytes - 2 * a
         let minimum:Int     = Self.atoms(bytes: rollover + data.count)
-        if self.capacity < minimum 
+        
+        #if WARN_COPY_ON_WRITE
+        if !isKnownUniquelyReferenced(&self.storage) 
+        {
+            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+        }
+        #endif 
+        
+        if self.capacity < minimum || !isKnownUniquelyReferenced(&self.storage)
         {
             // reallocate storage 
             var capacity:Int = minimum.nextPowerOfTwo
@@ -836,6 +1055,13 @@ extension LZ77.Inflator.In
         }
     }
 }
+extension LZ77.Inflator.In:ExpressibleByArrayLiteral 
+{
+    init(arrayLiteral:UInt8...) 
+    {
+        self.init(arrayLiteral)
+    }
+}
 extension LZ77.Inflator 
 {
     struct Out 
@@ -843,8 +1069,7 @@ extension LZ77.Inflator
         var window:Int
          
         private(set)
-        var baseIndex:Int,
-            startIndex:Int, 
+        var startIndex:Int,
             currentIndex:Int,
             endIndex:Int 
         // storing this instead of using `ManagedBuffer.capacity` because 
@@ -860,12 +1085,7 @@ extension LZ77.Inflator
     }
 }
 extension LZ77.Inflator.Out 
-{        
-    var count:Int 
-    {
-        self.endIndex - self.startIndex
-    }
-    
+{
     init() 
     {
         var capacity:Int    = 0
@@ -875,13 +1095,41 @@ extension LZ77.Inflator.Out
             return ()
         }
         self.window         = 0
-        self.baseIndex      = 0
         self.startIndex     = 0
         self.currentIndex   = 0
         self.endIndex       = 0
         self.capacity       = capacity
         
         self.integral       = (1, 0)
+    }
+    
+    mutating 
+    func exclude() 
+    {
+        if !isKnownUniquelyReferenced(&self.storage)
+        {
+            #if WARN_COPY_ON_WRITE
+            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+            #endif 
+            
+            self.storage = self.storage.withUnsafeMutablePointerToElements 
+            {
+                (body:UnsafeMutablePointer<UInt8>) in 
+                
+                let new:ManagedBuffer<Void, UInt8> = 
+                    .create(minimumCapacity: self.capacity)
+                {
+                    self.capacity = $0.capacity
+                    return ()
+                }
+                new.withUnsafeMutablePointerToElements 
+                {
+                    // cannot do shift here, since the checksum has to be updated
+                    $0.assign(from: body, count: self.endIndex)
+                }
+                return new 
+            } 
+        }
     }
     
     mutating 
@@ -895,13 +1143,31 @@ extension LZ77.Inflator.Out
                 return nil 
             }
             
-            let i:Int = self.currentIndex - self.baseIndex
-            let slice:UnsafeBufferPointer<UInt8>    = .init(start: $0 + i, count: count)
+            let slice:UnsafeBufferPointer<UInt8> =
+                .init(start: $0 + self.currentIndex, count: count)
             defer 
             {
                 let limit:Int       = Swift.max(self.endIndex - self.window, self.startIndex)
                 self.currentIndex  += count 
                 self.startIndex     = Swift.min(self.currentIndex, limit)
+            }
+            return .init(slice)
+        }
+    }
+    
+    // releases everything 
+    mutating 
+    func release() -> [UInt8] 
+    {
+        self.storage.withUnsafeMutablePointerToElements  
+        {
+            let count:Int = self.endIndex - self.currentIndex
+            let slice:UnsafeBufferPointer<UInt8>
+                = .init(start: $0 + self.currentIndex, count: count)
+            defer 
+            {
+                self.currentIndex   =           self.endIndex
+                self.startIndex     = Swift.max(self.endIndex - self.window, self.startIndex)
             }
             return .init(slice)
         }
@@ -913,7 +1179,7 @@ extension LZ77.Inflator.Out
         self.reserve(1)
         self.storage.withUnsafeMutablePointerToElements 
         {
-            $0[self.endIndex &- self.baseIndex] = value 
+            $0[self.endIndex] = value
         }
         self.endIndex &+= 1
     }
@@ -923,7 +1189,7 @@ extension LZ77.Inflator.Out
         self.reserve(count)
         self.storage.withUnsafeMutablePointerToElements 
         {
-            let start:UnsafeMutablePointer<UInt8>   = $0 + (self.endIndex &- self.baseIndex)
+            let start:UnsafeMutablePointer<UInt8>   = $0 + self.endIndex
             // cannot use assign(from:count:) because the standard library implementation
             // copies from the back to the front if the ranges overlap
             // https://github.com/apple/swift/blob/master/stdlib/public/core/UnsafePointer.swift#L745
@@ -939,7 +1205,7 @@ extension LZ77.Inflator.Out
     private mutating 
     func reserve(_ count:Int) 
     {
-        if self.capacity < self.endIndex &- self.baseIndex &+ count 
+        if self.capacity < self.endIndex &+ count
         {
             self.shift(allocating: count)
         }
@@ -950,18 +1216,19 @@ extension LZ77.Inflator.Out
     func shift(allocating extra:Int) 
     {
         // optimal new capacity
-        let count:Int       = self.count, 
+        let count:Int       = self.endIndex - self.startIndex, 
             capacity:Int    = (count + Swift.max(16, extra)).nextPowerOfTwo
         if self.capacity >= capacity 
         {
             // rebase without reallocating 
             self.storage.withUnsafeMutablePointerToElements 
             {
-                let offset:Int  = self.startIndex - self.baseIndex
-                self.integral   = Self.update(checksum: self.integral, 
-                            from: $0,          count: offset)
-                $0.assign(  from: $0 + offset, count: count)
-                self.baseIndex  = self.startIndex
+                self.integral   = LZ77.MRC32.update(self.integral, 
+                            from: $0,                   count: self.startIndex)
+                $0.assign(  from: $0 + self.startIndex, count: count)
+                self.currentIndex  -= self.startIndex
+                self.endIndex      -= self.startIndex
+                self.startIndex     = 0
             }
         }
         else 
@@ -978,42 +1245,16 @@ extension LZ77.Inflator.Out
                 
                 new.withUnsafeMutablePointerToElements 
                 {
-                    let offset:Int  = self.startIndex - self.baseIndex
-                    self.integral   = Self.update(checksum: self.integral, 
-                                from: body,          count: offset)
-                    $0.assign(  from: body + offset, count: count)
+                    self.integral   = LZ77.MRC32.update(self.integral,
+                                from: body,                   count: self.startIndex)
+                    $0.assign(  from: body + self.startIndex, count: count)
                 }
-                self.baseIndex = self.startIndex
+                self.currentIndex  -= self.startIndex
+                self.endIndex      -= self.startIndex
+                self.startIndex     = 0
                 return new 
             }
         }
-    }
-    // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
-    // link also says to use simd vectorization, but that just seems to slow 
-    // things down (probably because llvm is already autovectorizing it)
-    private static 
-    func update(checksum:(single:UInt32, double:UInt32), 
-        from start:UnsafePointer<UInt8>, count:Int) 
-        -> (single:UInt32, double:UInt32)
-    {
-        let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
-        var (single, double):(UInt32, UInt32) = checksum
-        for i:Int in 0 ..< q 
-        {
-            for j:Int in 5552 * i ..< 5552 * (i + 1)
-            {
-                single &+= .init(start[j])
-                double &+= single 
-            }
-            single %= 65521
-            double %= 65521
-        }
-        for j:Int in 5552 * q ..< 5552 * q + r
-        {
-            single &+= .init(start[j])
-            double &+= single 
-        }
-        return (single % 65521, double % 65521)
     }
 
     mutating 
@@ -1022,18 +1263,10 @@ extension LZ77.Inflator.Out
         // everything still in the storage buffer has not yet been integrated 
         self.storage.withUnsafeMutablePointerToElements 
         {
-            let remaining:Int = self.endIndex &- self.baseIndex
             let (single, double):(UInt32, UInt32) = 
-                Self.update(checksum: self.integral, from: $0, count: remaining)
+                LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
             return double << 16 | single
         }
-    }
-}
-extension LZ77.Inflator.In:ExpressibleByArrayLiteral 
-{
-    init(arrayLiteral:UInt8...) 
-    {
-        self.init(arrayLiteral)
     }
 }
 
@@ -1048,7 +1281,7 @@ extension LZ77
             case blockStart
             case blockTables(final:Bool, runliterals:Int, distances:Int)
             case blockUncompressed(final:Bool, end:Int)
-            case blockCompressed(final:Bool, semistatic:LZ77.Semistatic)
+            case blockCompressed(final:Bool, semistatic:Semistatic)
             case streamChecksum
             case streamEnd 
         }
@@ -1061,18 +1294,39 @@ extension LZ77
                 case dynamic(runliterals:Int, distances:Int)
             }
             
+            // Stream.In manages its own COW in rebase(_:pointer:)
             var input:In,
                 b:Int 
             var lengths:[Int]
-            var meta:LZ77.Semistatic.Meta // reuse the same buffer since the size is fixed
+            // Meta and Stream.Out need to have COW manually implemented with 
+            // exclude() on each, to avoid redundant exclusions inside loops,,
+            // reuse the same buffer since the size is fixed
+            var meta:Semistatic.Meta 
             var output:Out
+            
+            #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
+            // histogram, no match can ever cost more than 17 bits per literal
+            var statistics: 
+            (
+                literals:[Int],
+                matches:[Int], 
+                symbols:[Int]
+            ) 
+            = 
+            (
+                literals:   .init(repeating: 0, count: 16), 
+                matches:    .init(repeating: 0, count: 17), 
+                // 2d symbol histogram (run, distance) 
+                symbols:    .init(repeating: 0, count: 29 * 30)
+            )
+            #endif
             
             init() 
             {
                 self.b          = 0
                 self.input      = []
                 self.lengths    = []
-                self.meta       = .create()
+                self.meta       = .init()
                 self.output     = .init()
             }
         }
@@ -1110,16 +1364,24 @@ extension LZ77.Inflator
     mutating 
     func pull(_ count:Int) -> [UInt8]? 
     {
-        self.stream.output.release(bytes: count)
+        self.stream.output.exclude()
+        return self.stream.output.release(bytes: count)
     }
-    var retained:Int 
+    mutating 
+    func pull() -> [UInt8]
     {
-        self.stream.output.endIndex - self.stream.output.currentIndex
+        self.stream.output.exclude()
+        return self.stream.output.release()
     }
+    
     // returns nil if unable to advance 
     private mutating 
     func advance() throws -> Void?
     {
+        // pool cow-exclusions here instead of checking the reference count 
+        // on every loop iteration
+        self.stream.meta.exclude()
+        self.stream.output.exclude()
         switch self.state 
         {
         case .streamStart:
@@ -1153,6 +1415,10 @@ extension LZ77.Inflator
                 let end:Int = self.stream.output.endIndex + count
                 self.state = .blockUncompressed(final: final, end: end)
             }
+            
+            #if DUMP_LZ77_BLOCKS 
+            print("< \(compression)")
+            #endif 
         
         case .blockTables(final: let final, runliterals: let runliterals, distances: let distances):
             guard let (runliteral, distance):(LZ77.Huffman<UInt16>, LZ77.Huffman<UInt8>) = 
@@ -1163,7 +1429,7 @@ extension LZ77.Inflator
             }
             
             self.state = .blockCompressed(final: final,
-                semistatic: .create(runliteral: runliteral, distance: distance))
+                semistatic: .init(runliteral: runliteral, distance: distance))
         
         case .blockUncompressed(final: let final, end: let end):
             guard let _:Void = try self.stream.blockUncompressed(end: end) 
@@ -1433,7 +1699,7 @@ extension LZ77.Inflator.Stream
         return (runliteral, distance)
     }
     mutating 
-    func blockCompressed(semistatic:LZ77.Semistatic) throws -> Void? 
+    func blockCompressed(semistatic:LZ77.Inflator.Semistatic) throws -> Void? 
     {
         while self.b < self.input.count 
         {
@@ -1459,6 +1725,13 @@ extension LZ77.Inflator.Stream
                 }
                 self.b += runliteral.length 
                 self.output.append(runliteral.literal)
+                
+                #if DUMP_LZ77_TERMS 
+                print("< literal(\(runliteral.literal))")
+                #endif 
+                #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
+                self.statistics.literals[runliteral.length] += 1
+                #endif
             }
             else if runliteral.symbol == 256 
             {
@@ -1468,6 +1741,14 @@ extension LZ77.Inflator.Stream
                     return nil 
                 }
                 self.b += runliteral.length 
+                
+                #if DUMP_LZ77_TERMS 
+                print("< end-of-block\n")
+                #endif 
+                #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
+                self.statistics.literals[runliteral.length] += 1
+                #endif
+                
                 return () 
             }
             else 
@@ -1482,29 +1763,29 @@ extension LZ77.Inflator.Stream
                     .init(first)
                 slug &>>= runliteral.length
                 
-                let decade:
+                let composite:
                 (
                     count:(extra:Int, base:Int),
                     offset:(extra:Int, base:Int)
                 )
                 
-                decade.count        = semistatic.decade(runliteral) 
-                let count:Int       = decade.count.base &+ 
-                    .init(truncatingIfNeeded: slug & ~(.max &<< decade.count.extra))
+                composite.count     = semistatic.composite(decade: runliteral) 
+                let count:Int       = composite.count.base &+ 
+                    .init(truncatingIfNeeded: slug & ~(.max &<< composite.count.extra))
                 
-                slug &>>= decade.count.extra
+                slug &>>= composite.count.extra
                 
                 let distance:LZ77.Symbol.Distance = 
                     semistatic[.init(truncatingIfNeeded: slug), as: LZ77.Symbol.Distance.self]
                 slug &>>= distance.length
                 
-                decade.offset       = semistatic.decade(distance) 
-                let offset:Int      = decade.offset.base &+ 
-                    .init(truncatingIfNeeded: slug & ~(.max &<< decade.offset.extra))
+                composite.offset    = semistatic.composite(decade: distance) 
+                let offset:Int      = composite.offset.base &+ 
+                    .init(truncatingIfNeeded: slug & ~(.max &<< composite.offset.extra))
                 
                 let b:Int = self.b      + 
-                    runliteral.length   + decade.count.extra + 
-                    distance.length     + decade.offset.extra 
+                    runliteral.length   + composite.count.extra + 
+                    distance.length     + composite.offset.extra 
                 guard b <= self.input.count 
                 else 
                 {
@@ -1516,6 +1797,18 @@ extension LZ77.Inflator.Stream
                 {
                     throw LZ77.DecompressionError.invalidStringReference
                 }
+                
+                #if DUMP_LZ77_TERMS 
+                print("< match(offset: \(-offset), run: \(count))")
+                #endif 
+                #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
+                let n:Int = 29 * .init(distance.decade) + .init(runliteral.symbol - 257)
+                let m:Int = 
+                    runliteral.length + composite.count.extra + 
+                    distance.length   + composite.offset.extra
+                self.statistics.symbols[n]          += 1
+                self.statistics.matches[m / count]  += 1
+                #endif
                 
                 self.output.expand(offset: offset, count: count)
                 self.b = b
@@ -1542,6 +1835,21 @@ extension LZ77.Inflator.Stream
     mutating 
     func checksum() throws -> Void?
     {
+        #if DUMP_LZ77_BLOCKS 
+        let efficiency:Double = self.statistics.literals.enumerated().reduce(0.0){ $0 + .init($1.0 * $1.1) } / 
+            .init(self.statistics.literals.reduce(0, +))
+        print("< average literal coding efficiency: \(efficiency)")
+        print("< match coding efficiency histogram:")
+        for (bin, frequency):(Int, Int) in self.statistics.matches.enumerated()
+        {
+            print("    [\(bin) ..< \(bin + 1) bits]: \(frequency)")
+        }
+        print("< run-distance symbol histogram:")
+        #endif
+        #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
+        print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
+        #endif 
+        
         // skip to next byte boundary, read 4 bytes 
         let boundary:Int = (self.b + 7) & ~7
         guard boundary + 32 <= self.input.count 
