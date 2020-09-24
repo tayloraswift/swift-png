@@ -16,8 +16,7 @@ func clock() -> Int
     #error("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
-import PNG4
-
+import PNG
 
 func benchmark(_ name:String, function:(String) -> Int)
 {

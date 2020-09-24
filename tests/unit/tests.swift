@@ -1,4 +1,4 @@
-@testable import PNG4
+@testable import PNG
 
 extension Test 
 {
