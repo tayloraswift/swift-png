@@ -1,0 +1,36 @@
+#!/bin/bash
+
+TOOL_NAME=$0
+usage() 
+{
+    echo "usage: $TOOL_NAME <source directory> <destination directory>"
+}
+
+check()
+{
+    message=$1
+    shift 
+    echo $@
+    "$@" || echo "$message"
+}
+
+if ! [ -d "$1" ] ; then 
+    echo "$0 requires a source directory"
+    exit 1 
+fi 
+
+if ! [ -d "$2" ] ; then 
+    echo "$0 requires a destination directory"
+    exit 1
+fi 
+
+source=${1%/}
+destination=${2%/}
+
+for file in $source/*.png ; do
+    check   "failed to convert png to normalized rgba16 png" \
+            convert -depth 16 -define png:color-type=6 "png:$file" "png:$file.tmp" 
+    check   "failed to convert normalized rgba16 png to rgba" \
+            convert -depth 16 "png:$file.tmp" "rgba:$destination/$(basename $file).rgba" 
+    rm "$file.tmp"
+done

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+TOOL_NAME=$0
+usage() 
+{
+    echo "usage: $TOOL_NAME <source directory> <destination directory>"
+}
+
+check()
+{
+    message=$1
+    shift 
+    echo $@
+    "$@" || echo "$message"
+}
+
+if ! [ -d "$1" ] ; then 
+    echo "$0 requires a source directory"
+    exit 1 
+fi 
+
+if ! [ -d "$2" ] ; then 
+    echo "$0 requires a destination directory"
+    exit 1
+fi 
+
+source=${1%/}
+destination=${2%/}
+
+for file in $source/*.png ; do
+    check   "failed to convert standard png to ios-optimized png" \
+            xcrun -sdk iphoneos pngcrush -iphone $file $destination/$(basename $file)
+done
