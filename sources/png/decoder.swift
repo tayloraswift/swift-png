@@ -79,8 +79,7 @@ extension PNG
         public 
         let format:PNG.Format 
         public 
-        let standard:PNG.Standard, 
-            interlaced:Bool
+        let interlaced:Bool
     }
 }
 extension PNG.Layout 
@@ -89,8 +88,8 @@ extension PNG.Layout
     init?(standard:PNG.Standard, interlaced:Bool, pixel:PNG.Format.Pixel, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?) 
     {
-        guard let format:PNG.Format = .recognize(pixel: pixel, palette: palette, 
-            background: background, transparency: transparency) 
+        guard let format:PNG.Format = .recognize(standard: standard, pixel: pixel, 
+            palette: palette, background: background, transparency: transparency) 
         else 
         {
             // if all the inputs have been consistently validated by the parsing 
@@ -99,7 +98,7 @@ extension PNG.Layout
             return nil 
         }
         
-        self.init(format: format, standard: standard, interlaced: interlaced)
+        self.init(format: format, interlaced: interlaced)
     }
     
     var palette:PNG.Palette? 
@@ -116,11 +115,21 @@ extension PNG.Layout
             // should be impossible for self.format to have invalid palettes
             return palette.isEmpty ? nil : .init(entries: palette)
         
+        case    .bgr8       (palette: let palette, background: _, key: _),
+                .bgra8      (palette: let palette, background: _):
+            return palette.isEmpty ? nil : .init(entries: palette.map 
+            {
+                ($0.r, $0.g, $0.b)
+            })
+        
         case    .indexed1   (palette: let palette, background: _),
                 .indexed2   (palette: let palette, background: _),
                 .indexed4   (palette: let palette, background: _),
                 .indexed8   (palette: let palette, background: _):
-            return .init(entries: palette.map{ ($0.r, $0.g, $0.b) })
+            return .init(entries: palette.map
+            { 
+                ($0.r, $0.g, $0.b) 
+            })
         }
     }
     var transparency:PNG.Transparency? 
@@ -134,7 +143,9 @@ extension PNG.Layout
                 .v16        (background: _, key: nil),
                 .va8        (background: _),
                 .va16       (background: _),
+                .bgr8       (palette: _, background: _, key: nil),
                 .rgb8       (palette: _, background: _, key: nil),
+                .bgra8      (palette: _, background: _), 
                 .rgba8      (palette: _, background: _), 
                 .rgb16      (palette: _, background: _, key: nil),
                 .rgba16     (palette: _, background: _):
@@ -149,6 +160,8 @@ extension PNG.Layout
         case    .v16        (background: _, key: let k?):
             return .v(key: k)
             
+        case    .bgr8       (palette: _, background: _, key: let k?):
+            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
         case    .rgb8       (palette: _, background: _, key: let k?):
             return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
         
@@ -178,7 +191,9 @@ extension PNG.Layout
                 .v16        (background: nil, key: _),
                 .va8        (background: nil),
                 .va16       (background: nil),
+                .bgr8       (palette: _, background: nil, key: _),
                 .rgb8       (palette: _, background: nil, key: _),
+                .bgra8      (palette: _, background: nil), 
                 .rgba8      (palette: _, background: nil), 
                 .rgb16      (palette: _, background: nil, key: _),
                 .rgba16     (palette: _, background: nil),
@@ -199,6 +214,9 @@ extension PNG.Layout
                 .va16       (background: let b?):
             return .v(b)
             
+        case    .bgr8       (palette: _, background: let b?, key: _),
+                .bgra8      (palette: _, background: let b?):
+            return .rgb((r: .init(b.r), g: .init(b.g), b: .init(b.b)))
         case    .rgb8       (palette: _, background: let b?, key: _),
                 .rgba8      (palette: _, background: let b?):
             return .rgb((r: .init(b.r), g: .init(b.g), b: .init(b.b)))
@@ -366,7 +384,7 @@ extension PNG.Data.Rectangular
                 self.storage[d &+ 1] = scanline[a &+ 1]
             }
         // 1 x 3
-        case .rgb8:
+        case .rgb8, .bgr8:
             for (i, x):(Int, Int) in indices
             {
                 let a:Int = 3 &* i &+ scanline.startIndex, 
@@ -376,7 +394,7 @@ extension PNG.Data.Rectangular
                 self.storage[d &+ 2] = scanline[a &+ 2]
             }
         // 1 x 4, 2 x 2
-        case .rgba8, .va16:
+        case .rgba8, .bgra8, .va16:
             for (i, x):(Int, Int) in indices
             {
                 let a:Int = 4 &* i &+ scanline.startIndex, 
@@ -553,12 +571,20 @@ extension PNG
 }
 extension PNG.Decoder 
 {
-    init(interlaced:Bool)
+    init(standard:PNG.Standard, interlaced:Bool)
     {
         self.row        = nil
         self.pass       = interlaced ? 0 : nil
         self.continue   = ()
-        self.inflator   = .init()
+        
+        let format:LZ77.Format 
+        switch standard 
+        {
+        case .common:   format = .zlib 
+        case .ios:      format = .ios
+        }
+        
+        self.inflator   = .init(format: format)
     }
     
     mutating 
@@ -744,7 +770,7 @@ extension PNG.Context
         }
         
         self.image      = image 
-        self.decoder    = .init(interlaced: image.layout.interlaced)
+        self.decoder    = .init(standard: standard, interlaced: image.layout.interlaced)
     }
     
     mutating 
@@ -809,7 +835,7 @@ extension PNG.Data.Rectangular
             switch chunk 
             {
             case (.IHDR, let data):
-                return (standard, try .parse(data))
+                return (standard, try .parse(data, standard: standard))
             default:
                 throw PNG.DecodingError.missingImageHeader
             }

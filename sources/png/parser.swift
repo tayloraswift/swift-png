@@ -74,15 +74,13 @@ extension PNG
             case rgba16 
         }
         
-        // can’t use these in the enum cases because they are `internal` only
-        typealias RGB<T>  = (r:T, g:T, b:T)
-        typealias RGBA<T> = (r:T, g:T, b:T, a:T)
-        
         case v1      (                                                background:   UInt8?,                       key:   UInt8?                      )
         case v2      (                                                background:   UInt8?,                       key:   UInt8?                      )
         case v4      (                                                background:   UInt8?,                       key:   UInt8?                      )
         case v8      (                                                background:   UInt8?,                       key:   UInt8?                      )
         case v16     (                                                background:   UInt16?,                      key:   UInt16?                     )
+        
+        case bgr8    (palette:[(b:UInt8, g:UInt8, r:UInt8         )], background:(b:UInt8,  g:UInt8,  r:UInt8 )?, key:(b:UInt8,  g:UInt8,  r:UInt8 )?)
         
         case rgb8    (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt8,  g:UInt8,  b:UInt8 )?, key:(r:UInt8,  g:UInt8,  b:UInt8 )?)
         case rgb16   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt16, g:UInt16, b:UInt16)?, key:(r:UInt16, g:UInt16, b:UInt16)?)
@@ -94,6 +92,8 @@ extension PNG
         
         case va8     (                                                background:   UInt8?                                                           )
         case va16    (                                                background:   UInt16?                                                          )
+        
+        case bgra8   (palette:[(b:UInt8, g:UInt8, r:UInt8         )], background:(b:UInt8,  g:UInt8,  r:UInt8 )?                                     )
         
         case rgba8   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt8,  g:UInt8,  b:UInt8 )?                                     )
         case rgba16  (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt16, g:UInt16, b:UInt16)?                                     )
@@ -233,6 +233,10 @@ extension PNG.Format.Pixel
 }
 extension PNG.Format 
 {
+    // can’t use these in the enum cases because they are `internal` only
+    typealias RGB<T>  = (r:T, g:T, b:T)
+    typealias RGBA<T> = (r:T, g:T, b:T, a:T)
+    
     @inlinable
     public
     var pixel:Pixel
@@ -244,6 +248,7 @@ extension PNG.Format
         case .v4:       return .v4
         case .v8:       return .v8
         case .v16:      return .v16
+        case .bgr8:     return .rgb8
         case .rgb8:     return .rgb8
         case .rgb16:    return .rgb16
         case .indexed1: return .indexed1
@@ -252,14 +257,16 @@ extension PNG.Format
         case .indexed8: return .indexed8
         case .va8:      return .va8
         case .va16:     return .va16
+        case .bgra8:    return .rgba8
         case .rgba8:    return .rgba8
         case .rgba16:   return .rgba16
         }
     }
     
     public static 
-    func recognize(pixel:PNG.Format.Pixel, palette:PNG.Palette?, 
-        background:PNG.Background?, transparency:PNG.Transparency?) -> Self?
+    func recognize(standard:PNG.Standard, pixel:PNG.Format.Pixel, 
+        palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?) 
+        -> Self?
     {
         let format:Self 
         switch pixel 
@@ -341,13 +348,17 @@ extension PNG.Format
                 return nil 
             }
             
-            switch pixel 
+            switch (standard, pixel) 
             {
-            case .rgb8:
+            case (.common,  .rgb8):
                 format = .rgb8(palette: palette, 
                     background: b.map{ (.init($0.r), .init($0.g), .init($0.b)) }, 
                     key:        k.map{ (.init($0.r), .init($0.g), .init($0.b)) })
-            case .rgb16:
+            case (.ios,     .rgb8):
+                format = .bgr8(palette: palette.map{ ($0.b, $0.g, $0.r) }, 
+                    background: b.map{ (.init($0.b), .init($0.g), .init($0.r)) }, 
+                    key:        k.map{ (.init($0.b), .init($0.g), .init($0.r)) })
+            case (_,        .rgb16):
                 format = .rgb16(palette: palette, background: b, key: k)
             default:
                 fatalError("unreachable")
@@ -445,12 +456,15 @@ extension PNG.Format
                 return nil 
             }
             
-            switch pixel 
+            switch (standard, pixel) 
             {
-            case .rgba8:
+            case (.common,  .rgba8):
                 format = .rgba8(palette: palette, 
                     background: b.map{ (.init($0.r), .init($0.g), .init($0.b)) })
-            case .rgba16:
+            case (.ios,     .rgba8):
+                format = .bgra8(palette: palette.map{ ($0.b, $0.g, $0.r) }, 
+                    background: b.map{ (.init($0.b), .init($0.g), .init($0.r)) })
+            case (_,        .rgba16):
                 format = .rgba16(palette: palette, background: b)
             default:
                 fatalError("unreachable")
@@ -467,7 +481,8 @@ extension PNG
     enum ParsingError:Swift.Error 
     {
         case invalidHeaderChunkLength(Int)
-        case invalidHeaderColorCode(depth:UInt8, type:UInt8)
+        case invalidHeaderPixelFormatCode(depth:UInt8, type:UInt8)
+        case invalidHeaderPixelFormat(PNG.Format.Pixel, standard:PNG.Standard)
         case invalidHeaderCompressionCode(UInt8)
         case invalidHeaderFilterCode(UInt8)
         case invalidHeaderInterlacingCode(UInt8)
@@ -567,7 +582,7 @@ extension PNG.Header
     }
     
     public static 
-    func parse(_ data:[UInt8]) throws -> Self 
+    func parse(_ data:[UInt8], standard:PNG.Standard) throws -> Self 
     {
         guard data.count == 13
         else
@@ -578,7 +593,17 @@ extension PNG.Header
         guard let pixel:PNG.Format.Pixel = .recognize(code: (data[8], data[9]))
         else
         {
-            throw PNG.ParsingError.invalidHeaderColorCode(depth: data[8], type: data[9])
+            throw PNG.ParsingError.invalidHeaderPixelFormatCode(depth: data[8], type: data[9])
+        }
+        
+        // iphone-optimized PNG can only have pixel type rgb8 or rgb16
+        switch (standard, pixel)
+        {
+        case    (.common, _):   break 
+        case    (.ios, .rgb8), 
+                (.ios, .rgba8): break
+        default: 
+            throw PNG.ParsingError.invalidHeaderPixelFormat(pixel, standard: standard)
         }
 
         // validate other fields

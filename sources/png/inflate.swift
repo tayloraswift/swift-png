@@ -22,6 +22,12 @@ enum LZ77
         
         case invalidStringReference
     }
+    
+    enum Format 
+    {
+        case zlib 
+        case ios
+    }
 }
 
 // modular redundancy check (similar to PNG.CRC32)
@@ -1271,7 +1277,7 @@ extension LZ77.Inflator.Out
 }
 
 extension LZ77 
-{    
+{ 
     struct Inflator 
     {
         private 
@@ -1294,6 +1300,7 @@ extension LZ77
                 case dynamic(runliterals:Int, distances:Int)
             }
             
+            var format:Format 
             // Stream.In manages its own COW in rebase(_:pointer:)
             var input:In,
                 b:Int 
@@ -1321,8 +1328,10 @@ extension LZ77
             )
             #endif
             
-            init() 
+            init(format:Format) 
             {
+                self.format     = format 
+                
                 self.b          = 0
                 self.input      = []
                 self.lengths    = []
@@ -1338,10 +1347,10 @@ extension LZ77
 }
 extension LZ77.Inflator 
 {
-    init() 
+    init(format:LZ77.Format = .zlib) 
     {
         self.state  = .streamStart
-        self.stream = .init()
+        self.stream = .init(format: format)
     }
     
     // returns `nil` if the stream is finished
@@ -1466,6 +1475,11 @@ extension LZ77.Inflator.Stream
     mutating 
     func start() throws -> Int?
     {
+        if case .ios = self.format 
+        {
+            return 1 << 15
+        }
+        
         // read stream header 
         guard self.b + 16 <= self.input.count 
         else 
@@ -1849,6 +1863,11 @@ extension LZ77.Inflator.Stream
         #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
         print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
         #endif 
+        
+        if case .ios = self.format 
+        {
+            return ()
+        }
         
         // skip to next byte boundary, read 4 bytes 
         let boundary:Int = (self.b + 7) & ~7

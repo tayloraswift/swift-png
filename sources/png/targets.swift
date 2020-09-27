@@ -2,8 +2,7 @@ public
 protocol _PNGColor 
 {
     static 
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format, standard:PNG.Standard) 
-        -> [Self]
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
 }
 extension PNG 
 {
@@ -80,7 +79,7 @@ extension PNG.Color
     func quantum<T>(source:Int, destination _:T.Type) -> T 
         where T:FixedWidthInteger & UnsignedInteger 
     {
-        T.max / (T.max >> (T.bitWidth - source))
+        T.max / T.max >> (T.bitWidth - source)
     }
     
     /*private static
@@ -271,24 +270,20 @@ extension PNG.Color
 
 extension PNG 
 {
-    @usableFromInline
-    @_specialize(where T == UInt8)
-    @_specialize(where T == UInt16)
-    @_specialize(where T == UInt32)
-    @_specialize(where T == UInt64)
-    @_specialize(where T == UInt)
-    static
-    func premultiply<T>(color:T, alpha:T) -> T where T:FixedWidthInteger & UnsignedInteger
+    @inlinable
+    public static
+    func premultiply<T>(color:T, alpha:T) -> T 
+        where T:FixedWidthInteger & UnsignedInteger
     {
-        // an overflow-safe way of computing p = (c * (a + 1)) >> p.bitWidth
-        let (high, low):(T, T.Magnitude) = color.multipliedFullWidth(by: alpha)
-        // divide by 255 using this one neat trick!1!!!
-        // value /. 255 == (value + 128 + (value >> 8)) >> 8
-        let carries:(Bool, Bool),
-            part:T.Magnitude
-        (part,  carries.0) =  low.addingReportingOverflow(high.magnitude)
-                carries.1  = part.addingReportingOverflow(T.Magnitude.max >> 1 + 1).overflow
-        return high + (carries.0 ? 1 : 0) + (carries.1 ? 1 : 0)
+        // this generates pretty good assembly, though Swift/LLVM doesn’t 
+        // seem to know it can perform the full width arithmetic in one register 
+        // for T.bitWidth <= 32
+        let product:(high:T, low:T.Magnitude) = color.multipliedFullWidth(by: alpha)
+        let biased:(high:T, low:T.Magnitude), 
+            carried:Bool 
+        (biased.low, carried)   = product.low.addingReportingOverflow(.max >> 1)
+        biased.high             = product.high &+ (carried ? 1 : 0)
+        return T.max.dividingFullWidth(biased).quotient
     }
     
     @frozen
@@ -315,11 +310,7 @@ extension PNG
         ///     and `UInt`.
         /// - Parameters:
         ///     - value: The value to initialize all color components to.
-        @_specialize(where T == UInt8)
-        @_specialize(where T == UInt16)
-        @_specialize(where T == UInt32)
-        @_specialize(where T == UInt64)
-        @_specialize(where T == UInt)
+        @inlinable
         public
         init(_ value:T)
         {
@@ -334,11 +325,7 @@ extension PNG
         /// - Parameters:
         ///     - value: The value to initialize all color components to.
         ///     - alpha: The value to initialize the alpha component to.
-        @_specialize(where T == UInt8)
-        @_specialize(where T == UInt16)
-        @_specialize(where T == UInt32)
-        @_specialize(where T == UInt64)
-        @_specialize(where T == UInt)
+        @inlinable
         public
         init(_ value:T, _ alpha:T)
         {
@@ -354,11 +341,7 @@ extension PNG
         ///     - red: The value to initialize the red component to.
         ///     - green: The value to initialize the green component to.
         ///     - blue: The value to initialize the blue component to.
-        @_specialize(where T == UInt8)
-        @_specialize(where T == UInt16)
-        @_specialize(where T == UInt32)
-        @_specialize(where T == UInt64)
-        @_specialize(where T == UInt)
+        @inlinable
         public
         init(_ red:T, _ green:T, _ blue:T)
         {
@@ -374,11 +357,7 @@ extension PNG
         ///     - green: The value to initialize the green component to.
         ///     - blue: The value to initialize the blue component to.
         ///     - alpha: The value to initialize the alpha component to.
-        @_specialize(where T == UInt8)
-        @_specialize(where T == UInt16)
-        @_specialize(where T == UInt32)
-        @_specialize(where T == UInt64)
-        @_specialize(where T == UInt)
+        @inlinable
         public
         init(_ red:T, _ green:T, _ blue:T, _ alpha:T)
         {
@@ -428,18 +407,28 @@ extension PNG
 }
 extension PNG.RGBA:PNG.Color 
 {
-    public static 
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format, standard:PNG.Standard) 
-        -> [Self] 
+    @inlinable
+    public
+    var premultiplied:Self
     {
-        switch standard 
-        {
-        case .common:   return Self.unpack(rgba: interleaved, of: format)
-        case .ios:      return Self.unpack(bgra: interleaved, of: format)
-        }
+        .init(  PNG.premultiply(color: self.r, alpha: self.a),
+                PNG.premultiply(color: self.g, alpha: self.a),
+                PNG.premultiply(color: self.b, alpha: self.a),
+                self.a)
     }
+    @inlinable
+    public
+    func premultiplied<T>(as _:T.Type) -> Self
+        where T:FixedWidthInteger & UnsignedInteger
+    {
+        .init(  PNG.premultiply(color: self.r, alpha: self.a),
+                PNG.premultiply(color: self.g, alpha: self.a),
+                PNG.premultiply(color: self.b, alpha: self.a),
+                self.a)
+    }
+    
     public static 
-    func unpack(rgba interleaved:[UInt8], of format:PNG.Format) 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) 
         -> [Self] 
     {
         let depth:Int = format.pixel.sampleDepth 
@@ -496,6 +485,18 @@ extension PNG.RGBA:PNG.Color
                 (c:(T, T))          in .init(c.0, c.1)
             }
         
+        case    .bgr8(palette: _, background: _, key: nil):
+            return Self.unpack(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(T, T, T), _)    in .init(c.2, c.1, c.0)
+            }
+        case    .bgr8(palette: _, background: _, key: let key?):
+            return Self.unpack(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(T, T, T), k:(UInt8,  UInt8,  UInt8 )) in 
+                .init(c.2, c.1, c.0, k == key ? .min : .max)
+            }
+    
         case    .rgb8(palette: _, background: _, key: nil):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
@@ -519,6 +520,12 @@ extension PNG.RGBA:PNG.Color
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
         
+        case    .bgra8(palette: _, background: _):
+            return Self.unpack(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(T, T, T, T)) in .init(c.2, c.1, c.0, c.3)
+            }
+        
         case    .rgba8(palette: _, background: _):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
@@ -531,22 +538,6 @@ extension PNG.RGBA:PNG.Color
             }
         }
     }
-    public static 
-    func unpack(bgra interleaved:[UInt8], of format:PNG.Format) 
-        -> [Self] 
-    {
-        fatalError("unsupported")
-    }
-    
-    @inlinable
-    public
-    var premultiplied:Self
-    {
-        .init(  PNG.premultiply(color: self.r, alpha: self.a),
-                PNG.premultiply(color: self.g, alpha: self.a),
-                PNG.premultiply(color: self.b, alpha: self.a),
-                self.a)
-    }
 }
 
 extension PNG.Data.Rectangular 
@@ -554,6 +545,6 @@ extension PNG.Data.Rectangular
     public 
     func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
     {
-        Color.unpack(self.storage, of: self.layout.format, standard: self.layout.standard)
+        Color.unpack(self.storage, of: self.layout.format)
     }
 }

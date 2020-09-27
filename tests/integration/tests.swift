@@ -230,6 +230,44 @@ extension Test
         {
             ("decode-\($0.name)", .string(Self.decode(_:), $0.members))
         }
+        + 
+        [
+            ("decode-iphone-optimized", .string(Self.decodeCgBI(_:), 
+            [
+                "PngSuite", 
+                "basi2c08", 
+                "basi6a08", 
+                "basn2c08", 
+                "basn6a08", 
+                "bgan6a08", 
+                "bgwn6a08", 
+                "ccwn2c08", 
+                "cdfn2c08", 
+                "cdhn2c08", 
+                "cdsn2c08", 
+                "cdun2c08", 
+                "cs5n2c08", 
+                "cs8n2c08", 
+                "f00n2c08", 
+                "f01n2c08", 
+                "f02n2c08", 
+                "f03n2c08", 
+                "f04n2c08", 
+                "g03n2c08", 
+                "g04n2c08", 
+                "g05n2c08", 
+                "g07n2c08", 
+                "g10n2c08", 
+                "g25n2c08", 
+                "pp0n6a08", 
+                "tbrn2c08", 
+                "tp0n2c08", 
+                "z00n2c08", 
+                "z03n2c08", 
+                "z06n2c08", 
+                "z09n2c08", 
+            ]))
+        ]
         +       suite.map 
         {
             ("encode-greedy-\($0.name)", .string(Self.encodeGreedy(_:), $0.members))
@@ -241,7 +279,8 @@ extension Test
         +       suite.map 
         {
             ("encode-full-\($0.name)", .string(Self.encodeFull(_:), $0.members))
-        }
+        } 
+
     }
     private static 
     func print(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) 
@@ -284,6 +323,17 @@ extension Test
     }
     
     static 
+    func decodeCgBI(_ name:String) -> Result<Void, Failure>
+    {
+        let path:(png:String, rgba:String) = 
+        (
+            "tests/integration/cgbi/\(name).png",
+            "tests/integration/rgba/\(name).png.rgba"
+        )
+        return Self.decode(path: path, premultiplied: true)
+    }
+    
+    static 
     func decode(_ name:String) -> Result<Void, Failure>
     {
         let path:(png:String, rgba:String) = 
@@ -291,11 +341,12 @@ extension Test
             "tests/integration/png/\(name).png",
             "tests/integration/rgba/\(name).png.rgba"
         )
-        return Self.decode(path: path)
+        return Self.decode(path: path, premultiplied: false)
     }
     
     static 
-    func decode(path:(png:String, rgba:String)) -> Result<Void, Failure>
+    func decode(path:(png:String, rgba:String), premultiplied:Bool) 
+        -> Result<Void, Failure>
     {
         do
         {
@@ -334,8 +385,26 @@ extension Test
                         g:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 2),
                         b:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 4),
                         a:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 6)
-
-                    return .init(r, g, b, a)
+                    
+                    // have to manually premultiply since the CgBI formula does the 
+                    // multiplication in 8-bit precision 
+                    if premultiplied 
+                    {
+                        let r:UInt8 = .init(r >> 8), 
+                            g:UInt8 = .init(g >> 8), 
+                            b:UInt8 = .init(b >> 8), 
+                            a:UInt8 = .init(a >> 8)
+                        let q:UInt16 = UInt16.max / UInt16.max >> 8
+                        return .init(
+                            .init(PNG.premultiply(color: r, alpha: a)) * q, 
+                            .init(PNG.premultiply(color: g, alpha: a)) * q, 
+                            .init(PNG.premultiply(color: b, alpha: a)) * q, 
+                            .init(a) * q)
+                    }
+                    else 
+                    {
+                        return .init(r, g, b, a)
+                    }
                 }
             })
             else
@@ -406,7 +475,7 @@ extension Test
         {
             return .failure(.init(message: "\(error)"))
         }
-        return Self.decode(path: (png: path.out, rgba: path.rgba))
+        return Self.decode(path: (png: path.out, rgba: path.rgba), premultiplied: false)
     } 
 }
 
