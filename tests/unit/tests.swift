@@ -364,11 +364,11 @@ extension Test
                     premultiplied:PNG.RGBA<T> = direct.premultiplied
 
                 let unquantized:Double  = (.init(alpha) * .init(color) / .init(T.max)),
-                    quantized:T         = .init(unquantized)
+                    quantized:T         = .init(unquantized.rounded())
 
                 // the order is important here,, the short circuiting protects us from
                 // overflow when `quantized` == 255
-                guard premultiplied.r == quantized || premultiplied.r == quantized + 1
+                guard premultiplied.r == quantized
                 else
                 {
                     return .failure(.init(message: "premultiplication of rgba\(T.bitWidth)(\(direct.r), \(direct.g), \(direct.b), \(direct.a)) returned (\(premultiplied.r), \(premultiplied.g), \(premultiplied.b), \(premultiplied.a)), expected (\(unquantized), \(unquantized), \(unquantized), \(alpha))"))

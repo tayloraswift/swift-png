@@ -64,7 +64,7 @@ extension PNG.Data.Rectangular
                 scanline[a &+ 1] = self.storage[d &+ 1]
             }
         // 1 x 3
-        case .rgb8:
+        case .rgb8, .bgr8:
             for (i, x):(Int, Int) in indices
             {
                 let a:Int = 3 &* i &+ scanline.startIndex, 
@@ -74,7 +74,7 @@ extension PNG.Data.Rectangular
                 scanline[a &+ 2] = self.storage[d &+ 2]
             }
         // 1 x 4, 2 x 2
-        case .rgba8, .va16:
+        case .rgba8, .bgra8, .va16:
             for (i, x):(Int, Int) in indices
             {
                 let a:Int = 4 &* i &+ scanline.startIndex, 
