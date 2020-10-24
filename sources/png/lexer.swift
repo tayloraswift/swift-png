@@ -166,30 +166,21 @@ extension PNG
     enum CRC32 
     {
         private static 
-        let table:[UInt32] = .init(unsafeUninitializedCapacity: 256)
+        let table:[UInt32] = (0 ..< 256).map 
         {
-            for n:Int in 0 ..< 256 
-            {
-                var c:UInt32 = .init(n)
-                for k:Int in 0 ..< 8 
-                {
-                    c = ((c & 1) * 0xed_b8_83_20) ^ c >> 1
-                }
-                $0[n] = c
-            }
-            $1 = 256
+            (i:UInt32) in 
+            (0 ..< 8).reduce(i){ (c, _) in (c & 1 * 0xed_b8_83_20) ^ c >> 1 }
         }
         
         static 
         func update<S>(_ crc:UInt32, with input:S) -> UInt32 
             where S:Sequence, S.Element == UInt8 
         {
-            var c:UInt32 = ~crc 
-            for byte:UInt8 in input 
+            ~input.reduce(~crc) 
             {
-                c = Self.table[.init((.init(truncatingIfNeeded: c) ^ byte))] ^ c >> 8
+                (c:UInt32, byte:UInt8) in 
+                Self.table[.init((.init(truncatingIfNeeded: c) ^ byte))] ^ c >> 8
             }
-            return ~c
         }
         
         static 
