@@ -495,6 +495,12 @@ extension PNG
         case invalidSignificantBitsChunkLength(Int, expected:Int)
         case invalidSignificantBitsSamplePrecision(Int, expected:ClosedRange<Int>)
         
+        case missingColorProfileName 
+        case invalidColorProfileName 
+        case missingColorProfileFlags
+        case invalidColorProfileFlagsCode(method:UInt8)
+        case truncatedColorProfileCompressedContent
+        
         case invalidPhysicalDimensionsChunkLength(Int)
         case invalidPhysicalDimensionsDensityUnitCode(UInt8)
         
@@ -1222,13 +1228,69 @@ extension PNG.ColorProfile
     public 
     func serialized() -> [UInt8] 
     {
-        fatalError("unsupported")
+        var data:[UInt8] = []
+        data.reserveCapacity(2 + self.name.count)
+        
+        data.append(contentsOf: self.name.unicodeScalars.map{ .init($0.value) })
+        data.append(0)
+        data.append(0) // compression method
+        
+        var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
+        deflator.push(self.profile, last: true)
+        while true 
+        {
+            let segment:[UInt8] = deflator.pull()
+            guard !segment.isEmpty 
+            else 
+            {
+                break 
+            }
+            
+            data.append(contentsOf: segment)
+        }
+        
+        return data
     }
     
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
-        fatalError("unsupported")
+        //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┐
+        //  │    name    │ 0 │ M │        profile         │
+        //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┘
+        //               k  k+1 k+2
+        guard let k:Int = data.firstIndex(of: 0)
+        else 
+        {
+            throw PNG.ParsingError.missingColorProfileName
+        }
+        // assert existence of method byte
+        guard k + 1 < data.endIndex 
+        else 
+        {
+            throw PNG.ParsingError.missingColorProfileFlags
+        }
+        
+        guard let name:String = PNG.Text.validate(name: data.prefix(k))
+        else 
+        {
+            throw PNG.ParsingError.invalidColorProfileName
+        }
+        
+        guard data[k + 1] == 0
+        else 
+        {
+            throw PNG.ParsingError.invalidColorProfileFlagsCode(method: data[k + 1])
+        }
+        
+        var inflator:LZ77.Inflator = .init()
+        guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
+        else 
+        {
+            throw PNG.ParsingError.truncatedColorProfileCompressedContent
+        }
+        
+        return .init(name: name, profile: inflator.pull())
     }
 }
 
@@ -1585,7 +1647,8 @@ extension PNG.Text
     func validate<C>(name latin1:C) -> String?
         where C:Collection, C.Index == Int, C.Element == UInt8 
     {
-        guard (latin1.allSatisfy{ 0x20 ... 0x7d ~= $0 || 0xa1 ... 0xff ~= 0 })
+        guard 1 ..< 80 ~= latin1.count, 
+            (latin1.allSatisfy{ 0x20 ... 0x7d ~= $0 || 0xa1 ... 0xff ~= 0 })
         else 
         {
             return nil
@@ -1644,6 +1707,10 @@ extension PNG.Text
     public static 
     func parse(_ data:[UInt8]) throws -> Self
     {
+        //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┐
+        //  │   keyword  │ 0 │ C │ M │  language  │ 0 │   keyword  │ 0 │    text    │
+        //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┘
+        //               k  k+1 k+2 k+3           l  l+1           m  m+1
         guard let k:Int = data.firstIndex(of: 0)
         else 
         {
