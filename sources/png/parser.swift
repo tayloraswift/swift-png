@@ -318,15 +318,15 @@ extension PNG.Format
                 k:RGB<UInt16>?
             switch background 
             {
-            case .rgb(r: let r, g: let g, b: let b)?:   f = (r, g, b)
-            case nil:                                   f =    nil 
-            default:                                    return nil 
+            case .rgb(let c)?:      f = c
+            case nil:               f =    nil 
+            default:                return nil 
             }
             switch transparency 
             {
-            case .rgb(r: let r, g: let g, b: let b)?:   k = (r, g, b)
-            case nil:                                   k =    nil 
-            default:                                    return nil 
+            case .rgb(key: let c)?: k = c
+            case nil:               k =    nil 
+            default:                return nil 
             }
             
             switch (standard, pixel) 
@@ -430,9 +430,9 @@ extension PNG.Format
             let f:RGB<UInt16>?
             switch background 
             {
-            case .rgb(r: let r, g: let g, b: let b)?:   f = (r, g, b)
-            case nil:                                   f =    nil 
-            default:                                    return nil 
+            case .rgb(let c)?:  f = c
+            case nil:           f =    nil 
+            default:            return nil 
             }
             
             switch (standard, pixel) 
@@ -714,8 +714,8 @@ extension PNG
     enum Transparency 
     {
         case palette(alpha:[UInt8])
-        case rgb(r:UInt16, g:UInt16, b:UInt16)
-        case v(UInt16)
+        case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
+        case v(key:UInt16)
     }
 }
 extension PNG.Transparency 
@@ -731,15 +731,15 @@ extension PNG.Transparency
                 $0.baseAddress?.assign(from: alpha, count: $0.count)
                 $1 = $0.count
             }
-        case .rgb(r: let r, g: let g, b: let b):
+        case .rgb(key: let c):
             return .init(unsafeUninitializedCapacity: 6)
             {
-                $0.store(r, asBigEndian: UInt16.self, at: 0)
-                $0.store(g, asBigEndian: UInt16.self, at: 2)
-                $0.store(b, asBigEndian: UInt16.self, at: 4)
+                $0.store(c.r, asBigEndian: UInt16.self, at: 0)
+                $0.store(c.g, asBigEndian: UInt16.self, at: 2)
+                $0.store(c.b, asBigEndian: UInt16.self, at: 4)
                 $1 = $0.count
             }
-        case .v(let v):
+        case .v(key: let v):
             return .init(unsafeUninitializedCapacity: 2)
             {
                 $0.store(v, asBigEndian: UInt16.self, at: 0)
@@ -769,7 +769,7 @@ extension PNG.Transparency
             {
                 throw PNG.ParsingError.invalidChromaKeySample(v, expected: 0 ... max)
             }
-            return .v(v)
+            return .v(key: v)
         
         case .rgb8, .rgb16:
             guard data.count == 6 
@@ -788,7 +788,7 @@ extension PNG.Transparency
                 throw PNG.ParsingError.invalidChromaKeySample(Swift.max(r, g, b), 
                     expected: 0 ... max)
             }
-            return .rgb(r: r, g: g, b: b)
+            return .rgb(key: (r, g, b))
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette:PNG.Palette = palette 
@@ -816,7 +816,7 @@ extension PNG
     enum Background 
     {
         case palette(index:Int)
-        case rgb(r:UInt16, g:UInt16, b:UInt16)
+        case rgb((r:UInt16, g:UInt16, b:UInt16))
         case v(UInt16)
     }
 }
@@ -834,12 +834,12 @@ extension PNG.Background
                 $0[0] = .init(i)
                 $1 = $0.count
             }
-        case .rgb(r: let r, g: let g, b: let b):
+        case .rgb(let c):
             return .init(unsafeUninitializedCapacity: 6)
             {
-                $0.store(r, asBigEndian: UInt16.self, at: 0)
-                $0.store(g, asBigEndian: UInt16.self, at: 2)
-                $0.store(b, asBigEndian: UInt16.self, at: 4)
+                $0.store(c.r, asBigEndian: UInt16.self, at: 0)
+                $0.store(c.g, asBigEndian: UInt16.self, at: 2)
+                $0.store(c.b, asBigEndian: UInt16.self, at: 4)
                 $1 = $0.count
             }
         case .v(let v):
@@ -890,7 +890,7 @@ extension PNG.Background
                 throw PNG.ParsingError.invalidBackgroundSample(v, expected: 0 ... max)
             }
             
-            return .rgb(r: r, g: g, b: b)
+            return .rgb((r, g, b))
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette:PNG.Palette = palette 
