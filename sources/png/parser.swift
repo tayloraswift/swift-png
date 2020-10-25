@@ -161,21 +161,6 @@ extension PNG.Format.Pixel
         }
     }
     
-    @inlinable
-    public
-    var sampleDepth:Int 
-    {
-        switch self 
-        {
-        case    .v1:                                        return  1
-        case    .v2:                                        return  2
-        case    .v4:                                        return  4
-        case    .indexed1, .indexed2, .indexed4, .indexed8, 
-                .v8,  .rgb8,  .va8,  .rgba8:                return  8
-        case    .v16, .rgb16, .va16, .rgba16:               return 16
-        }
-    }
-    
     var code:(depth:UInt8, type:UInt8) 
     {
         switch self 
@@ -1172,15 +1157,22 @@ extension PNG.SignificantBits
                 expected: arity)
         }
         
+        let range:ClosedRange<Int> 
+        switch pixel  
+        {
+        case .indexed1, .indexed2, .indexed4, .indexed8:    range = 1 ... 8
+        default:                                            range = 1 ... pixel.depth 
+        }
+        
         switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16:
             let v:Int = .init(data[0])
-            guard 1 ... pixel.sampleDepth ~= v 
+            guard range ~= v 
             else 
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... pixel.sampleDepth)
+                    expected: range)
             }
             return .v(v)
         
@@ -1188,20 +1180,20 @@ extension PNG.SignificantBits
             let r:Int = .init(data[0]), 
                 g:Int = .init(data[1]), 
                 b:Int = .init(data[2])
-            for v:Int in [r, g, b] where !(1 ... pixel.sampleDepth ~= v)
+            for v:Int in [r, g, b] where !(range ~= v)
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... pixel.sampleDepth)
+                    expected: range)
             }
             return .rgb((r, g, b))
         
         case .va8, .va16:
             let v:Int = .init(data[0]), 
                 a:Int = .init(data[1])
-            for v:Int in [v, a] where !(1 ... pixel.sampleDepth ~= v)
+            for v:Int in [v, a] where !(range ~= v)
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... pixel.sampleDepth)
+                    expected: range)
             }
             return .va((v, a))
         
@@ -1210,10 +1202,10 @@ extension PNG.SignificantBits
                 g:Int = .init(data[1]), 
                 b:Int = .init(data[2]),
                 a:Int = .init(data[3])
-            for v:Int in [r, g, b, a] where !(1 ... pixel.sampleDepth ~= v)
+            for v:Int in [r, g, b, a] where !(range ~= v)
             {
                 throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: 1 ... pixel.sampleDepth)
+                    expected: range)
             }
             return .rgba((r, g, b, a))
         }
