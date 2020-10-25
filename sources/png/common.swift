@@ -242,13 +242,6 @@ extension Array where Element == UInt8
     {
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
-    
-    /* mutating
-    func append(bigEndian:UInt16)
-    {
-        self.append(.init(truncatingIfNeeded: bigEndian >> 8))
-        self.append(.init(truncatingIfNeeded: bigEndian     ))
-    } */
 }
 extension UnsafeMutableBufferPointer where Element == UInt8 
 {
