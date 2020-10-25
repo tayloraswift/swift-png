@@ -447,59 +447,6 @@ extension General.Dictionary
     }
 }
 
-public 
-func __test_dictionary_semantics() 
-{
-    let dictionary:General.Dictionary = .init(exponent: 10)
-    
-    guard   dictionary.update(key: 0, value: 1) == nil, 
-            dictionary.update(key: 1, value: 2) == nil, 
-            dictionary.update(key: 0, value: 3) == 1, 
-            dictionary.update(key: 2, value: 4) == nil, 
-            dictionary.remove(key: 1, value: 5) == (), 
-            dictionary.update(key: 1, value: 6) == 2, 
-            dictionary.remove(key: 1, value: 6) == (), 
-            dictionary.update(key: 1, value: 7) == nil 
-    else 
-    {
-        print("fail")
-        return 
-    } 
-    
-    var a:General.Dictionary    = .init(exponent: 15), 
-        b:[UInt32: UInt16]      = [:]
-    for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
-    {
-        let key:UInt32 = .random(in: 0 ... 1000)
-        guard a.update(key: key, value: i) == b.updateValue(i, forKey: key)
-        else 
-        {
-            print("fail")
-            return 
-        }
-    }
-    for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
-    {
-        let key:UInt32 = .random(in: 0 ... 1000)
-        
-        if b[key] == i 
-        {
-            b[key] = nil 
-        }
-        a.remove(key: key, value: i)
-    }
-    for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
-    {
-        let key:UInt32 = .random(in: 0 ... 1000)
-        guard a.update(key: key, value: i) == b.updateValue(i, forKey: key)
-        else 
-        {
-            print("fail")
-            return 
-        }
-    }
-}
-
 /* 
 #if os(macOS)
 import func Darwin.clock

@@ -9,12 +9,13 @@ extension Test
             ("decode-bitstream",            .void(Self.decodeBitstream)),
             ("encode-bitstream",            .void(Self.encodeBitstream)),
             ("match-lz77",                  .void(Self.matchLZ77)),
-            ("compress-lz77-greedy",        .int(Self.compressZGreedy(count:), [5, 15, 100, 200, 2000, 5000])),
-            ("compress-lz77-lazy",          .int(Self.compressZLazy(count:),   [5, 15, 100, 200, 2000, 5000])),
-            ("compress-lz77-full",          .int(Self.compressZFull(count:),   [5, 15, 100, 200, 2000, 5000])),
-            ("filtering",                   .int( Self.filtering(delay:), [1, 2, 3, 4, 5, 6, 7, 8])),
+            ("compress-lz77-greedy",        .int( Self.compressZGreedy(count:), [5, 15, 100, 200, 2000, 5000])),
+            ("compress-lz77-lazy",          .int( Self.compressZLazy(count:),   [5, 15, 100, 200, 2000, 5000])),
+            ("compress-lz77-full",          .int( Self.compressZFull(count:),   [5, 15, 100, 200, 2000, 5000])),
+            ("filtering",                   .int( Self.filtering(delay:),       [1, 2, 3, 4, 5, 6, 7, 8])),
             ("premultiplication-8-bit",     .void(Self.premultiplication8)),
             ("premultiplication-16-bit",    .void(Self.premultiplication16)),
+            ("dictionary-semantics",        .void(Self.dictionary)),
         ]
     }
     static 
@@ -376,6 +377,58 @@ extension Test
             }
         }
 
+        return .success(())
+    }
+    
+    static 
+    func dictionary() -> Result<Void, Failure>
+    {
+        let dictionary:General.Dictionary = .init(exponent: 10)
+        
+        guard   dictionary.update(key: 0, value: 1) == nil, 
+                dictionary.update(key: 1, value: 2) == nil, 
+                dictionary.update(key: 0, value: 3) == 1, 
+                dictionary.update(key: 2, value: 4) == nil, 
+                dictionary.remove(key: 1, value: 5) == (), 
+                dictionary.update(key: 1, value: 6) == 2, 
+                dictionary.remove(key: 1, value: 6) == (), 
+                dictionary.update(key: 1, value: 7) == nil 
+        else 
+        {
+            return .failure(.init(message: "dictionary update/remove semantics are inconsistent"))
+        } 
+        
+        var a:General.Dictionary    = .init(exponent: 15), 
+            b:[UInt32: UInt16]      = [:]
+        for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
+        {
+            let key:UInt32 = .random(in: 0 ... 1000)
+            guard a.update(key: key, value: i) == b.updateValue(i, forKey: key)
+            else 
+            {
+                return .failure(.init(message: "dictionary update semantics do not match Swift.Dictionary"))
+            }
+        }
+        for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
+        {
+            let key:UInt32 = .random(in: 0 ... 1000)
+            
+            if b[key] == i 
+            {
+                b[key] = nil 
+            }
+            a.remove(key: key, value: i)
+        }
+        for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
+        {
+            let key:UInt32 = .random(in: 0 ... 1000)
+            guard a.update(key: key, value: i) == b.updateValue(i, forKey: key)
+            else 
+            {
+                return .failure(.init(message: "dictionary update/remove semantics do not match Swift.Dictionary"))
+            }
+        }
+        
         return .success(())
     }
 }
