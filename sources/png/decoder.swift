@@ -108,24 +108,24 @@ extension PNG.Layout
         case    .v1, .v2, .v4, .v8, .v16, .va8, .va16:
             return nil 
         
-        case    .rgb8       (palette: let palette, background: _, key: _),
-                .rgb16      (palette: let palette, background: _, key: _), 
-                .rgba8      (palette: let palette, background: _),
-                .rgba16     (palette: let palette, background: _):
+        case    .rgb8       (palette: let palette, fill: _, key: _),
+                .rgb16      (palette: let palette, fill: _, key: _), 
+                .rgba8      (palette: let palette, fill: _),
+                .rgba16     (palette: let palette, fill: _):
             // should be impossible for self.format to have invalid palettes
             return palette.isEmpty ? nil : .init(entries: palette)
         
-        case    .bgr8       (palette: let palette, background: _, key: _),
-                .bgra8      (palette: let palette, background: _):
+        case    .bgr8       (palette: let palette, fill: _, key: _),
+                .bgra8      (palette: let palette, fill: _):
             return palette.isEmpty ? nil : .init(entries: palette.map 
             {
                 ($0.r, $0.g, $0.b)
             })
         
-        case    .indexed1   (palette: let palette, background: _),
-                .indexed2   (palette: let palette, background: _),
-                .indexed4   (palette: let palette, background: _),
-                .indexed8   (palette: let palette, background: _):
+        case    .indexed1   (palette: let palette, fill: _),
+                .indexed2   (palette: let palette, fill: _),
+                .indexed4   (palette: let palette, fill: _),
+                .indexed8   (palette: let palette, fill: _):
             return .init(entries: palette.map
             { 
                 ($0.r, $0.g, $0.b) 
@@ -136,42 +136,42 @@ extension PNG.Layout
     {
         switch self.format 
         {
-        case    .v1         (background: _, key: nil), 
-                .v2         (background: _, key: nil), 
-                .v4         (background: _, key: nil), 
-                .v8         (background: _, key: nil), 
-                .v16        (background: _, key: nil),
-                .va8        (background: _),
-                .va16       (background: _),
-                .bgr8       (palette: _, background: _, key: nil),
-                .rgb8       (palette: _, background: _, key: nil),
-                .bgra8      (palette: _, background: _), 
-                .rgba8      (palette: _, background: _), 
-                .rgb16      (palette: _, background: _, key: nil),
-                .rgba16     (palette: _, background: _):
+        case    .v1         (fill: _, key: nil), 
+                .v2         (fill: _, key: nil), 
+                .v4         (fill: _, key: nil), 
+                .v8         (fill: _, key: nil), 
+                .v16        (fill: _, key: nil),
+                .va8        (fill: _),
+                .va16       (fill: _),
+                .bgr8       (palette: _, fill: _, key: nil),
+                .rgb8       (palette: _, fill: _, key: nil),
+                .bgra8      (palette: _, fill: _), 
+                .rgba8      (palette: _, fill: _), 
+                .rgb16      (palette: _, fill: _, key: nil),
+                .rgba16     (palette: _, fill: _):
             return nil 
         
-        case    .v1         (background: _, key: let k?), 
-                .v2         (background: _, key: let k?), 
-                .v4         (background: _, key: let k?), 
-                .v8         (background: _, key: let k?):
-            return .v(key: .init(k))
+        case    .v1         (fill: _, key: let k?), 
+                .v2         (fill: _, key: let k?), 
+                .v4         (fill: _, key: let k?), 
+                .v8         (fill: _, key: let k?):
+            return .v(.init(k))
         
-        case    .v16        (background: _, key: let k?):
-            return .v(key: k)
+        case    .v16        (fill: _, key: let k?):
+            return .v(k)
             
-        case    .bgr8       (palette: _, background: _, key: let k?):
-            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
-        case    .rgb8       (palette: _, background: _, key: let k?):
-            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
+        case    .bgr8       (palette: _, fill: _, key: let k?):
+            return .rgb(r: .init(k.r), g: .init(k.g), b: .init(k.b))
+        case    .rgb8       (palette: _, fill: _, key: let k?):
+            return .rgb(r: .init(k.r), g: .init(k.g), b: .init(k.b))
         
-        case    .rgb16      (palette: _, background: _, key: let k?):
-            return .rgb(key: k)
+        case    .rgb16      (palette: _, fill: _, key: let k?):
+            return .rgb(r: k.r, g: k.g, b: k.b)
         
-        case    .indexed1   (palette: let palette, background: _),
-                .indexed2   (palette: let palette, background: _),
-                .indexed4   (palette: let palette, background: _),
-                .indexed8   (palette: let palette, background: _):
+        case    .indexed1   (palette: let palette, fill: _),
+                .indexed2   (palette: let palette, fill: _),
+                .indexed4   (palette: let palette, fill: _),
+                .indexed8   (palette: let palette, fill: _):
             guard let last:Int = (palette.lastIndex{ $0.a != .max })
             else 
             {
@@ -184,51 +184,51 @@ extension PNG.Layout
     {
         switch self.format 
         {
-        case    .v1         (background: nil, key: _), 
-                .v2         (background: nil, key: _), 
-                .v4         (background: nil, key: _), 
-                .v8         (background: nil, key: _), 
-                .v16        (background: nil, key: _),
-                .va8        (background: nil),
-                .va16       (background: nil),
-                .bgr8       (palette: _, background: nil, key: _),
-                .rgb8       (palette: _, background: nil, key: _),
-                .bgra8      (palette: _, background: nil), 
-                .rgba8      (palette: _, background: nil), 
-                .rgb16      (palette: _, background: nil, key: _),
-                .rgba16     (palette: _, background: nil),
-                .indexed1   (palette: _, background: nil),
-                .indexed2   (palette: _, background: nil),
-                .indexed4   (palette: _, background: nil),
-                .indexed8   (palette: _, background: nil):
+        case    .v1         (fill: nil, key: _), 
+                .v2         (fill: nil, key: _), 
+                .v4         (fill: nil, key: _), 
+                .v8         (fill: nil, key: _), 
+                .v16        (fill: nil, key: _),
+                .va8        (fill: nil),
+                .va16       (fill: nil),
+                .bgr8       (palette: _, fill: nil, key: _),
+                .rgb8       (palette: _, fill: nil, key: _),
+                .bgra8      (palette: _, fill: nil), 
+                .rgba8      (palette: _, fill: nil), 
+                .rgb16      (palette: _, fill: nil, key: _),
+                .rgba16     (palette: _, fill: nil),
+                .indexed1   (palette: _, fill: nil),
+                .indexed2   (palette: _, fill: nil),
+                .indexed4   (palette: _, fill: nil),
+                .indexed8   (palette: _, fill: nil):
             return nil 
         
-        case    .v1         (background: let b?, key: _), 
-                .v2         (background: let b?, key: _), 
-                .v4         (background: let b?, key: _), 
-                .v8         (background: let b?, key: _), 
-                .va8        (background: let b?):
-            return .v(.init(b))
+        case    .v1         (fill: let f?, key: _), 
+                .v2         (fill: let f?, key: _), 
+                .v4         (fill: let f?, key: _), 
+                .v8         (fill: let f?, key: _), 
+                .va8        (fill: let f?):
+            return .v(.init(f))
         
-        case    .v16        (background: let b?, key: _), 
-                .va16       (background: let b?):
-            return .v(b)
+        case    .v16        (fill: let f?, key: _), 
+                .va16       (fill: let f?):
+            return .v(f)
             
-        case    .bgr8       (palette: _, background: let b?, key: _),
-                .bgra8      (palette: _, background: let b?):
-            return .rgb((r: .init(b.r), g: .init(b.g), b: .init(b.b)))
-        case    .rgb8       (palette: _, background: let b?, key: _),
-                .rgba8      (palette: _, background: let b?):
-            return .rgb((r: .init(b.r), g: .init(b.g), b: .init(b.b)))
+        case    .bgr8       (palette: _, fill: let f?, key: _),
+                .bgra8      (palette: _, fill: let f?):
+            return .rgb(r: .init(f.r), g: .init(f.g), b: .init(f.b))
+        case    .rgb8       (palette: _, fill: let f?, key: _),
+                .rgba8      (palette: _, fill: let f?):
+            return .rgb(r: .init(f.r), g: .init(f.g), b: .init(f.b))
         
-        case    .rgb16      (palette: _, background: let b?, key: _),
-                .rgba16     (palette: _, background: let b?):
-            return .rgb(b)
+        case    .rgb16      (palette: _, fill: let f?, key: _),
+                .rgba16     (palette: _, fill: let f?):
+            return .rgb(r: f.r, g: f.g, b: f.b)
         
-        case    .indexed1   (palette: _, background: let i?),
-                .indexed2   (palette: _, background: let i?),
-                .indexed4   (palette: _, background: let i?),
-                .indexed8   (palette: _, background: let i?):
+        case    .indexed1   (palette: _, fill: let i?),
+                .indexed2   (palette: _, fill: let i?),
+                .indexed4   (palette: _, fill: let i?),
+                .indexed8   (palette: _, fill: let i?):
             return .palette(index: i)
         }
     }
