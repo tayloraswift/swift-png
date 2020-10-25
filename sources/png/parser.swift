@@ -74,29 +74,29 @@ extension PNG
             case rgba16 
         }
         
-        case v1      (                                                background:   UInt8?,                       key:   UInt8?                      )
-        case v2      (                                                background:   UInt8?,                       key:   UInt8?                      )
-        case v4      (                                                background:   UInt8?,                       key:   UInt8?                      )
-        case v8      (                                                background:   UInt8?,                       key:   UInt8?                      )
-        case v16     (                                                background:   UInt16?,                      key:   UInt16?                     )
+        case v1      (                                                fill:   UInt8?,                       key:   UInt8?                      )
+        case v2      (                                                fill:   UInt8?,                       key:   UInt8?                      )
+        case v4      (                                                fill:   UInt8?,                       key:   UInt8?                      )
+        case v8      (                                                fill:   UInt8?,                       key:   UInt8?                      )
+        case v16     (                                                fill:   UInt16?,                      key:   UInt16?                     )
         
-        case bgr8    (palette:[(b:UInt8, g:UInt8, r:UInt8         )], background:(b:UInt8,  g:UInt8,  r:UInt8 )?, key:(b:UInt8,  g:UInt8,  r:UInt8 )?)
+        case bgr8    (palette:[(b:UInt8, g:UInt8, r:UInt8         )], fill:(b:UInt8,  g:UInt8,  r:UInt8 )?, key:(b:UInt8,  g:UInt8,  r:UInt8 )?)
         
-        case rgb8    (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt8,  g:UInt8,  b:UInt8 )?, key:(r:UInt8,  g:UInt8,  b:UInt8 )?)
-        case rgb16   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt16, g:UInt16, b:UInt16)?, key:(r:UInt16, g:UInt16, b:UInt16)?)
+        case rgb8    (palette:[(r:UInt8, g:UInt8, b:UInt8         )], fill:(r:UInt8,  g:UInt8,  b:UInt8 )?, key:(r:UInt8,  g:UInt8,  b:UInt8 )?)
+        case rgb16   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], fill:(r:UInt16, g:UInt16, b:UInt16)?, key:(r:UInt16, g:UInt16, b:UInt16)?)
         
-        case indexed1(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
-        case indexed2(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
-        case indexed4(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
-        case indexed8(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], background:    Int?                                                            )
+        case indexed1(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:    Int?                                                            )
+        case indexed2(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:    Int?                                                            )
+        case indexed4(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:    Int?                                                            )
+        case indexed8(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:    Int?                                                            )
         
-        case va8     (                                                background:   UInt8?                                                           )
-        case va16    (                                                background:   UInt16?                                                          )
+        case va8     (                                                fill:   UInt8?                                                           )
+        case va16    (                                                fill:   UInt16?                                                          )
         
-        case bgra8   (palette:[(b:UInt8, g:UInt8, r:UInt8         )], background:(b:UInt8,  g:UInt8,  r:UInt8 )?                                     )
+        case bgra8   (palette:[(b:UInt8, g:UInt8, r:UInt8         )], fill:(b:UInt8,  g:UInt8,  r:UInt8 )?                                     )
         
-        case rgba8   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt8,  g:UInt8,  b:UInt8 )?                                     )
-        case rgba16  (palette:[(r:UInt8, g:UInt8, b:UInt8         )], background:(r:UInt16, g:UInt16, b:UInt16)?                                     )
+        case rgba8   (palette:[(r:UInt8, g:UInt8, b:UInt8         )], fill:(r:UInt8,  g:UInt8,  b:UInt8 )?                                     )
+        case rgba16  (palette:[(r:UInt8, g:UInt8, b:UInt8         )], fill:(r:UInt16, g:UInt16, b:UInt16)?                                     )
     }
 }
 extension PNG.Format.Pixel 
@@ -263,26 +263,25 @@ extension PNG.Format
                 // palette not allowed for grayscale format
                 return nil 
             }
-            let b:UInt16?, 
+            let f:UInt16?, 
                 k:UInt16?
             switch background 
             {
-            case nil: 
-                b = nil 
             case .v(let v)?: 
                 guard Int.init(v) < 1 << pixel.depth
                 else 
                 {
                     return nil 
                 }
-                b = v
+                f = v
+            case nil: 
+                f = nil 
             default: 
                 return nil 
             }
             switch transparency 
             {
-            case nil:
-                k = nil 
+            
             case .v(let v)?: 
                 guard Int.init(v) < 1 << pixel.depth
                 else 
@@ -290,6 +289,9 @@ extension PNG.Format
                     return nil 
                 }
                 k = v
+                
+            case nil:
+                k = nil 
             default: 
                 return nil 
             }
@@ -297,54 +299,48 @@ extension PNG.Format
             switch pixel 
             {
             case .v1:
-                format = .v1(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+                format = .v1(fill: f.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
             case .v2:
-                format = .v2(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+                format = .v2(fill: f.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
             case .v4:
-                format = .v4(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+                format = .v4(fill: f.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
             case .v8:
-                format = .v8(background: b.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
+                format = .v8(fill: f.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
             case .v16:
-                format = .v16(background: b,                    key: k)
+                format = .v16(fill: f,                    key: k)
             default:
                 fatalError("unreachable")
             }
         
         case .rgb8, .rgb16:
             let palette:[RGB<UInt8>] = palette?.entries ?? []
-            let b:RGB<UInt16>?, 
+            let f:RGB<UInt16>?, 
                 k:RGB<UInt16>?
             switch background 
             {
-            case nil: 
-                b = nil 
-            case .rgb(let v)?: 
-                b = v
-            default: 
-                return nil 
+            case .rgb(r: let r, g: let g, b: let b)?:   f = (r, g, b)
+            case nil:                                   f =    nil 
+            default:                                    return nil 
             }
             switch transparency 
             {
-            case nil:
-                k = nil 
-            case .rgb(let v)?: 
-                k = v
-            default: 
-                return nil 
+            case .rgb(r: let r, g: let g, b: let b)?:   k = (r, g, b)
+            case nil:                                   k =    nil 
+            default:                                    return nil 
             }
             
             switch (standard, pixel) 
             {
             case (.common,  .rgb8):
                 format = .rgb8(palette: palette, 
-                    background: b.map{ (.init($0.r), .init($0.g), .init($0.b)) }, 
-                    key:        k.map{ (.init($0.r), .init($0.g), .init($0.b)) })
+                    fill: f.map{ (.init($0.r), .init($0.g), .init($0.b)) }, 
+                    key:  k.map{ (.init($0.r), .init($0.g), .init($0.b)) })
             case (.ios,     .rgb8):
                 format = .bgr8(palette: palette.map{ ($0.b, $0.g, $0.r) }, 
-                    background: b.map{ (.init($0.b), .init($0.g), .init($0.r)) }, 
-                    key:        k.map{ (.init($0.b), .init($0.g), .init($0.r)) })
+                    fill: f.map{ (.init($0.b), .init($0.g), .init($0.r)) }, 
+                    key:  k.map{ (.init($0.b), .init($0.g), .init($0.r)) })
             case (_,        .rgb16):
-                format = .rgb16(palette: palette, background: b, key: k)
+                format = .rgb16(palette: palette, fill: f, key: k)
             default:
                 fatalError("unreachable")
             }
@@ -356,18 +352,18 @@ extension PNG.Format
             {
                 return nil 
             }
-            let b:Int? 
+            let f:Int? 
             switch background 
             {
-            case nil:
-                b = nil 
             case .palette(index: let i):
                 guard i < solid.count 
                 else 
                 {
                     return nil 
                 }
-                b = i
+                f = i
+            case nil:
+                f = nil 
             default: 
                 return nil 
             }
@@ -387,13 +383,13 @@ extension PNG.Format
             switch pixel  
             {
             case .indexed1: 
-                format = .indexed1(palette: palette, background: b)
+                format = .indexed1(palette: palette, fill: f)
             case .indexed2: 
-                format = .indexed2(palette: palette, background: b)
+                format = .indexed2(palette: palette, fill: f)
             case .indexed4: 
-                format = .indexed4(palette: palette, background: b)
+                format = .indexed4(palette: palette, fill: f)
             case .indexed8: 
-                format = .indexed8(palette: palette, background: b)
+                format = .indexed8(palette: palette, fill: f)
             default:
                 fatalError("unreachable")
             }
@@ -405,21 +401,20 @@ extension PNG.Format
                 // palette/chroma-key not allowed for grayscale-alpha format
                 return nil 
             }
-            let b:UInt16?
+            let f:UInt16?
             switch background 
             {
-            case nil:           b = nil 
-            case .v(let v)?:    b = v
-            default: 
-                return nil 
+            case .v(let v)?:    f =    v
+            case nil:           f =    nil 
+            default:            return nil 
             }
             
             switch pixel 
             {
             case .va8:
-                format = .va8(background: b.map(UInt8.init(_:)))
+                format = .va8( fill: f.map(UInt8.init(_:)))
             case .va16:
-                format = .va16(background: b)
+                format = .va16(fill: f)
             default:
                 fatalError("unreachable")
             }
@@ -432,25 +427,24 @@ extension PNG.Format
                 return nil 
             }
             let palette:[RGB<UInt8>] = palette?.entries ?? []
-            let b:RGB<UInt16>?
+            let f:RGB<UInt16>?
             switch background 
             {
-            case nil:           b = nil 
-            case .rgb(let v)?:  b = v
-            default: 
-                return nil 
+            case .rgb(r: let r, g: let g, b: let b)?:   f = (r, g, b)
+            case nil:                                   f =    nil 
+            default:                                    return nil 
             }
             
             switch (standard, pixel) 
             {
             case (.common,  .rgba8):
                 format = .rgba8(palette: palette, 
-                    background: b.map{ (.init($0.r), .init($0.g), .init($0.b)) })
+                    fill: f.map{ (.init($0.r), .init($0.g), .init($0.b)) })
             case (.ios,     .rgba8):
                 format = .bgra8(palette: palette.map{ ($0.b, $0.g, $0.r) }, 
-                    background: b.map{ (.init($0.b), .init($0.g), .init($0.r)) })
+                    fill: f.map{ (.init($0.b), .init($0.g), .init($0.r)) })
             case (_,        .rgba16):
-                format = .rgba16(palette: palette, background: b)
+                format = .rgba16(palette: palette, fill: f)
             default:
                 fatalError("unreachable")
             }
@@ -720,8 +714,8 @@ extension PNG
     enum Transparency 
     {
         case palette(alpha:[UInt8])
-        case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
-        case v(key:UInt16)
+        case rgb(r:UInt16, g:UInt16, b:UInt16)
+        case v(UInt16)
     }
 }
 extension PNG.Transparency 
@@ -737,18 +731,18 @@ extension PNG.Transparency
                 $0.baseAddress?.assign(from: alpha, count: $0.count)
                 $1 = $0.count
             }
-        case .rgb(key: let key):
+        case .rgb(r: let r, g: let g, b: let b):
             return .init(unsafeUninitializedCapacity: 6)
             {
-                $0.store(key.r, asBigEndian: UInt16.self, at: 0)
-                $0.store(key.g, asBigEndian: UInt16.self, at: 2)
-                $0.store(key.b, asBigEndian: UInt16.self, at: 4)
+                $0.store(r, asBigEndian: UInt16.self, at: 0)
+                $0.store(g, asBigEndian: UInt16.self, at: 2)
+                $0.store(b, asBigEndian: UInt16.self, at: 4)
                 $1 = $0.count
             }
-        case .v(key: let key):
+        case .v(let v):
             return .init(unsafeUninitializedCapacity: 2)
             {
-                $0.store(key, asBigEndian: UInt16.self, at: 0)
+                $0.store(v, asBigEndian: UInt16.self, at: 0)
                 $1 = $0.count
             }
         }
@@ -775,7 +769,7 @@ extension PNG.Transparency
             {
                 throw PNG.ParsingError.invalidChromaKeySample(v, expected: 0 ... max)
             }
-            return .v(key: v)
+            return .v(v)
         
         case .rgb8, .rgb16:
             guard data.count == 6 
@@ -794,7 +788,7 @@ extension PNG.Transparency
                 throw PNG.ParsingError.invalidChromaKeySample(Swift.max(r, g, b), 
                     expected: 0 ... max)
             }
-            return .rgb(key: (r, g, b))
+            return .rgb(r: r, g: g, b: b)
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette:PNG.Palette = palette 
@@ -822,7 +816,7 @@ extension PNG
     enum Background 
     {
         case palette(index:Int)
-        case rgb((r:UInt16, g:UInt16, b:UInt16))
+        case rgb(r:UInt16, g:UInt16, b:UInt16)
         case v(UInt16)
     }
 }
@@ -840,18 +834,18 @@ extension PNG.Background
                 $0[0] = .init(i)
                 $1 = $0.count
             }
-        case .rgb(let color):
+        case .rgb(r: let r, g: let g, b: let b):
             return .init(unsafeUninitializedCapacity: 6)
             {
-                $0.store(color.r, asBigEndian: UInt16.self, at: 0)
-                $0.store(color.g, asBigEndian: UInt16.self, at: 2)
-                $0.store(color.b, asBigEndian: UInt16.self, at: 4)
+                $0.store(r, asBigEndian: UInt16.self, at: 0)
+                $0.store(g, asBigEndian: UInt16.self, at: 2)
+                $0.store(b, asBigEndian: UInt16.self, at: 4)
                 $1 = $0.count
             }
-        case .v(let value):
+        case .v(let v):
             return .init(unsafeUninitializedCapacity: 2)
             {
-                $0.store(value, asBigEndian: UInt16.self, at: 0)
+                $0.store(v, asBigEndian: UInt16.self, at: 0)
                 $1 = $0.count
             }
         }
@@ -896,7 +890,7 @@ extension PNG.Background
                 throw PNG.ParsingError.invalidBackgroundSample(v, expected: 0 ... max)
             }
             
-            return .rgb((r, g, b))
+            return .rgb(r: r, g: g, b: b)
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
             guard let palette:PNG.Palette = palette 

@@ -434,10 +434,10 @@ extension PNG.RGBA:PNG.Color
         let depth:Int = format.pixel.depth 
         switch format 
         {
-        case    .indexed1(palette: let palette, background: _), 
-                .indexed2(palette: let palette, background: _), 
-                .indexed4(palette: let palette, background: _), 
-                .indexed8(palette: let palette, background: _):
+        case    .indexed1(palette: let palette, fill: _), 
+                .indexed2(palette: let palette, fill: _), 
+                .indexed4(palette: let palette, fill: _), 
+                .indexed8(palette: let palette, fill: _):
             return Self.unpack(interleaved) 
             {
                 (c) in .init(c.0, c.1, c.2, c.3)
@@ -447,91 +447,91 @@ extension PNG.RGBA:PNG.Color
                 (i) in palette[i]
             }
                 
-        case    .v1(background: _, key: nil),
-                .v2(background: _, key: nil),
-                .v4(background: _, key: nil),
-                .v8(background: _, key: nil):
+        case    .v1(fill: _, key: nil),
+                .v2(fill: _, key: nil),
+                .v4(fill: _, key: nil),
+                .v8(fill: _, key: nil):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth) 
             {
                 (c:T, _) in .init(c)
             }
-        case    .v16(background: _, key: nil):
+        case    .v16(fill: _, key: nil):
             return Self.unpack(interleaved, of: UInt16.self, depth: depth) 
             {
                 (c:T, _) in .init(c)
             }
-        case    .v1(background: _, key: let key?),
-                .v2(background: _, key: let key?),
-                .v4(background: _, key: let key?),
-                .v8(background: _, key: let key?):
+        case    .v1(fill: _, key: let key?),
+                .v2(fill: _, key: let key?),
+                .v4(fill: _, key: let key?),
+                .v8(fill: _, key: let key?):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:T, k:UInt8 )     in .init(c, k == key ? .min : .max)
             }
-        case    .v16(background: _, key: let key?):
+        case    .v16(fill: _, key: let key?):
             return Self.unpack(interleaved, of: UInt16.self, depth: depth) 
             {
                 (c:T, k:UInt16)     in .init(c, k == key ? .min : .max)
             }
 
-        case    .va8(background: _):
+        case    .va8(fill: _):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T))          in .init(c.0, c.1)
             }
-        case    .va16(background: _):
+        case    .va16(fill: _):
             return Self.unpack(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T))          in .init(c.0, c.1)
             }
         
-        case    .bgr8(palette: _, background: _, key: nil):
+        case    .bgr8(palette: _, fill: _, key: nil):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T), _)    in .init(c.2, c.1, c.0)
             }
-        case    .bgr8(palette: _, background: _, key: let key?):
+        case    .bgr8(palette: _, fill: _, key: let key?):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T), k:(UInt8,  UInt8,  UInt8 )) in 
                 .init(c.2, c.1, c.0, k == key ? .min : .max)
             }
     
-        case    .rgb8(palette: _, background: _, key: nil):
+        case    .rgb8(palette: _, fill: _, key: nil):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T), _)    in .init(c.0, c.1, c.2)
             }
-        case    .rgb16(palette: _, background: _, key: nil):
+        case    .rgb16(palette: _, fill: _, key: nil):
             return Self.unpack(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T, T), _)    in .init(c.0, c.1, c.2)
             }
-        case    .rgb8(palette: _, background: _, key: let key?):
+        case    .rgb8(palette: _, fill: _, key: let key?):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T), k:(UInt8,  UInt8,  UInt8 )) in 
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
-        case    .rgb16(palette: _, background: _, key: let key?):
+        case    .rgb16(palette: _, fill: _, key: let key?):
             return Self.unpack(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T, T), k:(UInt16, UInt16, UInt16)) in 
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
         
-        case    .bgra8(palette: _, background: _):
+        case    .bgra8(palette: _, fill: _):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T, T)) in .init(c.2, c.1, c.0, c.3)
             }
         
-        case    .rgba8(palette: _, background: _):
+        case    .rgba8(palette: _, fill: _):
             return Self.unpack(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T, T)) in .init(c.0, c.1, c.2, c.3)
             }
-        case    .rgba16(palette: _, background: _):
+        case    .rgba16(palette: _, fill: _):
             return Self.unpack(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T, T, T)) in .init(c.0, c.1, c.2, c.3)
