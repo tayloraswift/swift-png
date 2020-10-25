@@ -155,18 +155,18 @@ extension PNG.Layout
                 .v2         (fill: _, key: let k?), 
                 .v4         (fill: _, key: let k?), 
                 .v8         (fill: _, key: let k?):
-            return .v(.init(k))
+            return .v(key: .init(k))
         
         case    .v16        (fill: _, key: let k?):
-            return .v(k)
+            return .v(key: k)
             
         case    .bgr8       (palette: _, fill: _, key: let k?):
-            return .rgb(r: .init(k.r), g: .init(k.g), b: .init(k.b))
+            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
         case    .rgb8       (palette: _, fill: _, key: let k?):
-            return .rgb(r: .init(k.r), g: .init(k.g), b: .init(k.b))
+            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
         
         case    .rgb16      (palette: _, fill: _, key: let k?):
-            return .rgb(r: k.r, g: k.g, b: k.b)
+            return .rgb(key: k)
         
         case    .indexed1   (palette: let palette, fill: _),
                 .indexed2   (palette: let palette, fill: _),
@@ -216,14 +216,14 @@ extension PNG.Layout
             
         case    .bgr8       (palette: _, fill: let f?, key: _),
                 .bgra8      (palette: _, fill: let f?):
-            return .rgb(r: .init(f.r), g: .init(f.g), b: .init(f.b))
+            return .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
         case    .rgb8       (palette: _, fill: let f?, key: _),
                 .rgba8      (palette: _, fill: let f?):
-            return .rgb(r: .init(f.r), g: .init(f.g), b: .init(f.b))
+            return .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
         
         case    .rgb16      (palette: _, fill: let f?, key: _),
                 .rgba16     (palette: _, fill: let f?):
-            return .rgb(r: f.r, g: f.g, b: f.b)
+            return .rgb(f)
         
         case    .indexed1   (palette: _, fill: let i?),
                 .indexed2   (palette: _, fill: let i?),
