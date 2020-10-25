@@ -63,8 +63,8 @@ extension PNG.Color
         }
     }
     private static 
-    func map<C, A, T>(_ samples:C, _ dereference:(Int) -> (A, A, A, A), 
-        _ constructor:((T, T, T, T)) -> Self, _ transform:(A) -> T)
+    func map<C, A, T>(_ samples:C, _ constructor:((T, T, T, T)) -> Self, 
+        _ dereference:(Int) -> (A, A, A, A), _ transform:(A) -> T)
         -> [Self]
         where C:RandomAccessCollection, C.Element == UInt8, A:FixedWidthInteger
     {
@@ -115,8 +115,8 @@ extension PNG.Color
     }*/
     
     static 
-    func unpack<A, T>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A, A), 
-        constructor:((T, T, T, T)) -> Self)
+    func unpack<A, T>(_ buffer:[UInt8], constructor:((T, T, T, T)) -> Self, 
+        dereference:(Int) -> (A, A, A, A))
         -> [Self]
         where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
     {
@@ -124,12 +124,12 @@ extension PNG.Color
         {
             if      T.bitWidth == A.bitWidth 
             {
-                return Self.map($0, dereference, constructor, T.init(_:))
+                return Self.map($0, constructor, dereference, T.init(_:))
             }
             else if T.bitWidth >  A.bitWidth 
             {
                 let quantum:T = Self.quantum(source: A.bitWidth, destination: T.self)
-                return Self.map($0, dereference, constructor)
+                return Self.map($0, constructor, dereference)
                 {
                     quantum &* .init($0)
                 }
@@ -137,7 +137,7 @@ extension PNG.Color
             else 
             {
                 let shift:Int = A.bitWidth - T.bitWidth 
-                return Self.map($0, dereference, constructor)
+                return Self.map($0, constructor, dereference)
                 {
                     .init($0 &>> shift)
                 }
@@ -431,7 +431,7 @@ extension PNG.RGBA:PNG.Color
     func unpack(_ interleaved:[UInt8], of format:PNG.Format) 
         -> [Self] 
     {
-        let depth:Int = format.pixel.sampleDepth 
+        let depth:Int = format.pixel.depth 
         switch format 
         {
         case    .indexed1(palette: let palette, background: _), 
@@ -440,11 +440,11 @@ extension PNG.RGBA:PNG.Color
                 .indexed8(palette: let palette, background: _):
             return Self.unpack(interleaved) 
             {
-                (i) in palette[i]
-            }
-            constructor:
-            {
                 (c) in .init(c.0, c.1, c.2, c.3)
+            }
+            dereference:
+            {
+                (i) in palette[i]
             }
                 
         case    .v1(background: _, key: nil),
