@@ -4,6 +4,8 @@
 import PNG
 
 #if os(macOS)
+import func Darwin.nanosleep
+import struct Darwin.timespec
 import func Darwin.clock
 import var Darwin.CLOCKS_PER_SEC
 func clock() -> Int
@@ -12,6 +14,8 @@ func clock() -> Int
 }
 
 #elseif os(Linux)
+import func Glibc.nanosleep
+import struct Glibc.timespec
 import func Glibc.clock
 import var Glibc.CLOCKS_PER_SEC
 func clock() -> Int
@@ -123,7 +127,7 @@ extension Benchmark.Blob
 extension Benchmark.Decode
 {
     static
-    func structuredRGBA(path:String) -> (time:Int, size:Int)
+    func rgba8(path:String, trials:Int) -> [(time:Int, hash:Int)]
     {
         guard var blob:Benchmark.Blob = .load(path: path)
         else 
@@ -131,47 +135,55 @@ extension Benchmark.Decode
             fatalError("could not read file '\(path)'")
         }
         
-        let size:Int = blob.count
-        
-        do 
+        return (0 ..< trials).map 
         {
-            let start:Int = clock()
+            _ in 
+            // sleep for 0.1s between runs to emulate a “cold” start
+            nanosleep([timespec.init(tv_sec: 0, tv_nsec: 100_000_000)], nil)
+            blob.reload()
             
-            let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
-            let _:[PNG.RGBA<UInt8>]         = image.unpack(as: PNG.RGBA<UInt8>.self)
-            
-            let stop:Int = clock()
-            return (stop - start, size)
-        }
-        catch let error
-        {
-            fatalError("\(error)")
+            do 
+            {
+                let start:Int = clock()
+                
+                let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+                let pixels:[PNG.RGBA<UInt8>]    = image.unpack(as: PNG.RGBA<UInt8>.self)
+                
+                let stop:Int = clock()
+                return (stop - start, .init(pixels.last?.r ?? 0))
+            }
+            catch let error
+            {
+                fatalError("\(error)")
+            }
         }
     }
 }
 
 func main() throws
 {
-    guard CommandLine.arguments.count == 3
+    guard let path:String = CommandLine.arguments.dropFirst(1).first, 
+        2 ... 3 ~= CommandLine.arguments.count
     else 
     {
-        fatalError("wrong number of arguments")
+        fatalError("usage: \(CommandLine.arguments.first ?? "") <image>")
+    }
+    guard let trials:Int = Int.init(CommandLine.arguments.dropFirst(2).first ?? "1")
+    else 
+    {
+        fatalError("'\(CommandLine.arguments.dropFirst(2).first ?? "")' is not a valid integer")
     }
     
-    let path:String = CommandLine.arguments[1], 
-        name:String = CommandLine.arguments[2]
-    
-    let measured:(time:Int, size:Int) = Benchmark.Decode.structuredRGBA(path: path)
-    
-    print("\(1000.0 * .init(measured.time) / .init(CLOCKS_PER_SEC)) \(measured.size) \(name)")
-    
     #if INTERNAL_BENCHMARKS
-    
-    let measured2:(time:Int, size:Int, hash:Int) = __Entrypoint.Benchmark.Decode.structuredRGBA(path: path)
-    
-    print("\(1000.0 * .init(measured2.time) / .init(CLOCKS_PER_SEC)) \(measured2.size) \(name)")
-    
+    let times:[Int] =              Benchmark.Decode.rgba8(path: path, trials: trials).map(\.time)
+    #else 
+    let times:[Int] = __Entrypoint.Benchmark.Decode.rgba8(path: path, trials: trials).map(\.time)
     #endif
+    
+    for time:Int in times 
+    {
+        print("\(1000.0 * .init(time) / .init(CLOCKS_PER_SEC))")
+    }
 }
 
 try main()

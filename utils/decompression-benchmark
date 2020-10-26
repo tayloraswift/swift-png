@@ -11,8 +11,8 @@ swift=.build/release/decompression-benchmark
 for file in $prefix/in/${1}.png; do 
     name=$(basename $file)
     echo "BASELINE:"
-    $baseline   $prefix/in/$name ${name%.png}
+    $baseline   $prefix/in/$name 20
     echo "SWIFT:"
-    $swift      $prefix/in/$name ${name%.png}
+    $swift      $prefix/in/$name 20
     echo ""
 done 

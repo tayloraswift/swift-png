@@ -50,6 +50,10 @@ int blob_load(blob_t* const blob, FILE* const source)
     
     return 0;
 }
+void blob_reload(blob_t* const blob) 
+{
+    blob->count = blob->capacity;
+}
 
 void blob_read(png_structp const context, png_bytep const data, png_size_t const count)
 {
@@ -57,6 +61,7 @@ void blob_read(png_structp const context, png_bytep const data, png_size_t const
     memcpy(data, blob->buffer + blob->capacity - blob->count, count);
     blob->count -= count;
 }
+
 
 void blob_release(blob_t* const blob) 
 {
@@ -68,10 +73,23 @@ void blob_release(blob_t* const blob)
 
 int main(int const count, char const* const* const arguments) 
 {
-    if (count < 2) 
+    if (count < 2 || count > 3) 
     {
-        printf("missing file path arguments");
+        printf("usage: %s <image> <trials, default: 1>\n", arguments[0]);
         return -1;
+    }
+    
+    size_t trials = 1;
+    if (count == 3) 
+    {
+        char* canary    = (char*) arguments[2];
+        trials          =  strtol(arguments[2], &canary, 10);
+        
+        if (canary == arguments[2])
+        {
+            printf("fatal error: '%s' is not a valid integer\n", arguments[2]);
+            return -1;
+        }
     }
     
     FILE* source = fopen(arguments[1], "rb");
@@ -81,86 +99,84 @@ int main(int const count, char const* const* const arguments)
         return -1;
     }
     
-    png_structp context = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-
-    if (!context) 
-    {
-        printf("failed to initialize libpng context\n");
-        return -1;
-    }
-
-    png_infop info = png_create_info_struct(context);
-    if (!info) 
-    {
-        png_destroy_read_struct(&context, NULL, NULL);
-        return -1;
-    }
+    
     
     blob_t blob;
     blob_load(&blob, source);
-    
-    double const start = ((double) clock()) / CLOCKS_PER_SEC;
-    
-    png_set_read_fn(context, &blob, blob_read);
-
-    png_read_info(context, info);
-    png_uint_32 width, height;
-    int bit_depth, color_type, interlace_type; 
-    png_get_IHDR(context, info, &width, &height, &bit_depth, &color_type,
-       &interlace_type, NULL, NULL);
-    
-    png_set_scale_16(context);
-    if (color_type == PNG_COLOR_TYPE_PALETTE)
-    {
-        png_set_palette_to_rgb(context);
-    }
-    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-    {
-        png_set_expand_gray_1_2_4_to_8(context);
-    }
-    if (png_get_valid(context, info, PNG_INFO_tRNS) != 0)
-    {
-        png_set_tRNS_to_alpha(context);
-    }
-    png_color_16* background;
-    if (png_get_bKGD(context, info, &background) != 0)
-    {
-        png_set_background(context, background,
-            PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
-    }
-    
-    png_set_filler(context, 0xffff, PNG_FILLER_AFTER);
-    png_read_update_info(context, info);
-
-    png_uint_32 const pitch = png_get_rowbytes(context, info);
-    png_bytep const data    = png_malloc(context, height * pitch);
-    
-    png_bytep rows[height];
-    for (png_uint_32 y = 0; y < height; ++y) 
-    {
-        rows[y] = data + y * pitch;
-    }
-    
-    png_read_image(context, rows);
-    png_read_end(context, info);
-    
-    png_destroy_read_struct(&context, &info, NULL);
-    
-    double const stop = ((double) clock()) / CLOCKS_PER_SEC;
-    printf("%lf %lu %s\n", 1000.0 * (stop - start), blob.capacity, arguments[2]);
-    
     fclose(source);
+    
+    for (size_t trial = 0; trial < trials; ++trial) 
+    {
+        // sleep for 0.1s between runs to emulate a “cold” start
+        nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
+        blob_reload(&blob);
+        
+        png_structp context = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+        if (!context) 
+        {
+            printf("failed to initialize libpng context\n");
+            return -1;
+        }
+
+        png_infop info = png_create_info_struct(context);
+        if (!info) 
+        {
+            png_destroy_read_struct(&context, NULL, NULL);
+            return -1;
+        }
+        
+        clock_t const start = clock();
+        
+        png_set_read_fn(context, &blob, blob_read);
+
+        png_read_info(context, info);
+        png_uint_32 width, height;
+        int bit_depth, color_type, interlace_type; 
+        png_get_IHDR(context, info, &width, &height, &bit_depth, &color_type,
+           &interlace_type, NULL, NULL);
+        
+        png_set_scale_16(context);
+        if (color_type == PNG_COLOR_TYPE_PALETTE)
+        {
+            png_set_palette_to_rgb(context);
+        }
+        if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+        {
+            png_set_expand_gray_1_2_4_to_8(context);
+        }
+        if (png_get_valid(context, info, PNG_INFO_tRNS) != 0)
+        {
+            png_set_tRNS_to_alpha(context);
+        }
+        png_color_16* background;
+        if (png_get_bKGD(context, info, &background) != 0)
+        {
+            png_set_background(context, background,
+                PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
+        }
+        
+        png_set_filler(context, 0xffff, PNG_FILLER_AFTER);
+        png_read_update_info(context, info);
+
+        png_uint_32 const pitch = png_get_rowbytes(context, info);
+        png_bytep const data    = png_malloc(context, height * pitch);
+        
+        png_bytep rows[height];
+        for (png_uint_32 y = 0; y < height; ++y) 
+        {
+            rows[y] = data + y * pitch;
+        }
+        
+        png_read_image(context, rows);
+        png_read_end(context, info);
+        
+        png_destroy_read_struct(&context, &info, NULL);
+        
+        clock_t const stop = clock();
+        printf("%lf\n", 1000.0 * ((double) (stop - start)) / CLOCKS_PER_SEC);
+    }
+    
     blob_release(&blob);
-    
-    // FILE* destination = fopen(arguments[2], "wb");
-    // if (!destination)
-    // {
-    //     printf("failed to open file\n");
-    //     return -1;
-    // }
-    // 
-    // fwrite(data, 1, height * pitch, destination);
-    // fclose(destination);
-    
     return 0;
 }
