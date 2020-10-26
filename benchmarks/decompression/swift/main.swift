@@ -167,7 +167,7 @@ func main() throws
     
     #if INTERNAL_BENCHMARKS
     
-    let measured2:(time:Int, size:Int) = __Entrypoint.Benchmark.Decode.structuredRGBA(path: path)
+    let measured2:(time:Int, size:Int, hash:Int) = __Entrypoint.Benchmark.Decode.structuredRGBA(path: path)
     
     print("\(1000.0 * .init(measured2.time) / .init(CLOCKS_PER_SEC)) \(measured2.size) \(name)")
     
