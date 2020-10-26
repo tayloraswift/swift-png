@@ -1,3 +1,6 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 import PNG
 
 #if os(macOS)
@@ -36,11 +39,6 @@ struct Blob:PNG.Bytestream.Destination
 
 func main() throws
 {
-    //__test_dictionary_semantics()
-    //__test_dictionary()
-    //return 
-    //
-    //
     guard CommandLine.arguments.count == 4 
     else 
     {

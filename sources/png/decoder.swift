@@ -280,6 +280,7 @@ extension PNG.Data
         public 
         var metadata:PNG.Metadata
         
+        @usableFromInline
         private(set)
         var storage:[UInt8]
     }

@@ -26,6 +26,15 @@ swift build -Xswiftc -DWARN_COPY_ON_WRITE
 
 Makes *Swift PNG* emit a warning each time one of its internal buffers is copied to preserve the value-semantics of its encoding and decoding structures. This compilation mode is useful for debugging ownership issues in the client application which may be harming *Swift PNG* performance.
 
+### `INTERNAL_BENCHMARKS`
+
+```bash 
+swift build -Xswiftc -DINTERNAL_BENCHMARKS
+```
+
+Builds *Swift PNG* with a copy of the library benchmark functions inside the `PNG` module, which is useful for measuring module boundary overhead. This flag only has an effect when building on MacOS and Linux.
+
+
 ### `DUMP_FILTERED_SCANLINES`
 
 ```bash 

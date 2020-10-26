@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#if INTERNAL_BENCHMARKS
+
 #if os(macOS)
 import func Darwin.clock
 func clock() -> Int
@@ -40,30 +42,79 @@ extension __Entrypoint
         enum Decode 
         {
         }
+        
+        struct Blob:PNG.Bytestream.Source 
+        {
+            private 
+            let buffer:[UInt8] 
+            private(set)
+            var count:Int 
+        }
     }
 }
-extension __Entrypoint.Benchmark.Decode  
+extension __Entrypoint.Benchmark.Blob 
 {
-    public static
-    func _structuredRGBA(_ path:String) -> Int
+    static 
+    func load(path:String) -> Self? 
     {
-        do 
+        System.File.Source.open(path: path) 
         {
-            let t1:Int = clock()
-            guard let image:PNG.Data.Rectangular = try .decompress(path: path)
+            (file:inout System.File.Source) -> Self? in 
+            guard   let count:Int       = file.count, 
+                    let buffer:[UInt8]  = file.read(count: count)
             else 
             {
-                
-                fatalError("could not open, read, or decode PNG file '\(path)'")
+                return nil 
             }
-            let _:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
-            let t:Int = clock() - t1
-            return t
+            return .init(buffer: buffer, count: count)
+        } ?? nil 
+    }
+    
+    mutating 
+    func read(count:Int) -> [UInt8]?
+    {
+        guard count <= self.count 
+        else 
+        {
+            return nil 
+        }
+        let data:[UInt8] = .init(self.buffer.suffix(self.count).prefix(count))
+        self.count      -= count 
+        return data
+    }
+    
+    mutating 
+    func reload() 
+    {
+        self.count = self.buffer.count
+    }
+}
+extension __Entrypoint.Benchmark.Decode
+{
+    public static
+    func structuredRGBA(path:String) -> (time:Int, size:Int)
+    {
+        guard var blob:__Entrypoint.Benchmark.Blob = .load(path: path)
+        else 
+        {
+            fatalError("could not read file '\(path)'")
+        }
+        
+        let size:Int = blob.count
+        
+        do 
+        {
+            let start:Int = clock()
+            
+            let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+            let _:[PNG.RGBA<UInt8>]         = image.unpack(as: PNG.RGBA<UInt8>.self)
+            
+            let stop:Int = clock()
+            return (stop - start, size)
         }
         catch let error
         {
-            print(error)
-            return 0
+            fatalError("\(error)")
         }
     }
 }
@@ -123,4 +174,5 @@ extension __Entrypoint.Benchmark.Dictionary
     } 
 }
 
+#endif 
 #endif 

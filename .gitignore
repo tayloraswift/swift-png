@@ -5,5 +5,7 @@ Package.resolved
 .swiftpm
 /tests/*.png
 /benchmarks/*.png.png
-/benchmarks/encode/out/*.png
-/benchmarks/encode/baseline/main
+/benchmarks/compression/out/*.png
+/benchmarks/compression/baseline/main
+/benchmarks/decompression/out/*.png
+/benchmarks/decompression/baseline/main
