@@ -1,9 +1,74 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <png.h>
+
+typedef struct blob_t
+{
+    char* buffer;
+    size_t count;
+    size_t capacity;
+} blob_t;
+
+int blob_load(blob_t* const blob, FILE* const source) 
+{
+    int const descriptor = fileno(source);
+    if (descriptor == -1) 
+    {
+        return -1;
+    }
+    
+    struct stat status;
+    if (fstat(descriptor, &status) != 0) 
+    {
+        return -1;
+    }
+    
+    switch (status.st_mode & S_IFMT) 
+    {
+    case S_IFREG: 
+    case S_IFLNK:
+        break; 
+    default:
+        return -1;
+    }
+    
+    blob->capacity  = status.st_size;
+    blob->count     = blob->capacity;
+    blob->buffer    = malloc(blob->capacity);
+    if (blob->buffer == NULL)
+    {
+        return -1;
+    }
+    if (fread(blob->buffer, 1, blob->capacity, source) != blob->capacity) 
+    {
+        free(blob->buffer);
+        return -1;
+    }
+    
+    return 0;
+}
+
+void blob_read(png_structp const context, png_bytep const data, png_size_t const count)
+{
+    blob_t* const blob = (blob_t*) png_get_io_ptr(context); 
+    memcpy(data, blob->buffer + blob->capacity - blob->count, count);
+    blob->count -= count;
+}
+
+void blob_release(blob_t* const blob) 
+{
+    free(blob->buffer);
+    blob->buffer    = NULL;
+    blob->count     = 0;
+    blob->capacity  = 0;
+}
 
 int main(int const count, char const* const* const arguments) 
 {
-    if (count < 3) 
+    if (count < 2) 
     {
         printf("missing file path arguments");
         return -1;
@@ -31,7 +96,12 @@ int main(int const count, char const* const* const arguments)
         return -1;
     }
     
-    png_init_io(context, source);
+    blob_t blob;
+    blob_load(&blob, source);
+    
+    double const start = ((double) clock()) / CLOCKS_PER_SEC;
+    
+    png_set_read_fn(context, &blob, blob_read);
 
     png_read_info(context, info);
     png_uint_32 width, height;
@@ -76,17 +146,21 @@ int main(int const count, char const* const* const arguments)
     
     png_destroy_read_struct(&context, &info, NULL);
     
+    double const stop = ((double) clock()) / CLOCKS_PER_SEC;
+    printf("%lf %lu %s\n", 1000.0 * (stop - start), blob.capacity, arguments[2]);
+    
     fclose(source);
+    blob_release(&blob);
     
-    FILE* destination = fopen(arguments[2], "wb");
-    if (!destination)
-    {
-        printf("failed to open file\n");
-        return -1;
-    }
-    
-    fwrite(data, 1, height * pitch, destination);
-    fclose(destination);
+    // FILE* destination = fopen(arguments[2], "wb");
+    // if (!destination)
+    // {
+    //     printf("failed to open file\n");
+    //     return -1;
+    // }
+    // 
+    // fwrite(data, 1, height * pitch, destination);
+    // fclose(destination);
     
     return 0;
 }

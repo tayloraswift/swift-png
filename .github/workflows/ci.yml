@@ -17,15 +17,15 @@ jobs:
         destination: $
         DEVELOPER_DIR: '/Applications/Xcode_11.1.app/Contents/Developer'
       run:  | 
-        swift run             unit-test 
-        swift run -c release  integration-test --compact
-        swift run -c release  compression-test 
+        swift run            unit-test 
+        swift run -c release integration-test --compact
+        swift run -c release compression-test 
   build-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: YOCKOW/Action-setup-swift@master
     - run:  | 
-        swift run             unit-test 
-        swift run -c release  integration-test --compact
-        swift run -c release  compression-test 
+        swift run            unit-test 
+        swift run -c release integration-test --compact
+        swift run -c release compression-test 

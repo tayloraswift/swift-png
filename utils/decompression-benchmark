@@ -1,0 +1,18 @@
+#!/bin/bash
+
+prefix=benchmarks/decompression
+
+clang -Wall -Wpedantic -lpng $prefix/baseline/main.c -o $prefix/baseline/main 1>&2 || exit 1
+swift build -c release --product decompression-benchmark -Xswiftc -DINTERNAL_BENCHMARKS 1>&2 || exit 1 
+
+baseline=$prefix/baseline/main
+swift=.build/release/decompression-benchmark
+
+for file in $prefix/in/${1}.png; do 
+    name=$(basename $file)
+    echo "BASELINE:"
+    $baseline   $prefix/in/$name ${name%.png}
+    echo "SWIFT:"
+    $swift      $prefix/in/$name ${name%.png}
+    echo ""
+done 

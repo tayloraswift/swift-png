@@ -19,8 +19,8 @@ let package = Package(
         .target(name: "PNGUnitTests",               dependencies: ["PNG"],  path: "tests/unit"),
         .target(name: "PNGIntegrationTests",        dependencies: ["PNG"],  path: "tests/integration"),
         .target(name: "PNGCompressionTests",        dependencies: ["PNG"],  path: "tests/compression"),
-        .target(name: "PNGCompressionBenchmarks",   dependencies: ["PNG"],  path: "benchmarks/encode/swift"), 
-        .target(name: "PNGDecompressionBenchmarks", dependencies: ["PNG"],  path: "benchmarks/decode/swift"), 
+        .target(name: "PNGCompressionBenchmarks",   dependencies: ["PNG"],  path: "benchmarks/compression/swift"), 
+        .target(name: "PNGDecompressionBenchmarks", dependencies: ["PNG"],  path: "benchmarks/decompression/swift"), 
     ],
     swiftLanguageVersions: [.v5]
 )

@@ -1,11 +1,13 @@
 #!/bin/bash
 
-prefix=benchmarks/encode
+prefix=benchmarks/compression
 
 clang -Wall -Wpedantic -lpng $prefix/baseline/main.c -o $prefix/baseline/main 1>&2 || exit 1
 swift build -c release --product compression-benchmark 1>&2 || exit 1 
+
 baseline=$prefix/baseline/main
 swift=.build/release/compression-benchmark
+
 for file in $prefix/in/${1}.png; do 
     name=$(basename $file)
     echo "BASELINE:"
