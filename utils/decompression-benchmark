@@ -1,18 +1,48 @@
-#!/bin/bash
+#!/usr/bin/python3
 
-prefix=benchmarks/decompression
+import sys, subprocess, glob
 
-clang -Wall -Wpedantic -lpng $prefix/baseline/main.c -o $prefix/baseline/main 1>&2 || exit 1
-swift build -c release --product decompression-benchmark -Xswiftc -DINTERNAL_BENCHMARKS 1>&2 || exit 1 
+if not 2 <= len(sys.argv) <= 3:
+    print('usage: {0} <pattern> <trials, default: 10>'.format(sys.argv[0]))
+    sys.exit(-1)
 
-baseline=$prefix/baseline/main
-swift=.build/release/decompression-benchmark
+prefix      = 'benchmarks/decompression'
+suffix      = 'decompression-benchmark'
+baseline    = '{0}/baseline/main'.format(prefix)
+swift       = '.build/release/{0}'.format(suffix)
 
-for file in $prefix/in/${1}.png; do 
-    name=$(basename $file)
-    echo "BASELINE:"
-    $baseline   $prefix/in/$name 20
-    echo "SWIFT:"
-    $swift      $prefix/in/$name 20
-    echo ""
-done 
+pattern     = sys.argv[1]
+trials      = int(sys.argv[2]) if len(sys.argv) == 3 else 10
+
+build_c_invocation      = ('clang', '-Wall', '-Wpedantic', '-lpng', 
+    '{0}.c'.format(baseline), '-o', baseline)
+print(' '.join(build_c_invocation))
+build_c                 = subprocess.run(build_c_invocation)
+
+if build_c.returncode != 0:
+    sys.exit(-1)
+
+build_swift_invocation  = 'swift', 'build', '-c', 'release', '--product', suffix, '-Xswiftc', '-DINTERNAL_BENCHMARKS'
+print(' '.join(build_swift_invocation))
+build_swift             = subprocess.run(build_swift_invocation)
+if build_swift.returncode != 0:
+    sys.exit(-1)
+
+for file in glob.glob('{0}/in/{1}.png'.format(prefix, pattern)):
+    baseline_invocation = baseline, file, str(trials)
+    print(' '.join(baseline_invocation))
+    baseline_result     = subprocess.run(baseline_invocation, capture_output = True)
+    
+    if baseline_result.returncode == 0:
+        print(baseline_result.stdout.decode('utf-8'), end = '')
+    else:
+        print(baseline_result.stderr.decode('utf-8'), end = '')
+    
+    swift_invocation    = swift, file, str(trials)
+    print(' '.join(swift_invocation))
+    swift_result        = subprocess.run(swift_invocation, capture_output = True)
+    
+    if swift_result.returncode == 0:
+        print(swift_result.stdout.decode('utf-8'), end = '')
+    else:
+        print(swift_result.stderr.decode('utf-8'), end = '')

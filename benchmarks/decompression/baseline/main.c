@@ -174,9 +174,10 @@ int main(int const count, char const* const* const arguments)
         png_destroy_read_struct(&context, &info, NULL);
         
         clock_t const stop = clock();
-        printf("%lf\n", 1000.0 * ((double) (stop - start)) / CLOCKS_PER_SEC);
+        printf("%lf ", 1000.0 * ((double) (stop - start)) / CLOCKS_PER_SEC);
     }
     
+    printf("\n");
     blob_release(&blob);
     return 0;
 }
