@@ -92,7 +92,7 @@ extension __Entrypoint.Benchmark.Blob
 extension __Entrypoint.Benchmark.Decode
 {
     public static
-    func structuredRGBA(path:String) -> (time:Int, size:Int)
+    func structuredRGBA(path:String) -> (time:Int, size:Int, hash:Int)
     {
         guard var blob:__Entrypoint.Benchmark.Blob = .load(path: path)
         else 
@@ -107,10 +107,10 @@ extension __Entrypoint.Benchmark.Decode
             let start:Int = clock()
             
             let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
-            let _:[PNG.RGBA<UInt8>]         = image.unpack(as: PNG.RGBA<UInt8>.self)
+            let pixels:[PNG.RGBA<UInt8>]    = image.unpack(as: PNG.RGBA<UInt8>.self)
             
             let stop:Int = clock()
-            return (stop - start, size)
+            return (stop - start, size, .init(pixels.last?.r ?? 0))
         }
         catch let error
         {

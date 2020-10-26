@@ -542,6 +542,7 @@ extension PNG.RGBA:PNG.Color
 
 extension PNG.Data.Rectangular 
 {
+    @inlinable @inline(never)
     public 
     func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
     {
