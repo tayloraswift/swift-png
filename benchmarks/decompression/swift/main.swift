@@ -174,16 +174,13 @@ func main() throws
         fatalError("'\(CommandLine.arguments.dropFirst(2).first ?? "")' is not a valid integer")
     }
     
-    #if INTERNAL_BENCHMARKS
-    let times:[Int] =              Benchmark.Decode.rgba8(path: path, trials: trials).map(\.time)
-    #else 
+    #if INTERNAL_BENCHMARKS 
     let times:[Int] = __Entrypoint.Benchmark.Decode.rgba8(path: path, trials: trials).map(\.time)
+    #else 
+    let times:[Int] =              Benchmark.Decode.rgba8(path: path, trials: trials).map(\.time)
     #endif
     
-    for time:Int in times 
-    {
-        print("\(1000.0 * .init(time) / .init(CLOCKS_PER_SEC))")
-    }
+    print(times.map{ "\(1000.0 * .init($0) / .init(CLOCKS_PER_SEC))" }.joined(separator: " "))
 }
 
 try main()
