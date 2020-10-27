@@ -427,6 +427,11 @@ extension PNG.RGBA:PNG.Color
                 self.a)
     }
     
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
     public static 
     func unpack(_ interleaved:[UInt8], of format:PNG.Format) 
         -> [Self] 
@@ -542,11 +547,17 @@ extension PNG.RGBA:PNG.Color
 
 extension PNG.Data.Rectangular 
 {
-    @inlinable @inline(never) 
-    // @_specialize(where Color == PNG.RGBA<UInt8>)
+    @inlinable @inline(never)
     public 
     func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
     {
         Color.unpack(self.storage, of: self.layout.format)
     }
+    
+    /* public 
+    func __manifest() -> Never 
+    {
+        _ = self.unpack(as: PNG.RGBA<UInt8>.self)
+        fatalError()
+    } */
 }
