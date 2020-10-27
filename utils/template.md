@@ -1,6 +1,6 @@
 # *swift png* benchmarks 
 
-> *generated for commit `35f86f4b0658289988506c29bff06851c7b2799d`*
+> *generated for commit `{commit}`*
 
 ## running benchmarks 
 
@@ -12,13 +12,13 @@ Scripts to run the benchmarks and generate visualizations of the results live in
 
 ### decoding 
 
-The decompression benchmarks compare the performance of *Swift PNG* to that of *libpng* while decoding the **28** images in the library test suite. Run times are normalized according to the *median* runtime of the baseline (*libpng*) implementation *for each test image*. 
+The decompression benchmarks compare the performance of *Swift PNG* to that of *libpng* while decoding the **{images}** images in the library test suite. Run times are normalized according to the *median* runtime of the baseline (*libpng*) implementation *for each test image*. 
 
-In the density plot below, the labeled curves represent the *aggregate distribution* of run times across all **28** test images. The unlabeled curves are the distributions for each individual test image.
+In the density plot below, the labeled curves represent the *aggregate distribution* of run times across all **{images}** test images. The unlabeled curves are the distributions for each individual test image.
 
 ![decompression performance](densityplot-decompression.svg)
 
-As of commit **`35f86f4b0658289988506c29bff06851c7b2799d`**, the median decoding run time of *Swift PNG* was **138.84 percent** that of *libpng*.
+As of commit **`{commit}`**, the median decoding run time of *Swift PNG* was **{median_ratio}** that of *libpng*.
 
 ## test images
 

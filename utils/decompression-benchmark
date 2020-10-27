@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-import sys, subprocess, glob
-from collections import defaultdict
+import sys, os, subprocess, glob
 
 import densityplot 
 
@@ -32,9 +31,15 @@ build_swift             = subprocess.run(build_swift_invocation)
 if build_swift.returncode != 0:
     sys.exit(-1)
 
-series = defaultdict(list)
-for file in glob.glob('{0}/in/{1}.png'.format(prefix, pattern)):
-    remaining = trials 
+series = {'baseline': [], 'swift': []}
+colors = [('swift', '#ff694eff'), ('baseline', '#aaaaaaff')]
+files  = glob.glob('{0}/in/{1}.png'.format(prefix, pattern))
+for file in files:
+    name, * _ = os.path.splitext(os.path.basename(file))
+    
+    remaining       = trials 
+    series_baseline = []
+    series_swift    = []
     while remaining > 0:
         count               = min(remaining, 10)
         baseline_invocation = baseline, file, str(count)
@@ -46,7 +51,7 @@ for file in glob.glob('{0}/in/{1}.png'.format(prefix, pattern)):
         if baseline_result.returncode == 0:
             string = baseline_result.stdout.decode('utf-8')
             print(string, end = '')
-            series['baseline'].extend(map(float, string.split()))
+            series_baseline.extend(map(float, string.split()))
         else:
             print(baseline_result.stderr.decode('utf-8'), end = '')
         
@@ -56,24 +61,46 @@ for file in glob.glob('{0}/in/{1}.png'.format(prefix, pattern)):
         if swift_result.returncode == 0:
             string = swift_result.stdout.decode('utf-8')
             print(string, end = '')
-            series['swift'].extend(map(float, string.split()))
+            series_swift.extend(map(float, string.split()))
         else:
             print(swift_result.stderr.decode('utf-8'), end = '')
             
         remaining -= 10
+    
+    # normalize to median of the baseline series 
+    name_baseline           = 'baseline-{0}'.format(name)
+    name_swift              = 'swift-{0}'.format(name)
+    
+    median                  = sorted(series_baseline)[len(series_baseline) // 2]
+    series[name_baseline]   = tuple(x / median for x in series_baseline)
+    series[name_swift]      = tuple(x / median for x in series_swift)
+    
+    series['baseline'].extend(series[name_baseline])
+    series['swift'].extend(   series[name_swift])
+    
+    colors.append((name_baseline, '#dddddd80'))
+    colors.append((name_swift,    '#ffbf9d80'))
 
-# max(x for series in series.values() for x in series)
 plot = densityplot.plot(series, 
-    range_x     = (0, 24),
+    range_x     = (0, 2.0),
     range_y     = (0, 0.6),
-    major       = (4, 0.1),
-    minor       = (4, 2),
+    major       = (0.2, 0.1),
+    minor       = (2, 2),
     title       = 'decoding performance',
     subtitle    = '{0} trials per test image'.format(trials),
-    label_x     = 'run time (ms)',
+    label_x     = 'relative run time',
     label_y     = 'density',
     smoothing   = 0.6, 
     legend      = (('baseline', 'libpng'), ('swift', 'swift png')),
-    colors      = {'baseline': '#aaaaaaff', 'swift': '#ff694eff'})
+    colors      = tuple(reversed(colors)))
 with open('benchmarks/densityplot-decompression.svg', 'w') as file:
     file.write(plot)
+
+commit          = subprocess.run(('git', 'rev-parse', 'HEAD'), capture_output = True).stdout.decode('utf-8').rstrip()
+median_ratio    = sorted(series['swift'])[len(series['swift']) // 2]
+
+with open('utils/template.md', 'r') as file:
+    template = file.read()
+
+with open('benchmarks/README.md', 'w') as file:
+    file.write(template.format(commit = commit, images = len(files), median_ratio = '{0} percent'.format(round(median_ratio * 100, 2))))
