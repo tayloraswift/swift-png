@@ -62,5 +62,18 @@ for file in glob.glob('{0}/in/{1}.png'.format(prefix, pattern)):
             
         remaining -= 10
 
-with open('plot.svg', 'w') as file:
-    file.write(densityplot.plot(series, smoothing = 0.6, colors = {'baseline': '#aaaaaaff', 'swift': '#ff694eff'}))
+# max(x for series in series.values() for x in series)
+plot = densityplot.plot(series, 
+    range_x     = (0, 24),
+    range_y     = (0, 0.6),
+    major       = (4, 0.1),
+    minor       = (4, 2),
+    title       = 'decoding performance',
+    subtitle    = '{0} trials per test image'.format(trials),
+    label_x     = 'run time (ms)',
+    label_y     = 'density',
+    smoothing   = 0.6, 
+    legend      = (('baseline', 'libpng'), ('swift', 'swift png')),
+    colors      = {'baseline': '#aaaaaaff', 'swift': '#ff694eff'})
+with open('benchmarks/densityplot-decompression.svg', 'w') as file:
+    file.write(plot)
