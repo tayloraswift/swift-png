@@ -22,7 +22,8 @@ build_c                 = subprocess.run(build_c_invocation)
 if build_c.returncode != 0:
     sys.exit(-1)
 
-build_swift_invocation  = 'swift', 'build', '-c', 'release', '--product', suffix, '-Xswiftc', '-DINTERNAL_BENCHMARKS'
+build_swift_invocation  = 'swift', 'build', '-c', 'release', '--product', suffix
+
 print(' '.join(build_swift_invocation))
 build_swift             = subprocess.run(build_swift_invocation)
 if build_swift.returncode != 0:
