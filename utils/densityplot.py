@@ -110,13 +110,14 @@ def plot(series, bins = 40, smoothing = 1,
                 classes     = ('label-numeric', 'label-y')))
     
     paths = []
-    for name, series in series.items():
-        scale   = 1 / (bins * len(series))
+    # emit using the same ordering as `colors`
+    for name, _ in colors:
+        scale   = 1 / (bins * len(series[name]))
         curve   = tuple(
             (
                             x / resolution, 
                 (sum(kernel(x / resolution, (point - start) / (end - start), kernel_width) 
-                    for point in series) * scale - low) / (high - low)
+                    for point in series[name]) * scale - low) / (high - low)
             ) 
             for x in range(resolution + 1))
         
@@ -248,6 +249,6 @@ def plot(series, bins = 40, smoothing = 1,
     {{
         stroke: {1};
     }}
-    '''.format(name, color) for name, color in colors.items())
+    '''.format(name, color) for name, color in colors)
     
     return svg(display, style, grid_minor + grid_major + ticks + paths + labels)
