@@ -9,3 +9,4 @@ Package.resolved
 /benchmarks/compression/baseline/main
 /benchmarks/decompression/out/*.png
 /benchmarks/decompression/baseline/main
+/utils/__pycache__/

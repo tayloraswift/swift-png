@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 
 import sys, subprocess, glob
+from collections import defaultdict
+
+import densityplot 
 
 if not 2 <= len(sys.argv) <= 3:
     print('usage: {0} <pattern> <trials, default: 10>'.format(sys.argv[0]))
@@ -29,21 +32,35 @@ build_swift             = subprocess.run(build_swift_invocation)
 if build_swift.returncode != 0:
     sys.exit(-1)
 
+series = defaultdict(list)
 for file in glob.glob('{0}/in/{1}.png'.format(prefix, pattern)):
-    baseline_invocation = baseline, file, str(trials)
-    print(' '.join(baseline_invocation))
-    baseline_result     = subprocess.run(baseline_invocation, capture_output = True)
-    
-    if baseline_result.returncode == 0:
-        print(baseline_result.stdout.decode('utf-8'), end = '')
-    else:
-        print(baseline_result.stderr.decode('utf-8'), end = '')
-    
-    swift_invocation    = swift, file, str(trials)
-    print(' '.join(swift_invocation))
-    swift_result        = subprocess.run(swift_invocation, capture_output = True)
-    
-    if swift_result.returncode == 0:
-        print(swift_result.stdout.decode('utf-8'), end = '')
-    else:
-        print(swift_result.stderr.decode('utf-8'), end = '')
+    remaining = trials 
+    while remaining > 0:
+        count               = min(remaining, 10)
+        baseline_invocation = baseline, file, str(count)
+        swift_invocation    = swift,    file, str(count)
+        
+        print(' '.join(baseline_invocation))
+        baseline_result     = subprocess.run(baseline_invocation, capture_output = True)
+        
+        if baseline_result.returncode == 0:
+            string = baseline_result.stdout.decode('utf-8')
+            print(string, end = '')
+            series['baseline'].extend(map(float, string.split()))
+        else:
+            print(baseline_result.stderr.decode('utf-8'), end = '')
+        
+        print(' '.join(swift_invocation))
+        swift_result        = subprocess.run(swift_invocation, capture_output = True)
+        
+        if swift_result.returncode == 0:
+            string = swift_result.stdout.decode('utf-8')
+            print(string, end = '')
+            series['swift'].extend(map(float, string.split()))
+        else:
+            print(swift_result.stderr.decode('utf-8'), end = '')
+            
+        remaining -= 10
+
+with open('plot.svg', 'w') as file:
+    file.write(densityplot.plot(series, smoothing = 0.6, colors = {'baseline': '#aaaaaaff', 'swift': '#ff694eff'}))
