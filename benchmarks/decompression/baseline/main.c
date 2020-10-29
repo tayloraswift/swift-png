@@ -73,23 +73,19 @@ void blob_release(blob_t* const blob)
 
 int main(int const count, char const* const* const arguments) 
 {
-    if (count < 2 || count > 3) 
+    if (count != 3) 
     {
-        printf("usage: %s <image> <trials, default: 1>\n", arguments[0]);
+        printf("usage: %s <image> <trials>\n", arguments[0]);
         return -1;
     }
     
-    size_t trials = 1;
-    if (count == 3) 
+    char* canary        = (char*) arguments[2];
+    size_t const trials =  strtol(arguments[2], &canary, 10);
+    
+    if (canary == arguments[2])
     {
-        char* canary    = (char*) arguments[2];
-        trials          =  strtol(arguments[2], &canary, 10);
-        
-        if (canary == arguments[2])
-        {
-            printf("fatal error: '%s' is not a valid integer\n", arguments[2]);
-            return -1;
-        }
+        printf("fatal error: '%s' is not a valid integer\n", arguments[2]);
+        return -1;
     }
     
     FILE* source = fopen(arguments[1], "rb");
