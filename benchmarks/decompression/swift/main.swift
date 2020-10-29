@@ -162,16 +162,12 @@ extension Benchmark.Decode
 
 func main() throws
 {
-    guard let path:String = CommandLine.arguments.dropFirst(1).first, 
-        2 ... 3 ~= CommandLine.arguments.count
+    guard   let path:String = CommandLine.arguments.dropFirst(1).first, 
+            let trials:Int  = CommandLine.arguments.dropFirst(2).first.map(Int.init(_:)) ?? nil,
+            CommandLine.arguments.count == 3
     else 
     {
-        fatalError("usage: \(CommandLine.arguments.first ?? "") <image>")
-    }
-    guard let trials:Int = Int.init(CommandLine.arguments.dropFirst(2).first ?? "1")
-    else 
-    {
-        fatalError("'\(CommandLine.arguments.dropFirst(2).first ?? "")' is not a valid integer")
+        fatalError("usage: \(CommandLine.arguments.first ?? "") <image> <trials>")
     }
     
     #if INTERNAL_BENCHMARKS 
