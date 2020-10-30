@@ -29,65 +29,21 @@ func clock() -> Int
 
 #if os(macOS) || os(Linux)
 
-struct Blob:PNG.Bytestream.Source 
-{
-    private 
-    let buffer:[UInt8] 
-    private(set)
-    var count:Int 
-    
-    static 
-    func load(path:String) -> Self? 
-    {
-        System.File.Source.open(path: path) 
-        {
-            (file:inout System.File.Source) -> Self? in 
-            guard   let count:Int       = file.count, 
-                    let buffer:[UInt8]  = file.read(count: count)
-            else 
-            {
-                return nil 
-            }
-            return .init(buffer: buffer, count: count)
-        } ?? nil 
-    }
-    
-    mutating 
-    func read(count:Int) -> [UInt8]?
-    {
-        guard count <= self.count 
-        else 
-        {
-            return nil 
-        }
-        let data:[UInt8] = .init(self.buffer.suffix(self.count).prefix(count))
-        self.count      -= count 
-        return data
-    }
-    
-    mutating 
-    func reload() 
-    {
-        self.count = self.buffer.count
-    }
-}
-
 // internal benchmarking functions, to measure module boundary overhead
 enum Benchmark 
 {
     enum Decode 
     {
-    }
-    
-    struct Blob:PNG.Bytestream.Source 
-    {
-        private 
-        let buffer:[UInt8] 
-        private(set)
-        var count:Int 
+        struct Blob
+        {
+            private
+            let buffer:[UInt8]
+            private(set)
+            var count:Int 
+        }
     }
 }
-extension Benchmark.Blob 
+extension Benchmark.Decode.Blob:PNG.Bytestream.Source 
 {
     static 
     func load(path:String) -> Self? 
@@ -129,7 +85,7 @@ extension Benchmark.Decode
     static
     func rgba8(path:String, trials:Int) -> [(time:Int, hash:Int)]
     {
-        guard var blob:Benchmark.Blob = .load(path: path)
+        guard var blob:Blob = .load(path: path)
         else 
         {
             fatalError("could not read file '\(path)'")
@@ -162,13 +118,15 @@ extension Benchmark.Decode
 
 func main() throws
 {
-    guard   let path:String = CommandLine.arguments.dropFirst(1).first, 
-            let trials:Int  = CommandLine.arguments.dropFirst(2).first.map(Int.init(_:)) ?? nil,
-            CommandLine.arguments.count == 3
+    guard   CommandLine.arguments.count == 3, 
+            let trials:Int  = Int.init(CommandLine.arguments[2])
+            
     else 
     {
         fatalError("usage: \(CommandLine.arguments.first ?? "") <image> <trials>")
     }
+    
+    let path:String = CommandLine.arguments[1]
     
     #if INTERNAL_BENCHMARKS 
     let times:[Int] = __Entrypoint.Benchmark.Decode.rgba8(path: path, trials: trials).map(\.time)

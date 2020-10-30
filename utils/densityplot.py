@@ -46,7 +46,7 @@ def plot(series, bins = 40, smoothing = 1,
     legend  = {},
     colors  = {}):
     
-    resolution   = 10 * bins
+    resolution   = 20 * bins
     kernel_width = smoothing / bins
     
     display     = 800, 400
@@ -111,7 +111,7 @@ def plot(series, bins = 40, smoothing = 1,
     
     paths = []
     # emit using the same ordering as `colors`
-    for name, _ in colors:
+    for name, * _ in colors:
         scale   = 1 / (bins * len(series[name]))
         curve   = tuple(
             (
@@ -157,7 +157,13 @@ def plot(series, bins = 40, smoothing = 1,
         labels.append(svg_text(label_y, 
             position    = transform(screen, (1, 1), (-80, 0)), 
             classes     = ('label-axis', 'label-y', 'label-vertical')))
-        
+    
+    def linestyle(color, line):
+        properties = [('stroke', color)]
+        if line == 'dashed': 
+            properties.append(('stroke-dasharray', '6 3'))
+        return '\n'.join('    {0}: {1};'.format(property, value) for property, value in properties)
+    
     style = '''
     rect.background 
     {
@@ -243,12 +249,11 @@ def plot(series, bins = 40, smoothing = 1,
         stroke-width: 2px;
         fill:   none;
     }
-    
     ''' + ''.join('''
     path.{0} 
     {{
-        stroke: {1};
+        {1}
     }}
-    '''.format(name, color) for name, color in colors)
+    '''.format(name, linestyle(color, line)) for name, color, line in colors)
     
     return svg(display, style, grid_minor + grid_major + ticks + paths + labels)

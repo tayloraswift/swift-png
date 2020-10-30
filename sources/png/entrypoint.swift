@@ -5,14 +5,20 @@
 #if INTERNAL_BENCHMARKS
 
 #if os(macOS)
+import func Darwin.nanosleep
+import struct Darwin.timespec
 import func Darwin.clock
+import var Darwin.CLOCKS_PER_SEC
 func clock() -> Int
 {
     .init(Darwin.clock())
 }
 
 #elseif os(Linux)
+import func Glibc.nanosleep
+import struct Glibc.timespec
 import func Glibc.clock
+import var Glibc.CLOCKS_PER_SEC
 func clock() -> Int
 {
     Glibc.clock()
@@ -41,18 +47,26 @@ extension __Entrypoint
         public 
         enum Decode 
         {
+            struct Blob
+            {
+                private
+                let buffer:[UInt8] 
+                private(set)
+                var count:Int 
+            }
         }
-        
-        struct Blob:PNG.Bytestream.Source 
+        public 
+        enum Encode 
         {
-            private 
-            let buffer:[UInt8] 
-            private(set)
-            var count:Int 
+            struct Blob
+            {
+                private(set) 
+                var buffer:[UInt8] = []
+            }
         }
     }
 }
-extension __Entrypoint.Benchmark.Blob 
+extension __Entrypoint.Benchmark.Decode.Blob:PNG.Bytestream.Source
 {
     static 
     func load(path:String) -> Self? 
@@ -89,12 +103,21 @@ extension __Entrypoint.Benchmark.Blob
         self.count = self.buffer.count
     }
 }
+extension __Entrypoint.Benchmark.Encode.Blob:PNG.Bytestream.Destination
+{
+    mutating 
+    func write(_ data:[UInt8]) -> Void?
+    {
+        self.buffer.append(contentsOf: data) 
+        return ()
+    }
+}
 extension __Entrypoint.Benchmark.Decode
 {
     public static
     func rgba8(path:String, trials:Int) -> [(time:Int, hash:Int)]
     {
-        guard var blob:__Entrypoint.Benchmark.Blob = .load(path: path)
+        guard var blob:Blob = .load(path: path)
         else 
         {
             fatalError("could not read file '\(path)'")
@@ -103,7 +126,10 @@ extension __Entrypoint.Benchmark.Decode
         return (0 ..< trials).map 
         {
             _ in 
+            // sleep for 0.1s between runs to emulate a “cold” start
+            nanosleep([timespec.init(tv_sec: 0, tv_nsec: 100_000_000)], nil)
             blob.reload()
+            
             do 
             {
                 let start:Int = clock()
@@ -119,6 +145,41 @@ extension __Entrypoint.Benchmark.Decode
                 fatalError("\(error)")
             }
         }
+    }
+}
+extension __Entrypoint.Benchmark.Encode
+{
+    public static
+    func rgba8(level:Int, path:String, trials:Int) -> ([(time:Int, hash:Int)], Int)
+    {
+        guard let image:PNG.Data.Rectangular = try? .decompress(path: path)
+        else 
+        {
+            fatalError("failed to decode test image '\(path)'")
+        }
+        
+        let results:[(time:Int, size:Int, hash:Int)] = (0 ..< trials).map 
+        {
+            _ in 
+            // sleep for 0.1s between runs to emulate a “cold” start
+            nanosleep([timespec.init(tv_sec: 0, tv_nsec: 100_000_000)], nil)
+            var blob:Blob   = .init()
+            do 
+            {
+                let start:Int = clock()
+                
+                try image.compress(stream: &blob, level: level)
+                
+                let stop:Int = clock()
+                return (stop - start, blob.buffer.count, .init(blob.buffer.last ?? 0))
+            }
+            catch let error
+            {
+                fatalError("\(error)")
+            }
+        }
+        
+        return (results.map{ (time: $0.time, hash: $0.hash) }, results.map(\.size).min() ?? 0)
     }
 }
 extension __Entrypoint.Benchmark.Dictionary 

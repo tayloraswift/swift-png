@@ -96,7 +96,6 @@ int main(int const count, char const* const* const arguments)
     }
     
     
-    
     blob_t blob;
     blob_load(&blob, source);
     fclose(source);
@@ -106,6 +105,8 @@ int main(int const count, char const* const* const arguments)
         // sleep for 0.1s between runs to emulate a “cold” start
         nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
         blob_reload(&blob);
+        
+        clock_t const start = clock();
         
         png_structp context = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 
@@ -121,8 +122,6 @@ int main(int const count, char const* const* const arguments)
             png_destroy_read_struct(&context, NULL, NULL);
             return -1;
         }
-        
-        clock_t const start = clock();
         
         png_set_read_fn(context, &blob, blob_read);
 

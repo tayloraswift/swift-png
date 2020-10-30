@@ -553,11 +553,4 @@ extension PNG.Data.Rectangular
     {
         Color.unpack(self.storage, of: self.layout.format)
     }
-    
-    /* public 
-    func __manifest() -> Never 
-    {
-        _ = self.unpack(as: PNG.RGBA<UInt8>.self)
-        fatalError()
-    } */
 }
