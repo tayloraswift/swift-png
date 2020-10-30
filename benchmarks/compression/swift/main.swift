@@ -4,31 +4,45 @@
 import PNG
 
 #if os(macOS)
+import func Darwin.nanosleep
+import struct Darwin.timespec
 import func Darwin.clock
 import var Darwin.CLOCKS_PER_SEC
 func clock() -> Int
 {
-    return .init(Darwin.clock())
+    .init(Darwin.clock())
 }
+
 #elseif os(Linux)
+import func Glibc.nanosleep
+import struct Glibc.timespec
 import func Glibc.clock
 import var Glibc.CLOCKS_PER_SEC
 func clock() -> Int
 {
-    return Glibc.clock()
+    Glibc.clock()
 }
+
+#else
+    #warning("clock() function not imported for this platform, internal benchmarks not built (please open an issue at https://github.com/kelvin13/png/issues)")
 #endif
 
-struct Blob:PNG.Bytestream.Destination 
+#if os(macOS) || os(Linux)
+
+// internal benchmarking functions, to measure module boundary overhead
+enum Benchmark 
 {
-    private(set) 
-    var buffer:[UInt8] = []
-    
-    var count:Int 
+    enum Encode 
     {
-        self.buffer.count
+        struct Blob
+        {
+            private(set) 
+            var buffer:[UInt8] = []
+        }
     }
-    
+}
+extension Benchmark.Encode.Blob:PNG.Bytestream.Destination 
+{
     mutating 
     func write(_ data:[UInt8]) -> Void?
     {
@@ -36,34 +50,77 @@ struct Blob:PNG.Bytestream.Destination
         return ()
     }
 }
+extension Benchmark.Encode
+{
+    static
+    func rgba8(level:Int, path:String, trials:Int) -> ([(time:Int, hash:Int)], Int)
+    {
+        guard let image:PNG.Data.Rectangular = try? .decompress(path: path)
+        else 
+        {
+            fatalError("failed to decode test image '\(path)'")
+        }
+        
+        let results:[(time:Int, size:Int, hash:Int)] = (0 ..< trials).map 
+        {
+            _ in 
+            // sleep for 0.1s between runs to emulate a “cold” start
+            nanosleep([timespec.init(tv_sec: 0, tv_nsec: 100_000_000)], nil)
+            var blob:Blob   = .init()
+            do 
+            {
+                let start:Int = clock()
+                
+                try image.compress(stream: &blob, level: level)
+                
+                let stop:Int = clock()
+                return (stop - start, blob.buffer.count, .init(blob.buffer.last ?? 0))
+            }
+            catch let error
+            {
+                fatalError("\(error)")
+            }
+        }
+        
+        return (results.map{ (time: $0.time, hash: $0.hash) }, results.map(\.size).min() ?? 0)
+    }
+}
 
 func main() throws
 {
-    guard CommandLine.arguments.count == 4 
+    guard   CommandLine.arguments.count == 4, 
+            let level:Int   = Int.init(CommandLine.arguments[1]),
+            let trials:Int  = Int.init(CommandLine.arguments[3])
+            
     else 
     {
-        fatalError("wrong number of arguments")
+        fatalError("usage: \(CommandLine.arguments.first ?? "") <compression-level:0 ... 9> <image> <trials>")
     }
     
-    let path:String = CommandLine.arguments[1], 
-        name:String = CommandLine.arguments[2]
-    guard let level:Int = Int.init(CommandLine.arguments[3]), 0 ... 9 ~= level
+    let path:String = CommandLine.arguments[2]
+    
+    guard 0 ... 9 ~= level
     else 
     {
         fatalError("compression level must be an integer from 0 to 9")
     }
     
-    guard let image:PNG.Data.Rectangular = try .decompress(path: path)
-    else 
-    {
-        fatalError("failed to decode test image '\(path)'")
-    }
+    #if INTERNAL_BENCHMARKS 
+    let (results, size):([(time:Int, hash:Int)], Int) = 
+        __Entrypoint.Benchmark.Encode.rgba8(level: level, path: path, trials: trials)
+    #else 
+    let (results, size):([(time:Int, hash:Int)], Int) = 
+                     Benchmark.Encode.rgba8(level: level, path: path, trials: trials)
+    #endif
     
-    let start:Int   = clock()
-    var blob:Blob   = .init()
-    try image.compress(stream: &blob, level: level)
-    let stop:Int    = clock()
-    print("\(level) \(1000.0 * .init(stop - start) / .init(CLOCKS_PER_SEC)) \(blob.count) \(name)")
+    let string:String = results.map
+    { 
+        "\(1000.0 * .init($0.time) / .init(CLOCKS_PER_SEC))" 
+    }.joined(separator: " ")
+    
+    print("\(string), \(size)")
 }
 
 try main()
+
+#endif
