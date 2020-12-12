@@ -1,6 +1,6 @@
 # *swift png* benchmarks 
 
-> generated on **October 29, 2020** for commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)** using **[`utils/benchmark`](../utils/benchmark)**
+> generated on **December 11, 2020** for commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)** using **[`utils/benchmark`](../utils/benchmark)**
 
 ## running benchmarks 
 
@@ -52,9 +52,9 @@ The decompression benchmarks compare the performance of *Swift PNG* to that of *
 
 In the density plot below, the labeled curves represent the *aggregate distribution* of run times across all **28** test images. The unlabeled curves are the distributions for each individual test image. The dashed curve indicates the distribution for one of the 8-bit RGB test images (`rgb8-color-photographic`), one of the most common PNG image types.
 
-![decompression performance](../benchmarks/results/densityplot-decompression.svg)
+![decompression performance](../benchmarks/results/densityplot-decompression-speed.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median decoding time was **140.17 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median decoding time was **140.17 percent** that of *libpng*.
 
 ### encoding 
 
@@ -66,69 +66,119 @@ In the density plots below, the labeled curves represent the *aggregate distribu
 
 #### compression level 0
 
-![compression performance](../benchmarks/results/densityplot-compression@0.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@0.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 0th compression level was **324.45 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 0th compression level was **324.45 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **308.77 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@0.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **58.4 percent** that of *libpng*.
+
 
 
 #### compression level 1
 
-![compression performance](../benchmarks/results/densityplot-compression@1.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@1.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 1st compression level was **182.59 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 1st compression level was **182.59 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **163.48 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@1.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **99.64 percent** that of *libpng*.
+
 
 
 #### compression level 2
 
-![compression performance](../benchmarks/results/densityplot-compression@2.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@2.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 2nd compression level was **176.54 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 2nd compression level was **176.54 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **160.4 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@2.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **99.78 percent** that of *libpng*.
+
 
 
 #### compression level 3
 
-![compression performance](../benchmarks/results/densityplot-compression@3.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@3.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 3rd compression level was **167.32 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 3rd compression level was **167.32 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **151.69 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@3.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **99.99 percent** that of *libpng*.
+
 
 
 #### compression level 4
 
-![compression performance](../benchmarks/results/densityplot-compression@4.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@4.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 4th compression level was **161.53 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 4th compression level was **161.53 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **135.23 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@4.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **100.93 percent** that of *libpng*.
+
 
 
 #### compression level 5
 
-![compression performance](../benchmarks/results/densityplot-compression@5.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@5.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 5th compression level was **147.73 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 5th compression level was **147.73 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **123.04 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@5.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **101.1 percent** that of *libpng*.
+
 
 
 #### compression level 6
 
-![compression performance](../benchmarks/results/densityplot-compression@6.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@6.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 6th compression level was **116.29 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 6th compression level was **116.29 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **105.58 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@6.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **101.71 percent** that of *libpng*.
+
 
 
 #### compression level 7
 
-![compression performance](../benchmarks/results/densityplot-compression@7.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@7.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 7th compression level was **106.37 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 7th compression level was **106.37 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **99.71 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@7.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **101.84 percent** that of *libpng*.
+
 
 
 #### compression level 8
 
-![compression performance](../benchmarks/results/densityplot-compression@8.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@8.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 8th compression level was **155.32 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 8th compression level was **155.32 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **164.06 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@8.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **99.13 percent** that of *libpng*.
+
 
 
 #### compression level 9
 
-![compression performance](../benchmarks/results/densityplot-compression@9.svg)
+![compression performance](../benchmarks/results/densityplot-compression-speed@9.svg)
 
-As of commit **[`e2648a6`](https://github.com/kelvin13/png/commit/e2648a67abd010caebe499d68d82a89d455a1340)**, *Swift PNG*’s median encoding time at its 9th compression level was **175.9 percent** that of *libpng*.
+As of commit **[`c436f06`](https://github.com/kelvin13/png/commit/c436f06264ff8d74721ac3e872a9f9c7ee64b3a6)**, *Swift PNG*’s median encoding time at its 9th compression level was **175.9 percent** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **210.34 percent** that of *libpng*.
+
+![compression performance](../benchmarks/results/densityplot-compression-size@9.svg)
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **98.27 percent** that of *libpng*.
+

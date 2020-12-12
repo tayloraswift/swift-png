@@ -1,32 +1,5 @@
 import math
-
-def svg(display, style, content):
-    if len(display) != 2:
-        print('display must be a 2-tuple')
-        raise ValueError
-    
-    return '''<?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
-  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{0}" height="{1}" viewBox="0 0 {0} {1}">
-<style type="text/css" >
-    <![CDATA[
-        {2}
-    ]]>
-</style>
-    <rect width="{0}" height="{1}" class="background"/>
-    {3}
-</svg>
-    '''.format( * display , style, '\n    '.join(content))
-
-def svg_path(points, classes = ()):
-    head, * body = points 
-    path = 'M {0},{1} '.format( * head ) + ' '.join('L {0},{1}'.format( * point ) for point in body)
-    return '<path class="{0}" d="{1}"/>'.format(' '.join(classes), path)
-
-def svg_text(text, position, classes = ()):
-    return '<text x="{0}" y="{1}" class="{2}">{3}</text>'.format(
-        * position , ' '.join(classes), text)
+import svg 
 
 def kernel(x, center, width):
     return 1 / (width * math.sqrt(2 * math.pi)) * math.exp(-0.5 * ((x - center) / width) ** 2)
@@ -74,16 +47,16 @@ def plot(series, bins = 40, smoothing = 1,
         screen = tuple(tuple(map(round, transform(x, area, offset))) for x in ((x, 0), (x, 1)))
         length = 12 if m else 6
         (grid_major if m else grid_minor).append(  
-            svg_path(  (transform(screen[0], (1, 1), (0.5,  0)), 
+            svg.path(  (transform(screen[0], (1, 1), (0.5,  0)), 
                         transform(screen[1], (1, 1), (0.5, -1))), 
             classes = ('grid', 'grid-major' if m else 'grid-minor')))
         ticks.append( 
-            svg_path(  (transform(screen[0], (1, 1), (0.5, 8)), 
+            svg.path(  (transform(screen[0], (1, 1), (0.5, 8)), 
                         transform(screen[0], (1, 1), (0.5, 8 + length))), 
             classes = ('tick',)))
         
         if m:
-            labels.append(svg_text(str(round(v, 3)), 
+            labels.append(svg.text(str(round(v, 3)), 
                 position    = transform(screen[0], (1, 1), (0, 16 + length)), 
                 classes     = ('label-numeric', 'label-x')))
     
@@ -96,16 +69,16 @@ def plot(series, bins = 40, smoothing = 1,
         length = 12 if m else 6
         
         (grid_major if m else grid_minor).append( 
-            svg_path(  (transform(screen[0], (1, 1), (0, -0.5)), 
+            svg.path(  (transform(screen[0], (1, 1), (0, -0.5)), 
                         transform(screen[1], (1, 1), (1, -0.5))), 
             classes = ('grid', 'grid-major' if m else 'grid-minor')))
         ticks.append( 
-            svg_path(  (transform(screen[0], (1, 1), (-8, -0.5)), 
+            svg.path(  (transform(screen[0], (1, 1), (-8, -0.5)), 
                         transform(screen[0], (1, 1), (-8 - length, -0.5))), 
             classes = ('tick',)))
         
         if m:
-            labels.append(svg_text(str(round(v, 3)), 
+            labels.append(svg.text(str(round(v, 3)), 
                 position    = transform(screen[0], (1, 1), (-16 - length, 0)), 
                 classes     = ('label-numeric', 'label-y')))
     
@@ -121,40 +94,40 @@ def plot(series, bins = 40, smoothing = 1,
             ) 
             for x in range(resolution + 1))
         
-        paths.append(svg_path(map(lambda x: transform(x, area, offset), curve), 
+        paths.append(svg.path(map(lambda x: transform(x, area, offset), curve), 
             classes = (name, 'density-curve')))
     
     for i, (name, label) in enumerate(legend):
         base    = tuple(map(round, transform((1, 1), area, offset)))
         dy      = 20 * i
         paths.append(
-            svg_path(  (transform(base, (1, 1), (10, dy)), 
+            svg.path(  (transform(base, (1, 1), (10, dy)), 
                         transform(base, (1, 1), (25, dy))), 
             classes     = (name, 'density-curve')))
         labels.append(
-            svg_text(label, 
+            svg.text(label, 
             position    = transform(base, (1, 1), (32, dy)), 
             classes     = ('label-legend',)))
     
     if type(title) is str:
         screen = tuple(map(round, transform((0.5, 1), area, offset)))
-        labels.append(svg_text(title, 
+        labels.append(svg.text(title, 
             position    = transform(screen, (1, 1), (0, -40)), 
             classes     = ('title',)))
     if type(subtitle) is str:
         screen = tuple(map(round, transform((0.5, 1), area, offset)))
-        labels.append(svg_text(subtitle, 
+        labels.append(svg.text(subtitle, 
             position    = transform(screen, (1, 1), (0, -20)), 
             classes     = ('subtitle',)))
     
     if type(label_x) is str:
         screen = tuple(map(round, transform((0.5, 0), area, offset)))
-        labels.append(svg_text(label_x, 
+        labels.append(svg.text(label_x, 
             position    = transform(screen, (1, 1), (0, 50)), 
             classes     = ('label-axis', 'label-x')))
     if type(label_y) is str:
         screen = tuple(map(round, transform((0, 0.5), area, offset)))
-        labels.append(svg_text(label_y, 
+        labels.append(svg.text(label_y, 
             position    = transform(screen, (1, 1), (-80, 0)), 
             classes     = ('label-axis', 'label-y', 'label-vertical')))
     
@@ -256,4 +229,4 @@ def plot(series, bins = 40, smoothing = 1,
     }}
     '''.format(name, linestyle(color, line)) for name, color, line in colors)
     
-    return svg(display, style, grid_minor + grid_major + ticks + paths + labels)
+    return svg.svg(display, style, grid_minor + grid_major + ticks + paths + labels)
