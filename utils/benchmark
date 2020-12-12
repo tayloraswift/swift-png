@@ -4,7 +4,7 @@ import sys, os, subprocess, glob
 import argparse
 import datetime
 
-import densityplot
+import densityplot, differentialplot
 
 def build_benchmarks(prefix, suffix):
     baseline    = '{0}/baseline/main'.format(prefix)
@@ -169,7 +169,16 @@ def compression_benchmark(trials, files, cache_destination, cache_source):
                 cache_source, shortest, trials))
             sys.exit(-1)
     
-    return tuple(( densityplot.plot({name: series for name, (series, size) in series.items()}, 
+    # associates file sizes for swift benchmarks with corresponding libpng benchmarks 
+    def compare_filesizes(series):
+        baseline    = {'-'.join(name.split('-')[1:]): size 
+            for name, (series, size) in series.items() if size is not None and name.startswith('baseline')}
+        swift       = {'-'.join(name.split('-')[1:]): size 
+            for name, (series, size) in series.items() if size is not None and name.startswith('swift')}
+        return {common: swift[common] / baseline[common] for common in swift.keys() | baseline.keys()}
+    
+    return tuple((
+            densityplot.plot({name: series for name, (series, size) in series.items()}, 
                 range_x     = (0, 5.0),
                 range_y     = (0, 0.6),
                 major       = (0.5, 0.1),
@@ -181,9 +190,25 @@ def compression_benchmark(trials, files, cache_destination, cache_source):
                 smoothing   = 0.6, 
                 legend      = (('baseline', 'libpng'), ('swift', 'swift png')),
                 colors      = tuple(reversed(colors))), 
+            
+            differentialplot.plot(size_ratios, 
+                range_x     = (0, 1.8),
+                major       = 0.2, 
+                minor       = 4,
+                title       = 'relative file size (level {0})'.format(level),
+                subtitle    = 'swift png size / libpng size ',
+                colors      = {
+                    'color_fill_worse':     '#888888ff',
+                    'color_fill_better':    '#ff694eff',
+                    'color_worse':          '#666666ff',
+                    'color_better':         '#ff694eff',
+                }),
+            
             median(series['swift'][0]), 
-            median(series['swift-rgb8-color-photographic'][0]) if 'swift-rgb8-color-photographic' in series else None)
-        for level, series in enumerate(series))
+            median(series['swift-rgb8-color-photographic'][0]) if 'swift-rgb8-color-photographic' in series else None,
+            size_ratios['rgb8-color-photographic'])
+        for level, series, size_ratios in ((level, series, compare_filesizes(series))
+        for level, series in enumerate(series)))
     
 
 def decompression_collect_data(files, baseline, swift, trials):
@@ -306,13 +331,13 @@ def main():
     
     files = glob.glob('tests/compression/baseline/{0}.png'.format(arguments.image))
     
-    plot,  median_ratio, rgb8_ratio = decompression_benchmark(arguments.trials[0], files, 
+    plot, median_ratio, rgb8_ratio  = decompression_benchmark(arguments.trials[0], files, 
         cache_destination   = '{0}/decompression.data'.format(prefix) if arguments.save else None,
         cache_source        = '{0}/decompression.data'.format(prefix) if arguments.load else None)
     levels                          =   compression_benchmark(arguments.trials[1], files, 
         cache_destination   = '{0}/compression.data'.format(prefix) if arguments.save else None,
         cache_source        = '{0}/compression.data'.format(prefix) if arguments.load else None)
-
+    
     commit = subprocess.run(('git', 'rev-parse', 'HEAD'), capture_output = True).stdout.decode('utf-8').rstrip()
     
     fields = {
@@ -323,28 +348,38 @@ def main():
         'image_table'   : generate_test_image_table('..', files), 
     }
     
-    plot_decompression                      = '{0}/densityplot-decompression.svg'.format(prefix)
+    plot_decompression = '{0}/densityplot-decompression-speed.svg'.format(prefix)
     fields['median_ratio_decompression']    = percent(median_ratio)
     fields['rgb8_ratio_decompression']      = percent(rgb8_ratio)
     fields['densityplot_decompression']     = plot_decompression
     with open(plot_decompression, 'w') as file:
         file.write(plot)
     
-    for i, (plot, median_ratio, rgb8_ratio) in enumerate(levels):
-        plot_compression = '{0}/densityplot-compression@{1}.svg'.format(prefix, i)
-        fields['median_ratio_compression@{0}'.format(i)]    = percent(median_ratio)
-        fields['rgb8_ratio_compression@{0}'.format(i)]      = percent(rgb8_ratio)
-        fields['densityplot_compression@{0}'.format(i)]     = plot_compression
-        with open(plot_compression, 'w') as file:
-            file.write(plot)
+    for i, (plot_speed, plot_size, median_ratio, rgb8_ratio_speed, rgb8_ratio_size) in enumerate(levels):
+        plot_compression_speed  = '{0}/densityplot-compression-speed@{1}.svg'.format(prefix, i)
+        plot_compression_size   = '{0}/densityplot-compression-size@{1}.svg'.format(prefix, i)
+        fields['median_ratio_compression@{0}'.format(i)]        = percent(median_ratio)
+        fields['rgb8_ratio_compression_speed@{0}'.format(i)]    = percent(rgb8_ratio_speed)
+        fields['rgb8_ratio_compression_size@{0}'.format(i)]     = percent(rgb8_ratio_size)
+        fields['densityplot_compression_speed@{0}'.format(i)]   = plot_compression_speed 
+        fields['densityplot_compression_size@{0}'.format(i)]    = plot_compression_size
+        with open(plot_compression_speed, 'w') as file:
+            file.write(plot_speed)
+        with open(plot_compression_size, 'w') as file:
+            file.write(plot_size)
     
     with open('benchmarks/template.md', 'r') as file:
         template = file.read() + '\n'.join('''
 #### compression level {0}
 
-![compression performance](../{{densityplot_compression@{0}}})
+![compression performance](../{{densityplot_compression_speed@{0}}})
 
-As of commit **{{commit}}**, *Swift PNG*’s median encoding time at its {1} compression level was **{{median_ratio_compression@{0}}}** that of *libpng*.
+As of commit **{{commit}}**, *Swift PNG*’s median encoding time at its {1} compression level was **{{median_ratio_compression@{0}}}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{{rgb8_ratio_compression_speed@{0}}}** that of *libpng*.
+
+![compression performance](../{{densityplot_compression_size@{0}}})
+
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{{rgb8_ratio_compression_size@{0}}}** that of *libpng*.
+
 '''.format(i, ordinal(i)) for i in range(10))
 
     with open('benchmarks/README.md', 'w') as file:

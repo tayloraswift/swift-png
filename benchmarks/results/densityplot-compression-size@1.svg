@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800" height="680" viewBox="0 0 800 680">
+<style type="text/css" >
+    <![CDATA[
+        
+    rect.background 
+    {
+        fill:   white;
+    }
+    
+    path.grid 
+    {
+        stroke-width: 1px;
+        fill:   none;
+    }
+    path.grid-major 
+    {
+        stroke: #eeeeeeff;
+    }
+    path.grid-minor 
+    {
+        stroke: #f5f5f5ff;
+    }
+    
+    path.tick 
+    {
+        stroke-width: 1px;
+        stroke: #333333ff;
+        fill:   none;
+    }
+    
+    path.stem 
+    {
+        stroke-width: 1px;
+        stroke-dasharray: 3 3;
+    }
+    circle.dot 
+    {
+        stroke-width: 2px;
+        stroke: #666;
+        fill:   none;
+    }
+    
+    text
+    {
+        fill: #333333ff;
+        font-family: 'SF Mono';
+    }
+    text.label-numeric 
+    {
+        font-size: 12px;
+    }
+    text.label-numeric.unity 
+    {
+        font-weight: 700;
+    }
+    text.label-x 
+    {
+        text-anchor: middle; 
+        dominant-baseline: text-top;
+    }
+    
+    text.label-legend, text.label-percent
+    {
+        font-size: 12px;
+        dominant-baseline: middle;
+    }
+    text.label-percent 
+    {
+        font-weight: 700;
+    }
+    text.label-legend.better, text.label-percent.worse 
+    {
+        text-anchor: begin; 
+    }
+    text.label-legend.worse, text.label-percent.better 
+    {
+        text-anchor: end; 
+    }
+    
+    text.title, text.subtitle 
+    {
+        text-anchor: middle; 
+    }
+    text.title 
+    {
+        font-size: 20px;
+    }
+    text.subtitle 
+    {
+        font-size: 12px;
+    }
+    
+    circle.better, path.stem.better
+    {
+        stroke: #ff694eff
+    }
+    circle.worse, path.stem.worse
+    {
+        stroke: #888888ff
+    }
+    text.label-percent.better 
+    {
+        fill: #ff694eff
+    }
+    text.label-percent.worse 
+    {
+        fill: #666666ff
+    }
+    
+    ]]>
+</style>
+    <rect width="800" height="680" class="background"/>
+    <path class="grid grid-minor" d="M 79.5,660 L 79.5,109"/>
+    <path class="grid grid-minor" d="M 98.5,660 L 98.5,109"/>
+    <path class="grid grid-minor" d="M 117.5,660 L 117.5,109"/>
+    <path class="grid grid-minor" d="M 154.5,660 L 154.5,109"/>
+    <path class="grid grid-minor" d="M 173.5,660 L 173.5,109"/>
+    <path class="grid grid-minor" d="M 192.5,660 L 192.5,109"/>
+    <path class="grid grid-minor" d="M 230.5,660 L 230.5,109"/>
+    <path class="grid grid-minor" d="M 249.5,660 L 249.5,109"/>
+    <path class="grid grid-minor" d="M 268.5,660 L 268.5,109"/>
+    <path class="grid grid-minor" d="M 306.5,660 L 306.5,109"/>
+    <path class="grid grid-minor" d="M 324.5,660 L 324.5,109"/>
+    <path class="grid grid-minor" d="M 343.5,660 L 343.5,109"/>
+    <path class="grid grid-minor" d="M 381.5,660 L 381.5,109"/>
+    <path class="grid grid-minor" d="M 400.5,660 L 400.5,109"/>
+    <path class="grid grid-minor" d="M 419.5,660 L 419.5,109"/>
+    <path class="grid grid-minor" d="M 457.5,660 L 457.5,109"/>
+    <path class="grid grid-minor" d="M 476.5,660 L 476.5,109"/>
+    <path class="grid grid-minor" d="M 494.5,660 L 494.5,109"/>
+    <path class="grid grid-minor" d="M 532.5,660 L 532.5,109"/>
+    <path class="grid grid-minor" d="M 551.5,660 L 551.5,109"/>
+    <path class="grid grid-minor" d="M 570.5,660 L 570.5,109"/>
+    <path class="grid grid-minor" d="M 608.5,660 L 608.5,109"/>
+    <path class="grid grid-minor" d="M 627.5,660 L 627.5,109"/>
+    <path class="grid grid-minor" d="M 646.5,660 L 646.5,109"/>
+    <path class="grid grid-minor" d="M 683.5,660 L 683.5,109"/>
+    <path class="grid grid-minor" d="M 702.5,660 L 702.5,109"/>
+    <path class="grid grid-minor" d="M 721.5,660 L 721.5,109"/>
+    <path class="grid grid-major" d="M 60.5,660 L 60.5,109"/>
+    <path class="grid grid-major" d="M 136.5,660 L 136.5,109"/>
+    <path class="grid grid-major" d="M 211.5,660 L 211.5,109"/>
+    <path class="grid grid-major" d="M 287.5,660 L 287.5,109"/>
+    <path class="grid grid-major" d="M 362.5,660 L 362.5,109"/>
+    <path class="grid grid-major" d="M 438.5,660 L 438.5,109"/>
+    <path class="grid grid-major" d="M 513.5,660 L 513.5,109"/>
+    <path class="grid grid-major" d="M 589.5,660 L 589.5,109"/>
+    <path class="grid grid-major" d="M 664.5,660 L 664.5,109"/>
+    <path class="grid grid-major" d="M 740.5,660 L 740.5,109"/>
+    <path class="tick" d="M 60.5,102 L 60.5,90"/>
+    <path class="tick" d="M 79.5,102 L 79.5,96"/>
+    <path class="tick" d="M 98.5,102 L 98.5,96"/>
+    <path class="tick" d="M 117.5,102 L 117.5,96"/>
+    <path class="tick" d="M 136.5,102 L 136.5,90"/>
+    <path class="tick" d="M 154.5,102 L 154.5,96"/>
+    <path class="tick" d="M 173.5,102 L 173.5,96"/>
+    <path class="tick" d="M 192.5,102 L 192.5,96"/>
+    <path class="tick" d="M 211.5,102 L 211.5,90"/>
+    <path class="tick" d="M 230.5,102 L 230.5,96"/>
+    <path class="tick" d="M 249.5,102 L 249.5,96"/>
+    <path class="tick" d="M 268.5,102 L 268.5,96"/>
+    <path class="tick" d="M 287.5,102 L 287.5,90"/>
+    <path class="tick" d="M 306.5,102 L 306.5,96"/>
+    <path class="tick" d="M 324.5,102 L 324.5,96"/>
+    <path class="tick" d="M 343.5,102 L 343.5,96"/>
+    <path class="tick" d="M 362.5,102 L 362.5,90"/>
+    <path class="tick" d="M 381.5,102 L 381.5,96"/>
+    <path class="tick" d="M 400.5,102 L 400.5,96"/>
+    <path class="tick" d="M 419.5,102 L 419.5,96"/>
+    <path class="tick" d="M 438.5,102 L 438.5,90"/>
+    <path class="tick" d="M 457.5,102 L 457.5,96"/>
+    <path class="tick" d="M 476.5,102 L 476.5,96"/>
+    <path class="tick" d="M 494.5,102 L 494.5,96"/>
+    <path class="tick" d="M 513.5,102 L 513.5,90"/>
+    <path class="tick" d="M 532.5,102 L 532.5,96"/>
+    <path class="tick" d="M 551.5,102 L 551.5,96"/>
+    <path class="tick" d="M 570.5,102 L 570.5,96"/>
+    <path class="tick" d="M 589.5,102 L 589.5,90"/>
+    <path class="tick" d="M 608.5,102 L 608.5,96"/>
+    <path class="tick" d="M 627.5,102 L 627.5,96"/>
+    <path class="tick" d="M 646.5,102 L 646.5,96"/>
+    <path class="tick" d="M 664.5,102 L 664.5,90"/>
+    <path class="tick" d="M 683.5,102 L 683.5,96"/>
+    <path class="tick" d="M 702.5,102 L 702.5,96"/>
+    <path class="tick" d="M 721.5,102 L 721.5,96"/>
+    <path class="tick" d="M 740.5,102 L 740.5,90"/>
+    <text x="60" y="82" class="label-numeric label-x">0.0</text>
+    <text x="136" y="82" class="label-numeric label-x">0.2</text>
+    <text x="211" y="82" class="label-numeric label-x">0.4</text>
+    <text x="287" y="82" class="label-numeric label-x">0.6</text>
+    <text x="362" y="82" class="label-numeric label-x">0.8</text>
+    <text x="438" y="82" class="label-numeric label-x unity">1.0</text>
+    <text x="513" y="82" class="label-numeric label-x">1.2</text>
+    <text x="589" y="82" class="label-numeric label-x">1.4</text>
+    <text x="664" y="82" class="label-numeric label-x">1.6</text>
+    <text x="740" y="82" class="label-numeric label-x">1.8</text>
+    <text x="400" y="40" class="title">relative file size (level 1)</text>
+    <text x="400" y="60" class="subtitle">swift png size / libpng size </text>
+    <text x="453.77777777777777" y="120.0" class="label-legend better">indexed8-monochrome-nonphotographic</text>
+    <text x="453.77777777777777" y="140.0" class="label-legend better">indexed8-monochrome-photographic</text>
+    <text x="453.77777777777777" y="160.0" class="label-legend better">v8-monochrome-nonphotographic</text>
+    <text x="453.77777777777777" y="180.0" class="label-legend better">va16-monochrome-nonphotographic</text>
+    <text x="453.77777777777777" y="200.0" class="label-legend better">rgba16-monochrome-nonphotographic</text>
+    <text x="453.77777777777777" y="220.0" class="label-legend better">v8-monochrome-photographic</text>
+    <text x="453.77777777777777" y="240.0" class="label-legend better">va16-monochrome-photographic</text>
+    <text x="453.77777777777777" y="260.0" class="label-legend better">rgba8-color-nonphotographic</text>
+    <text x="453.77777777777777" y="280.0" class="label-legend better">va8-monochrome-nonphotographic</text>
+    <text x="453.77777777777777" y="300.0" class="label-legend better">rgb8-color-nonphotographic</text>
+    <text x="453.77777777777777" y="320.0" class="label-legend better">indexed8-color-photographic</text>
+    <text x="453.77777777777777" y="340.0" class="label-legend better">rgba16-color-nonphotographic</text>
+    <text x="453.77777777777777" y="360.0" class="label-legend better">va8-monochrome-photographic</text>
+    <text x="453.77777777777777" y="380.0" class="label-legend better">rgba8-color-photographic</text>
+    <text x="453.77777777777777" y="400.0" class="label-legend better">rgb8-monochrome-photographic</text>
+    <text x="453.77777777777777" y="420.0" class="label-legend better">rgb8-color-photographic</text>
+    <text x="453.77777777777777" y="440.0" class="label-legend better">rgba16-color-photographic</text>
+    <text x="421.77777777777777" y="460.0" class="label-legend worse">rgb8-monochrome-nonphotographic</text>
+    <text x="421.77777777777777" y="480.0" class="label-legend worse">rgb16-color-nonphotographic</text>
+    <text x="421.77777777777777" y="500.0" class="label-legend worse">v16-monochrome-nonphotographic</text>
+    <text x="421.77777777777777" y="520.0" class="label-legend worse">indexed8-color-nonphotographic</text>
+    <text x="421.77777777777777" y="540.0" class="label-legend worse">v16-monochrome-photographic</text>
+    <text x="421.77777777777777" y="560.0" class="label-legend worse">rgb16-color-photographic</text>
+    <text x="421.77777777777777" y="580.0" class="label-legend worse">rgba8-monochrome-nonphotographic</text>
+    <text x="421.77777777777777" y="600.0" class="label-legend worse">rgba8-monochrome-photographic</text>
+    <text x="421.77777777777777" y="620.0" class="label-legend worse">rgba16-monochrome-photographic</text>
+    <text x="421.77777777777777" y="640.0" class="label-legend worse">rgb16-monochrome-nonphotographic</text>
+    <text x="421.77777777777777" y="660.0" class="label-legend worse">rgb16-monochrome-photographic</text>
+    <text x="327.41317048262624" y="120.0" class="label-percent better">-24.98 %</text>
+    <text x="330.00767220015615" y="140.0" class="label-percent better">-24.29 %</text>
+    <text x="386.4312633301721" y="160.0" class="label-percent better">-9.36 %</text>
+    <text x="388.7730734622103" y="180.0" class="label-percent better">-8.74 %</text>
+    <text x="388.7730734622103" y="200.0" class="label-percent better">-8.74 %</text>
+    <text x="390.9937426619703" y="220.0" class="label-percent better">-8.15 %</text>
+    <text x="394.6373488550824" y="240.0" class="label-percent better">-7.18 %</text>
+    <text x="396.9368752987137" y="260.0" class="label-percent better">-6.58 %</text>
+    <text x="402.0856502916478" y="280.0" class="label-percent better">-5.21 %</text>
+    <text x="403.56546711982713" y="300.0" class="label-percent better">-4.82 %</text>
+    <text x="407.918461336824" y="320.0" class="label-percent better">-3.67 %</text>
+    <text x="411.0512308281473" y="340.0" class="label-percent better">-2.84 %</text>
+    <text x="413.70032206888135" y="360.0" class="label-percent better">-2.14 %</text>
+    <text x="414.12418101279354" y="380.0" class="label-percent better">-2.03 %</text>
+    <text x="419.20077935146827" y="400.0" class="label-percent better">-0.68 %</text>
+    <text x="420.4165655127515" y="420.0" class="label-percent better">-0.36 %</text>
+    <text x="420.95482253191915" y="440.0" class="label-percent better">-0.22 %</text>
+    <text x="455.6065296946485" y="460.0" class="label-percent worse">+0.48 %</text>
+    <text x="458.0119753961002" y="480.0" class="label-percent worse">+1.12 %</text>
+    <text x="458.4811965878307" y="500.0" class="label-percent worse">+1.25 %</text>
+    <text x="459.79192872117403" y="520.0" class="label-percent worse">+1.59 %</text>
+    <text x="461.2149559564658" y="540.0" class="label-percent worse">+1.97 %</text>
+    <text x="469.10326987591446" y="560.0" class="label-percent worse">+4.06 %</text>
+    <text x="538.4687453540391" y="580.0" class="label-percent worse">+22.42 %</text>
+    <text x="555.2454277855022" y="600.0" class="label-percent worse">+26.86 %</text>
+    <text x="559.7618608934401" y="620.0" class="label-percent worse">+28.05 %</text>
+    <text x="603.7796618204228" y="640.0" class="label-percent worse">+39.71 %</text>
+    <text x="641.2577042243665" y="660.0" class="label-percent worse">+49.63 %</text>
+    <path class="stem better" d="M 437.77777777777777,120.0 L 347.41317048262624,120.0"/>
+    <path class="stem better" d="M 437.77777777777777,140.0 L 350.00767220015615,140.0"/>
+    <path class="stem better" d="M 437.77777777777777,160.0 L 406.4312633301721,160.0"/>
+    <path class="stem better" d="M 437.77777777777777,180.0 L 408.7730734622103,180.0"/>
+    <path class="stem better" d="M 437.77777777777777,200.0 L 408.7730734622103,200.0"/>
+    <path class="stem better" d="M 437.77777777777777,220.0 L 410.9937426619703,220.0"/>
+    <path class="stem better" d="M 437.77777777777777,240.0 L 414.6373488550824,240.0"/>
+    <path class="stem better" d="M 437.77777777777777,260.0 L 416.9368752987137,260.0"/>
+    <path class="stem better" d="M 437.77777777777777,280.0 L 422.0856502916478,280.0"/>
+    <path class="stem better" d="M 437.77777777777777,300.0 L 423.56546711982713,300.0"/>
+    <path class="stem better" d="M 437.77777777777777,320.0 L 427.918461336824,320.0"/>
+    <path class="stem better" d="M 437.77777777777777,340.0 L 431.0512308281473,340.0"/>
+    <path class="stem better" d="M 437.77777777777777,360.0 L 433.70032206888135,360.0"/>
+    <path class="stem better" d="M 437.77777777777777,380.0 L 434.12418101279354,380.0"/>
+    <path class="stem worse" d="M 437.77777777777777,480.0 L 438.0119753961002,480.0"/>
+    <path class="stem worse" d="M 437.77777777777777,500.0 L 438.4811965878307,500.0"/>
+    <path class="stem worse" d="M 437.77777777777777,520.0 L 439.79192872117403,520.0"/>
+    <path class="stem worse" d="M 437.77777777777777,540.0 L 441.2149559564658,540.0"/>
+    <path class="stem worse" d="M 437.77777777777777,560.0 L 449.10326987591446,560.0"/>
+    <path class="stem worse" d="M 437.77777777777777,580.0 L 518.4687453540391,580.0"/>
+    <path class="stem worse" d="M 437.77777777777777,600.0 L 535.2454277855022,600.0"/>
+    <path class="stem worse" d="M 437.77777777777777,620.0 L 539.7618608934401,620.0"/>
+    <path class="stem worse" d="M 437.77777777777777,640.0 L 583.7796618204228,640.0"/>
+    <path class="stem worse" d="M 437.77777777777777,660.0 L 621.2577042243665,660.0"/>
+    <circle class="dot better" cx="343.41317048262624" cy="120.0" r="4"/>
+    <circle class="dot better" cx="346.00767220015615" cy="140.0" r="4"/>
+    <circle class="dot better" cx="402.4312633301721" cy="160.0" r="4"/>
+    <circle class="dot better" cx="404.7730734622103" cy="180.0" r="4"/>
+    <circle class="dot better" cx="404.7730734622103" cy="200.0" r="4"/>
+    <circle class="dot better" cx="406.9937426619703" cy="220.0" r="4"/>
+    <circle class="dot better" cx="410.6373488550824" cy="240.0" r="4"/>
+    <circle class="dot better" cx="412.9368752987137" cy="260.0" r="4"/>
+    <circle class="dot better" cx="418.0856502916478" cy="280.0" r="4"/>
+    <circle class="dot better" cx="419.56546711982713" cy="300.0" r="4"/>
+    <circle class="dot better" cx="423.918461336824" cy="320.0" r="4"/>
+    <circle class="dot better" cx="427.0512308281473" cy="340.0" r="4"/>
+    <circle class="dot better" cx="429.70032206888135" cy="360.0" r="4"/>
+    <circle class="dot better" cx="430.12418101279354" cy="380.0" r="4"/>
+    <circle class="dot better" cx="435.20077935146827" cy="400.0" r="4"/>
+    <circle class="dot better" cx="436.4165655127515" cy="420.0" r="4"/>
+    <circle class="dot better" cx="436.95482253191915" cy="440.0" r="4"/>
+    <circle class="dot worse" cx="439.6065296946485" cy="460.0" r="4"/>
+    <circle class="dot worse" cx="442.0119753961002" cy="480.0" r="4"/>
+    <circle class="dot worse" cx="442.4811965878307" cy="500.0" r="4"/>
+    <circle class="dot worse" cx="443.79192872117403" cy="520.0" r="4"/>
+    <circle class="dot worse" cx="445.2149559564658" cy="540.0" r="4"/>
+    <circle class="dot worse" cx="453.10326987591446" cy="560.0" r="4"/>
+    <circle class="dot worse" cx="522.4687453540391" cy="580.0" r="4"/>
+    <circle class="dot worse" cx="539.2454277855022" cy="600.0" r="4"/>
+    <circle class="dot worse" cx="543.7618608934401" cy="620.0" r="4"/>
+    <circle class="dot worse" cx="587.7796618204228" cy="640.0" r="4"/>
+    <circle class="dot worse" cx="625.2577042243665" cy="660.0" r="4"/>
+</svg>
+    
