@@ -1,10 +1,201 @@
+extension PNG.Percentmille:CustomStringConvertible 
+{
+    public 
+    var description:String 
+    {
+        "\(self.points) / 100000"
+    }
+}
+
+extension PNG.Metadata:CustomStringConvertible 
+{
+    public 
+    var description:String 
+    {
+        [
+            // singletons 
+            [
+                self.time.map               (\.description),
+                self.chromaticity.map       (\.description),
+                self.colorProfile.map       (\.description),
+                self.colorRendering.map     (\.description),
+                self.gamma.map              (\.description),
+                self.histogram.map          (\.description),
+                self.physicalDimensions.map (\.description),
+                self.significantBits.map    (\.description),
+            ].compactMap{ $0 },
+            self.suggestedPalettes.map      (\.description),
+            self.text.map                   (\.description),
+            self.application.map 
+            {
+                """
+                <unknown> (\($0.type)) 
+                {
+                    data        : <\($0.data.count) bytes>
+                }
+                """
+            },
+        ].flatMap{ $0 }.joined(separator: "\n")
+    }
+}
+
+extension PNG.TimeModified:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.tIME)) 
+        {
+            year        : \(self.year) 
+            month       : \(self.month) 
+            day         : \(self.day) 
+            hour        : \(self.hour) 
+            minute      : \(self.minute) 
+            second      : \(self.second) 
+        }
+        """
+    }
+}
+extension PNG.Chromaticity:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.cHRM)) 
+        {
+            w           : \(self.w) 
+            r           : \(self.r) 
+            g           : \(self.g) 
+            b           : \(self.b) 
+        }
+        """
+    }
+}
+extension PNG.ColorProfile:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.iCCP)) 
+        {
+            name        : '\(self.name)' 
+            profile     : <\(self.profile.count) bytes>
+        }
+        """
+    }
+}
+extension PNG.ColorRendering:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.sRGB)) 
+        {
+            \(self)
+        }
+        """
+    }
+}
+extension PNG.Gamma:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.gAMA)) 
+        {
+            pcm         : \(self.pcm) 
+        }
+        """
+    }
+}
+extension PNG.Histogram:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.hIST)) 
+        {
+            frequencies : <\(self.frequencies.count) entries> 
+        }
+        """
+    }
+}
+extension PNG.PhysicalDimensions:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        """
+        PNG.\(Self.self) (\(PNG.Chunk.pHYs)) 
+        {
+            density     : (x: \(self.density.x), y: \(self.density.y)) \(self.density.unit.map{ "/ \($0)" } ?? "(no units)")
+        }
+        """
+    }
+}
+extension PNG.SignificantBits:CustomStringConvertible
+{
+    public 
+    var description:String 
+    {
+        let channels:[(String, Int)] 
+        switch self 
+        {
+        case .v(let v):
+            channels = [("v", v)]
+        case .va(let (v, a)):
+            channels = [("v", v), ("a", a)]
+        case .rgb(let (r, g, b)):
+            channels = [("r", r), ("g", g), ("b", b)]
+        case .rgba(let (r, g, b, a)):
+            channels = [("r", r), ("g", g), ("b", b), ("a", a)]
+        }
+        return """
+        PNG.\(Self.self) (\(PNG.Chunk.sBIT)) 
+        {
+        \(channels.map{ "    \($0.0)           : \($0.1)" }.joined(separator: "\n"))
+        }
+        """
+    }
+}
+extension PNG.SuggestedPalette:CustomStringConvertible 
+{
+    public 
+    var description:String 
+    {
+        let swatches:[String] 
+        switch self.entries 
+        {
+        case .rgba8(let entries):
+            swatches = entries.enumerated().map{ "        [\(String.pad("\($0.0)", left: 3))]: \(String.swatch($0.1.color)) (\($0.1.frequency))" } 
+        case .rgba16(let entries):
+            swatches = entries.enumerated().map{ "        [\(String.pad("\($0.0)", left: 5))]: \(String.swatch($0.1.color)) (\($0.1.frequency))" } 
+        }
+        return """
+        PNG.\(Self.self) (\(PNG.Chunk.sPLT)) 
+        {
+            name        : '\(self.name)' 
+            entries     : 
+            [
+        \(swatches.joined(separator: "\n"))
+            ]
+        }
+        """
+    }
+}
 extension PNG.Text:CustomStringConvertible 
 {
     public 
     var description:String 
     {
         """
-        png.text (tEXt | zTXt | iTXt) 
+        PNG.\(Self.self) (\(PNG.Chunk.tEXt) | \(PNG.Chunk.zTXt) | \(PNG.Chunk.iTXt)) 
         {
             compressed  : \(self.compressed)
             language    : '\(self.language.joined(separator: "-"))'
@@ -65,82 +256,8 @@ extension LZ77.Deflator.Term.Meta:CustomStringConvertible
     }
 }
 
-enum Highlight 
-{
-    static 
-    var bold:String     = "\u{1B}[1m"
-    static 
-    var reset:String    = "\u{1B}[0m"
-    
-    static 
-    func fg(_ color:(r:UInt8, g:UInt8, b:UInt8)?) -> String 
-    {
-        if let color:(r:UInt8, g:UInt8, b:UInt8) = color
-        {
-            return "\u{1B}[38;2;\(color.r);\(color.g);\(color.b)m"
-        }
-        else 
-        {
-            return "\u{1B}[39m"
-        }
-    }
-    static 
-    func bg(_ color:(r:UInt8, g:UInt8, b:UInt8)?) -> String 
-    {
-        if let color:(r:UInt8, g:UInt8, b:UInt8) = color
-        {
-            return "\u{1B}[48;2;\(color.r);\(color.g);\(color.b)m"
-        }
-        else 
-        {
-            return "\u{1B}[49m"
-        }
-    }
-    
-    static 
-    func quantize<F>(_ color:(r:F, g:F, b:F)) -> (r:UInt8, g:UInt8, b:UInt8) 
-        where F:BinaryFloatingPoint 
-    {
-        let r:UInt8 = .init((.init(UInt8.max) * max(0, min(color.r, 1))).rounded()),
-            g:UInt8 = .init((.init(UInt8.max) * max(0, min(color.g, 1))).rounded()),
-            b:UInt8 = .init((.init(UInt8.max) * max(0, min(color.b, 1))).rounded())
-        return (r, g, b)
-    }
-    static 
-    func color<F>(_ string:String, _ color:(r:F, g:F, b:F)) -> String 
-        where F:BinaryFloatingPoint 
-    {
-        return Self.color(string, Self.quantize(color))
-    }
-    static 
-    func color(_ string:String, _ fg:(r:UInt8, g:UInt8, b:UInt8)) -> String 
-    {
-        return "\(Self.fg(fg))\(string)\(Self.fg(nil))"
-    }
-    
-    static 
-    func highlight<F>(_ string:String, _ color:(r:F, g:F, b:F), fg:(r:F, g:F, b:F)? = nil) -> String 
-        where F:BinaryFloatingPoint 
-    {
-        return Self.highlight(string, Self.quantize(color), fg: fg.map(Self.quantize(_:)))
-    }
-    static 
-    func highlight(_ string:String, _ bg:(r:UInt8, g:UInt8, b:UInt8), fg:(r:UInt8, g:UInt8, b:UInt8)? = nil) -> String 
-    {
-        let fg:(r:UInt8, g:UInt8, b:UInt8) = fg ??
-            ((bg.r / 3 + bg.g / 3 + bg.b / 3) < 128 ? (.max, .max, .max) : (0, 0, 0))
-        
-        return "\(Self.bg(bg))\(Self.fg(fg))\(string)\(Self.fg(nil))\(Self.bg(nil))"
-    }
-}
 extension String 
 {
-    static 
-    func pad(_ string:String, left count:Int) -> Self 
-    {
-        .init(repeating: " ", count: count - string.count) + string
-    }
-    
     init(histogram:[Int], size:(x:Int, y:Int), pad:Int) 
     {
         func lerp(_ a:(r:Double, g:Double, b:Double), _ b:(r:Double, g:Double, b:Double), t:Double) 
@@ -185,28 +302,27 @@ extension String
             }
         }
         
-        let head:String = (0 ..< size.x).map
+        let head:Self = (0 ..< size.x).map
         { 
             (dr:Int) in 
-            "\(Highlight.bold)\(String.pad("\(dr)", left: 4))\(Highlight.reset)" 
+            "\(Self.bold)\(Self.pad("\(dr)", left: 4))\(Self.reset)" 
         }.joined(separator: " ")
-        let body:String = (0 ..< size.y).map
+        let body:Self = (0 ..< size.y).map
         {
             (dd:Int) in
-            let row:String = (0 ..< size.x).map
+            let row:Self = (0 ..< size.x).map
             { 
                 (dr:Int) in 
                 let x:Int = Swift.min(histogram[size.x * dd + dr], 9999)
-                let color:(r:Double, g:Double, b:Double) = gradient(x)
-                return Highlight.highlight(String.pad("\(x)", left: 4), color, fg: (1, 1, 1))
+                return Self.highlight(Self.pad("\(x)", left: 4), bg: gradient(x), fg: (1, 1, 1))
             }.joined(separator: " ")
-            return "\(Highlight.bold)\(String.pad("\(dd)", left: 2))\(Highlight.reset) │ \(row)"
+            return "\(Self.bold)\(Self.pad("\(dd)", left: 2))\(Self.reset) │ \(row)"
         }.joined(separator: "\n")
         
         self = 
         """
              \(head)
-           ┌\(String.init(repeating: "─", count: 5 * size.x))
+           ┌\(Self.init(repeating: "─", count: 5 * size.x))
         \(body)
         """
     }

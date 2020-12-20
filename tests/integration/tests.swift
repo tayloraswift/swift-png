@@ -122,29 +122,29 @@ extension Test
                     "tp1n3p08"
                 ]
             ),
-            // (
-            //     "gamma (inactive)",
-            //     [
-            //         "g03n0g16",
-            //         "g03n2c08",
-            //         "g03n3p04",
-            //         "g04n0g16",
-            //         "g04n2c08",
-            //         "g04n3p04",
-            //         "g05n0g16",
-            //         "g05n2c08",
-            //         "g05n3p04",
-            //         "g07n0g16",
-            //         "g07n2c08",
-            //         "g07n3p04",
-            //         "g10n0g16",
-            //         "g10n2c08",
-            //         "g10n3p04",
-            //         "g25n0g16",
-            //         "g25n2c08",
-            //         "g25n3p04"
-            //     ]
-            // ),
+            (
+                "gamma",
+                [
+                    "g03n0g16",
+                    "g03n2c08",
+                    "g03n3p04",
+                    "g04n0g16",
+                    "g04n2c08",
+                    "g04n3p04",
+                    "g05n0g16",
+                    "g05n2c08",
+                    "g05n3p04",
+                    "g07n0g16",
+                    "g07n2c08",
+                    "g07n3p04",
+                    "g10n0g16",
+                    "g10n2c08",
+                    "g10n3p04",
+                    "g25n0g16",
+                    "g25n2c08",
+                    "g25n3p04"
+                ]
+            ),
             (
                 "filters",
                 [
@@ -282,45 +282,6 @@ extension Test
         } 
 
     }
-    private static 
-    func print(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) 
-    {
-        let downsample:Int = min(max(1, size.x / 16), max(1, size.y / 16))
-        for i:Int in stride(from: 0, to: size.y, by: downsample)
-        {
-            let line:String = stride(from: 0, to: size.x, by: downsample).map 
-            {
-                (j:Int) in 
-                
-                // downsampling 
-                var r:Int = 0, 
-                    g:Int = 0, 
-                    b:Int = 0 
-                for y:Int in i ..< min(i + downsample, size.y) 
-                {
-                    for x:Int in j ..< min(j + downsample, size.x)
-                    {
-                        let c:PNG.RGBA<UInt16> = rgb[x + y * size.x]
-                        r += .init(c.r)
-                        g += .init(c.g)
-                        b += .init(c.b)
-                    }
-                }
-                
-                let count:Int = 
-                    (min(i + downsample, size.y) - i) * 
-                    (min(j + downsample, size.x) - j)
-                let c:(r:Float, g:Float, b:Float) = 
-                (
-                    .init(r) / (65535 * .init(count)),
-                    .init(g) / (65535 * .init(count)),
-                    .init(b) / (65535 * .init(count))
-                )
-                return Highlight.square(c)
-            }.joined(separator: "")
-            Swift.print(line)
-        } 
-    }
     
     static 
     func decodeCgBI(_ name:String) -> Result<Void, Failure>
@@ -360,12 +321,9 @@ extension Test
             
             if !Global.options.contains(.compact) 
             {
-                Self.print(image: image, size: rectangular.size)
-                for text in rectangular.metadata.text 
-                {
-                    Swift.print(text)
-                }
-                Swift.print()
+                print(Self.terminal(image: image, size: rectangular.size))
+                print(rectangular.metadata)
+                print()
             }
 
             guard let result:[PNG.RGBA<UInt16>]? = (System.File.Source.open(path: path.rgba)
