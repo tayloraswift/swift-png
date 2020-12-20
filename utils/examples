@@ -1,0 +1,60 @@
+#!/bin/bash
+DEFAULT_BUILD_CONFIGURATION="debug"
+SCRIPT_NAME="examples"
+
+usage() 
+{
+    echo "usage: utils/$SCRIPT_NAME [OPTION...]
+  -c, --configuration       swift build configuration mode, default '$DEFAULT_BUILD_CONFIGURATION'"
+}
+
+error()
+{
+    echo $1 
+    exit 1
+}
+
+check()
+{
+    message=$1
+    shift 
+    echo $@
+    "$@" || error "$message"
+}
+
+build_configuration=$DEFAULT_BUILD_CONFIGURATION
+
+while [ "$1" != "" ] ; do
+    case $1 in 
+    -c | --configuration ) 
+        shift
+        build_configuration=$1
+        ;;
+    * )
+        usage 
+        exit 1
+    esac 
+    shift 
+done 
+
+for path in examples/*/ ; do 
+    product=$(basename $path)
+    check   "error: swift build failed" \
+            swift build -c $build_configuration --product $product
+            
+    binaries=".build/$build_configuration"
+    if ! [ -f $binaries/$product ]; then
+        error "error: missing '$product' product"
+    fi
+done 
+
+# run `decode-basic` example
+check   "error: runtime error" \
+        .build/$build_configuration/decode-basic 
+
+for file in examples/decode-basic/ada-lovelace-1840.png ; do 
+    size=$(identify -format "%wx%h" png:$file)
+    convert -depth 8 -size $size "rgba:$file.rgba" "png:$file.rgba.png"
+    convert -depth 8 -size $size  "graya:$file.va" "png:$file.va.png"
+    convert -depth 8 -size $size    "gray:$file.v" "png:$file.v.png"
+done 

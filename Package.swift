@@ -11,6 +11,8 @@ let package = Package(
         .executable(name: "compression-test",           targets: ["PNGCompressionTests"]),
         .executable(name: "compression-benchmark",      targets: ["PNGCompressionBenchmarks"]), 
         .executable(name: "decompression-benchmark",    targets: ["PNGDecompressionBenchmarks"]), 
+        
+        .executable(name: "decode-basic",               targets: ["PNGDecodeBasic"]),
     ],
     targets: 
     [
@@ -21,6 +23,8 @@ let package = Package(
         .target(name: "PNGCompressionTests",        dependencies: ["PNG"],  path: "tests/compression"),
         .target(name: "PNGCompressionBenchmarks",   dependencies: ["PNG"],  path: "benchmarks/compression/swift"), 
         .target(name: "PNGDecompressionBenchmarks", dependencies: ["PNG"],  path: "benchmarks/decompression/swift"), 
+        
+        .target(name: "PNGDecodeBasic",             dependencies: ["PNG"],  path: "examples/decode-basic"),
     ],
     swiftLanguageVersions: [.v5]
 )
