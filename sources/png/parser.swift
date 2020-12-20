@@ -1762,10 +1762,11 @@ extension PNG.Text
                 compression: data[k + 1], method: data[k + 2])
         }
         
-        return .init(compressed: compressed, 
-            keyword:    keyword, 
-            language:   try Self.validate(language: data[k + 3 ..< l]), 
-            content:    .init(decoding: uncompressed, as: Unicode.UTF8.self))
+        // language can be empty, in which case it is unknown 
+        let language:[String] = k + 3 == l ? 
+            [] : try Self.validate(language: data[k + 3 ..< l])
+        return .init(compressed: compressed, keyword: keyword, language: language, 
+            content: .init(decoding: uncompressed, as: Unicode.UTF8.self))
     }
     public static 
     func parse(latin1 data:[UInt8]) throws -> Self
