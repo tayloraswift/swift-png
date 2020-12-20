@@ -344,24 +344,16 @@ extension Test
                         b:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 4),
                         a:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 6)
                     
+                    let pixel:PNG.RGBA<UInt16> = .init(r, g, b, a)
                     // have to manually premultiply since the CgBI formula does the 
                     // multiplication in 8-bit precision 
                     if premultiplied 
                     {
-                        let r:UInt8 = .init(r >> 8), 
-                            g:UInt8 = .init(g >> 8), 
-                            b:UInt8 = .init(b >> 8), 
-                            a:UInt8 = .init(a >> 8)
-                        let q:UInt16 = UInt16.max / UInt16.max >> 8
-                        return .init(
-                            .init(PNG.premultiply(color: r, alpha: a)) * q, 
-                            .init(PNG.premultiply(color: g, alpha: a)) * q, 
-                            .init(PNG.premultiply(color: b, alpha: a)) * q, 
-                            .init(a) * q)
+                        return pixel.premultiplied(as: UInt8.self)
                     }
                     else 
                     {
-                        return .init(r, g, b, a)
+                        return pixel 
                     }
                 }
             })
