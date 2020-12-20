@@ -927,7 +927,7 @@ extension PNG
     public 
     struct Histogram 
     {
-        private 
+        public private(set)
         var frequencies:[UInt16]
     }
 }
@@ -1497,14 +1497,14 @@ extension PNG.SuggestedPalette
                         data.load(bigEndian: UInt16.self, as: UInt16.self, 
                             at: offset + 2 + 10 * i    ),
                         data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                            at: offset + 2 + 10 * i + 1),
-                        data.load(bigEndian: UInt16.self, as: UInt16.self, 
                             at: offset + 2 + 10 * i + 2),
                         data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                            at: offset + 2 + 10 * i + 3)
+                            at: offset + 2 + 10 * i + 4),
+                        data.load(bigEndian: UInt16.self, as: UInt16.self, 
+                            at: offset + 2 + 10 * i + 6)
                     ), 
                     data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                        at:     offset + 2 + 10 * i + 4)
+                        at:     offset + 2 + 10 * i + 8)
                 )
             }))
         
