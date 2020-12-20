@@ -87,45 +87,6 @@ extension Test
             ($0.name, .string(Self.encode(_:), $0.members))
         }
     }
-    private static 
-    func print(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) 
-    {
-        let downsample:Int = min(max(1, size.x / 16), max(1, size.y / 16))
-        for i:Int in stride(from: 0, to: size.y, by: downsample)
-        {
-            let line:String = stride(from: 0, to: size.x, by: downsample).map 
-            {
-                (j:Int) in 
-                
-                // downsampling 
-                var r:Int = 0, 
-                    g:Int = 0, 
-                    b:Int = 0 
-                for y:Int in i ..< min(i + downsample, size.y) 
-                {
-                    for x:Int in j ..< min(j + downsample, size.x)
-                    {
-                        let c:PNG.RGBA<UInt16> = rgb[x + y * size.x]
-                        r += .init(c.r)
-                        g += .init(c.g)
-                        b += .init(c.b)
-                    }
-                }
-                
-                let count:Int = 
-                    (min(i + downsample, size.y) - i) * 
-                    (min(j + downsample, size.x) - j)
-                let c:(r:Float, g:Float, b:Float) = 
-                (
-                    .init(r) / (65535 * .init(count)),
-                    .init(g) / (65535 * .init(count)),
-                    .init(b) / (65535 * .init(count))
-                )
-                return Highlight.square(c)
-            }.joined(separator: "")
-            Swift.print(line)
-        } 
-    }
     
     static 
     func encode(_ name:String) -> Result<Void, Failure>
@@ -166,10 +127,13 @@ extension Test
                 .init(baseline.size),
                 .init(output.size)
             )
-            Swift.print()
-            Swift.print(name)
-            //Self.print(image: pixels, size: baseline.image.size)
-            Swift.print("baseline: \(String.init(filesize.baseline / 1024.0, places: 4)) KB, output: \(String.init(filesize.output / 1024.0, places: 4)) KB, ratio: \(String.init(filesize.output / filesize.baseline, places: 4))")
+            print()
+            print(name)
+            if !Global.options.contains(.compact) 
+            {
+                print(Self.terminal(image: pixels, size: baseline.image.size))
+            }
+            print("baseline: \(String.init(filesize.baseline / 1024.0, places: 4)) KB, output: \(String.init(filesize.output / 1024.0, places: 4)) KB, ratio: \(String.init(filesize.output / filesize.baseline, places: 4))")
 
             for (i, pair):(Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
                 zip(output.image.unpack(as: PNG.RGBA<UInt16>.self), pixels).enumerated()

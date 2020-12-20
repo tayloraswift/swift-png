@@ -20,46 +20,43 @@ extension PNG
     struct Metadata 
     {
         public 
-        var chromaticity:PNG.Chromaticity?,
-            gamma:PNG.Gamma?,
-            colorRendering:PNG.ColorRendering?,
+        var time:PNG.TimeModified?, 
+            chromaticity:PNG.Chromaticity?,
             colorProfile:PNG.ColorProfile?,
-            significantBits:PNG.SignificantBits?
-        public 
-        var histogram:PNG.Histogram?,
+            colorRendering:PNG.ColorRendering?,
+            gamma:PNG.Gamma?,
+            histogram:PNG.Histogram?,
             physicalDimensions:PNG.PhysicalDimensions?,
-            time:PNG.TimeModified?
+            significantBits:PNG.SignificantBits?
         
         public 
-        var suggestedPalettes:[PNG.SuggestedPalette]    = []
-        public 
-        var text:[PNG.Text]                             = []
-        public 
-        var application:[(PNG.Chunk, data:[UInt8])]     = []
+        var suggestedPalettes:[PNG.SuggestedPalette]        = [],
+            text:[PNG.Text]                                 = [],
+            application:[(type:PNG.Chunk, data:[UInt8])]    = []
         
         public 
-        init(chromaticity:PNG.Chromaticity?             = nil,
-            gamma:PNG.Gamma?                            = nil,
-            colorRendering:PNG.ColorRendering?          = nil,
+        init(time:PNG.TimeModified?                     = nil,
+            chromaticity:PNG.Chromaticity?              = nil,
             colorProfile:PNG.ColorProfile?              = nil,
-            significantBits:PNG.SignificantBits?        = nil, 
-            
+            colorRendering:PNG.ColorRendering?          = nil,
+            gamma:PNG.Gamma?                            = nil,
             histogram:PNG.Histogram?                    = nil,
             physicalDimensions:PNG.PhysicalDimensions?  = nil,
-            time:PNG.TimeModified?                      = nil, 
+            significantBits:PNG.SignificantBits?        = nil, 
             
-            suggestedPalettes:[PNG.SuggestedPalette]    = [], 
-            text:[PNG.Text]                             = [], 
-            application:[(PNG.Chunk, data:[UInt8])]     = [])
+            
+            suggestedPalettes:[PNG.SuggestedPalette]        = [], 
+            text:[PNG.Text]                                 = [], 
+            application:[(type:PNG.Chunk, data:[UInt8])]    = [])
         {
+            self.time               = time
             self.chromaticity       = chromaticity
-            self.gamma              = gamma
-            self.colorRendering     = colorRendering
             self.colorProfile       = colorProfile
-            self.significantBits    = significantBits
+            self.colorRendering     = colorRendering
+            self.gamma              = gamma
             self.histogram          = histogram
             self.physicalDimensions = physicalDimensions
-            self.time               = time
+            self.significantBits    = significantBits
             self.suggestedPalettes  = suggestedPalettes
             self.text               = text
             self.application        = application
