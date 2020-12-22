@@ -58,3 +58,7 @@ for file in examples/decode-basic/ada-lovelace-1840.png ; do
     convert -depth 8 -size $size  "graya:$file.va" "png:$file.va.png"
     convert -depth 8 -size $size    "gray:$file.v" "png:$file.v.png"
 done 
+
+# run `encode-basic` example
+check   "error: runtime error" \
+        .build/$build_configuration/encode-basic 

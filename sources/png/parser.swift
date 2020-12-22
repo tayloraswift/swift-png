@@ -248,7 +248,100 @@ extension PNG.Format
         }
     }
     
-    public static 
+    // enum case constructors can’t perform validation, so we need to check 
+    // the range of the sample values with this function. 
+    func validate() -> Self 
+    {
+        let max:(sample:UInt16, count:Int, index:Int)
+        max.sample  = .max >> (UInt16.bitWidth - self.pixel.depth)
+        max.count   = 1    <<                min(self.pixel.depth, 8)
+        // palette cannot contain more entries than bit depth allows 
+        switch self 
+        {
+        case    .bgr8    (palette: let palette, fill: _, key: _),
+                .bgra8   (palette: let palette, fill: _):
+            max.index = palette.count - 1
+        case 
+                .rgb8    (palette: let palette, fill: _, key: _),
+                .rgb16   (palette: let palette, fill: _, key: _),
+                .rgba8   (palette: let palette, fill: _),
+                .rgba16  (palette: let palette, fill: _):
+            max.index = palette.count - 1
+        case    .indexed1(palette: let palette, fill: _),
+                .indexed2(palette: let palette, fill: _),
+                .indexed4(palette: let palette, fill: _),
+                .indexed8(palette: let palette, fill: _):
+            guard !palette.isEmpty 
+            else 
+            {
+                let error:PNG.ParsingError = .invalidPaletteEntryCount(0, 
+                    expected: 1 ... max.count)
+                fatalError("\(error)")
+            }
+            max.index = palette.count - 1
+        default:
+            max.index =                -1
+        }
+        
+        guard max.index < max.count 
+        else 
+        {
+            let error:PNG.ParsingError = .invalidPaletteEntryCount(max.index + 1, 
+                expected: 0 ... max.count)
+            fatalError("\(error)")
+        }
+        
+        switch self 
+        {
+        case    .v1(fill: let fill?, key: _),
+                .v2(fill: let fill?, key: _),
+                .v4(fill: let fill?, key: _):
+            let fill:UInt16 = .init(fill)
+            guard fill <= max.sample 
+            else 
+            {
+                let error:PNG.ParsingError = .invalidBackgroundSample(fill, 
+                    expected: 0 ... max.sample)
+                fatalError("\(error)")
+            }
+        case    .indexed1(palette: _, fill: let i?),
+                .indexed2(palette: _, fill: let i?),
+                .indexed4(palette: _, fill: let i?),
+                .indexed8(palette: _, fill: let i?):
+            guard i <= max.index 
+            else 
+            {
+                let error:PNG.ParsingError = .invalidBackgroundPaletteEntryIndex(i, 
+                    expected: 0 ... max.index)
+                fatalError("\(error)")
+            }
+        default:
+            break 
+        }
+        
+        switch self 
+        {
+        case    .v1(fill: _?, key: let key?),
+                .v2(fill: _?, key: let key?),
+                .v4(fill: _?, key: let key?):
+            let key:UInt16 = .init(key)
+            guard key <= max.sample 
+            else 
+            {
+                let error:PNG.ParsingError = .invalidChromaKeySample(key, 
+                    expected: 0 ... max.sample)
+                fatalError("\(error)")
+            }
+        default:
+            break
+        }
+        
+        return self
+    }
+    
+    // this function assumes all inputs have been validated for consistency, 
+    // except for the presence of the palette argument itself.
+    static 
     func recognize(standard:PNG.Standard, pixel:PNG.Format.Pixel, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?) 
         -> Self?
@@ -260,40 +353,23 @@ extension PNG.Format
             guard palette == nil 
             else 
             {
-                // palette not allowed for grayscale format
-                return nil 
+                fatalError("palette not allowed for pixel type `\(pixel)`")
             }
             let f:UInt16?, 
                 k:UInt16?
             switch background 
             {
-            case .v(let v)?: 
-                guard Int.init(v) < 1 << pixel.depth
-                else 
-                {
-                    return nil 
-                }
-                f = v
-            case nil: 
-                f = nil 
+            case .v(let v)?:    f = v
+            case nil:           f = nil 
             default: 
-                return nil 
+                fatalError("expected background of case `v` for pixel type `\(pixel)`")
             }
             switch transparency 
             {
-            
-            case .v(let v)?: 
-                guard Int.init(v) < 1 << pixel.depth
-                else 
-                {
-                    return nil 
-                }
-                k = v
-                
-            case nil:
-                k = nil 
-            default: 
-                return nil 
+            case .v(let v)?:    k = v
+            case nil:           k = nil 
+            default:
+                fatalError("expected transparency of case `v` for pixel type `\(pixel)`")
             }
             
             switch pixel 
@@ -318,15 +394,17 @@ extension PNG.Format
                 k:RGB<UInt16>?
             switch background 
             {
-            case .rgb(let c)?:      f = c
-            case nil:               f =    nil 
-            default:                return nil 
+            case .rgb(let c)?:  f = c
+            case nil:           f = nil 
+            default: 
+                fatalError("expected background of case `rgb` for pixel type `\(pixel)`")
             }
             switch transparency 
             {
-            case .rgb(key: let c)?: k = c
-            case nil:               k =    nil 
-            default:                return nil 
+            case .rgb(let c)?:  k = c
+            case nil:           k = nil 
+            default: 
+                fatalError("expected transparency of case `rgb` for pixel type `\(pixel)`")
             }
             
             switch (standard, pixel) 
@@ -346,8 +424,7 @@ extension PNG.Format
             }
         
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let solid:PNG.Palette = palette, 
-                solid.count <= 1 << pixel.depth 
+            guard let solid:PNG.Palette = palette
             else 
             {
                 return nil 
@@ -355,29 +432,28 @@ extension PNG.Format
             let f:Int? 
             switch background 
             {
-            case .palette(index: let i):
-                guard i < solid.count 
-                else 
-                {
-                    return nil 
-                }
-                f = i
-            case nil:
-                f = nil 
+            case .palette(let i):   f = i
+            case nil:               f = nil 
             default: 
-                return nil 
+                fatalError("expected background of case `palette` for pixel type `\(pixel)`")
             }
+            
             let palette:[RGBA<UInt8>]
             switch transparency 
             {
             case nil:
                 palette =          solid.map        { (  $0.r,   $0.g,   $0.b, .max) }
-            case .palette(alpha: let alpha):
-                precondition(alpha.count <= solid.count)
+            case .palette(let alpha):
+                guard alpha.count <= solid.count 
+                else 
+                {
+                    fatalError("transparency for pixel type `\(pixel)` cannot have more alpha samples (\(alpha.count)) than palette entries (\(solid.count))")
+                }
+                
                 palette =      zip(solid, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } + 
                     solid.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
             default: 
-                return nil 
+                fatalError("expected transparency of case `palette` for pixel type `\(pixel)`")
             }
             
             switch pixel  
@@ -395,18 +471,24 @@ extension PNG.Format
             }
         
         case .va8, .va16:
-            guard palette == nil, transparency == nil 
+            guard palette == nil
+            else
+            {
+                fatalError("palette not allowed for pixel type `\(pixel)`")
+            }
+            guard transparency == nil 
             else 
             {
-                // palette/chroma-key not allowed for grayscale-alpha format
-                return nil 
+                fatalError("transparency not allowed for pixel type `\(pixel)`")
             }
+            
             let f:UInt16?
             switch background 
             {
-            case .v(let v)?:    f =    v
-            case nil:           f =    nil 
-            default:            return nil 
+            case .v(let v)?:    f = v
+            case nil:           f = nil 
+            default:
+                fatalError("expected background of case `v` for pixel type `\(pixel)`")
             }
             
             switch pixel 
@@ -423,16 +505,17 @@ extension PNG.Format
             guard transparency == nil 
             else 
             {
-                // chroma key not allowed for rgba format
-                return nil 
+                fatalError("transparency not allowed for pixel type `\(pixel)`")
             }
+            
             let palette:[RGB<UInt8>] = palette?.entries ?? []
             let f:RGB<UInt16>?
             switch background 
             {
             case .rgb(let c)?:  f = c
-            case nil:           f =    nil 
-            default:            return nil 
+            case nil:           f = nil 
+            default: 
+                fatalError("expected background of case `rgb` for pixel type `\(pixel)`")
             }
             
             switch (standard, pixel) 
@@ -449,8 +532,9 @@ extension PNG.Format
                 fatalError("unreachable")
             }
         }
-        
-        return format 
+        // do not call `.validate()` on `format` because this will be done when 
+        // the `PNG.Layout` struct is initialized
+        return format
     }
 }
 
@@ -681,7 +765,7 @@ extension PNG.Palette
         }
 
         // check number of palette entries
-        let maximum:Int = Swift.min(256, 1 << pixel.depth)
+        let maximum:Int = 1 << Swift.min(pixel.depth, 8)
         guard 1 ... maximum ~= count 
         else
         {
