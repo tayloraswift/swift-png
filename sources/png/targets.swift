@@ -3,6 +3,12 @@ protocol _PNGColor
 {
     static 
     func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    
+    static 
+    func pack<A>(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        -> [UInt8] 
+        where A:FixedWidthInteger & UnsignedInteger
 }
 extension PNG 
 {
@@ -828,31 +834,6 @@ extension PNG.RGBA:PNG.Color
         }
     }
     
-    @_specialize(where T == UInt8)
-    @_specialize(where T == UInt16)
-    @_specialize(where T == UInt32)
-    @_specialize(where T == UInt64)
-    @_specialize(where T == UInt)
-    public static 
-    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
-    {
-        // default: create hash table for palette lookup. if a color is not in 
-        // the palette, return entry 0
-        Self.pack(pixels, as: format) 
-        {
-            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((UInt8, UInt8, UInt8, UInt8)) -> Int in 
-            // currently blocked by the issue discussed at 
-            // https://github.com/apple/swift/pull/28833
-            // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
-            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
-                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
-            return 
-                { 
-                    (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) -> Int in 
-                    lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
-                }
-        }
-    }
     @_specialize(where A == UInt8, T == UInt8)
     @_specialize(where A == UInt8, T == UInt16)
     @_specialize(where A == UInt8, T == UInt32)
@@ -1055,6 +1036,20 @@ extension PNG.VA:PNG.Color
             }
         }
     }
+    
+    @_specialize(where A == UInt8, T == UInt8)
+    @_specialize(where A == UInt8, T == UInt16)
+    @_specialize(where A == UInt8, T == UInt32)
+    @_specialize(where A == UInt8, T == UInt64)
+    @_specialize(where A == UInt8, T == UInt)
+    public static 
+    func pack<A>(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        -> [UInt8] 
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        fatalError("unimplemented")
+    }
 }
 
 extension PNG.Data.Rectangular 
@@ -1064,6 +1059,43 @@ extension PNG.Data.Rectangular
     func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
     {
         Color.unpack(self.storage, of: self.layout.format)
+    }
+    
+    @inlinable @inline(never)
+    public 
+    init<Color, A>(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
+        packing pixels:[Color], 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        where Color:PNG.Color, A:FixedWidthInteger & UnsignedInteger
+    {
+        self.init(size: size, layout: layout, metadata: metadata, 
+            storage: Color.pack(pixels, as: layout.format, indexer: indexer))
+    }
+    @inlinable @inline(never)
+    public 
+    init<Color>(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
+        packing pixels:[Color]) 
+        where Color:PNG.Color
+    {
+        precondition(pixels.count == size.x * size.y, 
+            "pixel array `count` must be equal to `size.x * size.y`")
+        self.init(size: size, layout: layout, metadata: metadata, 
+            storage: Color.pack(pixels, as: layout.format)
+            {
+                // default: create hash table for palette lookup. if a color is not in 
+                // the palette, return entry 0
+                (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((UInt8, UInt8, UInt8, UInt8)) -> Int in 
+                // currently blocked by the issue discussed at 
+                // https://github.com/apple/swift/pull/28833
+                // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
+                let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
+                    zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
+                return 
+                    { 
+                        (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) in 
+                        lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
+                    }
+            })
     }
     
     @_specialize(where T == UInt8)

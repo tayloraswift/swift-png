@@ -13,6 +13,7 @@ let package = Package(
         .executable(name: "decompression-benchmark",    targets: ["PNGDecompressionBenchmarks"]), 
         
         .executable(name: "decode-basic",               targets: ["PNGDecodeBasic"]),
+        .executable(name: "encode-basic",               targets: ["PNGEncodeBasic"]),
     ],
     targets: 
     [
@@ -25,6 +26,7 @@ let package = Package(
         .target(name: "PNGDecompressionBenchmarks", dependencies: ["PNG"],  path: "benchmarks/decompression/swift"), 
         
         .target(name: "PNGDecodeBasic",             dependencies: ["PNG"],  path: "examples/decode-basic"),
+        .target(name: "PNGEncodeBasic",             dependencies: ["PNG"],  path: "examples/encode-basic"),
     ],
     swiftLanguageVersions: [.v5]
 )

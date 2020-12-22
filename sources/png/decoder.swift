@@ -77,13 +77,22 @@ extension PNG
         let format:PNG.Format 
         public 
         let interlaced:Bool
+        
+        public 
+        init(format:PNG.Format, interlaced:Bool = false) 
+        {
+            self.format     = format.validate()
+            self.interlaced = interlaced
+        }
     }
 }
 extension PNG.Layout 
 {
-    public 
-    init?(standard:PNG.Standard, interlaced:Bool, pixel:PNG.Format.Pixel, 
-        palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?) 
+    init?(standard:PNG.Standard, pixel:PNG.Format.Pixel, 
+        palette:PNG.Palette?, 
+        background:PNG.Background?, 
+        transparency:PNG.Transparency?, 
+        interlaced:Bool) 
     {
         guard let format:PNG.Format = .recognize(standard: standard, pixel: pixel, 
             palette: palette, background: background, transparency: transparency) 
@@ -271,25 +280,36 @@ extension PNG.Data
     struct Rectangular 
     {
         public 
-        let layout:PNG.Layout 
-        public 
         let size:(x:Int, y:Int)
+        public 
+        let layout:PNG.Layout 
         public 
         var metadata:PNG.Metadata
         
         @usableFromInline
         private(set)
         var storage:[UInt8]
+        
+        // make the trivial init usable from inline 
+        @usableFromInline 
+        init(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata, storage:[UInt8])
+        {
+            self.size       = size 
+            self.layout     = layout 
+            self.metadata   = metadata 
+            self.storage    = storage
+        }
     }
 }
 extension PNG.Data.Rectangular 
 {
-    internal // uninitialized buffer 
+    // these methods allocate but do not initialize `self.storage`
+    internal 
     init(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata)  
     {
         // precondition(size.x > 0 && size.y > 0, "image dimensions must be positive")
-        self.layout     = layout
         self.size       = size
+        self.layout     = layout
         self.metadata   = metadata
         
         let bytes:Int   = size.x * size.y * (layout.format.pixel.volume + 7) >> 3
@@ -298,24 +318,23 @@ extension PNG.Data.Rectangular
             $1 = bytes
         }
     }
-    
-    public 
+    internal 
     init?(standard:PNG.Standard, header:PNG.Header, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
         metadata:PNG.Metadata) 
     {
         guard let layout:PNG.Layout = PNG.Layout.init(standard: standard, 
-            interlaced:     header.interlaced, 
             pixel:          header.pixel, 
             palette:        palette, 
             background:     background, 
-            transparency:   transparency)
+            transparency:   transparency,
+            interlaced:     header.interlaced)
         else 
         {
             return nil 
         }
         self.init(size: header.size, layout: layout, metadata: metadata)
-    }
+    } 
     
     public 
     func encode() -> 
