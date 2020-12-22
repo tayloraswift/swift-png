@@ -8,18 +8,15 @@ extension PNG
 {
     public 
     typealias Color = _PNGColor
-    
-    enum Functional 
-    {
-    }
 }
 
 extension PNG
 {
     private static 
-    func convolve<C, A, T, R>(_ samples:C, _ kernel:(T, A) -> R, _ transform:(A) -> T)
-        -> [R]
-        where C:RandomAccessCollection, C.Element == A, A:FixedWidthInteger
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
+        _ kernel:(T, A) -> C, _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
     {
         samples.map
         {
@@ -28,9 +25,10 @@ extension PNG
         }
     }
     private static 
-    func convolve<C, A, T, R>(_ samples:C, _ kernel:((T, T)) -> R, _ transform:(A) -> T)
-        -> [R]
-        where C:RandomAccessCollection, C.Index == Int, C.Element == A, A:FixedWidthInteger
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
+        _ kernel:((T, T)) -> C, _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
     {
         stride(from: samples.startIndex, to: samples.endIndex, by: 2).map
         {
@@ -40,9 +38,10 @@ extension PNG
         }
     }
     private static 
-    func convolve<C, A, T, R>(_ samples:C, _ kernel:((T, T, T), (A, A, A)) -> R, _ transform:(A) -> T)
-        -> [R]
-        where C:RandomAccessCollection, C.Index == Int, C.Element == A, A:FixedWidthInteger
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
+        _ kernel:((T, T, T), (A, A, A)) -> C, _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
     {
         stride(from: samples.startIndex, to: samples.endIndex, by: 3).map
         {
@@ -53,9 +52,10 @@ extension PNG
         }
     }
     private static 
-    func convolve<C, A, T, R>(_ samples:C, _ kernel:((T, T, T, T)) -> R, _ transform:(A) -> T)
-        -> [R]
-        where C:RandomAccessCollection, C.Index == Int, C.Element == A, A:FixedWidthInteger
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
+        _ kernel:((T, T, T, T)) -> C, _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
     {
         stride(from: samples.startIndex, to: samples.endIndex, by: 4).map
         {
@@ -67,10 +67,10 @@ extension PNG
         }
     }
     private static 
-    func convolve<C, A, T, R>(_ samples:C, _ kernel:((T, T, T, T)) -> R, 
-        _ dereference:(Int) -> (A, A, A, A), _ transform:(A) -> T)
-        -> [R]
-        where C:RandomAccessCollection, C.Element == UInt8, A:FixedWidthInteger
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
+        _ kernel:((T, T, T, T)) -> C, _ dereference:(Int) -> (A, A, A, A), _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
     {
         samples.map
         {
@@ -80,17 +80,18 @@ extension PNG
     }
     
     private static 
-    func quantum<T>(source:Int, destination _:T.Type) -> T 
+    func quantum<T>(source:Int, destination:Int) -> T 
         where T:FixedWidthInteger & UnsignedInteger 
     {
-        T.max / T.max >> (T.bitWidth - source)
+        // needless to say, `destination` can be no greater than `T.bitWidth`
+        T.max >> (T.bitWidth - destination) / T.max >> (T.bitWidth - source)
     }
     
     static 
-    func convolve<A, T, R>(_ buffer:[UInt8], kernel:((T, T, T, T)) -> R, 
-        dereference:(Int) -> (A, A, A, A))
-        -> [R]
-        where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
+    func convolve<A, T, C>(_ buffer:[UInt8], 
+        kernel:((T, T, T, T)) -> C, dereference:(Int) -> (A, A, A, A))
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
     {
         buffer.withUnsafeBufferPointer
         {
@@ -100,7 +101,7 @@ extension PNG
             }
             else if T.bitWidth >  A.bitWidth 
             {
-                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.self)
+                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
                 return Self.convolve($0, kernel, dereference)
                 {
                     quantum &* .init($0)
@@ -119,9 +120,10 @@ extension PNG
     // cannot genericize the kernel parameters, since it produces an unacceptable slowdown
     // so we have to manually specialize for all four cases (using the exact same function body)
     static 
-    func convolve<A, T, R>(_ buffer:[UInt8], of _:A.Type, depth:Int, kernel:(T, A) -> R)
-        -> [R]
-        where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:(T, A) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
     {
         buffer.withUnsafeBytes
         {
@@ -132,7 +134,7 @@ extension PNG
             }
             else if T.bitWidth >  depth
             {
-                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
                 return Self.convolve(samples, kernel)
                 {
                     quantum &* .init($0)
@@ -149,9 +151,10 @@ extension PNG
         }
     }
     static 
-    func convolve<A, T, R>(_ buffer:[UInt8], of _:A.Type, depth:Int, kernel:((T, T)) -> R)
-        -> [R]
-        where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:((T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
     {
         buffer.withUnsafeBytes
         {
@@ -162,7 +165,7 @@ extension PNG
             }
             else if T.bitWidth >  depth
             {
-                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
                 return Self.convolve(samples, kernel)
                 {
                     quantum &* .init($0)
@@ -179,9 +182,10 @@ extension PNG
         }
     }
     static 
-    func convolve<A, T, R>(_ buffer:[UInt8], of _:A.Type, depth:Int, kernel:((T, T, T), (A, A, A)) -> R)
-        -> [R]
-        where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:((T, T, T), (A, A, A)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
     {
         buffer.withUnsafeBytes
         {
@@ -192,7 +196,7 @@ extension PNG
             }
             else if T.bitWidth >  depth
             {
-                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
                 return Self.convolve(samples, kernel)
                 {
                     quantum &* .init($0)
@@ -209,9 +213,10 @@ extension PNG
         }
     }
     static 
-    func convolve<A, T, R>(_ buffer:[UInt8], of _:A.Type, depth:Int, kernel:((T, T, T, T)) -> R)
-        -> [R]
-        where A:FixedWidthInteger, T:FixedWidthInteger & UnsignedInteger
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:((T, T, T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
     {
         buffer.withUnsafeBytes
         {
@@ -222,7 +227,7 @@ extension PNG
             }
             else if T.bitWidth >  depth
             {
-                let quantum:T = Self.quantum(source: depth, destination: T.self)
+                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
                 return Self.convolve(samples, kernel)
                 {
                     quantum &* .init($0)
@@ -238,6 +243,253 @@ extension PNG
             }
         }
     }
+}
+// deconvolution methods 
+extension PNG
+{
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
+        _ kernel:(C) -> T, _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(samples.indices, pixels)
+        {
+            samples[i]                      = transform(kernel(pixel)).bigEndian 
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
+        _ kernel:(C) -> (T, T), _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 2), pixels)
+        {
+            let (v, a):(T, T)               = kernel(pixel)
+            samples[i     ]                 = transform(v).bigEndian
+            samples[i &+ 1]                 = transform(a).bigEndian
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
+        _ kernel:(C) -> (T, T, T), _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 3), pixels)
+        {
+            let (r, g, b):(T, T, T)         = kernel(pixel)
+            samples[i     ]                 = transform(r).bigEndian
+            samples[i &+ 1]                 = transform(g).bigEndian
+            samples[i &+ 2]                 = transform(b).bigEndian
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
+        _ kernel:(C) -> (T, T, T, T), _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 3), pixels)
+        {
+            let (r, g, b, a):(T, T, T, T)   = kernel(pixel)
+            samples[i     ]                 = transform(r).bigEndian
+            samples[i &+ 1]                 = transform(g).bigEndian
+            samples[i &+ 2]                 = transform(b).bigEndian
+            samples[i &+ 3]                 = transform(a).bigEndian
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
+        _ reference:((A, A, A, A)) -> Int, _ kernel:(C) -> (T, T, T, T), _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(samples.indices, pixels) 
+        {
+            let (r, g, b, a):(T, T, T, T)   = kernel(pixel) 
+            samples[i]                      = .init(reference((
+                transform(r), transform(g), transform(b), transform(a))))
+        }
+    }
+    
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A, A)) -> Int,
+        kernel:(C) -> (T, T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        .init(unsafeUninitializedCapacity: pixels.count)
+        {
+            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = pixels.count 
+            if      T.bitWidth == A.bitWidth 
+            {
+                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  A.bitWidth 
+            {
+                // there are essentially no situations where this path will actually get 
+                // executed since  palette entries are always 8-bits deep. however, 
+                // the implementation is here in case someone wants to use a 
+                // customized kernel that takes a wider integer type for some reason
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = T.bitWidth - A.bitWidth 
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> T)
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        let bytes:Int = pixels.count * MemoryLayout<A>.stride 
+        return .init(unsafeUninitializedCapacity: bytes)
+        {
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = bytes
+            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
+            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  depth
+            {
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = T.bitWidth - depth
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> (T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        let bytes:Int = pixels.count * MemoryLayout<A>.stride * 2
+        return .init(unsafeUninitializedCapacity: bytes)
+        {
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = bytes
+            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
+            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  depth
+            {
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = T.bitWidth - depth
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> (T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        let bytes:Int = pixels.count * MemoryLayout<A>.stride * 3
+        return .init(unsafeUninitializedCapacity: bytes)
+        {
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = bytes
+            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
+            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  depth
+            {
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = T.bitWidth - depth
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> (T, T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        let bytes:Int = pixels.count * MemoryLayout<A>.stride * 4
+        return .init(unsafeUninitializedCapacity: bytes)
+        {
+            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = bytes
+            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
+            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
+            if      T.bitWidth == depth
+            {
+                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  depth
+            {
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else
+            {
+                let shift:Int = T.bitWidth - depth
+                Self.deconvolve(pixels: pixels, samples, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    } 
 }
 
 extension PNG 
@@ -466,8 +718,7 @@ extension PNG.RGBA:PNG.Color
     @_specialize(where T == UInt64)
     @_specialize(where T == UInt)
     public static 
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format) 
-        -> [Self] 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self] 
     {
         let depth:Int = format.pixel.depth 
         switch format 
@@ -573,6 +824,115 @@ extension PNG.RGBA:PNG.Color
             return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T, T, T)) in .init(c.0, c.1, c.2, c.3)
+            }
+        }
+    }
+    
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
+    public static 
+    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
+    {
+        // default: create hash table for palette lookup. if a color is not in 
+        // the palette, return entry 0
+        Self.pack(pixels, as: format) 
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((UInt8, UInt8, UInt8, UInt8)) -> Int in 
+            // currently blocked by the issue discussed at 
+            // https://github.com/apple/swift/pull/28833
+            // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
+            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
+                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
+            return 
+                { 
+                    (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) -> Int in 
+                    lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
+                }
+        }
+    }
+    @_specialize(where A == UInt8, T == UInt8)
+    @_specialize(where A == UInt8, T == UInt16)
+    @_specialize(where A == UInt8, T == UInt32)
+    @_specialize(where A == UInt8, T == UInt64)
+    @_specialize(where A == UInt8, T == UInt)
+    public static 
+    func pack<A>(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        -> [UInt8] 
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        let depth:Int = format.pixel.depth 
+        switch format 
+        {
+        case    .indexed1(palette: let palette, fill: _), 
+                .indexed2(palette: let palette, fill: _), 
+                .indexed4(palette: let palette, fill: _), 
+                .indexed8(palette: let palette, fill: _):
+            return PNG.deconvolve(pixels, reference: indexer(palette)) 
+            {
+                (c) in (c.r, c.g, c.b, c.a)
+            }
+                
+        case    .v1(fill: _, key: _),
+                .v2(fill: _, key: _),
+                .v4(fill: _, key: _),
+                .v8(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) 
+            {
+                (c) in c.r
+            }
+        case    .v16(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) 
+            {
+                (c) in c.r
+            }
+
+        case    .va8(fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.r, c.a)
+            }
+        case    .va16(fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c) in (c.r, c.a)
+            }
+        
+        case    .bgr8(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.b, c.g, c.r)
+            }
+    
+        case    .rgb8(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.r, c.g, c.b)
+            }
+        case    .rgb16(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c) in (c.r, c.g, c.b)
+            }
+        
+        case    .bgra8(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.b, c.g, c.r, c.a)
+            }
+        
+        case    .rgba8(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.r, c.g, c.b, c.a)
+            }
+        case    .rgba16(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c) in (c.r, c.g, c.b, c.a)
             }
         }
     }
