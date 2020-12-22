@@ -1048,72 +1048,92 @@ extension PNG.VA:PNG.Color
         -> [UInt8] 
         where A:FixedWidthInteger & UnsignedInteger
     {
-        fatalError("unimplemented")
-    }
-}
-
-extension PNG.Data.Rectangular 
-{
-    @inlinable @inline(never)
-    public 
-    func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
-    {
-        Color.unpack(self.storage, of: self.layout.format)
-    }
-    
-    @inlinable @inline(never)
-    public 
-    init<Color, A>(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
-        packing pixels:[Color], 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
-        where Color:PNG.Color, A:FixedWidthInteger & UnsignedInteger
-    {
-        self.init(size: size, layout: layout, metadata: metadata, 
-            storage: Color.pack(pixels, as: layout.format, indexer: indexer))
-    }
-    @inlinable @inline(never)
-    public 
-    init<Color>(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
-        packing pixels:[Color]) 
-        where Color:PNG.Color
-    {
-        precondition(pixels.count == size.x * size.y, 
-            "pixel array `count` must be equal to `size.x * size.y`")
-        self.init(size: size, layout: layout, metadata: metadata, 
-            storage: Color.pack(pixels, as: layout.format)
-            {
-                // default: create hash table for palette lookup. if a color is not in 
-                // the palette, return entry 0
-                (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((UInt8, UInt8, UInt8, UInt8)) -> Int in 
-                // currently blocked by the issue discussed at 
-                // https://github.com/apple/swift/pull/28833
-                // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
-                let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
-                    zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
-                return 
-                    { 
-                        (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) in 
-                        lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
-                    }
-            })
-    }
-    
-    @_specialize(where T == UInt8)
-    @_specialize(where T == UInt16)
-    @_specialize(where T == UInt32)
-    @_specialize(where T == UInt64)
-    @_specialize(where T == UInt)
-    public  
-    func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
-    {
-        let depth:Int = self.layout.format.pixel.depth 
-        switch self.layout.format 
+        let depth:Int = format.pixel.depth 
+        switch format 
         {
         case    .indexed1(palette: let palette, fill: _), 
                 .indexed2(palette: let palette, fill: _), 
                 .indexed4(palette: let palette, fill: _), 
                 .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(self.storage) 
+            return PNG.deconvolve(pixels, reference: indexer(palette)) 
+            {
+                (c) in (c.v, c.v, c.v, c.a)
+            }
+                
+        case    .v1(fill: _, key: _),
+                .v2(fill: _, key: _),
+                .v4(fill: _, key: _),
+                .v8(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) 
+            {
+                (c) in c.v
+            }
+        case    .v16(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) 
+            {
+                (c) in c.v
+            }
+
+        case    .va8(fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.v, c.a)
+            }
+        case    .va16(fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c) in (c.v, c.a)
+            }
+        
+        case    .bgr8(palette: _, fill: _, key: _), 
+                .rgb8(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.v, c.v, c.v)
+            }
+        case    .rgb16(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c) in (c.v, c.v, c.v)
+            }
+        
+        case    .bgra8(palette: _, fill: _), 
+                .rgba8(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c) in (c.v, c.v, c.v, c.a)
+            }
+        case    .rgba16(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c) in (c.v, c.v, c.v, c.a)
+            }
+        }
+    }
+}
+extension PNG.Data.Rectangular  
+{
+    // factoring out the specialized entry point reduces module overhead, because 
+    // the emitted entry point can make use of the specialized function bodies
+    @usableFromInline
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
+    static 
+    func unpack<T>(_ interleaved:[UInt8], of format:PNG.Format, as _:T.Type) 
+        -> [T] 
+        where T:FixedWidthInteger & UnsignedInteger
+    {
+        let depth:Int = format.pixel.depth 
+        switch format 
+        {
+        case    .indexed1(palette: let palette, fill: _), 
+                .indexed2(palette: let palette, fill: _), 
+                .indexed4(palette: let palette, fill: _), 
+                .indexed8(palette: let palette, fill: _):
+            return PNG.convolve(interleaved) 
             {
                 (c) in c.0
             }
@@ -1126,60 +1146,215 @@ extension PNG.Data.Rectangular
                 .v2(fill: _, key: _),
                 .v4(fill: _, key: _),
                 .v8(fill: _, key: _):
-            return PNG.convolve(self.storage, of: UInt8.self, depth: depth) 
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) 
             {
                 (c:T, _) in c
             }
         case    .v16(fill: _, key: _):
-            return PNG.convolve(self.storage, of: UInt16.self, depth: depth) 
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) 
             {
                 (c:T, _) in c
             }
 
         case    .va8(fill: _):
-            return PNG.convolve(self.storage, of: UInt8.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T))       in c.0
             }
         case    .va16(fill: _):
-            return PNG.convolve(self.storage, of: UInt16.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T))       in c.0
             }
         
         case    .bgr8(palette: _, fill: _, key: _):
-            return PNG.convolve(self.storage, of: UInt8.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T), _) in c.2
             }
     
         case    .rgb8(palette: _, fill: _, key: _):
-            return PNG.convolve(self.storage, of: UInt8.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T), _) in c.0
             }
         case    .rgb16(palette: _, fill: _, key: _):
-            return PNG.convolve(self.storage, of: UInt16.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T, T), _) in c.0
             }
         
         case    .bgra8(palette: _, fill: _):
-            return PNG.convolve(self.storage, of: UInt8.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T, T)) in c.2
             }
         
         case    .rgba8(palette: _, fill: _):
-            return PNG.convolve(self.storage, of: UInt8.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
             {
                 (c:(T, T, T, T)) in c.0
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.convolve(self.storage, of: UInt16.self, depth: depth)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
             {
                 (c:(T, T, T, T)) in c.0
             }
         }
+    }
+    
+    @usableFromInline
+    @_specialize(where T == UInt8,  A == UInt8)
+    @_specialize(where T == UInt16, A == UInt8)
+    @_specialize(where T == UInt32, A == UInt8)
+    @_specialize(where T == UInt64, A == UInt8)
+    @_specialize(where T == UInt,   A == UInt8)
+    static 
+    func pack<T, A>(_ pixels:[T], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        -> [UInt8] 
+        where T:FixedWidthInteger & UnsignedInteger, A:FixedWidthInteger & UnsignedInteger
+    {
+        let depth:Int = format.pixel.depth 
+        switch format 
+        {
+        case    .indexed1(palette: let palette, fill: _), 
+                .indexed2(palette: let palette, fill: _), 
+                .indexed4(palette: let palette, fill: _), 
+                .indexed8(palette: let palette, fill: _):
+            return PNG.deconvolve(pixels, reference: indexer(palette)) 
+            {
+                (v) in (v, v, v, .max)
+            }
+                
+        case    .v1(fill: _, key: _),
+                .v2(fill: _, key: _),
+                .v4(fill: _, key: _),
+                .v8(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) 
+            {
+                (v) in v
+            }
+        case    .v16(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) 
+            {
+                (v) in v
+            }
+
+        case    .va8(fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (v) in (v, .max)
+            }
+        case    .va16(fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (v) in (v, .max)
+            }
+        
+        case    .bgr8(palette: _, fill: _, key: _), 
+                .rgb8(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (v) in (v, v, v)
+            }
+        case    .rgb16(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (v) in (v, v, v)
+            }
+        
+        case    .bgra8(palette: _, fill: _), 
+                .rgba8(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (v) in (v, v, v, .max)
+            }
+        case    .rgba16(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (v) in (v, v, v, .max)
+            }
+        }
+    }
+}
+
+extension PNG.Data.Rectangular 
+{
+    // behavior: create hash table for palette lookup. if a color is not in 
+    // the palette, return entry 0
+    @inlinable
+    public static 
+    func match(exactly palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)])
+        -> ((UInt8, UInt8, UInt8, UInt8)) -> Int
+    {
+        // currently blocked by the issue discussed at 
+        // https://github.com/apple/swift/pull/28833
+        // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
+        let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
+            zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
+        return 
+            { 
+                (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) in 
+                lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
+            }
+    }
+    
+    @inlinable @inline(never)
+    public 
+    func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
+    {
+        Color.unpack(self.storage, of: self.layout.format)
+    }
+    @inlinable @inline(never)
+    public 
+    func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
+    {
+        Self.unpack(self.storage, of: self.layout.format, as: T.self)
+    }
+    
+    @inlinable @inline(never)
+    public 
+    init<Color, A>(packing pixels:[Color], 
+        size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        where Color:PNG.Color, A:FixedWidthInteger & UnsignedInteger
+    {
+        precondition(pixels.count == size.x * size.y, 
+            "pixel array `count` must be equal to `size.x * size.y`")
+        self.init(size: size, layout: layout, metadata: metadata, 
+            storage: Color.pack(pixels, as: layout.format, indexer: indexer))
+    }
+    
+    @inlinable @inline(never)
+    public 
+    init<T, A>(packing pixels:[T], 
+        size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+        where T:FixedWidthInteger & UnsignedInteger, A:FixedWidthInteger & UnsignedInteger
+    {
+        precondition(pixels.count == size.x * size.y, 
+            "pixel array `count` must be equal to `size.x * size.y`")
+        self.init(size: size, layout: layout, metadata: metadata, 
+            storage: Self.pack(pixels, as: layout.format, indexer: indexer))
+    }
+    
+    @inlinable 
+    public 
+    init<Color>(packing pixels:[Color], 
+        size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init()) 
+        where Color:PNG.Color
+    {
+        self.init(packing: pixels, size: size, layout: layout, metadata: metadata, 
+            indexer: Self.match(exactly:))
+    }
+    @inlinable 
+    public 
+    init<T>(packing pixels:[T], 
+        size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init()) 
+        where T:FixedWidthInteger & UnsignedInteger
+    {
+        self.init(packing: pixels, size: size, layout: layout, metadata: metadata, 
+            indexer: Self.match(exactly:))
     }
 }
