@@ -353,7 +353,7 @@ func gradient<T>(_ x:T) -> (r:UInt8, g:UInt8, b:UInt8, a:UInt8)
 }
 ```
 
-Of course, we can’t encode a gradient function directly in a PNG file, since PNG viewers can’t execute Swift code. So we have to tabularize it into a 256-element array. 
+Of course, we can’t encode a gradient function directly in a PNG file, since PNG viewers can’t execute Swift code. So we have to tabularize it as a 256-element array. 
 
 ```swift 
 let gradient:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)] = 
@@ -651,7 +651,7 @@ try visualization.compress(path: "examples/indexing/gradient-visualization.png")
 
 > visualization of the generated gradient.
 
-We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The `init(packing:size:layout:metadata)` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, `init(packing:size:layout:metadata:indexer)`, and pass it a custom **indexing function**.
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The `init(packing:size:layout:metadata:)` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, `init(packing:size:layout:metadata:indexer:)`, and pass it a custom **indexing function**.
 
 ```swift 
 let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size, 
@@ -660,4 +660,80 @@ let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size,
 {
     _ in Int.init(_:)
 }
+```
+
+The best way to understand the indexing function is to compare it with the behavior of the `init(packing:size:layout:metadata)` initializer. Calling that initializer is equivalent to calling `init(packing:size:layout:metadata:indexer:)` with the following indexing function.
+
+```swift 
+{
+    (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (UInt8) -> Int in 
+    
+    let lookup:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8): Int] = 
+        .init(uniqueKeysWithValues: zip(palette, palette.indices))
+    return { (v:UInt8) -> Int in lookup[(v, v, v, .max), default: 0] }
+}
+```
+
+> **note:** at the time of writing, the above code does not compile due to a [current bug](https://github.com/apple/swift/pull/28833) in the compiler.
+
+Its type is `([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (UInt8) -> Int`. This construct can be a little confusing, especially if you aren’t familiar with functional programming, so let’s walk through it.
+
+The *outer function* is a [pure function](https://en.wikipedia.org/wiki/Pure_function) that takes a palette argument of type `[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]`. This palette comes from the `palette` field of the image’s color format, if the format is one of the indexed color formats. (If the image layout has a non-indexed color format, the indexing function never gets invoked in the first place.) 
+
+The default implementation of the outer function then constructs a dictionary mapping the palette entries to their array indices, using [`init(uniqueKeysWithValues:)`](https://developer.apple.com/documentation/swift/dictionary/3127165-init). 
+
+The return value of the outer function is an *inner function* of type `(UInt8) -> Int`. As its signature suggests, the inner function takes an argument of type [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and returns an [`Int`](https://developer.apple.com/documentation/swift/int) index. The [`UInt8`](https://developer.apple.com/documentation/swift/uint8) is a grayscale sample from the given pixel array. The inner function is not generic. If you pass a `[UInt16]` array to the packing initializer, the 16-bit grayscale samples will get rescaled to the range of a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) before getting passed to the inner function.
+
+Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to perform index manipulation without re-indexing the entire image.
+
+Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the `PNG.VA<T>` color target, the inner function recieves `(UInt8, UInt8)` tuples. For the `PNG.RGBA<T>` color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always [`Int`](https://developer.apple.com/documentation/swift/int).)
+
+Let’s go back to the custom indexing function: 
+
+```swift 
+{
+    _ in Int.init(_:)
+}
+```
+
+Since we just want to convert the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
+
+On appropriate platforms, we can encode the image to a file with the `compress(path:level:)` method. (The `level` argument has a default value of `9`.) 
+
+```swift 
+try indexed.compress(path: "\(path)-indexed.png")
+```
+
+<img src="indexing/example-indexed.png" alt="output png" width=300/>
+
+> example image, colorized as an indexed png.
+
+To read back the index values from the indexed image, we can use a custom **deindexing function**. 
+
+```swift 
+let indices:[UInt8] = indexed.unpack(as: UInt8.self) 
+{
+    _ in UInt8.init(_:)
+}
+```
+
+For the scalar pixel packing API, deindexing functions have the type `([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> UInt8`. Its return type, `(Int) -> UInt8` is exactly the opposite of that of an indexing function. Its default behavior is equivalent to the following implementation, which should be self-explanatory.
+
+```swift 
+{
+    (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> UInt8 in 
+    {
+        (i:Int) -> UInt8 in palette[i].r
+    }
+}
+```
+
+We can verify that the indices we read back with our custom deindexing function are identical to the grayscale samples we originally passed to the packing initializer.
+
+```swift 
+print(indices == v)
+``` 
+
+```bash
+true
 ```
