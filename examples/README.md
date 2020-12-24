@@ -4,6 +4,7 @@
 
 1. [basic decoding](#basic-decoding) ([sources](decode-basic/))
 2. [basic encoding](#basic-encoding) ([sources](encode-basic/))
+2. [using indexed images](#using-indexed-images) ([sources](indexed/))
 
 ## basic decoding 
 
@@ -255,3 +256,18 @@ try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
 > computed luminance of the example image, encoded by *swift png* in the 8-bit RGB color format. the output image is 880.4 kb in size.
 
 The resulting file is much larger than the one encoded in the grayscale format, since it contains two redundant color channels. So there’s usually not a good reason to save a grayscale image in an non-grayscale color format.
+
+## using indexed images 
+
+[`sources`](indexed/)
+
+> ***by the end of this tutorial, you should be able to:***
+> - *define a color palette*
+> - *encode an image from an index array*
+> - *decode an image to an index array*
+> - *use custom indexing and deindexing functions*
+
+> ***key terms:***
+> - **palette** 
+> - **indexing function** 
+> - **deindexing function** 

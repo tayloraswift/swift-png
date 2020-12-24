@@ -14,6 +14,7 @@ let package = Package(
         
         .executable(name: "decode-basic",               targets: ["PNGDecodeBasic"]),
         .executable(name: "encode-basic",               targets: ["PNGEncodeBasic"]),
+        .executable(name: "indexing",                   targets: ["PNGIndexing"]),
     ],
     targets: 
     [
@@ -27,6 +28,7 @@ let package = Package(
         
         .target(name: "PNGDecodeBasic",             dependencies: ["PNG"],  path: "examples/decode-basic"),
         .target(name: "PNGEncodeBasic",             dependencies: ["PNG"],  path: "examples/encode-basic"),
+        .target(name: "PNGIndexing",                dependencies: ["PNG"],  path: "examples/indexing"),
     ],
     swiftLanguageVersions: [.v5]
 )

@@ -1,14 +1,21 @@
 public 
 protocol _PNGColor 
 {
-    static 
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    associatedtype Aggregate 
     
     static 
-    func pack<A>(_ pixels:[Self], as format:PNG.Format, 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
+        -> [Self]
+    static 
+    func pack(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
         -> [UInt8] 
-        where A:FixedWidthInteger & UnsignedInteger
+        
+    static 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    static 
+    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
 }
 extension PNG 
 {
@@ -72,6 +79,43 @@ extension PNG
             return kernel((transform(r), transform(g), transform(b), transform(a)))
         }
     }
+    
+    private static 
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
+        _ kernel:(T) -> C, _ dereference:(Int) -> A, _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        samples.map
+        {
+            return kernel(transform(dereference(.init($0))))
+        }
+    }
+    private static 
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
+        _ kernel:((T, T)) -> C, _ dereference:(Int) -> (A, A), _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        samples.map
+        {
+            let (v, a):(A, A) = dereference(.init($0))
+            return kernel((transform(v), transform(a)))
+        }
+    }
+    // not used by any of the built-in targets, but here for completeness
+    private static 
+    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
+        _ kernel:((T, T, T)) -> C, _ dereference:(Int) -> (A, A, A), _ transform:(A) -> T)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        samples.map
+        {
+            let (r, g, b):(A, A, A) = dereference(.init($0))
+            return kernel((transform(r), transform(g), transform(b)))
+        }
+    }
     private static 
     func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
         _ kernel:((T, T, T, T)) -> C, _ dereference:(Int) -> (A, A, A, A), _ transform:(A) -> T)
@@ -94,8 +138,98 @@ extension PNG
     }
     
     static 
-    func convolve<A, T, C>(_ buffer:[UInt8], 
-        kernel:((T, T, T, T)) -> C, dereference:(Int) -> (A, A, A, A))
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> A,
+        kernel:(T) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        buffer.withUnsafeBufferPointer
+        {
+            if      T.bitWidth == A.bitWidth 
+            {
+                return Self.convolve($0, kernel, dereference, T.init(_:))
+            }
+            else if T.bitWidth >  A.bitWidth 
+            {
+                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
+                return Self.convolve($0, kernel, dereference)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = A.bitWidth - T.bitWidth 
+                return Self.convolve($0, kernel, dereference)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A),
+        kernel:((T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        buffer.withUnsafeBufferPointer
+        {
+            if      T.bitWidth == A.bitWidth 
+            {
+                return Self.convolve($0, kernel, dereference, T.init(_:))
+            }
+            else if T.bitWidth >  A.bitWidth 
+            {
+                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
+                return Self.convolve($0, kernel, dereference)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = A.bitWidth - T.bitWidth 
+                return Self.convolve($0, kernel, dereference)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A),
+        kernel:((T, T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        buffer.withUnsafeBufferPointer
+        {
+            if      T.bitWidth == A.bitWidth 
+            {
+                return Self.convolve($0, kernel, dereference, T.init(_:))
+            }
+            else if T.bitWidth >  A.bitWidth 
+            {
+                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
+                return Self.convolve($0, kernel, dereference)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = A.bitWidth - T.bitWidth 
+                return Self.convolve($0, kernel, dereference)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A, A),
+        kernel:((T, T, T, T)) -> C)
         -> [C]
         where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
     {
@@ -304,17 +438,163 @@ extension PNG
     }
     private static 
     func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
+        _ reference:(A) -> Int, _ kernel:(C) -> T, _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(samples.indices, pixels) 
+        {
+            let v:T                         = kernel(pixel) 
+            samples[i]                      = .init(reference(transform(v)))
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
+        _ reference:((A, A)) -> Int, _ kernel:(C) -> (T, T), _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(samples.indices, pixels) 
+        {
+            let (v, a):(T, T)               = kernel(pixel) 
+            samples[i]                      = .init(reference(
+                (transform(v), transform(a))))
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
+        _ reference:((A, A, A)) -> Int, _ kernel:(C) -> (T, T, T), _ transform:(T) -> A)
+        where A:FixedWidthInteger & UnsignedInteger
+    {
+        for (i, pixel) in zip(samples.indices, pixels) 
+        {
+            let (r, g, b):(T, T, T)         = kernel(pixel) 
+            samples[i]                      = .init(reference(
+                (transform(r), transform(g), transform(b))))
+        }
+    }
+    private static 
+    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
         _ reference:((A, A, A, A)) -> Int, _ kernel:(C) -> (T, T, T, T), _ transform:(T) -> A)
         where A:FixedWidthInteger & UnsignedInteger
     {
         for (i, pixel) in zip(samples.indices, pixels) 
         {
             let (r, g, b, a):(T, T, T, T)   = kernel(pixel) 
-            samples[i]                      = .init(reference((
-                transform(r), transform(g), transform(b), transform(a))))
+            samples[i]                      = .init(reference(
+                (transform(r), transform(g), transform(b), transform(a))))
         }
     }
     
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:(A) -> Int,
+        kernel:(C) -> T)
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        .init(unsafeUninitializedCapacity: pixels.count)
+        {
+            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = pixels.count 
+            if      T.bitWidth == A.bitWidth 
+            {
+                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  A.bitWidth 
+            {
+                // there are essentially no situations where this path will actually get 
+                // executed since  palette entries are always 8-bits deep. however, 
+                // the implementation is here in case someone wants to use a 
+                // customized kernel that takes a wider integer type for some reason
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = T.bitWidth - A.bitWidth 
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A)) -> Int,
+        kernel:(C) -> (T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        .init(unsafeUninitializedCapacity: pixels.count)
+        {
+            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = pixels.count 
+            if      T.bitWidth == A.bitWidth 
+            {
+                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  A.bitWidth 
+            {
+                // there are essentially no situations where this path will actually get 
+                // executed since  palette entries are always 8-bits deep. however, 
+                // the implementation is here in case someone wants to use a 
+                // customized kernel that takes a wider integer type for some reason
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = T.bitWidth - A.bitWidth 
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A)) -> Int,
+        kernel:(C) -> (T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    {
+        .init(unsafeUninitializedCapacity: pixels.count)
+        {
+            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
+            
+            count = pixels.count 
+            if      T.bitWidth == A.bitWidth 
+            {
+                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
+            }
+            else if T.bitWidth <  A.bitWidth 
+            {
+                // there are essentially no situations where this path will actually get 
+                // executed since  palette entries are always 8-bits deep. however, 
+                // the implementation is here in case someone wants to use a 
+                // customized kernel that takes a wider integer type for some reason
+                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    quantum &* .init($0)
+                }
+            }
+            else 
+            {
+                let shift:Int = T.bitWidth - A.bitWidth 
+                Self.deconvolve(pixels: pixels, samples, reference, kernel)
+                {
+                    .init($0 &>> shift)
+                }
+            }
+        }
+    }
     static 
     func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A, A)) -> Int,
         kernel:(C) -> (T, T, T, T))
@@ -352,6 +632,7 @@ extension PNG
             }
         }
     }
+    
     static 
     func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
         kernel:(C) -> T)
@@ -629,27 +910,6 @@ extension PNG.RGBA
     {
         .init(self.r, self.a)
     } 
-
-    /* /// Returns a copy of this color with the alpha component set to the given sample.
-    /// - Parameters:
-    ///     - a: An alpha sample.
-    /// - Returns: This color with the alpha component set to the given sample.
-    func withAlpha(_ a:Component) -> RGBA<Component>
-    {
-        return .init(self.r, self.g, self.b, a)
-    }
-
-    /// Returns a boolean value indicating whether the color components of this
-    /// color are equal to the color components of the given color, ignoring
-    /// the alpha components.
-    /// - Parameters:
-    ///     - other: Another color.
-    /// - Returns: `true` if the red, green, and blue components of this color
-    ///     and `other` are equal, `false` otherwise.
-    func equals(opaque other:RGBA<Component>) -> Bool
-    {
-        return self.r == other.r && self.g == other.g && self.b == other.b
-    } */
     
     @inlinable
     public
@@ -718,13 +978,18 @@ extension PNG.VA
 
 extension PNG.RGBA:PNG.Color 
 {
+    public 
+    typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
+    
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)
     @_specialize(where T == UInt64)
     @_specialize(where T == UInt)
     public static 
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self] 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
+        -> [Self] 
     {
         let depth:Int = format.pixel.depth 
         switch format 
@@ -733,13 +998,9 @@ extension PNG.RGBA:PNG.Color
                 .indexed2(palette: let palette, fill: _), 
                 .indexed4(palette: let palette, fill: _), 
                 .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(interleaved) 
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) 
             {
                 (c) in .init(c.0, c.1, c.2, c.3)
-            }
-            dereference:
-            {
-                (i) in palette[i]
             }
                 
         case    .v1(fill: _, key: nil),
@@ -834,16 +1095,15 @@ extension PNG.RGBA:PNG.Color
         }
     }
     
-    @_specialize(where A == UInt8, T == UInt8)
-    @_specialize(where A == UInt8, T == UInt16)
-    @_specialize(where A == UInt8, T == UInt32)
-    @_specialize(where A == UInt8, T == UInt64)
-    @_specialize(where A == UInt8, T == UInt)
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
     public static 
-    func pack<A>(_ pixels:[Self], as format:PNG.Format, 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+    func pack(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
         -> [UInt8] 
-        where A:FixedWidthInteger & UnsignedInteger
     {
         let depth:Int = format.pixel.depth 
         switch format 
@@ -920,13 +1180,17 @@ extension PNG.RGBA:PNG.Color
 }
 extension PNG.VA:PNG.Color 
 {
+    public 
+    typealias Aggregate = (UInt8, UInt8)
+    
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)
     @_specialize(where T == UInt64)
     @_specialize(where T == UInt)
     public static 
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format) 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
         -> [Self] 
     {
         let depth:Int = format.pixel.depth 
@@ -936,13 +1200,9 @@ extension PNG.VA:PNG.Color
                 .indexed2(palette: let palette, fill: _), 
                 .indexed4(palette: let palette, fill: _), 
                 .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(interleaved) 
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) 
             {
-                (c) in .init(c.0, c.3)
-            }
-            dereference:
-            {
-                (i) in palette[i]
+                (c) in .init(c.0, c.1)
             }
                 
         case    .v1(fill: _, key: nil),
@@ -1037,16 +1297,15 @@ extension PNG.VA:PNG.Color
         }
     }
     
-    @_specialize(where A == UInt8, T == UInt8)
-    @_specialize(where A == UInt8, T == UInt16)
-    @_specialize(where A == UInt8, T == UInt32)
-    @_specialize(where A == UInt8, T == UInt64)
-    @_specialize(where A == UInt8, T == UInt)
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
     public static 
-    func pack<A>(_ pixels:[Self], as format:PNG.Format, 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+    func pack(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
         -> [UInt8] 
-        where A:FixedWidthInteger & UnsignedInteger
     {
         let depth:Int = format.pixel.depth 
         switch format 
@@ -1057,7 +1316,7 @@ extension PNG.VA:PNG.Color
                 .indexed8(palette: let palette, fill: _):
             return PNG.deconvolve(pixels, reference: indexer(palette)) 
             {
-                (c) in (c.v, c.v, c.v, c.a)
+                (c) in (c.v, c.a)
             }
                 
         case    .v1(fill: _, key: _),
@@ -1122,7 +1381,8 @@ extension PNG.Data.Rectangular
     @_specialize(where T == UInt64)
     @_specialize(where T == UInt)
     static 
-    func unpack<T>(_ interleaved:[UInt8], of format:PNG.Format, as _:T.Type) 
+    func unpack<T>(_ interleaved:[UInt8], of format:PNG.Format, as _:T.Type, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> UInt8) 
         -> [T] 
         where T:FixedWidthInteger & UnsignedInteger
     {
@@ -1133,15 +1393,11 @@ extension PNG.Data.Rectangular
                 .indexed2(palette: let palette, fill: _), 
                 .indexed4(palette: let palette, fill: _), 
                 .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(interleaved) 
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) 
             {
-                (c) in c.0
+                (c) in c
             }
-            dereference:
-            {
-                (i) in palette[i]
-            }
-                
+            
         case    .v1(fill: _, key: _),
                 .v2(fill: _, key: _),
                 .v4(fill: _, key: _),
@@ -1204,16 +1460,16 @@ extension PNG.Data.Rectangular
     }
     
     @usableFromInline
-    @_specialize(where T == UInt8,  A == UInt8)
-    @_specialize(where T == UInt16, A == UInt8)
-    @_specialize(where T == UInt32, A == UInt8)
-    @_specialize(where T == UInt64, A == UInt8)
-    @_specialize(where T == UInt,   A == UInt8)
+    @_specialize(where T == UInt8)
+    @_specialize(where T == UInt16)
+    @_specialize(where T == UInt32)
+    @_specialize(where T == UInt64)
+    @_specialize(where T == UInt)
     static 
-    func pack<T, A>(_ pixels:[T], as format:PNG.Format, 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
+    func pack<T>(_ pixels:[T], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (UInt8) -> Int) 
         -> [UInt8] 
-        where T:FixedWidthInteger & UnsignedInteger, A:FixedWidthInteger & UnsignedInteger
+        where T:FixedWidthInteger & UnsignedInteger
     {
         let depth:Int = format.pixel.depth 
         switch format 
@@ -1224,7 +1480,7 @@ extension PNG.Data.Rectangular
                 .indexed8(palette: let palette, fill: _):
             return PNG.deconvolve(pixels, reference: indexer(palette)) 
             {
-                (v) in (v, v, v, .max)
+                (v) in v
             }
                 
         case    .v1(fill: _, key: _),
@@ -1279,74 +1535,158 @@ extension PNG.Data.Rectangular
     }
 }
 
+// custom-indexer APIs 
 extension PNG.Data.Rectangular 
 {
-    // behavior: create hash table for palette lookup. if a color is not in 
-    // the palette, return entry 0
-    @inlinable
-    public static 
-    func match(exactly palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)])
-        -> ((UInt8, UInt8, UInt8, UInt8)) -> Int
+    @inlinable 
+    public 
+    func unpack<Color>(as _:Color.Type, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Color.Aggregate) 
+        -> [Color] 
+        where Color:PNG.Color
     {
-        // currently blocked by the issue discussed at 
-        // https://github.com/apple/swift/pull/28833
-        // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
-        let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
-            zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
-        return 
-            { 
-                (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) in 
-                lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
-            }
+        Color.unpack(self.storage, of: self.layout.format, deindexer: deindexer)
+    }
+    @inlinable 
+    public 
+    func unpack<T>(as _:T.Type, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> UInt8) 
+        -> [T] 
+        where T:FixedWidthInteger & UnsignedInteger
+    {
+        Self.unpack(self.storage, of: self.layout.format, as: T.self, deindexer: deindexer)
     }
     
-    @inlinable @inline(never)
+    @inlinable 
     public 
-    func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
-    {
-        Color.unpack(self.storage, of: self.layout.format)
-    }
-    @inlinable @inline(never)
-    public 
-    func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
-    {
-        Self.unpack(self.storage, of: self.layout.format, as: T.self)
-    }
-    
-    @inlinable @inline(never)
-    public 
-    init<Color, A>(packing pixels:[Color], 
+    init<Color>(packing pixels:[Color], 
         size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
-        where Color:PNG.Color, A:FixedWidthInteger & UnsignedInteger
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Color.Aggregate) -> Int) 
+        where Color:PNG.Color
     {
         precondition(pixels.count == size.x * size.y, 
             "pixel array `count` must be equal to `size.x * size.y`")
         self.init(size: size, layout: layout, metadata: metadata, 
             storage: Color.pack(pixels, as: layout.format, indexer: indexer))
     }
-    
-    @inlinable @inline(never)
+    @inlinable 
     public 
-    init<T, A>(packing pixels:[T], 
+    init<T>(packing pixels:[T], 
         size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init(), 
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> ((A, A, A, A)) -> Int) 
-        where T:FixedWidthInteger & UnsignedInteger, A:FixedWidthInteger & UnsignedInteger
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (UInt8) -> Int) 
+        where T:FixedWidthInteger & UnsignedInteger
     {
         precondition(pixels.count == size.x * size.y, 
             "pixel array `count` must be equal to `size.x * size.y`")
         self.init(size: size, layout: layout, metadata: metadata, 
             storage: Self.pack(pixels, as: layout.format, indexer: indexer))
     }
-    
+}
+
+// default-indexer implementations 
+extension PNG.Color where Aggregate == (UInt8, UInt8)
+{
+    @inlinable 
+    public static 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    {
+        self.unpack(interleaved, of: format) 
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in 
+            {
+                (i:Int) in (palette[i].r, palette[i].a)
+            }
+        }
+    }
+    @inlinable 
+    public static 
+    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
+    {
+        // behavior: create hash table for palette lookup. if a color is not in 
+        // the palette, return entry 0
+        Self.pack(pixels, as: format)
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in 
+            // currently blocked by the issue discussed at 
+            // https://github.com/apple/swift/pull/28833
+            // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
+            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
+                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
+            return 
+                { 
+                    (c:(v:UInt8, a:UInt8)) in 
+                    lookup[.init(c.v, c.v, c.v, c.a), default: 0] 
+                }
+        }
+    }
+}
+extension PNG.Color where Aggregate == (UInt8, UInt8, UInt8, UInt8)
+{
+    @inlinable 
+    public static 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    {
+        self.unpack(interleaved, of: format) 
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in 
+            {
+                (i:Int) in palette[i]
+            }
+        }
+    }
+    @inlinable 
+    public static 
+    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
+    {
+        // behavior: create hash table for palette lookup. if a color is not in 
+        // the palette, return entry 0
+        Self.pack(pixels, as: format)
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in 
+            // currently blocked by the issue discussed at 
+            // https://github.com/apple/swift/pull/28833
+            // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
+            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
+                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
+            return 
+                { 
+                    (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) in 
+                    lookup[.init(c.r, c.g, c.b, c.a), default: 0] 
+                }
+        }
+    }
+}
+extension PNG.Data.Rectangular 
+{
+    @inlinable 
+    public 
+    func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
+    {
+        Color.unpack(self.storage, of: self.layout.format)
+    }
     @inlinable 
     public 
     init<Color>(packing pixels:[Color], 
         size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init()) 
         where Color:PNG.Color
     {
-        self.init(packing: pixels, size: size, layout: layout, metadata: metadata, 
-            indexer: Self.match(exactly:))
+        precondition(pixels.count == size.x * size.y, 
+            "pixel array `count` must be equal to `size.x * size.y`")
+        self.init(size: size, layout: layout, metadata: metadata, 
+            storage: Color.pack(pixels, as: layout.format))
+    }
+    
+    @inlinable 
+    public 
+    func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
+    {
+        self.unpack(as: T.self) 
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in 
+            {
+                (i:Int) in palette[i].r
+            }
+        }
     }
     @inlinable 
     public 
@@ -1354,7 +1694,19 @@ extension PNG.Data.Rectangular
         size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init()) 
         where T:FixedWidthInteger & UnsignedInteger
     {
-        self.init(packing: pixels, size: size, layout: layout, metadata: metadata, 
-            indexer: Self.match(exactly:))
-    }
+        self.init(packing: pixels, size: size, layout: layout, metadata: metadata)
+        {
+            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in 
+            // currently blocked by the issue discussed at 
+            // https://github.com/apple/swift/pull/28833
+            // as a workaround, we box the UInt8s into an RGBA<UInt8> struct 
+            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues: 
+                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
+            return 
+                { 
+                    (v:UInt8) in 
+                    lookup[.init(v, v, v, .max), default: 0] 
+                }
+        }
+    } 
 }
