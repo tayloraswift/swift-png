@@ -298,7 +298,7 @@ let v:[UInt8] = image.unpack(as: UInt8.self)
 
 What we want to do is map the grayscale [`UInt8`](https://developer.apple.com/documentation/swift/uint8) values to some color gradient, where gray value `0` gets the color at the bottom of the gradient, and gray value `255` gets the color at the top of the gradient. We will do this by creating a new, indexed image where the gray values in the original image are the indices in the new image, and where each index references a gradient value stored in the **image palette**.
 
-We define a simple, six-stop gradient function with the following code. It produces a gradient that is black at the bottom, red in the middle, and yellow at the top.
+We define a simple, six-stop gradient function with the following code. It generates a gradient that is black at the bottom, red in the middle, and yellow at the top.
 
 ```swift 
 func lerp(_ a:(r:Double, g:Double, b:Double), _ b:(r:Double, g:Double, b:Double), t:Double) 
@@ -727,6 +727,8 @@ For the scalar pixel packing API, deindexing functions have the type `([(r:UInt8
     }
 }
 ```
+
+> **warning:** do not unpack indices to a color target that is not [`UInt8`](https://developer.apple.com/documentation/swift/uint8). if you unpack them to a target of a different bit width, such as [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the indices will get rescaled to fill the range of that integer type.
 
 We can verify that the indices we read back with our custom deindexing function are identical to the grayscale samples we originally passed to the packing initializer.
 
