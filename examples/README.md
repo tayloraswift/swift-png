@@ -268,6 +268,396 @@ The resulting file is much larger than the one encoded in the grayscale format, 
 > - *use custom indexing and deindexing functions*
 
 > ***key terms:***
-> - **palette** 
+> - **image palette** 
 > - **indexing function** 
 > - **deindexing function** 
+
+In this tutorial, we will use *Swift PNG*’s indexing APIs to colorize the following grayscale image:
+
+<img src="indexing/example.png" alt="output png" width=300/>
+
+> example image, which is an 8-bit grayscale png.
+> 
+> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:20081206_Alexandros_Grigoropoulos_december_2008_riots_Sina_Street_Athens_Greece.jpg)*
+
+We already saw in the [basic decoding](#decode-basic) tutorial how to read grayscale samples from an input PNG. 
+
+```swift 
+import PNG
+
+let path:String = "examples/indexing/example"
+
+guard let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+else 
+{
+    fatalError("failed to open file '\(path).png'")
+}
+
+let v:[UInt8] = image.unpack(as: UInt8.self)
+```
+
+What we want to do is map the grayscale [`UInt8`](https://developer.apple.com/documentation/swift/uint8) values to some color gradient, where gray value `0` gets the color at the bottom of the gradient, and gray value `255` gets the color at the top of the gradient. We will do this by creating a new, indexed image where the gray values in the original image are the indices in the new image, and where each index references a gradient value stored in the **image palette**.
+
+We define a simple, six-stop gradient function with the following code. It produces a gradient that is black at the bottom, red in the middle, and yellow at the top.
+
+```swift 
+func lerp(_ a:(r:Double, g:Double, b:Double), _ b:(r:Double, g:Double, b:Double), t:Double) 
+    -> (r:Double, g:Double, b:Double) 
+{
+    (
+        a.r * (1.0 - t) + b.r * t,
+        a.g * (1.0 - t) + b.g * t,
+        a.b * (1.0 - t) + b.b * t
+    )
+}
+func gradient<T>(_ x:T) -> (r:UInt8, g:UInt8, b:UInt8, a:UInt8) 
+    where T:FixedWidthInteger
+{
+    let stops:
+    (
+        (r:Double, g:Double, b:Double), 
+        (r:Double, g:Double, b:Double), 
+        (r:Double, g:Double, b:Double), 
+        (r:Double, g:Double, b:Double), 
+        (r:Double, g:Double, b:Double), 
+        (r:Double, g:Double, b:Double)
+    ) 
+    = 
+    (
+        (0.0, 0.0, 0.0), 
+        (0.1, 0.1, 0.1), 
+        (1.0, 0.2, 0.3), 
+        (1.0, 0.3, 0.2),
+        (1.0, 0.4, 0.3),
+        (1.0, 0.8, 0.4)
+    )
+    let t:Double = (.init(x) - .init(T.min)) / (.init(T.max) - .init(T.min))
+    let y:(r:Double, g:Double, b:Double) 
+    switch t 
+    {
+    case         ..<0.0:    y = stops.0
+    case    0.0 ..< 0.2:    y = lerp(stops.0, stops.1, t: (t      ) / 0.2)
+    case    0.2 ..< 0.4:    y = lerp(stops.1, stops.2, t: (t - 0.2) / 0.2)
+    case    0.4 ..< 0.6:    y = lerp(stops.2, stops.3, t: (t - 0.4) / 0.2)
+    case    0.6 ..< 0.8:    y = lerp(stops.3, stops.4, t: (t - 0.6) / 0.2)
+    case    0.8...     :    y = lerp(stops.4, stops.5, t: (t - 0.8) / 0.2)
+    default            :    y = stops.5
+    }
+    return 
+        (
+        r: .init(max(0, min(y.r * 255, 255))),
+        g: .init(max(0, min(y.g * 255, 255))),
+        b: .init(max(0, min(y.b * 255, 255))),
+        a: .max
+        )
+}
+```
+
+Of course, we can’t encode a gradient function directly in a PNG file, since PNG viewers can’t execute Swift code. So we have to tabularize it into a 256-element array. 
+
+```swift 
+let gradient:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)] = 
+    (UInt8.min ... UInt8.max).map(gradient(_:))
+```
+
+The gradient function doesn’t really have anything to do with *Swift PNG*, so if you want, you can copy-and-paste the following array literal instead: 
+
+<details>
+<summary><em>Click to show gradient array literal</em></summary>
+
+```swift 
+let gradient:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)] =
+[
+    (r: 0, g: 0, b: 0, a: 255),
+    (r: 0, g: 0, b: 0, a: 255),
+    (r: 1, g: 1, b: 1, a: 255),
+    (r: 1, g: 1, b: 1, a: 255),
+    (r: 2, g: 2, b: 2, a: 255),
+    (r: 2, g: 2, b: 2, a: 255),
+    (r: 3, g: 3, b: 3, a: 255),
+    (r: 3, g: 3, b: 3, a: 255),
+    (r: 4, g: 4, b: 4, a: 255),
+    (r: 4, g: 4, b: 4, a: 255),
+    (r: 5, g: 5, b: 5, a: 255),
+    (r: 5, g: 5, b: 5, a: 255),
+    (r: 6, g: 6, b: 6, a: 255),
+    (r: 6, g: 6, b: 6, a: 255),
+    (r: 7, g: 7, b: 7, a: 255),
+    (r: 7, g: 7, b: 7, a: 255),
+    (r: 8, g: 8, b: 8, a: 255),
+    (r: 8, g: 8, b: 8, a: 255),
+    (r: 9, g: 9, b: 9, a: 255),
+    (r: 9, g: 9, b: 9, a: 255),
+    (r: 10, g: 10, b: 10, a: 255),
+    (r: 10, g: 10, b: 10, a: 255),
+    (r: 11, g: 11, b: 11, a: 255),
+    (r: 11, g: 11, b: 11, a: 255),
+    (r: 12, g: 12, b: 12, a: 255),
+    (r: 12, g: 12, b: 12, a: 255),
+    (r: 13, g: 13, b: 13, a: 255),
+    (r: 13, g: 13, b: 13, a: 255),
+    (r: 14, g: 14, b: 14, a: 255),
+    (r: 14, g: 14, b: 14, a: 255),
+    (r: 14, g: 14, b: 14, a: 255),
+    (r: 15, g: 15, b: 15, a: 255),
+    (r: 16, g: 16, b: 16, a: 255),
+    (r: 16, g: 16, b: 16, a: 255),
+    (r: 17, g: 17, b: 17, a: 255),
+    (r: 17, g: 17, b: 17, a: 255),
+    (r: 18, g: 18, b: 18, a: 255),
+    (r: 18, g: 18, b: 18, a: 255),
+    (r: 19, g: 19, b: 19, a: 255),
+    (r: 19, g: 19, b: 19, a: 255),
+    (r: 20, g: 20, b: 20, a: 255),
+    (r: 20, g: 20, b: 20, a: 255),
+    (r: 21, g: 21, b: 21, a: 255),
+    (r: 21, g: 21, b: 21, a: 255),
+    (r: 22, g: 22, b: 22, a: 255),
+    (r: 22, g: 22, b: 22, a: 255),
+    (r: 23, g: 23, b: 23, a: 255),
+    (r: 23, g: 23, b: 23, a: 255),
+    (r: 24, g: 24, b: 24, a: 255),
+    (r: 24, g: 24, b: 24, a: 255),
+    (r: 25, g: 25, b: 25, a: 255),
+    (r: 25, g: 25, b: 25, a: 255),
+    (r: 29, g: 26, b: 26, a: 255),
+    (r: 34, g: 26, b: 27, a: 255),
+    (r: 38, g: 27, b: 28, a: 255),
+    (r: 43, g: 27, b: 29, a: 255),
+    (r: 47, g: 28, b: 30, a: 255),
+    (r: 52, g: 28, b: 31, a: 255),
+    (r: 56, g: 29, b: 32, a: 255),
+    (r: 61, g: 29, b: 33, a: 255),
+    (r: 65, g: 30, b: 34, a: 255),
+    (r: 70, g: 30, b: 35, a: 255),
+    (r: 74, g: 31, b: 36, a: 255),
+    (r: 79, g: 31, b: 37, a: 255),
+    (r: 83, g: 32, b: 38, a: 255),
+    (r: 88, g: 32, b: 39, a: 255),
+    (r: 93, g: 33, b: 40, a: 255),
+    (r: 97, g: 33, b: 41, a: 255),
+    (r: 101, g: 34, b: 42, a: 255),
+    (r: 106, g: 34, b: 43, a: 255),
+    (r: 111, g: 35, b: 44, a: 255),
+    (r: 115, g: 35, b: 45, a: 255),
+    (r: 119, g: 36, b: 46, a: 255),
+    (r: 124, g: 36, b: 47, a: 255),
+    (r: 129, g: 37, b: 48, a: 255),
+    (r: 133, g: 37, b: 49, a: 255),
+    (r: 138, g: 38, b: 50, a: 255),
+    (r: 142, g: 38, b: 51, a: 255),
+    (r: 147, g: 39, b: 52, a: 255),
+    (r: 151, g: 39, b: 53, a: 255),
+    (r: 155, g: 40, b: 54, a: 255),
+    (r: 160, g: 40, b: 55, a: 255),
+    (r: 165, g: 41, b: 56, a: 255),
+    (r: 169, g: 41, b: 57, a: 255),
+    (r: 173, g: 42, b: 58, a: 255),
+    (r: 178, g: 42, b: 59, a: 255),
+    (r: 183, g: 43, b: 60, a: 255),
+    (r: 187, g: 43, b: 61, a: 255),
+    (r: 191, g: 44, b: 62, a: 255),
+    (r: 196, g: 44, b: 63, a: 255),
+    (r: 201, g: 45, b: 64, a: 255),
+    (r: 205, g: 45, b: 65, a: 255),
+    (r: 210, g: 46, b: 66, a: 255),
+    (r: 214, g: 46, b: 67, a: 255),
+    (r: 219, g: 47, b: 68, a: 255),
+    (r: 223, g: 47, b: 69, a: 255),
+    (r: 227, g: 48, b: 70, a: 255),
+    (r: 232, g: 48, b: 71, a: 255),
+    (r: 237, g: 49, b: 72, a: 255),
+    (r: 241, g: 49, b: 73, a: 255),
+    (r: 245, g: 50, b: 74, a: 255),
+    (r: 250, g: 50, b: 75, a: 255),
+    (r: 255, g: 51, b: 76, a: 255),
+    (r: 255, g: 51, b: 76, a: 255),
+    (r: 255, g: 52, b: 75, a: 255),
+    (r: 255, g: 52, b: 75, a: 255),
+    (r: 255, g: 53, b: 74, a: 255),
+    (r: 255, g: 53, b: 74, a: 255),
+    (r: 255, g: 54, b: 73, a: 255),
+    (r: 255, g: 54, b: 73, a: 255),
+    (r: 255, g: 55, b: 72, a: 255),
+    (r: 255, g: 55, b: 72, a: 255),
+    (r: 255, g: 56, b: 71, a: 255),
+    (r: 255, g: 56, b: 71, a: 255),
+    (r: 255, g: 57, b: 70, a: 255),
+    (r: 255, g: 57, b: 70, a: 255),
+    (r: 255, g: 57, b: 69, a: 255),
+    (r: 255, g: 58, b: 69, a: 255),
+    (r: 255, g: 59, b: 68, a: 255),
+    (r: 255, g: 59, b: 68, a: 255),
+    (r: 255, g: 60, b: 67, a: 255),
+    (r: 255, g: 60, b: 67, a: 255),
+    (r: 255, g: 61, b: 66, a: 255),
+    (r: 255, g: 61, b: 66, a: 255),
+    (r: 255, g: 62, b: 65, a: 255),
+    (r: 255, g: 62, b: 65, a: 255),
+    (r: 255, g: 63, b: 64, a: 255),
+    (r: 255, g: 63, b: 64, a: 255),
+    (r: 255, g: 64, b: 63, a: 255),
+    (r: 255, g: 64, b: 63, a: 255),
+    (r: 255, g: 65, b: 62, a: 255),
+    (r: 255, g: 65, b: 62, a: 255),
+    (r: 255, g: 66, b: 61, a: 255),
+    (r: 255, g: 66, b: 60, a: 255),
+    (r: 255, g: 67, b: 60, a: 255),
+    (r: 255, g: 67, b: 60, a: 255),
+    (r: 255, g: 68, b: 59, a: 255),
+    (r: 255, g: 68, b: 59, a: 255),
+    (r: 255, g: 69, b: 58, a: 255),
+    (r: 255, g: 69, b: 58, a: 255),
+    (r: 255, g: 70, b: 57, a: 255),
+    (r: 255, g: 70, b: 56, a: 255),
+    (r: 255, g: 71, b: 56, a: 255),
+    (r: 255, g: 71, b: 56, a: 255),
+    (r: 255, g: 72, b: 55, a: 255),
+    (r: 255, g: 72, b: 55, a: 255),
+    (r: 255, g: 73, b: 54, a: 255),
+    (r: 255, g: 73, b: 54, a: 255),
+    (r: 255, g: 74, b: 53, a: 255),
+    (r: 255, g: 74, b: 52, a: 255),
+    (r: 255, g: 75, b: 52, a: 255),
+    (r: 255, g: 75, b: 52, a: 255),
+    (r: 255, g: 76, b: 51, a: 255),
+    (r: 255, g: 76, b: 51, a: 255),
+    (r: 255, g: 77, b: 51, a: 255),
+    (r: 255, g: 77, b: 52, a: 255),
+    (r: 255, g: 78, b: 52, a: 255),
+    (r: 255, g: 78, b: 53, a: 255),
+    (r: 255, g: 79, b: 53, a: 255),
+    (r: 255, g: 79, b: 54, a: 255),
+    (r: 255, g: 80, b: 54, a: 255),
+    (r: 255, g: 80, b: 55, a: 255),
+    (r: 255, g: 81, b: 55, a: 255),
+    (r: 255, g: 81, b: 56, a: 255),
+    (r: 255, g: 82, b: 56, a: 255),
+    (r: 255, g: 82, b: 57, a: 255),
+    (r: 255, g: 83, b: 57, a: 255),
+    (r: 255, g: 83, b: 58, a: 255),
+    (r: 255, g: 84, b: 58, a: 255),
+    (r: 255, g: 84, b: 59, a: 255),
+    (r: 255, g: 85, b: 59, a: 255),
+    (r: 255, g: 85, b: 60, a: 255),
+    (r: 255, g: 86, b: 60, a: 255),
+    (r: 255, g: 86, b: 61, a: 255),
+    (r: 255, g: 87, b: 61, a: 255),
+    (r: 255, g: 87, b: 62, a: 255),
+    (r: 255, g: 88, b: 62, a: 255),
+    (r: 255, g: 88, b: 63, a: 255),
+    (r: 255, g: 89, b: 63, a: 255),
+    (r: 255, g: 89, b: 64, a: 255),
+    (r: 255, g: 90, b: 64, a: 255),
+    (r: 255, g: 90, b: 65, a: 255),
+    (r: 255, g: 91, b: 65, a: 255),
+    (r: 255, g: 91, b: 66, a: 255),
+    (r: 255, g: 92, b: 66, a: 255),
+    (r: 255, g: 92, b: 67, a: 255),
+    (r: 255, g: 93, b: 67, a: 255),
+    (r: 255, g: 93, b: 68, a: 255),
+    (r: 255, g: 94, b: 68, a: 255),
+    (r: 255, g: 94, b: 69, a: 255),
+    (r: 255, g: 95, b: 69, a: 255),
+    (r: 255, g: 95, b: 70, a: 255),
+    (r: 255, g: 96, b: 70, a: 255),
+    (r: 255, g: 96, b: 71, a: 255),
+    (r: 255, g: 97, b: 71, a: 255),
+    (r: 255, g: 97, b: 72, a: 255),
+    (r: 255, g: 98, b: 72, a: 255),
+    (r: 255, g: 98, b: 73, a: 255),
+    (r: 255, g: 99, b: 73, a: 255),
+    (r: 255, g: 99, b: 74, a: 255),
+    (r: 255, g: 100, b: 74, a: 255),
+    (r: 255, g: 100, b: 75, a: 255),
+    (r: 255, g: 101, b: 75, a: 255),
+    (r: 255, g: 101, b: 76, a: 255),
+    (r: 255, g: 102, b: 76, a: 255),
+    (r: 255, g: 104, b: 77, a: 255),
+    (r: 255, g: 105, b: 77, a: 255),
+    (r: 255, g: 107, b: 77, a: 255),
+    (r: 255, g: 109, b: 78, a: 255),
+    (r: 255, g: 111, b: 78, a: 255),
+    (r: 255, g: 113, b: 79, a: 255),
+    (r: 255, g: 115, b: 79, a: 255),
+    (r: 255, g: 118, b: 80, a: 255),
+    (r: 255, g: 120, b: 81, a: 255),
+    (r: 255, g: 121, b: 81, a: 255),
+    (r: 255, g: 123, b: 81, a: 255),
+    (r: 255, g: 125, b: 82, a: 255),
+    (r: 255, g: 127, b: 82, a: 255),
+    (r: 255, g: 129, b: 83, a: 255),
+    (r: 255, g: 131, b: 83, a: 255),
+    (r: 255, g: 134, b: 84, a: 255),
+    (r: 255, g: 136, b: 85, a: 255),
+    (r: 255, g: 138, b: 85, a: 255),
+    (r: 255, g: 139, b: 85, a: 255),
+    (r: 255, g: 141, b: 86, a: 255),
+    (r: 255, g: 143, b: 86, a: 255),
+    (r: 255, g: 145, b: 87, a: 255),
+    (r: 255, g: 147, b: 87, a: 255),
+    (r: 255, g: 150, b: 88, a: 255),
+    (r: 255, g: 152, b: 89, a: 255),
+    (r: 255, g: 154, b: 89, a: 255),
+    (r: 255, g: 155, b: 89, a: 255),
+    (r: 255, g: 157, b: 90, a: 255),
+    (r: 255, g: 159, b: 90, a: 255),
+    (r: 255, g: 161, b: 91, a: 255),
+    (r: 255, g: 163, b: 91, a: 255),
+    (r: 255, g: 166, b: 92, a: 255),
+    (r: 255, g: 168, b: 93, a: 255),
+    (r: 255, g: 170, b: 93, a: 255),
+    (r: 255, g: 171, b: 93, a: 255),
+    (r: 255, g: 173, b: 94, a: 255),
+    (r: 255, g: 175, b: 94, a: 255),
+    (r: 255, g: 177, b: 95, a: 255),
+    (r: 255, g: 179, b: 95, a: 255),
+    (r: 255, g: 182, b: 96, a: 255),
+    (r: 255, g: 184, b: 97, a: 255),
+    (r: 255, g: 186, b: 97, a: 255),
+    (r: 255, g: 187, b: 97, a: 255),
+    (r: 255, g: 189, b: 98, a: 255),
+    (r: 255, g: 191, b: 98, a: 255),
+    (r: 255, g: 193, b: 99, a: 255),
+    (r: 255, g: 195, b: 99, a: 255),
+    (r: 255, g: 198, b: 100, a: 255),
+    (r: 255, g: 200, b: 101, a: 255),
+    (r: 255, g: 202, b: 101, a: 255),
+    (r: 255, g: 203, b: 101, a: 255),
+]
+```
+
+</details>
+
+
+We can visualize the gradient using the same APIs we used in the [basic encoding](#basic-encoding) tutorial.
+
+```swift 
+let swatch:[PNG.RGBA<UInt8>] = (0 ..< 16).flatMap 
+{
+    _ -> [PNG.RGBA<UInt8>] in 
+    (0 ..< 256).map 
+    {
+        let (r, g, b, a):(UInt8, UInt8, UInt8, UInt8) = gradient[$0]
+        return .init(r, g, b, a)
+    }
+}
+let visualization:PNG.Data.Rectangular = .init(packing: swatch, size: (256, 16), 
+    layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
+try visualization.compress(path: "examples/indexing/gradient-visualization.png")
+```
+
+<img src="indexing/gradient-visualization.png" alt="output png" width=512/>
+
+> visualization of the generated gradient.
+
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The `init(packing:size:layout:metadata)` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, `init(packing:size:layout:metadata:indexer)`, and pass it a custom **indexing function**.
+
+```swift 
+let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size, 
+    layout:  .init(format: .indexed8(palette: gradient, fill: nil)), 
+    metadata: image.metadata)
+{
+    _ in Int.init(_:)
+}
+```

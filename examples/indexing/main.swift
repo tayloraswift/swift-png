@@ -63,6 +63,22 @@ func gradient<T>(_ x:T) -> (r:UInt8, g:UInt8, b:UInt8, a:UInt8)
 
 let gradient:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)] = 
     (UInt8.min ... UInt8.max).map(gradient(_:))
+
+// visualize the gradient
+let swatch:[PNG.RGBA<UInt8>] = (0 ..< 16).flatMap 
+{
+    _ -> [PNG.RGBA<UInt8>] in 
+    (0 ..< 256).map 
+    {
+        let (r, g, b, a):(UInt8, UInt8, UInt8, UInt8) = gradient[$0]
+        return .init(r, g, b, a)
+    }
+}
+let visualization:PNG.Data.Rectangular = .init(packing: swatch, size: (256, 16), 
+    layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
+try visualization.compress(path: "examples/indexing/gradient-visualization.png")
+
+// encode colorized image
 let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size, 
     layout:  .init(format: .indexed8(palette: gradient, fill: nil)), 
     metadata: image.metadata)
