@@ -361,18 +361,25 @@ extension Test
         {
             for alpha:T in over.alpha 
             {
-                let direct:PNG.RGBA<T>        = .init(color, alpha),
-                    premultiplied:PNG.RGBA<T> = direct.premultiplied
+                let direct:PNG.VA<T>        = .init(color, alpha),
+                    premultiplied:PNG.VA<T> = direct.premultiplied
 
                 let unquantized:Double  = (.init(alpha) * .init(color) / .init(T.max)),
                     quantized:T         = .init(unquantized.rounded())
 
                 // the order is important here,, the short circuiting protects us from
                 // overflow when `quantized` == 255
-                guard premultiplied.r == quantized
+                guard premultiplied.v == quantized
                 else
                 {
-                    return .failure(.init(message: "premultiplication of rgba\(T.bitWidth)(\(direct.r), \(direct.g), \(direct.b), \(direct.a)) returned (\(premultiplied.r), \(premultiplied.g), \(premultiplied.b), \(premultiplied.a)), expected (\(unquantized), \(unquantized), \(unquantized), \(alpha))"))
+                    return .failure(.init(message: "premultiplication of va\(T.bitWidth)(\(direct.v), \(direct.a)) returned (\(premultiplied.v), \(premultiplied.a)), expected (\(unquantized), \(alpha))"))
+                }
+                
+                let repremultiplied:PNG.VA<T> = premultiplied.straightened.premultiplied
+                guard premultiplied == repremultiplied 
+                else 
+                {
+                    return .failure(.init(message: "premultiplication of va\(T.bitWidth)(\(direct.v), \(direct.a)) failed to round-trip correctly"))
                 }
             }
         }
