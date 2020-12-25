@@ -3,7 +3,6 @@
 Package.resolved
 /*.xcodeproj
 .swiftpm
-/tests/*.png
 /benchmarks/*.png.png
 /benchmarks/compression/out/*.png
 /benchmarks/compression/baseline/main
