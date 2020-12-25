@@ -797,6 +797,26 @@ extension PNG
         return T.max.dividingFullWidth(biased).quotient
     }
     
+    @inlinable
+    public static
+    func straighten<T>(premultiplied:T, alpha:T) -> T 
+        where T:FixedWidthInteger & UnsignedInteger
+    {
+        guard alpha > 0 
+        else 
+        {
+            return premultiplied 
+        }
+        
+        let biased:(high:T, low:T.Magnitude)    = 
+            T.max.multipliedFullWidth(by: premultiplied)
+        let product:(high:T, low:T.Magnitude), 
+            carried:Bool 
+        (product.low, carried)  = biased.low.addingReportingOverflow(alpha.magnitude >> 1)
+        product.high            = biased.high &+ (carried ? 1 : 0)
+        return alpha.dividingFullWidth(product).quotient
+    }
+    
     @frozen
     public
     struct RGBA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
@@ -926,7 +946,7 @@ extension PNG.RGBA
         where U:FixedWidthInteger & UnsignedInteger
     {
         precondition(T.bitWidth > U.bitWidth, 
-            "cannot premultiply in higher-precision than original color")
+            "cannot premultiply alpha in higher-precision than original color")
         let shift:Int   = T.bitWidth - U.bitWidth
         let q:T         = T.max / T.max >> shift
         let a:U         = .init(self.a >> shift) 
@@ -934,6 +954,33 @@ extension PNG.RGBA
         let r:T = T.init(PNG.premultiply(color: U.init(self.r >> shift), alpha: a)) * q, 
             g:T = T.init(PNG.premultiply(color: U.init(self.g >> shift), alpha: a)) * q, 
             b:T = T.init(PNG.premultiply(color: U.init(self.b >> shift), alpha: a)) * q
+        return .init(r, g, b, T.init(a) * q)
+    }
+    
+    @inlinable
+    public
+    var straightened:Self
+    {
+        .init(  PNG.straighten(premultiplied: self.r, alpha: self.a),
+                PNG.straighten(premultiplied: self.g, alpha: self.a),
+                PNG.straighten(premultiplied: self.b, alpha: self.a),
+                self.a)
+    }
+    @inlinable
+    public
+    func straightened<U>(as _:U.Type) -> Self
+        where U:FixedWidthInteger & UnsignedInteger
+    {
+        precondition(T.bitWidth > U.bitWidth, 
+            "cannot straighten alpha in higher-precision than original color")
+
+        let shift:Int   = T.bitWidth - U.bitWidth
+        let q:T         = T.max / T.max >> shift
+        let a:U         = .init(self.a >> shift) 
+        
+        let r:T = T.init(PNG.straighten(premultiplied: U.init(self.r >> shift), alpha: a)) * q, 
+            g:T = T.init(PNG.straighten(premultiplied: U.init(self.g >> shift), alpha: a)) * q, 
+            b:T = T.init(PNG.straighten(premultiplied: U.init(self.b >> shift), alpha: a)) * q
         return .init(r, g, b, T.init(a) * q)
     }
 }
@@ -972,6 +1019,27 @@ extension PNG.VA
         let a:U         = .init(self.a >> shift) 
         
         let v:T = T.init(PNG.premultiply(color: U.init(self.v >> shift), alpha: a)) * q
+        return .init(v, T.init(a) * q)
+    }
+    
+    @inlinable
+    public
+    var straightened:Self
+    {
+        .init(PNG.straighten(premultiplied: self.v, alpha: self.a), self.a)
+    }
+    @inlinable
+    public
+    func straightened<U>(as _:U.Type) -> Self
+        where U:FixedWidthInteger & UnsignedInteger
+    {
+        precondition(T.bitWidth > U.bitWidth, 
+            "cannot premultiply in higher-precision than original color")
+        let shift:Int   = T.bitWidth - U.bitWidth
+        let q:T         = T.max / T.max >> shift
+        let a:U         = .init(self.a >> shift) 
+        
+        let v:T = T.init(PNG.straighten(premultiplied: U.init(self.v >> shift), alpha: a)) * q
         return .init(v, T.init(a) * q)
     }
 }
