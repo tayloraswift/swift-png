@@ -70,3 +70,7 @@ check   "error: runtime error" \
 # run `metadata` example
 check   "error: runtime error" \
         .build/$build_configuration/metadata
+
+# run `iphone-optimized` example
+check   "error: runtime error" \
+        .build/$build_configuration/iphone-optimized
