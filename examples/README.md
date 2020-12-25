@@ -4,7 +4,8 @@
 
 1. [basic decoding](#basic-decoding) ([sources](decode-basic/))
 2. [basic encoding](#basic-encoding) ([sources](encode-basic/))
-2. [using indexed images](#using-indexed-images) ([sources](indexed/))
+3. [using indexed images](#using-indexed-images) ([sources](indexed/))
+4. [working with metadata](#working-with-metadata) ([sources](metadata/))
 
 ## basic decoding 
 
@@ -274,7 +275,7 @@ The resulting file is much larger than the one encoded in the grayscale format, 
 
 In this tutorial, we will use *Swift PNG*’s indexing APIs to colorize the following grayscale image:
 
-<img src="indexing/example.png" alt="output png" width=300/>
+<img src="indexing/example.png" alt="input png" width=300/>
 
 > example image, which is an 8-bit grayscale png.
 > 
@@ -739,3 +740,129 @@ print(indices == v)
 ```bash
 true
 ```
+
+## working with metadata 
+
+[`sources`](metadata/)
+
+> ***by the end of this tutorial, you should be able to:***
+> - *inspect and edit image metadata*
+
+> ***key terms:***
+> - **metadata chunk**
+
+In this tutorial, we will inspect and edit metadata in the following example image.
+
+<img src="metadata/example.png" alt="input png" width=500/>
+
+> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:RIAN_archive_348_During_the_siege.jpg)*
+
+On appropriate platforms, we can decompress the image using the `decompress(path:)` static method. 
+
+```swift 
+import PNG 
+
+let path:String = "examples/metadata/example"
+
+guard var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+else 
+{
+    fatalError("failed to open file '\(path).png'")
+}
+```
+
+The image metadata lives in a `PNG.Metadata` structure, which is stored in the `metadata` property of the image data structure. The metadata structure has the following properties: 
+
+```swift 
+var time:PNG.TimeModified? 
+var chromaticity:PNG.Chromaticity?
+var colorProfile:PNG.ColorProfile?
+var colorRendering:PNG.ColorRendering?
+var gamma:PNG.Gamma?
+var histogram:PNG.Histogram?
+var physicalDimensions:PNG.PhysicalDimensions?
+var significantBits:PNG.SignificantBits?
+
+var suggestedPalettes:[PNG.SuggestedPalette]
+var text:[PNG.Text]
+var application:[(type:PNG.Chunk, data:[UInt8])]
+```
+
+The individual metadata elements are called **metadata chunks**. Each field of the metadata struct is `nil` or empty (`[]`) if the corresponding metadata chunk is not present in the PNG file. Some metadata chunks — suggested palette chunks, text chunks, and private application data chunks — can appear more than once, which is why those properties are [`Array`](https://developer.apple.com/documentation/swift/array)s instead of [`Optional`](https://developer.apple.com/documentation/swift/optional)s.
+
+The example image has a `tIME` chunk, a `gAMA` chunk, and a `pHYs` chunk, and we can pretty-print them using the Swift [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. 
+
+```swift 
+if let time:PNG.TimeModified = image.metadata.time 
+{
+    print(time)
+}
+if let gamma:PNG.Gamma = image.metadata.gamma 
+{
+    print(gamma)
+}
+if let physicalDimensions:PNG.PhysicalDimensions = image.metadata.physicalDimensions
+{
+    print(physicalDimensions)
+}
+``` 
+
+```
+PNG.TimeModified (tIME) 
+{
+    year        : 2020 
+    month       : 12 
+    day         : 24 
+    hour        : 23 
+    minute      : 9 
+    second      : 19 
+}
+PNG.Gamma (gAMA) 
+{
+    pcm         : 45455 / 100000 
+}
+PNG.PhysicalDimensions (pHYs) 
+{
+    density     : (x: 11811, y: 11811) / meter
+}
+```
+
+Accordingly, we can see that the example image was last saved on December 24th, 2020, at 11:09:19 PM, that it has a gamma of 0.45455, and a physical resolution of 11,811 pixels per meter (300 dpi).
+
+The image also has several text chunks which contain machine-readable data that GIMP added to the image. We can pretty-print *all* of the metadata in the image by passing the entire `PNG.Metadata` structure to the [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. For the sake of brevity, we won’t show the output here.
+
+```swift 
+print(image.metadata)
+```
+
+The `metadata` property is mutable, so we can overwrite metadata fields without having to repack the image pixels. 
+
+```swift 
+image.metadata.time = .init(year: 1992, month: 8, day: 3, hour: 0, minute: 0, second: 0)
+```
+
+We can save it and read it back to show that the new image now has a different value for its `tIME` chunk. 
+
+```swift 
+try image.compress(path: "\(path)-newtime.png")
+
+if let time:PNG.TimeModified = 
+    (try PNG.Data.Rectangular.decompress(path: "\(path)-newtime.png")).map(\.metadata.time) ?? nil
+{
+    print(time)
+}
+```
+
+```
+PNG.TimeModified (tIME) 
+{
+    year        : 1992 
+    month       : 8 
+    day         : 3 
+    hour        : 0 
+    minute      : 0 
+    second      : 0 
+}
+```
+
+> **note:** many PNG viewers ignore the `tIME` chunk and display the image modification time stored in the image’s [exif data](https://en.wikipedia.org/wiki/Exif), which we did not modify. the png file format does not have a metadata chunk for exif data, so this information is usually encoded as a base-64 string in a png text chunk. parsing and editing this string is beyond the scope of this tutorial, so we won’t go over it.

@@ -1610,6 +1610,55 @@ extension PNG
             hour:Int, 
             minute:Int, 
             second:Int
+        
+        init(validating fields:(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int)) 
+            throws 
+        {
+            guard   0 ..< 1 << 16   ~= fields.year, 
+                    1 ... 12        ~= fields.month, 
+                    1 ... 31        ~= fields.day, 
+                    0 ... 23        ~= fields.hour, 
+                    0 ... 59        ~= fields.minute, 
+                    0 ... 60        ~= fields.second 
+            else 
+            {
+                throw PNG.ParsingError.invalidTimeModifiedTime(
+                    year:   fields.year, 
+                    month:  fields.month, 
+                    day:    fields.day, 
+                    hour:   fields.hour, 
+                    minute: fields.minute, 
+                    second: fields.second)
+            }
+            
+            self.year   = fields.year
+            self.month  = fields.month
+            self.day    = fields.day
+            self.hour   = fields.hour
+            self.minute = fields.minute
+            self.second = fields.second
+        }
+        
+        public 
+        init(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int) 
+        {
+            do 
+            {
+                try self.init(validating: 
+                    (   
+                        year:   year, 
+                        month:  month, 
+                        day:    day, 
+                        hour:   hour, 
+                        minute: minute, 
+                        second: second
+                    ))
+            }
+            catch let error 
+            {
+                fatalError("\(error)")
+            }
+        }
     }
 }
 extension PNG.TimeModified 
@@ -1645,19 +1694,15 @@ extension PNG.TimeModified
             minute:Int  = .init(data[5]), 
             second:Int  = .init(data[6]) 
         
-        guard   1 ... 12 ~= month, 
-                1 ... 31 ~= day, 
-                0 ... 23 ~= hour, 
-                0 ... 59 ~= minute, 
-                0 ... 60 ~= second 
-        else 
-        {
-            throw PNG.ParsingError.invalidTimeModifiedTime(year: year, month: month, 
-                day: day, hour: hour, minute: minute, second: second)
-        }
-        
-        return .init(year: year, month: month, day: day, 
-            hour: hour, minute: minute, second: second)
+        return try .init(validating: 
+            (   
+                year:   year, 
+                month:  month, 
+                day:    day, 
+                hour:   hour, 
+                minute: minute, 
+                second: second
+            ))
     }
 }
 
