@@ -16,6 +16,7 @@ let package = Package(
         .executable(name: "encode-basic",               targets: ["PNGEncodeBasic"]),
         .executable(name: "indexing",                   targets: ["PNGIndexing"]),
         .executable(name: "metadata",                   targets: ["PNGMetadata"]),
+        .executable(name: "iphone-optimized",           targets: ["PNGiPhoneOptimized"]),
     ],
     targets: 
     [
@@ -31,6 +32,7 @@ let package = Package(
         .target(name: "PNGEncodeBasic",             dependencies: ["PNG"],  path: "examples/encode-basic"),
         .target(name: "PNGIndexing",                dependencies: ["PNG"],  path: "examples/indexing"),
         .target(name: "PNGMetadata",                dependencies: ["PNG"],  path: "examples/metadata"),
+        .target(name: "PNGiPhoneOptimized",         dependencies: ["PNG"],  path: "examples/iphone-optimized"),
     ],
     swiftLanguageVersions: [.v5]
 )

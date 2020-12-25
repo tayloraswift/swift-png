@@ -1454,6 +1454,7 @@ extension LZ77
         
         struct Stream 
         {
+            let format:Format 
             let search:Search 
             
             var input:In 
@@ -1463,7 +1464,7 @@ extension LZ77
             var matches:Matches
             var output:Out
             
-            init(level:Int, exponent:Int, hint:Int) 
+            init(format:Format, level:Int, exponent:Int, hint:Int) 
             {
                 precondition(8 ..< 16 ~= exponent, "exponent cannot be less than 8 or greater than 15")
                 
@@ -1509,6 +1510,8 @@ extension LZ77
                     self.matches = .graph(capacity: 1 << 16)
                 }
                 
+                self.format = format
+                
                 self.input  = .init()
                 self.window = .init(exponent: exponent)
                 self.output = .init(hint: hint)
@@ -1521,10 +1524,17 @@ extension LZ77
 }
 extension LZ77.Deflator 
 {
-    init(level:Int, exponent:Int = 15, hint:Int = 1 << 12) 
+    init(format:LZ77.Format = .zlib, level:Int, exponent:Int = 15, hint:Int = 1 << 12) 
     {
-        self.stream = .init(level: level, exponent: exponent, hint: hint)
-        self.stream.start(exponent: exponent)
+        let e:Int 
+        switch format 
+        {
+        case .zlib: e = exponent 
+        case .ios : e = 15
+        }
+        
+        self.stream = .init(format: format, level: level, exponent: e, hint: hint)
+        self.stream.start(exponent: e)
     }
     mutating 
     func push(_ data:[UInt8], last:Bool = false) 
@@ -1566,6 +1576,11 @@ extension LZ77.Deflator.Stream
     mutating 
     func start(exponent:Int) 
     {
+        if case .ios = self.format 
+        {
+            return 
+        }
+        
         let unpaired:UInt16 = .init(exponent - 8) << 4 | 0x08
         let check:UInt16    = ~((unpaired << 8 | unpaired >> 8) % 31) & 31
         
@@ -2255,6 +2270,10 @@ extension LZ77.Deflator.Stream
     mutating 
     func checksum() 
     {
+        if case .ios = self.format 
+        {
+            return
+        }
         // checksum is written big-endian, which means it has to go into the 
         // bitstream msb-first
         let checksum:UInt32 = self.input.checksum().byteSwapped

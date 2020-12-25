@@ -226,95 +226,105 @@ extension Test
             ),
         ]
         
+        let ios:[String] = 
+        [
+            "PngSuite", 
+            "basi2c08", 
+            "basi6a08", 
+            "basn2c08", 
+            "basn6a08", 
+            "bgan6a08", 
+            "bgwn6a08", 
+            "ccwn2c08", 
+            "cdfn2c08", 
+            "cdhn2c08", 
+            "cdsn2c08", 
+            "cdun2c08", 
+            "cs5n2c08", 
+            "cs8n2c08", 
+            "f00n2c08", 
+            "f01n2c08", 
+            "f02n2c08", 
+            "f03n2c08", 
+            "f04n2c08", 
+            "g03n2c08", 
+            "g04n2c08", 
+            "g05n2c08", 
+            "g07n2c08", 
+            "g10n2c08", 
+            "g25n2c08", 
+            "pp0n6a08", 
+            "tbrn2c08", 
+            "tp0n2c08", 
+            "z00n2c08", 
+            "z03n2c08", 
+            "z06n2c08", 
+            "z09n2c08", 
+        ]
+        
         return  suite.map 
         {
-            ("decode-\($0.name)", .string(Self.decode(_:), $0.members))
+            (
+                "decode-\($0.name)", 
+                .string({ Self.decode($0, subdirectory: "common") }, $0.members)
+            )
         }
         + 
         [
-            ("decode-iphone-optimized", .string(Self.decodeCgBI(_:), 
-            [
-                "PngSuite", 
-                "basi2c08", 
-                "basi6a08", 
-                "basn2c08", 
-                "basn6a08", 
-                "bgan6a08", 
-                "bgwn6a08", 
-                "ccwn2c08", 
-                "cdfn2c08", 
-                "cdhn2c08", 
-                "cdsn2c08", 
-                "cdun2c08", 
-                "cs5n2c08", 
-                "cs8n2c08", 
-                "f00n2c08", 
-                "f01n2c08", 
-                "f02n2c08", 
-                "f03n2c08", 
-                "f04n2c08", 
-                "g03n2c08", 
-                "g04n2c08", 
-                "g05n2c08", 
-                "g07n2c08", 
-                "g10n2c08", 
-                "g25n2c08", 
-                "pp0n6a08", 
-                "tbrn2c08", 
-                "tp0n2c08", 
-                "z00n2c08", 
-                "z03n2c08", 
-                "z06n2c08", 
-                "z09n2c08", 
-            ]))
+            (
+                "decode-iphone-optimized", 
+                .string({ Self.decode($0, subdirectory: "ios") }, ios)
+            ),
+            (
+                "encode-iphone-optimized", 
+                .string({ Self.encode($0, subdirectory: "ios", level: 13) }, ios)
+            )
         ]
         +       suite.map 
         {
-            ("encode-greedy-\($0.name)", .string(Self.encodeGreedy(_:), $0.members))
+            (
+                "encode-4-\($0.name)", 
+                .string({ Self.encode($0, subdirectory: "common", level:  4) }, $0.members)
+            )
         }
         +       suite.map 
         {
-            ("encode-lazy-\($0.name)", .string(Self.encodeLazy(_:), $0.members))
+            (
+                "encode-7-\($0.name)",   
+                .string({ Self.encode($0, subdirectory: "common", level:  7) }, $0.members)
+            )
         }
         +       suite.map 
         {
-            ("encode-full-\($0.name)", .string(Self.encodeFull(_:), $0.members))
+            (
+                "encode-10-\($0.name)",   
+                .string({ Self.encode($0, subdirectory: "common", level: 10) }, $0.members)
+            )
         } 
 
     }
     
     static 
-    func decodeCgBI(_ name:String) -> Result<Void, Failure>
+    func decode(_ name:String, subdirectory:String) -> Result<Void, Failure>
     {
-        let path:(png:String, rgba:String) = 
+        let path:(in:String, rgba:String) = 
         (
-            "tests/integration/cgbi/\(name).png",
+            "tests/integration/in/\(subdirectory)/\(name).png",
             "tests/integration/rgba/\(name).png.rgba"
         )
-        return Self.decode(path: path, premultiplied: true)
+        return Self.decode(path: path, premultiplied: subdirectory == "ios")
     }
     
     static 
-    func decode(_ name:String) -> Result<Void, Failure>
-    {
-        let path:(png:String, rgba:String) = 
-        (
-            "tests/integration/png/\(name).png",
-            "tests/integration/rgba/\(name).png.rgba"
-        )
-        return Self.decode(path: path, premultiplied: false)
-    }
-    
-    static 
-    func decode(path:(png:String, rgba:String), premultiplied:Bool) 
+    func decode(path:(in:String, rgba:String), premultiplied:Bool) 
         -> Result<Void, Failure>
     {
         do
         {
-            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.png)
+            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.in)
             else
             {
-                return .failure(.init(message: "failed to open file '\(path.png)'"))
+                return .failure(.init(message: "failed to open file '\(path.in)'"))
             }
 
             let image:[PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
@@ -385,38 +395,30 @@ extension Test
             return .failure(.init(message: "\(error)"))
         }
     }
-    
+
     static 
-    func encodeGreedy(_ name:String) -> Result<Void, Failure>
+    func encode(_ name:String, subdirectory:String, level:Int) -> Result<Void, Failure>
     {
-        Self.encode(name, level: 4)
-    }
-    static 
-    func encodeLazy(_ name:String) -> Result<Void, Failure>
-    {
-        Self.encode(name, level: 7)
-    }
-    static 
-    func encodeFull(_ name:String) -> Result<Void, Failure>
-    {
-        Self.encode(name, level: 10)
-    }
-    static 
-    func encode(_ name:String, level:Int) -> Result<Void, Failure>
-    {
-        let path:(png:String, rgba:String, out:String) = 
+        let path:(in:String, rgba:String, out:String) = 
         (
-            "tests/integration/png/\(name).png",
+            "tests/integration/in/\(subdirectory)/\(name).png",
             "tests/integration/rgba/\(name).png.rgba",
-            "tests/integration/out/\(name).png"
+            "tests/integration/out/\(subdirectory)/\(name).png"
         )
 
+        return Self.encode(path: path, level: level, premultiplied: subdirectory == "ios")
+    } 
+    
+    static 
+    func encode(path:(in:String, rgba:String, out:String), level:Int, premultiplied:Bool) 
+        -> Result<Void, Failure>
+    {
         do
         {
-            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.png)
+            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.in)
             else
             {
-                return .failure(.init(message: "failed to open file '\(path.png)'"))
+                return .failure(.init(message: "failed to open file '\(path.in)'"))
             }
             
             try rectangular.compress(path: path.out, level: level)
@@ -425,7 +427,7 @@ extension Test
         {
             return .failure(.init(message: "\(error)"))
         }
-        return Self.decode(path: (png: path.out, rgba: path.rgba), premultiplied: false)
+        return Self.decode(path: (in: path.out, rgba: path.rgba), premultiplied: premultiplied)
     } 
 }
 

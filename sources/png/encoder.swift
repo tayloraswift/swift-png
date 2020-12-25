@@ -135,11 +135,19 @@ extension PNG
 }
 extension PNG.Encoder 
 {
-    init(interlaced:Bool, level:Int, hint:Int = 1 << 15)
+    init(standard:PNG.Standard, interlaced:Bool, level:Int, hint:Int = 1 << 15)
     {
         self.row        = nil
         self.pass       = interlaced ? .subimage(0) : .image
-        self.deflator   = .init(level: level, hint: hint)
+        
+        let format:LZ77.Format 
+        switch standard 
+        {
+        case .common:   format = .zlib 
+        case .ios:      format = .ios
+        }
+        
+        self.deflator   = .init(format: format, level: level, hint: hint)
     }
     
     mutating 
@@ -358,8 +366,14 @@ extension PNG.Data.Rectangular
         let header:PNG.Header, 
             palette:PNG.Palette?, 
             background:PNG.Background?, 
-            transparency:PNG.Transparency?
-        (header, palette, background, transparency) = self.encode()
+            transparency:PNG.Transparency?, 
+            cgbi:[UInt8]?
+        (header, palette, background, transparency, cgbi) = self.encode()
+        
+        if let cgbi:[UInt8] = cgbi 
+        {
+            try stream.format(type: .CgBI, data: cgbi)
+        }
         
         try stream.format(type: .IHDR, data: header.serialized())
         
@@ -425,7 +439,8 @@ extension PNG.Data.Rectangular
             try stream.format(type: type, data: data)
         }
         
-        var encoder:PNG.Encoder = .init(interlaced: self.layout.interlaced, level: level)
+        var encoder:PNG.Encoder = .init(standard: cgbi == nil ? .common : .ios, 
+            interlaced: self.layout.interlaced, level: level)
         while let data:[UInt8] = encoder.pull(size: self.size, 
             pixel:      self.layout.format.pixel, 
             delegate:   self.collect(scanline:at:stride:))  

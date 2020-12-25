@@ -1300,7 +1300,7 @@ extension LZ77
                 case dynamic(runliterals:Int, distances:Int)
             }
             
-            var format:Format 
+            let format:Format 
             // Stream.In manages its own COW in rebase(_:pointer:)
             var input:In,
                 b:Int 
