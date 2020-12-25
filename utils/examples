@@ -62,3 +62,11 @@ done
 # run `encode-basic` example
 check   "error: runtime error" \
         .build/$build_configuration/encode-basic 
+
+# run `indexing` example
+check   "error: runtime error" \
+        .build/$build_configuration/indexing
+
+# run `metadata` example
+check   "error: runtime error" \
+        .build/$build_configuration/metadata
