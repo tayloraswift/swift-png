@@ -767,7 +767,7 @@ In this tutorial, we will convert the following iphone-optimized image to a stan
 
 <img src="iphone-optimized/example.png" alt="input png" width=500/>
 
-> iphone-optimized example image. with the exception of safari, your browser most likely cannot display this image. if you are on an Apple platform, you can probably download this file and view it normally.
+> iphone-optimized example image. unless you are using safari, your browser most likely cannot display this image. if you are on an apple platform, you can probably download this file and view it normally.
 >
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Soviet_Union-1963-stamp-Valentina_Vladimirovna_Tereshkova.jpg)*
 
@@ -795,7 +795,7 @@ print(image.layout.format)
 bgra8(palette: [], fill: nil)
 ```
 
-The `bgra(palette:fill:)` format is one of two iphone-optimized color formats. It is analogous to the `rgba8(palette:fill:)` format. Another possibility is `bgr(palette:fill:key:)`, which lacks an alpha channel, and is analogous to `rgb8(palette:fill:key:)`.
+The `bgra8(palette:fill:)` format is one of two iphone-optimized color formats. It is analogous to the `rgba8(palette:fill:)` format. Another possibility is `bgr8(palette:fill:key:)`, which lacks an alpha channel, and is analogous to `rgb8(palette:fill:key:)`.
 
 We can unpack iphone-optimized images to any color target. iPhone-optimized images use **premultiplied alpha**, which means the color samples (the blue, green, and red samples in a BGRA image) are scaled by the alpha sample. Occasionally, this facilitates compression by zeroing-out all color channels in fully-transparent pixels. We can convert the pixels back to **straight alpha**, the normal PNG color space, by using the `straightened` property on the built-in `PNG.RGBA<T>` and `PNG.VA<T>`. color targets.
 
@@ -845,7 +845,7 @@ try apple.compress(path: "\(path)-bgr8.png")
 
 <img src="iphone-optimized/example-bgr8.png" alt="output png" width=500/>
 
-> the previous output, re-encoded as an iphone-optimized file. with the exception of safari, your browser most likely cannot display this image. some versions of safari have a bug which reverses the color channels. if you are on an Apple platform, you can probably download this file and view it normally.
+> the previous output, re-encoded as an iphone-optimized file. unless you are using safari, your browser most likely cannot display this image. some versions of safari have a bug which reverses the color channels. if you are on an apple platform, you can probably download this file and view it normally.
 
 The `premultiplied` and `straightened` properties satisfy the condition that `x.premultiplied.straightened == x.premultiplied.straightened.premultiplied.straightened` for all `x`.
 
