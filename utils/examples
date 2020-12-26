@@ -66,11 +66,16 @@ check   "error: runtime error" \
 # run `indexing` example
 check   "error: runtime error" \
         .build/$build_configuration/indexing
-
-# run `metadata` example
-check   "error: runtime error" \
-        .build/$build_configuration/metadata
-
 # run `iphone-optimized` example
 check   "error: runtime error" \
         .build/$build_configuration/iphone-optimized
+# run `metadata` example
+check   "error: runtime error" \
+        .build/$build_configuration/metadata
+# run `in-memory` example
+check   "error: runtime error" \
+        .build/$build_configuration/in-memory
+for file in examples/in-memory/example.png ; do 
+    size=$(identify -format "%wx%h" png:$file)
+    convert -depth 8 -size $size "rgba:$file.rgba" "png:$file.rgba.png"
+done 
