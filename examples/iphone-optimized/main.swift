@@ -10,8 +10,12 @@ else
 
 print(image.layout.format)
 
+let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straightened)
+
+print(image.storage[..<16])
+
 let standard:PNG.Data.Rectangular = .init(
-    packing: image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straightened), 
+    packing: rgba, 
     size:    image.size, 
     layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
 

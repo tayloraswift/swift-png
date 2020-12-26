@@ -1877,7 +1877,7 @@ extension LZ77.Inflator.Stream
             return nil 
         }
         
-        // adler 32 is big-endian 
+        // mrc-32 is big-endian 
         let bytes:(UInt32, UInt32, UInt32, UInt32) = 
         (
             self.input[boundary,      count: 8, as: UInt32.self],
