@@ -7,6 +7,7 @@
 3. [using indexed images](#using-indexed-images) ([sources](indexed/))
 4. [using iphone-optimized images](#using-iphone-optimized-images) ([sources](iphone-optimized/))
 5. [working with metadata](#working-with-metadata) ([sources](metadata/))
+6. [using in-memory images](#using-in-memory-images) ([sources](in-memory/))
 
 ## basic decoding 
 
@@ -976,3 +977,136 @@ PNG.TimeModified (tIME)
 ```
 
 > **note:** many PNG viewers ignore the `tIME` chunk and display the image modification time stored in the image’s [exif data](https://en.wikipedia.org/wiki/Exif), which we did not modify. the png file format does not have a metadata chunk for exif data, so this information is usually encoded as a base-64 string in a png text chunk. parsing and editing this string is beyond the scope of this tutorial, so we won’t go over it.
+
+## using in-memory images 
+
+[`sources`](in-memory/)
+
+> ***by the end of this tutorial, you should be able to:***
+> - *decode a png image from a memory blob*
+> - *encode a png image into a memory blob*
+> - *implement a custom data source or destination*
+
+> ***key terms:***
+> - **bytestream protocol**
+
+Up to this point we have been using the built-in file system API that the library provides on Linux and MacOS platforms. These APIs are built atop of the library’s core data stream APIs, which are available on all Swift platforms. (The core library is universally portable because it is written in pure Swift, with no dependencies, even [Foundation](https://developer.apple.com/documentation/foundation).) In this tutorial, we will use this lower-level interface to implement reading and writing PNG files in memory.
+
+If you have used *Swift PNG*’s companion library [*Swift JPEG*](https://github.com/kelvin13/jpeg), the interface here is exactly the same. In fact, you can copy-and-paste large swaths of the code from the corresponding [JPEG tutorial](https://github.com/kelvin13/jpeg/tree/master/examples#using-in-memory-images), and it will just work.
+
+Our basic data type modeling a memory blob is incredibly simple; it consists of a Swift array containing the data buffer, and a file position pointer in the form of an integer. Here, we have namespaced it under the libary’s `System` namespace to parallel the built-in file system APIs.
+
+```swift 
+import PNG 
+
+extension System 
+{
+    struct Blob 
+    {
+        private(set)
+        var data:[UInt8], 
+            position:Int 
+    }
+}
+```
+
+There are two **bytestream protocols** a custom data stream type can support: `PNG.Bytestream.Source`, and `PNG.Bytestream.Destination`. The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
+
+```swift 
+extension System.Blob:PNG.Bytestream.Source, PNG.Bytestream.Destination 
+{
+    init(_ data:[UInt8]) 
+    {
+        self.data       = data 
+        self.position   = data.startIndex
+    }
+    
+    mutating 
+    func read(count:Int) -> [UInt8]? 
+    {
+        guard self.position + count <= data.endIndex 
+        else 
+        {
+            return nil 
+        }
+        
+        defer 
+        {
+            self.position += count 
+        }
+        
+        return .init(self.data[self.position ..< self.position + count])
+    }
+    
+    mutating 
+    func write(_ bytes:[UInt8]) -> Void? 
+    {
+        self.data.append(contentsOf: bytes) 
+        return ()
+    }
+}
+```
+
+For the sake of tutorial brevity, we are not going to bother bootstrapping the task of obtaining the PNG memory blob in the first place, so we will just use the built-in file system API for this. But we could have gotten the data any other way.
+
+```swift 
+let path:String         = "examples/in-memory/example"
+guard let data:[UInt8]  = (System.File.Source.open(path: "\(path).png") 
+{
+    (source:inout System.File.Source) -> [UInt8]? in
+    
+    guard let count:Int = source.count
+    else 
+    {
+        return nil 
+    }
+    return source.read(count: count)
+} ?? nil)
+else 
+{
+    fatalError("failed to open or read file '\(path).png'")
+}
+
+var blob:System.Blob = .init(data)
+```
+
+<img src="in-memory/example.png" alt="input png" width=500/>
+
+> example input image. 
+> 
+> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Agence_Rol,_24.4.21,_concours_de_machines_-_BnF.jpg)*
+
+To decode using our `System.Blob` type, we use the `decompress(stream:)` function, which is part of the core library, and does essentially the same thing as the file system-aware `decompress(path:)` function. We can then unpack pixels from the returned image data structure as we would in any other situation. 
+
+```swift 
+let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
+```
+
+Just as with the decompression APIs, the `compress(path:level:)` function has a generic `compress(stream:level:)` counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
+
+```swift 
+blob = .init([])
+try image.compress(stream: &blob, level: 13)
+```
+
+We can save the blob to disk, to verify that the memory blob does indeed contain a valid PNG file.
+
+```swift 
+guard let _:Void = (System.File.Destination.open(path: "\(path).png.png")
+{
+    guard let _:Void = $0.write(blob.data)
+    else 
+    {
+        fatalError("failed to write to file '\(path).png.png'")
+    }
+}) 
+else
+{
+    fatalError("failed to open file '\(path).png.png'")
+} 
+```
+
+<img src="in-memory/example.png.png" alt="input png" width=500/>
+
+> example image, re-encoded to a memory blob, and saved to disk. 
