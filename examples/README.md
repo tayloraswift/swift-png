@@ -5,7 +5,8 @@
 1. [basic decoding](#basic-decoding) ([sources](decode-basic/))
 2. [basic encoding](#basic-encoding) ([sources](encode-basic/))
 3. [using indexed images](#using-indexed-images) ([sources](indexed/))
-4. [working with metadata](#working-with-metadata) ([sources](metadata/))
+4. [using iphone-optimized images](#using-iphone-optimized-images) ([sources](iphone-optimized/))
+5. [working with metadata](#working-with-metadata) ([sources](metadata/))
 
 ## basic decoding 
 
@@ -740,6 +741,115 @@ print(indices == v)
 ```bash
 true
 ```
+
+## using iphone-optimized images
+[`sources`](iphone-optimized/)
+
+> ***by the end of this tutorial, you should be able to:***
+> - *read and create iphone-optimized png files*
+> - *premultiply and straighten alpha*
+> - *access packed image data*
+
+> ***key terms:***
+> - **iphone-optimized image**
+> - **modular redundancy check**
+> - **bgr/bgra color format**
+> - **premultiplied alpha**
+> - **straight alpha**
+
+As of version 4.0, *Swift PNG* has first-class support for **iphone-optimized images**. iPhone-optimized images are an Apple extension to the PNG standard. Sometimes people refer to them as *CgBI images*. This name comes from the `CgBI` application chunk present at the beginning of such files, whose name in turn comes from the [`CGBitmapInfo`](https://developer.apple.com/documentation/coregraphics/cgbitmapinfo) option set in the Apple Core Graphics framework. 
+
+iPhone-optimized images are occasionally more space-efficient than standard PNG images, because the color model they use (discussed shortly) sometimes quantizes away color information that the user will never see. It is a common misconception that iphone-optimized images are optimized for file size. They are mainly optimized for computational efficiency, by omitting the [**modular redundancy check**](https://en.wikipedia.org/wiki/Adler-32) from the compressed image data stream. ([Some authors](https://iphonedevwiki.net/index.php/CgBI_file_format) erroneously refer to it as the *cyclic redundancy check*, which is a distinct concept, and completely unaffected by iphone optimizations.) iPhone-optimized images also use the **BGR/BGRA color formats**, the latter of which is the native color format of an iphone. This makes it possible to blit image data to an idevice’s graphics hardware without having to do as much post-processing on it.
+
+First-class support means that *Swift PNG* supports iphone-optimized images out of the box. Most PNG libraries such as *libpng* require third-party plugins to handle them, since there is some debate in the open source community over whether such images should be considered real PNG files. *Swift PNG* is, of course, a Swift library, so it supports them anyway, on all platforms, including non-Apple platforms. A possible use case is to have a Linux server serve iphone-optimized images to an iOS client, thus reducing battery consumption on users’ devices.
+
+In this tutorial, we will convert the following iphone-optimized image to a standard PNG file, and then convert it back into an iphone-optimized image.
+
+<img src="iphone-optimized/example.png" alt="input png" width=500/>
+
+> iphone-optimized example image. your browser most likely cannot display this image. however, if you are on an Apple platform, you can probably download this file and view it normally.
+>
+> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Soviet_Union-1963-stamp-Valentina_Vladimirovna_Tereshkova.jpg)*
+
+You don’t need any special settings to handle iphone-optimized images. You can decode them as you would any other PNG file. 
+
+```swift 
+import PNG 
+
+let path:String = "examples/iphone-optimized/example"
+
+guard var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+else 
+{
+    fatalError("failed to open file '\(path).png'")
+}
+```
+
+We can check if a file is an iphone-optimized image by inspecting its color format. 
+
+```swift 
+print(image.layout.format)
+``` 
+
+```
+bgra8(palette: [], fill: nil)
+```
+
+The `bgra(palette:fill:)` format is one of two iphone-optimized color formats. It is analogous to the `rgba8(palette:fill:)` format. Another possibility is `bgr(palette:fill:key:)`, which lacks an alpha channel, and is analogous to `rgb8(palette:fill:key:)`.
+
+We can unpack iphone-optimized images to any color target. iPhone-optimized images use **premultiplied alpha**, which means the color samples (the blue, green, and red samples in a BGRA image) are scaled by the alpha sample. Occasionally, this facilitates compression by zeroing-out all color channels in fully-transparent pixels. We can convert the pixels back to **straight alpha**, the normal PNG color space, by using the `straightened` property on the built-in `PNG.RGBA<T>` and `PNG.VA<T>`. color targets.
+
+```swift 
+let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straightened)
+```
+
+It is often convenient to work in the premultiplied color space, so the library does not straighten the alpha automatically. Of course, it’s also unnecessary to straighten the alpha if you know the image has no transparency.
+
+> **note:** unpacking bgra images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. if you trying to unpack grayscale values from an iphone-optimized image with transparency, unpack it to the `PNG.VA<T>` color target, and take the gray channel *after* straightening the grayscale-alpha pixels. 
+
+Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the `storage` property on `PNG.Data.Rectangular`.
+
+```swift 
+print(image.storage[..<16])
+```
+
+```
+[25, 0, 1, 255, 16, 8, 8, 255, 8, 0, 16, 255, 32, 13, 0, 255]
+```
+
+We can convert the iphone-optimized example image to a standard PNG file by re-encoding it as any of the standard color formats. 
+
+```swift 
+let standard:PNG.Data.Rectangular = .init(
+    packing: rgba, 
+    size:    image.size, 
+    layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
+
+try standard.compress(path: "\(path)-rgb8.png")
+```
+
+<img src="iphone-optimized/example-rgb8.png" alt="output png" width=500/>
+
+> iphone-optimized example image, re-encoded as a standard png file.
+
+We can convert it back into an iphone-optimized image by specifying one of the iphone-optimized color formats. The `premultiplied` property on the `PNG.RGBA<T>` color target converts the pixels to the premultiplied color space. Again, this step is unnecessary if you know the image contains no transparency.
+
+```swift 
+let apple:PNG.Data.Rectangular = .init(
+    packing: standard.unpack(as: PNG.RGBA<UInt8>.self).map(\.premultiplied), 
+    size:    standard.size, 
+    layout: .init(format: .bgr8(palette: [], fill: nil, key: nil)))
+
+try apple.compress(path: "\(path)-bgr8.png")
+```
+
+<img src="iphone-optimized/example-bgr8.png" alt="output png" width=500/>
+
+> the previous output, re-encoded as an iphone-optimized file. your browser most likely cannot display this image. however, if you are on an Apple platform, you can probably download this file and view it normally.
+
+The `premultiplied` and `straightened` properties satisfy the condition that `x.premultiplied.straightened == x.premultiplied.straightened.premultiplied.straightened` for all `x`.
+
+> **warning:** alpha premultiplication is a destructive operation. it is not the case that `x == x.premultiplied.straightened` for all `x`!
 
 ## working with metadata 
 

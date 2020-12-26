@@ -286,8 +286,7 @@ extension PNG.Data
         public 
         var metadata:PNG.Metadata
         
-        @usableFromInline
-        private(set)
+        public private(set)
         var storage:[UInt8]
         
         // make the trivial init usable from inline 
