@@ -767,7 +767,7 @@ In this tutorial, we will convert the following iphone-optimized image to a stan
 
 <img src="iphone-optimized/example.png" alt="input png" width=500/>
 
-> iphone-optimized example image. your browser most likely cannot display this image. however, if you are on an Apple platform, you can probably download this file and view it normally.
+> iphone-optimized example image. with the exception of safari, your browser most likely cannot display this image. if you are on an Apple platform, you can probably download this file and view it normally.
 >
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Soviet_Union-1963-stamp-Valentina_Vladimirovna_Tereshkova.jpg)*
 
@@ -845,7 +845,7 @@ try apple.compress(path: "\(path)-bgr8.png")
 
 <img src="iphone-optimized/example-bgr8.png" alt="output png" width=500/>
 
-> the previous output, re-encoded as an iphone-optimized file. your browser most likely cannot display this image. however, if you are on an Apple platform, you can probably download this file and view it normally.
+> the previous output, re-encoded as an iphone-optimized file. with the exception of safari, your browser most likely cannot display this image. some versions of safari have a bug which reverses the color channels. if you are on an Apple platform, you can probably download this file and view it normally.
 
 The `premultiplied` and `straightened` properties satisfy the condition that `x.premultiplied.straightened == x.premultiplied.straightened.premultiplied.straightened` for all `x`.
 
