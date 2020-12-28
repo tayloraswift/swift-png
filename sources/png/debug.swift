@@ -145,7 +145,7 @@ extension PNG.SignificantBits:CustomStringConvertible
     var description:String 
     {
         let channels:[(String, Int)] 
-        switch self 
+        switch self.case 
         {
         case .v(let v):
             channels = [("v", v)]

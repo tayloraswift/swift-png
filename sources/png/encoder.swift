@@ -375,64 +375,64 @@ extension PNG.Data.Rectangular
             try stream.format(type: .CgBI, data: cgbi)
         }
         
-        try stream.format(type: .IHDR, data: header.serialized())
+        try stream.format(type: .IHDR, data: header.serialized)
         
         if let chromaticity:PNG.Chromaticity        = self.metadata.chromaticity 
         {
-            try stream.format(type: .cHRM, data: chromaticity.serialized())
+            try stream.format(type: .cHRM, data: chromaticity.serialized)
         }
         if let gamma:PNG.Gamma                      = self.metadata.gamma 
         {
-            try stream.format(type: .gAMA, data: gamma.serialized())
+            try stream.format(type: .gAMA, data: gamma.serialized)
         }
         if let colorRendering:PNG.ColorRendering    = self.metadata.colorRendering 
         {
-            try stream.format(type: .sRGB, data: colorRendering.serialized())
+            try stream.format(type: .sRGB, data: colorRendering.serialized)
         }
         if let colorProfile:PNG.ColorProfile        = self.metadata.colorProfile 
         {
-            try stream.format(type: .iCCP, data: colorProfile.serialized())
+            try stream.format(type: .iCCP, data: colorProfile.serialized)
         }
         if let significantBits:PNG.SignificantBits  = self.metadata.significantBits 
         {
-            try stream.format(type: .sBIT, data: significantBits.serialized())
+            try stream.format(type: .sBIT, data: significantBits.serialized)
         }
         
         
         if let palette:PNG.Palette                  = palette 
         {
-            try stream.format(type: .PLTE, data: palette.serialized())
+            try stream.format(type: .PLTE, data: palette.serialized)
         }
         if let background:PNG.Background            = background
         {
-            try stream.format(type: .bKGD, data: background.serialized())
+            try stream.format(type: .bKGD, data: background.serialized)
         }
         if let transparency:PNG.Transparency        = transparency
         {
-            try stream.format(type: .tRNS, data: transparency.serialized())
+            try stream.format(type: .tRNS, data: transparency.serialized)
         }
         if let histogram:PNG.Histogram              = self.metadata.histogram 
         {
-            try stream.format(type: .hIST, data: histogram.serialized())
+            try stream.format(type: .hIST, data: histogram.serialized)
         }
         
         
         if let dimensions:PNG.PhysicalDimensions    = self.metadata.physicalDimensions 
         {
-            try stream.format(type: .pHYs, data: dimensions.serialized())
+            try stream.format(type: .pHYs, data: dimensions.serialized)
         }
         if let time:PNG.TimeModified                = self.metadata.time 
         {
-            try stream.format(type: .tIME, data: time.serialized())
+            try stream.format(type: .tIME, data: time.serialized)
         }
         
         for text:PNG.Text in self.metadata.text 
         {
-            try stream.format(type: .iTXt, data: text.serialized())
+            try stream.format(type: .iTXt, data: text.serialized)
         }
         for palette:PNG.SuggestedPalette in self.metadata.suggestedPalettes 
         {
-            try stream.format(type: .sPLT, data: palette.serialized())
+            try stream.format(type: .sPLT, data: palette.serialized)
         }
         for (type, data):(PNG.Chunk, [UInt8]) in self.metadata.application 
         {
