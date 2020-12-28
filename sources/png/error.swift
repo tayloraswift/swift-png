@@ -31,6 +31,23 @@ extension PNG
 extension PNG 
 {
     public 
+    enum LexingError
+    {
+        case truncatedSignature
+        case invalidSignature([UInt8])
+        case truncatedChunkHeader 
+        case truncatedChunkBody(expected:Int)
+        case invalidChunkTypeCode(UInt32)
+        case invalidChunkChecksum(declared:UInt32, computed:UInt32)
+    }
+    
+    public 
+    enum FormattingError
+    {
+        case invalidDestination
+    }
+    
+    public 
     enum ParsingError
     {
         case invalidHeaderChunkLength(Int)
@@ -92,6 +109,120 @@ extension PNG
         case invalidTextLanguageTag(String?)
         case invalidTextLocalizedKeyword
         case truncatedTextCompressedContent
+    }
+    
+    public 
+    enum DecodingError:Swift.Error 
+    {
+        case missingImageHeader
+        case missingPalette
+        case missingImageData
+        
+        case extraneousCompressedImageData
+        case extraneousUncompressedImageData
+        case missingCompressedImageData
+        
+        case duplicateChunk(PNG.Chunk)
+        case invalidChunkOrder(PNG.Chunk, after:PNG.Chunk)
+    }
+}
+extension LZ77 
+{
+    public 
+    enum DecompressionError:Swift.Error
+    {
+        // stream errors
+        case invalidStreamMethod
+        case invalidStreamWindowSize(exponent:Int)
+        case invalidStreamHeaderCheckBits
+        case unexpectedStreamDictionary
+        case invalidStreamChecksum
+        // block errors 
+        case invalidBlockType
+        case invalidBlockElementCountParity
+        case invalidHuffmanRunLiteralSymbolCount(Int)
+        case invalidHuffmanCodelengthHuffmanTable
+        case invalidHuffmanCodelengthSequence
+        case invalidHuffmanTable
+        
+        case invalidStringReference
+    }
+}
+
+extension PNG.LexingError:PNG.Error 
+{
+    public static 
+    var namespace:String 
+    {
+        "lexing error"
+    }
+    
+    public 
+    var message:String 
+    {
+        switch self 
+        {
+        case .invalidSignature: 
+            return "invalid png signature bytes"
+        case .truncatedSignature: 
+            return "failed to read png signature bytes from source bytestream"
+        case .truncatedChunkHeader:
+            return "failed to read chunk header from source bytestream"
+        case .truncatedChunkBody:
+            return "failed to read chunk body from source bytestream"
+        case .invalidChunkTypeCode:
+            return "invalid chunk type code"
+        case .invalidChunkChecksum:
+            return "invalid chunk checksum"
+        }
+    }
+    
+    public 
+    var details:String?
+    {
+        switch self 
+        {
+        case .invalidSignature(let declared): 
+            return "signature \(declared) does not match expected png signature \(PNG.signature)"
+        case .truncatedSignature, .truncatedChunkHeader, .truncatedChunkBody:
+            return nil
+        case .invalidChunkTypeCode(let name):
+            let string:String = withUnsafeBytes(of: name.bigEndian) 
+            {
+                .init(decoding: $0, as: Unicode.ASCII.self)
+            }
+            return "type specifier '\(string)' is not a valid chunk type"
+        case .invalidChunkChecksum(declared: let declared, computed: let computed):
+            return "computed checksum (\(computed)) does not match declared checksum (\(declared))"
+        }
+    }
+}
+extension PNG.FormattingError:PNG.Error 
+{
+    public static 
+    var namespace:String 
+    {
+        "formatting error"
+    }
+    
+    public 
+    var message:String 
+    {
+        switch self 
+        {
+        case .invalidDestination: 
+            return "failed to write to destination bytestream"
+        }
+    }
+    
+    public 
+    var details:String?
+    {
+        switch self 
+        {
+        case .invalidDestination:
+            return nil
+        }
     }
 }
 extension PNG.ParsingError:PNG.Error 

@@ -275,6 +275,9 @@ extension Test
                 "decode-iphone-optimized", 
                 .string({ Self.decode($0, subdirectory: "ios") }, ios)
             ),
+            (   
+                "error-handling", .void(Self.errorHandling)
+            ),
             (
                 "encode-iphone-optimized", 
                 .string({ Self.encode($0, subdirectory: "ios", level: 13) }, ios)
@@ -390,10 +393,129 @@ extension Test
 
             return .success(())
         }
-        catch
+        catch let error
         {
             return .failure(.init(message: "\(error)"))
         }
+    }
+    
+    static 
+    func errorHandling() -> Result<Void, Failure>
+    {
+        func decode(_ name:String) throws -> Result<Void, Failure>?
+        {
+            let path:String = "tests/integration/in/invalid/\(name).png"
+            if let _:PNG.Data.Rectangular = try .decompress(path: path)
+            {
+                return .failure(.init(message: "file '\(path)' is invalid, but decoded without errors"))
+            }
+            else 
+            {
+                return .failure(.init(message: "failed to read file '\(path)'"))
+            }
+        }
+        
+        // invalid signatures 
+        for name:String in 
+        [
+            "xs1n0g01", "xs2n0g01", "xs4n0g01", "xs7n0g01", 
+            "xcrn0g04", "xlfn0g04"
+        ] 
+        {
+            do 
+            {
+                if let result:Result<Void, Failure> = try decode(name)
+                {
+                    return result 
+                }
+            }
+            catch PNG.LexingError.invalidSignature 
+            {
+            }
+            catch let error 
+            {
+                return .failure(.init(message: "\(error)"))
+            }
+        }
+        
+        // invalid ihdr checksum 
+        do 
+        {
+            if let result:Result<Void, Failure> = try decode("xhdn0g08")
+            {
+                return result 
+            }
+        }
+        catch PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 1443964200)
+        {
+        }
+        catch let error 
+        {
+            return .failure(.init(message: "\(error)"))
+        }
+        
+        // invalid color format 
+        for (name, code):(String, (UInt8, UInt8)) in 
+        [
+            ("xc1n0g08", ( 8, 1)),
+            ("xc9n2c08", ( 8, 9)),
+            ("xd0n2c08", ( 0, 2)),
+            ("xd3n2c08", ( 3, 2)),
+            ("xd9n2c08", (99, 2)),
+        ] 
+        {
+            do 
+            {
+                if let result:Result<Void, Failure> = try decode(name)
+                {
+                    return result 
+                }
+            }
+            catch let error 
+            {
+                // need to work around compiler bug preventing tuple matching
+                guard case PNG.ParsingError.invalidHeaderPixelFormatCode(let expected) = error, 
+                    expected == code 
+                else 
+                {
+                    return .failure(.init(message: "\(error)"))
+                }
+            }
+        }
+        
+        // missing idat 
+        do 
+        {
+            if let result:Result<Void, Failure> = try decode("xdtn0g01")
+            {
+                return result 
+            }
+        }
+        catch PNG.DecodingError.missingImageData
+        {
+        }
+        catch let error 
+        {
+            return .failure(.init(message: "\(error)"))
+        }
+        
+        // invalid idat checksum 
+        do 
+        {
+            if let result:Result<Void, Failure> = try decode("xcsn0g01")
+            {
+                return result 
+            }
+        }
+        catch PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 3492746441)
+        {
+        }
+        catch let error 
+        {
+            return .failure(.init(message: "\(error)"))
+        }
+        
+        return .success(())
     }
 
     static 
@@ -423,7 +545,7 @@ extension Test
             
             try rectangular.compress(path: path.out, level: level)
         }
-        catch
+        catch let error 
         {
             return .failure(.init(message: "\(error)"))
         }

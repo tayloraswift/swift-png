@@ -192,35 +192,20 @@ extension PNG
     }
 }
 
-extension PNG 
-{
-    public 
-    enum LexingError:Swift.Error 
-    {
-        case invalidSignature
-        
-        case truncatedChunkHeader 
-        case invalidChunkTypeCode(UInt32)
-        case truncatedChunkData
-        case invalidChunkChecksum(declared:UInt32, computed:UInt32)
-    }
-    public 
-    enum FormattingError:Swift.Error 
-    {
-        case invalidDestination
-    }
-}
-
 extension PNG.Bytestream.Source 
 {
     public mutating 
     func signature() throws 
     {
-        guard   let bytes:[UInt8] = self.read(count: PNG.signature.count),
-                    bytes == PNG.signature
+        guard let bytes:[UInt8] = self.read(count: PNG.signature.count)
         else
         {
-            throw PNG.LexingError.invalidSignature
+            throw PNG.LexingError.truncatedSignature
+        }
+        guard bytes == PNG.signature 
+        else 
+        {
+            throw PNG.LexingError.invalidSignature(bytes)
         }
     }
     
@@ -241,10 +226,11 @@ extension PNG.Bytestream.Source
         {
             throw PNG.LexingError.invalidChunkTypeCode(name)
         }
-        guard var data:[UInt8] = self.read(count: length + MemoryLayout<UInt32>.size)
+        let bytes:Int = length + MemoryLayout<UInt32>.size
+        guard var data:[UInt8] = self.read(count: bytes)
         else
         {
-            throw PNG.LexingError.truncatedChunkData
+            throw PNG.LexingError.truncatedChunkBody(expected: bytes)
         }
 
         let declared:UInt32 = data.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self)

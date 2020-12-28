@@ -5,6 +5,7 @@ enum Global
     enum Option 
     {
         case compact 
+        case printExpectedFailures
     }
     
     static 
@@ -20,6 +21,8 @@ for argument:String in CommandLine.arguments.dropFirst()
         {
         case "--compact", "-c":
             Global.options.insert(.compact)
+        case "--print-expected-failures", "-e":
+            Global.options.insert(.printExpectedFailures)
         default:
             print("'\(argument)' is not a valid option")
             Foundation.exit(-2)

@@ -1,21 +1,5 @@
 extension PNG 
 {
-    enum DecodingError:Swift.Error 
-    {
-        case missingImageHeader
-        case missingPalette
-        case missingImageData
-        
-        case extraneousCompressedImageData
-        case extraneousUncompressedImageData
-        case missingCompressedImageData
-        
-        case duplicateChunk(PNG.Chunk)
-        case invalidChunkOrder(PNG.Chunk, after:PNG.Chunk)
-    }
-}
-extension PNG 
-{
     public 
     struct Metadata 
     {
