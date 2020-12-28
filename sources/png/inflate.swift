@@ -2,27 +2,9 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
+public 
 enum LZ77 
 {
-    enum DecompressionError:Swift.Error
-    {
-        // stream errors
-        case invalidStreamMethod
-        case invalidStreamWindowSize(exponent:Int)
-        case invalidStreamHeaderCheckBits
-        case unexpectedStreamDictionary
-        case invalidStreamChecksum
-        // block errors 
-        case invalidBlockType
-        case invalidBlockElementCountParity
-        case invalidHuffmanRunLiteralSymbolCount(Int)
-        case invalidHuffmanCodelengthHuffmanTable
-        case invalidHuffmanCodelengthSequence
-        case invalidHuffmanTable
-        
-        case invalidStringReference
-    }
-    
     enum Format 
     {
         case zlib 
