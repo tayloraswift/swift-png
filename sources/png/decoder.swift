@@ -140,6 +140,7 @@ extension PNG.Layout
     }
     var transparency:PNG.Transparency? 
     {
+        let c:PNG.Transparency.Case 
         switch self.format 
         {
         case    .v1         (fill: _, key: nil), 
@@ -161,18 +162,18 @@ extension PNG.Layout
                 .v2         (fill: _, key: let k?), 
                 .v4         (fill: _, key: let k?), 
                 .v8         (fill: _, key: let k?):
-            return .v(key: .init(k))
+            c = .v(key: .init(k))
         
         case    .v16        (fill: _, key: let k?):
-            return .v(key: k)
+            c = .v(key: k)
             
         case    .bgr8       (palette: _, fill: _, key: let k?):
-            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
+            c = .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
         case    .rgb8       (palette: _, fill: _, key: let k?):
-            return .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
+            c = .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
         
         case    .rgb16      (palette: _, fill: _, key: let k?):
-            return .rgb(key: k)
+            c = .rgb(key: k)
         
         case    .indexed1   (palette: let palette, fill: _),
                 .indexed2   (palette: let palette, fill: _),
@@ -183,11 +184,13 @@ extension PNG.Layout
             {
                 return nil 
             }
-            return .palette(alpha: palette.prefix(last + 1).map(\.a))
+            c = .palette(alpha: palette.prefix(last + 1).map(\.a))
         }
+        return .init(case: c)
     }
     var background:PNG.Background? 
     {
+        let c:PNG.Background.Case 
         switch self.format 
         {
         case    .v1         (fill: nil, key: _), 
@@ -214,29 +217,30 @@ extension PNG.Layout
                 .v4         (fill: let f?, key: _), 
                 .v8         (fill: let f?, key: _), 
                 .va8        (fill: let f?):
-            return .v(.init(f))
+            c = .v(.init(f))
         
         case    .v16        (fill: let f?, key: _), 
                 .va16       (fill: let f?):
-            return .v(f)
+            c = .v(f)
             
         case    .bgr8       (palette: _, fill: let f?, key: _),
                 .bgra8      (palette: _, fill: let f?):
-            return .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
+            c = .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
         case    .rgb8       (palette: _, fill: let f?, key: _),
                 .rgba8      (palette: _, fill: let f?):
-            return .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
+            c = .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
         
         case    .rgb16      (palette: _, fill: let f?, key: _),
                 .rgba16     (palette: _, fill: let f?):
-            return .rgb(f)
+            c = .rgb(f)
         
         case    .indexed1   (palette: _, fill: let i?),
                 .indexed2   (palette: _, fill: let i?),
                 .indexed4   (palette: _, fill: let i?),
                 .indexed8   (palette: _, fill: let i?):
-            return .palette(index: i)
+            c = .palette(index: i)
         }
+        return .init(case: c)
     }
 }
 
@@ -498,12 +502,12 @@ extension PNG.Metadata
         case .bKGD:
             try Self.unique(assign: chunk.type, to: &background) 
             {
-                try .parse(chunk.data, pixel: pixel, palette: palette)
+                try .init(parsing: chunk.data, pixel: pixel, palette: palette)
             }
         case .tRNS:
             try Self.unique(assign: chunk.type, to: &transparency) 
             {
-                try .parse(chunk.data, pixel: pixel, palette: palette)
+                try .init(parsing: chunk.data, pixel: pixel, palette: palette)
             }
             
         case .hIST:
@@ -514,53 +518,52 @@ extension PNG.Metadata
             }
             try Self.unique(assign: chunk.type, to: &self.histogram) 
             {
-                try .parse(chunk.data, pixel: pixel, palette: palette)
+                try .init(parsing: chunk.data, pixel: pixel, palette: palette)
             }
         
         case .cHRM:
             try Self.unique(assign: chunk.type, to: &self.chromaticity) 
             {
-                try .parse(chunk.data)
+                try .init(parsing: chunk.data)
             }
         case .gAMA:
             try Self.unique(assign: chunk.type, to: &self.gamma) 
             {
-                try .parse(chunk.data)
+                try .init(parsing: chunk.data)
             }
         case .sRGB:
             try Self.unique(assign: chunk.type, to: &self.colorRendering) 
             {
-                try .parse(chunk.data)
+                try .init(parsing: chunk.data)
             }
         case .iCCP:
-            break
-            //try Self.unique(assign: chunk.type, to: &self.colorProfile) 
-            //{
-            //    try .parse(chunk.data)
-            //}
+            try Self.unique(assign: chunk.type, to: &self.colorProfile) 
+            {
+                try .init(parsing: chunk.data)
+            }
         case .sBIT:
             try Self.unique(assign: chunk.type, to: &self.significantBits) 
             {
-                try .parse(chunk.data, pixel: pixel)
+                try .init(parsing: chunk.data, pixel: pixel)
             }
         
         case .pHYs:
             try Self.unique(assign: chunk.type, to: &self.physicalDimensions) 
             {
-                try .parse(chunk.data)
+                try .init(parsing: chunk.data)
             }
         case .tIME:
             try Self.unique(assign: chunk.type, to: &self.time) 
             {
-                try .parse(chunk.data)
+                try .init(parsing: chunk.data)
             }
         
         case .sPLT:
-            self.suggestedPalettes.append(try .parse(chunk.data))
+            self.suggestedPalettes.append(try .init(parsing: chunk.data))
         case .iTXt:
-            self.text.append(try .parse(        chunk.data))
+            self.text.append(try .init(parsing: chunk.data))
         case .tEXt, .zTXt:
-            self.text.append(try .parse(latin1: chunk.data))
+            self.text.append(try .init(parsing: chunk.data, unicode: false))
         
         default:
             self.application.append(chunk)
@@ -815,12 +818,12 @@ extension PNG.Context
         case .tIME:
             try PNG.Metadata.unique(assign: chunk.type, to: &self.image.metadata.time) 
             {
-                try .parse(chunk.data)
+                try .init(parsing: chunk.data)
             }
         case .iTXt:
-            self.image.metadata.text.append(try .parse(        chunk.data))
+            self.image.metadata.text.append(try .init(parsing: chunk.data))
         case .tEXt, .zTXt:
-            self.image.metadata.text.append(try .parse(latin1: chunk.data))
+            self.image.metadata.text.append(try .init(parsing: chunk.data, unicode: false))
         case .IHDR, .PLTE, .bKGD, .tRNS, .hIST, 
             .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT:
             throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT)
@@ -859,7 +862,7 @@ extension PNG.Data.Rectangular
             switch chunk 
             {
             case (.IHDR, let data):
-                return (standard, try .parse(data, standard: standard))
+                return (standard, try .init(parsing: data, standard: standard))
             default:
                 throw PNG.DecodingError.missingImageHeader
             }
@@ -901,7 +904,7 @@ extension PNG.Data.Rectangular
                     {
                         throw PNG.DecodingError.invalidChunkOrder(.PLTE, after: .hIST)
                     }
-                    palette = try .parse(chunk.data, pixel: header.pixel)
+                    palette = try .init(parsing: chunk.data, pixel: header.pixel)
                 
                 case .IDAT:
                     guard let context:PNG.Context = PNG.Context.init(

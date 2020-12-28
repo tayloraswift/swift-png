@@ -274,9 +274,7 @@ extension PNG.Format
             guard !palette.isEmpty 
             else 
             {
-                let error:PNG.ParsingError = .invalidPaletteEntryCount(0, 
-                    expected: 1 ... max.count)
-                fatalError("\(error)")
+                PNG.ParsingError.invalidPaletteCount(0, max: max.count).fatal
             }
             max.index = palette.count - 1
         default:
@@ -286,9 +284,7 @@ extension PNG.Format
         guard max.index < max.count 
         else 
         {
-            let error:PNG.ParsingError = .invalidPaletteEntryCount(max.index + 1, 
-                expected: 0 ... max.count)
-            fatalError("\(error)")
+            PNG.ParsingError.invalidPaletteCount(max.index + 1, max: max.count).fatal 
         }
         
         switch self 
@@ -300,9 +296,7 @@ extension PNG.Format
             guard fill <= max.sample 
             else 
             {
-                let error:PNG.ParsingError = .invalidBackgroundSample(fill, 
-                    expected: 0 ... max.sample)
-                fatalError("\(error)")
+                PNG.ParsingError.invalidBackgroundSample(fill, max: max.sample).fatal 
             }
         case    .indexed1(palette: _, fill: let i?),
                 .indexed2(palette: _, fill: let i?),
@@ -311,9 +305,7 @@ extension PNG.Format
             guard i <= max.index 
             else 
             {
-                let error:PNG.ParsingError = .invalidBackgroundPaletteEntryIndex(i, 
-                    expected: 0 ... max.index)
-                fatalError("\(error)")
+                PNG.ParsingError.invalidBackgroundIndex(i, max: max.index).fatal 
             }
         default:
             break 
@@ -328,9 +320,7 @@ extension PNG.Format
             guard key <= max.sample 
             else 
             {
-                let error:PNG.ParsingError = .invalidChromaKeySample(key, 
-                    expected: 0 ... max.sample)
-                fatalError("\(error)")
+                PNG.ParsingError.invalidTransparencySample(key, max: max.sample).fatal 
             }
         default:
             break
@@ -353,23 +343,23 @@ extension PNG.Format
             guard palette == nil 
             else 
             {
-                fatalError("palette not allowed for pixel type `\(pixel)`")
+                PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
             }
             let f:UInt16?, 
                 k:UInt16?
-            switch background 
+            switch background?.case 
             {
             case .v(let v)?:    f = v
             case nil:           f = nil 
             default: 
-                fatalError("expected background of case `v` for pixel type `\(pixel)`")
+                fatalError("expected background of case `v` for pixel format `\(pixel)`")
             }
-            switch transparency 
+            switch transparency?.case 
             {
             case .v(let v)?:    k = v
             case nil:           k = nil 
             default:
-                fatalError("expected transparency of case `v` for pixel type `\(pixel)`")
+                fatalError("expected transparency of case `v` for pixel format `\(pixel)`")
             }
             
             switch pixel 
@@ -392,19 +382,19 @@ extension PNG.Format
             let palette:[RGB<UInt8>] = palette?.entries ?? []
             let f:RGB<UInt16>?, 
                 k:RGB<UInt16>?
-            switch background 
+            switch background?.case 
             {
             case .rgb(let c)?:  f = c
             case nil:           f = nil 
             default: 
-                fatalError("expected background of case `rgb` for pixel type `\(pixel)`")
+                fatalError("expected background of case `rgb` for pixel format `\(pixel)`")
             }
-            switch transparency 
+            switch transparency?.case 
             {
             case .rgb(let c)?:  k = c
             case nil:           k = nil 
             default: 
-                fatalError("expected transparency of case `rgb` for pixel type `\(pixel)`")
+                fatalError("expected transparency of case `rgb` for pixel format `\(pixel)`")
             }
             
             switch (standard, pixel) 
@@ -430,16 +420,16 @@ extension PNG.Format
                 return nil 
             }
             let f:Int? 
-            switch background 
+            switch background?.case 
             {
             case .palette(let i):   f = i
             case nil:               f = nil 
             default: 
-                fatalError("expected background of case `palette` for pixel type `\(pixel)`")
+                fatalError("expected background of case `palette` for pixel format `\(pixel)`")
             }
             
             let palette:[RGBA<UInt8>]
-            switch transparency 
+            switch transparency?.case 
             {
             case nil:
                 palette =          solid.map        { (  $0.r,   $0.g,   $0.b, .max) }
@@ -447,13 +437,14 @@ extension PNG.Format
                 guard alpha.count <= solid.count 
                 else 
                 {
-                    fatalError("transparency for pixel type `\(pixel)` cannot have more alpha samples (\(alpha.count)) than palette entries (\(solid.count))")
+                    PNG.ParsingError.invalidTransparencyCount(alpha.count, 
+                        max: solid.count).fatal
                 }
                 
                 palette =      zip(solid, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } + 
                     solid.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
             default: 
-                fatalError("expected transparency of case `palette` for pixel type `\(pixel)`")
+                fatalError("expected transparency of case `palette` for pixel format `\(pixel)`")
             }
             
             switch pixel  
@@ -474,21 +465,21 @@ extension PNG.Format
             guard palette == nil
             else
             {
-                fatalError("palette not allowed for pixel type `\(pixel)`")
+                PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
             }
             guard transparency == nil 
             else 
             {
-                fatalError("transparency not allowed for pixel type `\(pixel)`")
+                PNG.ParsingError.unexpectedTransparency(pixel: pixel).fatal
             }
             
             let f:UInt16?
-            switch background 
+            switch background?.case 
             {
             case .v(let v)?:    f = v
             case nil:           f = nil 
             default:
-                fatalError("expected background of case `v` for pixel type `\(pixel)`")
+                fatalError("expected background of case `v` for pixel format `\(pixel)`")
             }
             
             switch pixel 
@@ -505,17 +496,17 @@ extension PNG.Format
             guard transparency == nil 
             else 
             {
-                fatalError("transparency not allowed for pixel type `\(pixel)`")
+                PNG.ParsingError.unexpectedTransparency(pixel: pixel).fatal
             }
             
             let palette:[RGB<UInt8>] = palette?.entries ?? []
             let f:RGB<UInt16>?
-            switch background 
+            switch background?.case 
             {
             case .rgb(let c)?:  f = c
             case nil:           f = nil 
             default: 
-                fatalError("expected background of case `rgb` for pixel type `\(pixel)`")
+                fatalError("expected background of case `rgb` for pixel format `\(pixel)`")
             }
             
             switch (standard, pixel) 
@@ -541,85 +532,21 @@ extension PNG.Format
 extension PNG 
 {
     public 
-    enum ParsingError:Swift.Error 
-    {
-        case invalidHeaderChunkLength(Int)
-        case invalidHeaderPixelFormatCode(depth:UInt8, type:UInt8)
-        case invalidHeaderPixelFormat(PNG.Format.Pixel, standard:PNG.Standard)
-        case invalidHeaderCompressionCode(UInt8)
-        case invalidHeaderFilterCode(UInt8)
-        case invalidHeaderInterlacingCode(UInt8)
-        case invalidHeaderSize((x:Int, y:Int))
-        
-        case unexpectedPalette(pixel:PNG.Format.Pixel)
-        case invalidPaletteSampleCount(Int)
-        case invalidPaletteEntryCount(Int, expected:ClosedRange<Int>)
-        
-        case unexpectedTransparency(pixel:PNG.Format.Pixel)
-        case invalidTransparencyChunkLength(Int, expected:Int)
-        case invalidChromaKeySample(UInt16, expected:ClosedRange<UInt16>)
-        case invalidTransparencyPaletteEntryCount(Int, expected:ClosedRange<Int>)
-        
-        case unexpectedBackground
-        case invalidBackgroundChunkLength(Int, expected:Int)
-        case invalidBackgroundSample(UInt16, expected:ClosedRange<UInt16>)
-        case invalidBackgroundPaletteEntryIndex(Int, expected:ClosedRange<Int>)
-        
-        case unexpectedHistogram
-        case invalidHistogramChunkLength(Int)
-        case invalidHistogramBinCount(Int, expected:Int)
-        
-        case invalidGammaChunkLength(Int)
-        
-        case invalidChromaticityChunkLength(Int)
-        
-        case invalidColorRenderingChunkLength(Int)
-        case invalidColorRenderingCode(UInt8)
-        
-        case invalidSignificantBitsChunkLength(Int, expected:Int)
-        case invalidSignificantBitsSamplePrecision(Int, expected:ClosedRange<Int>)
-        
-        case missingColorProfileName 
-        case invalidColorProfileName 
-        case missingColorProfileFlags
-        case invalidColorProfileFlagsCode(method:UInt8)
-        case truncatedColorProfileCompressedContent
-        
-        case invalidPhysicalDimensionsChunkLength(Int)
-        case invalidPhysicalDimensionsDensityUnitCode(UInt8)
-        
-        case truncatedSuggestedPalette(Int, minimum:Int)
-        case invalidSuggestedPaletteChunkLength(Int, offset:Int, stride:Int)
-        case missingSuggestedPaletteName
-        case invalidSuggestedPaletteName 
-        case invalidSuggestedPaletteDepthCode(UInt8)
-        
-        case invalidTimeModifiedChunkLength(Int)
-        case invalidTimeModifiedTime(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int)
-        
-        case missingTextEnglishKeyword
-        case invalidTextEnglishKeyword
-        case missingTextFlags
-        case invalidTextFlagsCode(compression:UInt8, method:UInt8)
-        case missingTextLanguage
-        case invalidTextLanguage
-        case missingTextLocalizedKeyword
-        case truncatedTextCompressedContent
-    }
-}
-extension PNG 
-{
-    public 
     struct Header
     {
         public
         let size:(x:Int, y:Int), 
             pixel:PNG.Format.Pixel, 
             interlaced:Bool
-        // need to override synthesized init
-        private 
-        init(unchecked size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
+        
+        public 
+        init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
         {
+            guard size.x > 0, size.y > 0 
+            else 
+            {
+                PNG.ParsingError.invalidHeaderSize(size).fatal
+            }
             self.size       = size 
             self.pixel      = pixel 
             self.interlaced = interlaced
@@ -629,29 +556,7 @@ extension PNG
 extension PNG.Header 
 {
     public 
-    init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
-    {
-        precondition(size.x > 0 && size.y > 0, "size must be positive")
-        self.init(unchecked: size, pixel: pixel, interlaced: interlaced)
-    }
-    
-    public 
-    func serialized() -> [UInt8] 
-    {
-        .init(unsafeUninitializedCapacity: 13) 
-        {
-            $0.store(self.size.x, asBigEndian: UInt32.self, at: 0)
-            $0.store(self.size.y, asBigEndian: UInt32.self, at: 4)
-            ($0[8], $0[9])  = self.pixel.code 
-            $0[10]          = 0
-            $0[11]          = 0
-            $0[12]          = self.interlaced ? 1 : 0
-            $1              = 13
-        }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8], standard:PNG.Standard) throws -> Self 
+    init(parsing data:[UInt8], standard:PNG.Standard) throws 
     {
         guard data.count == 13
         else
@@ -662,7 +567,7 @@ extension PNG.Header
         guard let pixel:PNG.Format.Pixel = .recognize(code: (data[8], data[9]))
         else
         {
-            throw PNG.ParsingError.invalidHeaderPixelFormatCode(depth: data[8], type: data[9])
+            throw PNG.ParsingError.invalidHeaderPixelFormatCode((data[8], data[9]))
         }
         
         // iphone-optimized PNG can only have pixel type rgb8 or rgb16
@@ -674,6 +579,8 @@ extension PNG.Header
         default: 
             throw PNG.ParsingError.invalidHeaderPixelFormat(pixel, standard: standard)
         }
+        
+        self.pixel = pixel 
 
         // validate other fields
         guard data[10] == 0
@@ -687,30 +594,39 @@ extension PNG.Header
             throw PNG.ParsingError.invalidHeaderFilterCode(data[11])
         }
 
-        let interlaced:Bool
         switch data[12]
         {
         case 0:
-            interlaced = false
+            self.interlaced = false
         case 1:
-            interlaced = true
+            self.interlaced = true
         default:
             throw PNG.ParsingError.invalidHeaderInterlacingCode(data[12])
         }
         
-        let size:(x:Int, y:Int) = 
-        (
-            data.load(bigEndian: UInt32.self, as: Int.self, at: 0),
-            data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
-        )
+        self.size.x = data.load(bigEndian: UInt32.self, as: Int.self, at: 0)
+        self.size.y = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
         // validate size 
-        guard size.x > 0, size.y > 0 
+        guard self.size.x > 0, self.size.y > 0 
         else 
         {
-            throw PNG.ParsingError.invalidHeaderSize(size)
+            throw PNG.ParsingError.invalidHeaderSize(self.size)
         }
-
-        return .init(size: size, pixel: pixel, interlaced: interlaced)
+    }
+    
+    public 
+    var serialized:[UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: 13) 
+        {
+            $0.store(self.size.x, asBigEndian: UInt32.self, at: 0)
+            $0.store(self.size.y, asBigEndian: UInt32.self, at: 4)
+            ($0[8], $0[9])  = self.pixel.code 
+            $0[10]          = 0
+            $0[11]          = 0
+            $0[12]          = self.interlaced ? 1 : 0
+            $1              = 13
+        }
     }
 }
 
@@ -727,13 +643,53 @@ extension PNG.Palette
     public 
     init(_ entries:[(r:UInt8, g:UInt8, b:UInt8)], pixel:PNG.Format.Pixel) 
     {
-        precondition(1 ... Swift.min(256, 1 << pixel.depth) ~= entries.count, "invalid number of palette entries")
-        precondition(pixel.hasColor, "invalid pixel format")
+        guard pixel.hasColor
+        else
+        {
+            PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal 
+        }
+        let max:Int = 1 << Swift.min(pixel.depth, 8)
+        guard 1 ... max ~= entries.count 
+        else
+        {
+            PNG.ParsingError.invalidPaletteCount(entries.count, max: max).fatal
+        }
+        
         self.entries = entries 
     }
     
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8], pixel:PNG.Format.Pixel) throws
+    {
+        guard pixel.hasColor
+        else
+        {
+            throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
+        }
+        
+        let (count, remainder):(Int, Int) = data.count.quotientAndRemainder(dividingBy: 3)
+        guard remainder == 0
+        else
+        {
+            throw PNG.ParsingError.invalidPaletteChunkLength(data.count)
+        }
+        
+        // check number of palette entries
+        let max:Int = 1 << Swift.min(pixel.depth, 8)
+        guard 1 ... max ~= count 
+        else
+        {
+            throw PNG.ParsingError.invalidPaletteCount(count, max: max)
+        }
+
+        self.entries = stride(from: data.startIndex, to: data.endIndex, by: 3).map
+        {
+            (base:Int) in (r: data[base], g: data[base + 1], b: data[base + 2])
+        }
+    }
+    
+    public 
+    var serialized:[UInt8] 
     {
         .init(unsafeUninitializedCapacity: 3 * self.entries.count)
         {
@@ -746,37 +702,6 @@ extension PNG.Palette
             }
             $1 = $0.count
         }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
-    {
-        guard pixel.hasColor
-        else
-        {
-            throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
-        }
-        
-        let (count, remainder):(Int, Int) = data.count.quotientAndRemainder(dividingBy: 3)
-        guard remainder == 0
-        else
-        {
-            throw PNG.ParsingError.invalidPaletteSampleCount(data.count)
-        }
-
-        // check number of palette entries
-        let maximum:Int = 1 << Swift.min(pixel.depth, 8)
-        guard 1 ... maximum ~= count 
-        else
-        {
-            throw PNG.ParsingError.invalidPaletteEntryCount(count, expected: 1 ... maximum)
-        }
-
-        return .init(entries: (0 ..< count).map
-        {
-            (i:Int) -> (r:UInt8, g:UInt8, b:UInt8) in 
-            (data[3 * i], data[3 * i + 1], data[3 * i + 2])
-        })
     }
 }
 extension PNG.Palette:RandomAccessCollection 
@@ -801,19 +726,149 @@ extension PNG.Palette:RandomAccessCollection
 extension PNG 
 {
     public 
-    enum Transparency 
+    struct Transparency 
     {
-        case palette(alpha:[UInt8])
-        case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
-        case v(key:UInt16)
+        public 
+        enum Case 
+        {
+            case palette(alpha:[UInt8])
+            case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
+            case v(key:UInt16)
+        }
+        
+        public 
+        let `case`:Case
     }
 }
 extension PNG.Transparency 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
     {
-        switch self 
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16: 
+            guard palette == nil 
+            else 
+            {
+                PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
+            }
+            guard case .v(key: let v) = `case` 
+            else 
+            {
+                fatalError("expected transparency of case `v` for pixel format `\(pixel)`")
+            }
+
+            let max:UInt16 = .max >> (UInt16.bitWidth - pixel.depth)
+            guard v <= max 
+            else 
+            {
+                PNG.ParsingError.invalidTransparencySample(v, max: max).fatal
+            }
+        
+        case .rgb8, .rgb16: 
+            guard case .rgb(key: let (r, g, b)) = `case` 
+            else 
+            {
+                fatalError("expected transparency of case `rgb` for pixel format `\(pixel)`")
+            }
+            let max:UInt16 = .max >> (UInt16.bitWidth - pixel.depth)
+            guard r <= max, g <= max, b <= max 
+            else 
+            {
+                PNG.ParsingError.invalidTransparencySample(Swift.max(r, g, b), max: max).fatal
+            }
+            
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                fallthrough 
+            }
+            guard case .palette(alpha: let alpha) = `case` 
+            else 
+            {
+                fatalError("expected transparency of case `palette` for pixel format `\(pixel)`")
+            }
+            guard alpha.count <= palette.count  
+            else 
+            {
+                PNG.ParsingError.invalidTransparencyCount(alpha.count, max: palette.count).fatal
+            }
+            
+        case .va8, .va16, .rgba8, .rgba16:
+            PNG.ParsingError.unexpectedTransparency(pixel: pixel).fatal
+        }
+        
+        self.case = `case`
+    }
+    
+    public 
+    init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws 
+    {
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16:
+            guard palette == nil 
+            else 
+            {
+                throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
+            }
+            guard data.count == 2 
+            else 
+            {
+                throw PNG.ParsingError.invalidTransparencyChunkLength(data.count, expected: 2)
+            }
+            
+            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let v:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+            guard v <= max 
+            else 
+            {
+                throw PNG.ParsingError.invalidTransparencySample(v, max: max)
+            }
+            self.case =  .v(key: v)
+        
+        case .rgb8, .rgb16:
+            guard data.count == 6 
+            else 
+            {
+                throw PNG.ParsingError.invalidTransparencyChunkLength(data.count, expected: 6)
+            }
+            
+            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let r:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
+                g:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
+                b:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+            guard r <= max, g <= max, b <= max 
+            else 
+            {
+                throw PNG.ParsingError.invalidTransparencySample(Swift.max(r, g, b), max: max)
+            }
+            self.case =  .rgb(key: (r, g, b))
+        
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                fallthrough
+            }
+            guard data.count <= palette.count  
+            else 
+            {
+                throw PNG.ParsingError.invalidTransparencyCount(data.count, max: palette.count)
+            }
+            self.case =  .palette(alpha: data)
+        
+        case .va8, .va16, .rgba8, .rgba16:
+            throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
+        }
+    }
+    
+    public 
+    var serialized:[UInt8] 
+    {
+        switch self.case 
         {
         case .palette(alpha: let alpha):
             return .init(unsafeUninitializedCapacity: alpha.count)
@@ -837,93 +892,155 @@ extension PNG.Transparency
             }
         }
     }
-    
-    public static 
-    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
-        throws -> Self
-    {
-        let max:UInt16 = .init(1 << pixel.depth - 1 as Int)
-        switch pixel 
-        {
-        case .v1, .v2, .v4, .v8, .v16:
-            guard data.count == 2 
-            else 
-            {
-                throw PNG.ParsingError.invalidTransparencyChunkLength(data.count, 
-                    expected: 2)
-            }
-            
-            let v:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-            guard v <= max 
-            else 
-            {
-                throw PNG.ParsingError.invalidChromaKeySample(v, expected: 0 ... max)
-            }
-            return .v(key: v)
-        
-        case .rgb8, .rgb16:
-            guard data.count == 6 
-            else 
-            {
-                throw PNG.ParsingError.invalidTransparencyChunkLength(data.count, 
-                    expected: 6)
-            }
-            
-            let r:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
-                g:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
-                b:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-            guard r <= max, g <= max, b <= max 
-            else 
-            {
-                throw PNG.ParsingError.invalidChromaKeySample(Swift.max(r, g, b), 
-                    expected: 0 ... max)
-            }
-            return .rgb(key: (r, g, b))
-        
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette 
-            else 
-            {
-                throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
-            }
-            guard data.count <= palette.count  
-            else 
-            {
-                throw PNG.ParsingError.invalidTransparencyPaletteEntryCount(data.count, 
-                    expected: 1 ... palette.count)
-            }
-            return .palette(alpha: data)
-        
-        case .va8, .va16, .rgba8, .rgba16:
-            throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
-        }
-    }
 }
 
 extension PNG 
 {
     public 
-    enum Background 
+    struct Background 
     {
-        case palette(index:Int)
-        case rgb((r:UInt16, g:UInt16, b:UInt16))
-        case v(UInt16)
+        public 
+        enum Case 
+        {
+            case palette(index:Int)
+            case rgb((r:UInt16, g:UInt16, b:UInt16))
+            case v(UInt16)
+        }
+        
+        public 
+        let `case`:Case
     }
 }
 extension PNG.Background 
 {
-    // will trap if index doesn’t fit in a uint8
     public 
-    func serialized() -> [UInt8] 
+    init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
     {
-        switch self 
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
+            guard palette == nil 
+            else 
+            {
+                PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
+            }
+            guard case .v(let v) = `case` 
+            else 
+            {
+                fatalError("expected background of case `v` for pixel format `\(pixel)`")
+            }
+            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            guard v <= max 
+            else 
+            {
+                PNG.ParsingError.invalidBackgroundSample(v, max: max).fatal
+            }
+        
+        case .rgb8, .rgb16, .rgba8, .rgba16:
+            guard case .rgb(let (r, g, b)) = `case` 
+            else 
+            {
+                fatalError("expected background of case `v` for pixel format `\(pixel)`")
+            }
+            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            guard r <= max, g <= max, b <= max 
+            else 
+            {
+                PNG.ParsingError.invalidBackgroundSample(Swift.max(r, g, b), max: max).fatal
+            }
+        
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                PNG.ParsingError.unexpectedBackground(pixel: pixel).fatal
+            }
+            guard case .palette(index: let index) = `case` 
+            else 
+            {
+                fatalError("expected background of case `palette` for pixel format `\(pixel)`")
+            }
+            guard index < palette.count
+            else 
+            {
+                PNG.ParsingError.invalidBackgroundIndex(index, max: palette.count - 1).fatal
+            }
+        }
+        
+        self.case = `case`
+    }
+    public 
+    init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
+    {
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
+            guard palette == nil 
+            else 
+            {
+                throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
+            }
+            guard data.count == 2 
+            else 
+            {
+                throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 2)
+            }
+            
+            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let v:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+            guard v <= max 
+            else 
+            {
+                throw PNG.ParsingError.invalidBackgroundSample(v, max: max)
+            }
+            self.case = .v(v)
+        
+        case .rgb8, .rgb16, .rgba8, .rgba16:
+            guard data.count == 6 
+            else 
+            {
+                throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 6)
+            }
+            
+            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let r:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
+                g:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
+                b:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+            guard r <= max, g <= max, b <= max 
+            else 
+            {
+                throw PNG.ParsingError.invalidBackgroundSample(Swift.max(r, g, b), max: max)
+            }
+            self.case = .rgb((r, g, b))
+        
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard let palette:PNG.Palette = palette 
+            else 
+            {
+                throw PNG.ParsingError.unexpectedBackground(pixel: pixel)
+            }
+            guard data.count == 1
+            else 
+            {
+                throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 1)
+            }
+            let index:Int = .init(data[0])
+            guard index < palette.count
+            else 
+            {
+                throw PNG.ParsingError.invalidBackgroundIndex(index, max: palette.count - 1)
+            }
+            self.case = .palette(index: index)
+        }
+    }
+    
+    public 
+    var serialized:[UInt8] 
+    {
+        switch self.case 
         {
         case .palette(index: let i):
-            return .init(unsafeUninitializedCapacity: 1)
-            {
-                $0[0] = .init(i)
-                $1 = $0.count
-            }
+            return [.init(i)]
         case .rgb(let c):
             return .init(unsafeUninitializedCapacity: 6)
             {
@@ -940,70 +1057,6 @@ extension PNG.Background
             }
         }
     }
-    
-    public static 
-    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
-        throws -> Self
-    {
-        let max:UInt16 = .init(1 << pixel.depth - 1 as Int)
-        switch pixel 
-        {
-        case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-            guard data.count == 2 
-            else 
-            {
-                throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, 
-                    expected: 2)
-            }
-            
-            let v:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-            guard v <= max 
-            else 
-            {
-                throw PNG.ParsingError.invalidBackgroundSample(v, expected: 0 ... max)
-            }
-            return .v(v)
-        
-        case .rgb8, .rgb16, .rgba8, .rgba16:
-            guard data.count == 6 
-            else 
-            {
-                throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, 
-                    expected: 6)
-            }
-            
-            let r:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
-                g:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
-                b:UInt16 = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-            for v:UInt16 in [r, g, b] where v > max
-            {
-                throw PNG.ParsingError.invalidBackgroundSample(v, expected: 0 ... max)
-            }
-            
-            return .rgb((r, g, b))
-        
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette 
-            else 
-            {
-                throw PNG.ParsingError.unexpectedBackground
-            }
-            guard data.count == 1
-            else 
-            {
-                throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, 
-                    expected: 1)
-            }
-            let index:Int = .init(data[0])
-            guard index < palette.count
-            else 
-            {
-                throw PNG.ParsingError.invalidBackgroundPaletteEntryIndex(index, 
-                    expected: 0 ... palette.count - 1)
-            }
-            return .palette(index: index)
-        }
-    }
 }
 
 extension PNG 
@@ -1011,14 +1064,55 @@ extension PNG
     public 
     struct Histogram 
     {
-        public private(set)
-        var frequencies:[UInt16]
+        public 
+        let frequencies:[UInt16]
     }
 }
 extension PNG.Histogram 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(frequencies:[UInt16], pixel:PNG.Format.Pixel, palette:PNG.Palette)
+    {
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
+            PNG.ParsingError.unexpectedHistogram(pixel: pixel).fatal
+        
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard frequencies.count == palette.count
+            else 
+            {
+                fatalError("number of histogram entries (\(frequencies.count)) must match number of palette entries (\(palette.count))")
+            }
+            
+            self.frequencies = frequencies
+        }
+    }
+    
+    public 
+    init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette) throws
+    {
+        switch pixel 
+        {
+        case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
+            throw PNG.ParsingError.unexpectedHistogram(pixel: pixel)
+        
+        case .indexed1, .indexed2, .indexed4, .indexed8:
+            guard data.count == 2 * palette.count
+            else 
+            {
+                throw PNG.ParsingError.invalidHistogramChunkLength(data.count, 
+                    expected: 2 * palette.count)
+            }
+            self.frequencies = (0 ..< data.count >> 1).map 
+            {
+                data.load(bigEndian: UInt16.self, as: UInt16.self, at: $0 << 1)
+            }
+        }
+    }
+    
+    public 
+    var serialized:[UInt8] 
     {
         .init(unsafeUninitializedCapacity: 2 * self.frequencies.count) 
         {
@@ -1027,34 +1121,6 @@ extension PNG.Histogram
                 $0.store(frequency, asBigEndian: UInt16.self, at: i << 1)
             }
             $1 = 2 * self.frequencies.count
-        }
-    }
-    public static 
-    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette) 
-        throws -> Self
-    {
-        switch pixel 
-        {
-        case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
-            throw PNG.ParsingError.unexpectedHistogram
-        
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard data.count & 1 == 0 
-            else 
-            {
-                // must have parity 2
-                throw PNG.ParsingError.invalidHistogramChunkLength(data.count)
-            }
-            guard data.count >> 1 == palette.count
-            else 
-            {
-                throw PNG.ParsingError.invalidHistogramBinCount(data.count >> 1, 
-                    expected: palette.count)
-            }
-            return .init(frequencies: (0 ..< data.count >> 1).map 
-            {
-                data.load(bigEndian: UInt16.self, as: UInt16.self, at: $0 << 1)
-            })
         }
     }
 }
@@ -1066,22 +1132,18 @@ extension PNG
     {
         public 
         let pcm:Percentmille 
+        
+        public 
+        init(pcm:Percentmille) 
+        {
+            self.pcm = pcm
+        }
     }
 }
 extension PNG.Gamma 
 {
     public 
-    func serialized() -> [UInt8] 
-    {
-        .init(unsafeUninitializedCapacity: MemoryLayout<UInt32>.size) 
-        {
-            $0.store(self.pcm.points, asBigEndian: UInt32.self, at: 0)
-            $1 = $0.count
-        }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
+    init(parsing data:[UInt8]) throws 
     {
         guard data.count == 4
         else 
@@ -1089,7 +1151,17 @@ extension PNG.Gamma
             throw PNG.ParsingError.invalidGammaChunkLength(data.count)
         }
         
-        return .init(pcm: .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 0)))
+        self.pcm = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 0))
+    }
+    
+    public 
+    var serialized:[UInt8] 
+    {
+        .init(unsafeUninitializedCapacity: MemoryLayout<UInt32>.size) 
+        {
+            $0.store(self.pcm.points, asBigEndian: UInt32.self, at: 0)
+            $1 = $0.count
+        }
     }
 }
 
@@ -1103,12 +1175,44 @@ extension PNG
             r:(x:Percentmille, y:Percentmille), 
             g:(x:Percentmille, y:Percentmille), 
             b:(x:Percentmille, y:Percentmille)
+        
+        public 
+        init(
+            w:(x:Percentmille, y:Percentmille), 
+            r:(x:Percentmille, y:Percentmille), 
+            g:(x:Percentmille, y:Percentmille), 
+            b:(x:Percentmille, y:Percentmille))
+        {
+            self.w = w 
+            self.r = r 
+            self.g = g 
+            self.b = b
+        }
     }
 }
 extension PNG.Chromaticity 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8]) throws 
+    {
+        guard data.count == 32
+        else 
+        {
+            throw PNG.ParsingError.invalidChromaticityChunkLength(data.count)
+        }
+        
+        self.w.x = .init(data.load(bigEndian: UInt32.self, as: Int.self, at:  0))
+        self.w.y = .init(data.load(bigEndian: UInt32.self, as: Int.self, at:  4))
+        self.r.x = .init(data.load(bigEndian: UInt32.self, as: Int.self, at:  8))
+        self.r.y = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 12))
+        self.g.x = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 16))
+        self.g.y = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 20))
+        self.b.x = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 24))
+        self.b.y = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 28))
+    }
+    
+    public 
+    var serialized:[UInt8]
     {
         .init(unsafeUninitializedCapacity: 32) 
         {
@@ -1126,38 +1230,6 @@ extension PNG.Chromaticity
             $1 = $0.count
         }
     }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
-    {
-        guard data.count == 32
-        else 
-        {
-            throw PNG.ParsingError.invalidChromaticityChunkLength(data.count)
-        }
-        
-        return .init(
-            w: 
-            (
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at:  0)),
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at:  4))
-            ),
-            r: 
-            (
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at:  8)),
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 12))
-            ),
-            g: 
-            (
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 16)),
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 20))
-            ),
-            b: 
-            (
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 24)),
-                .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 28))
-            ))
-    }
 }
 
 extension PNG 
@@ -1174,19 +1246,7 @@ extension PNG
 extension PNG.ColorRendering 
 {
     public 
-    func serialized() -> [UInt8] 
-    {
-        switch self 
-        {
-        case .perceptual:   return [0]
-        case .relative:     return [1]
-        case .saturation:   return [2]
-        case .absolute:     return [3]
-        }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
+    init(parsing data:[UInt8]) throws 
     {
         guard data.count == 1
         else 
@@ -1196,11 +1256,23 @@ extension PNG.ColorRendering
         
         switch data[0] 
         {
-        case 0:     return .perceptual 
-        case 1:     return .relative 
-        case 2:     return .saturation 
-        case 3:     return .absolute 
+        case 0:     self = .perceptual 
+        case 1:     self = .relative 
+        case 2:     self = .saturation 
+        case 3:     self = .absolute 
         default:    throw PNG.ParsingError.invalidColorRenderingCode(data[0])
+        }
+    }
+    
+    public 
+    var serialized:[UInt8]
+    {
+        switch self 
+        {
+        case .perceptual:   return [0]
+        case .relative:     return [1]
+        case .saturation:   return [2]
+        case .absolute:     return [3]
         }
     }
 }
@@ -1208,30 +1280,49 @@ extension PNG.ColorRendering
 extension PNG 
 {
     public 
-    enum SignificantBits 
+    struct SignificantBits 
     {
-        case v(Int)
-        case va((v:Int, a:Int))
-        case rgb((r:Int, g:Int, b:Int))
-        case rgba((r:Int, g:Int, b:Int, a:Int))
+        public 
+        enum Case  
+        {
+            case v(Int)
+            case va((v:Int, a:Int))
+            case rgb((r:Int, g:Int, b:Int))
+            case rgba((r:Int, g:Int, b:Int, a:Int))
+        }
+        
+        let `case`:Case
     }
 }
 extension PNG.SignificantBits 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(case:Case, pixel:PNG.Format.Pixel) 
     {
-        switch self 
+        let precision:[Int] 
+        switch `case` 
         {
-        case .v(   let c):  return [c].map(UInt8.init(_:))
-        case .va(  let c):  return [c.v, c.a].map(UInt8.init(_:))
-        case .rgb( let c):  return [c.r, c.g, c.b].map(UInt8.init(_:))
-        case .rgba(let c):  return [c.r, c.g, c.b, c.a].map(UInt8.init(_:))
+        case .v   (let  v          ):   precision = [v]
+        case .va  (let (v,       a)):   precision = [v, a]
+        case .rgb (let (r, g, b   )):   precision = [r, g, b]
+        case .rgba(let (r, g, b, a)):   precision = [r, g, b, a]
         }
+        
+        let max:Int
+        switch pixel  
+        {
+        case .indexed1, .indexed2, .indexed4, .indexed8:    max = 8
+        default:                                            max = pixel.depth 
+        }
+        for v:Int in precision where !(1 ... max ~= v)
+        {
+            PNG.ParsingError.invalidSignificantBitsPrecision(v, max: max).fatal
+        }
+        
+        self.case = `case`
     }
-    
-    public static 
-    func parse(_ data:[UInt8], pixel:PNG.Format.Pixel) throws -> Self
+    public 
+    init(parsing data:[UInt8], pixel:PNG.Format.Pixel) throws
     {
         let arity:Int = (pixel.hasColor ? 3 : 1) + (pixel.hasAlpha ? 1 : 0)
         guard data.count == arity 
@@ -1241,57 +1332,57 @@ extension PNG.SignificantBits
                 expected: arity)
         }
         
-        let range:ClosedRange<Int> 
-        switch pixel  
-        {
-        case .indexed1, .indexed2, .indexed4, .indexed8:    range = 1 ... 8
-        default:                                            range = 1 ... pixel.depth 
-        }
-        
+        let precision:[Int]
         switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16:
             let v:Int = .init(data[0])
-            guard range ~= v 
-            else 
-            {
-                throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: range)
-            }
-            return .v(v)
+            self.case = .v(v)
+            precision = [v]
         
         case .rgb8, .rgb16, .indexed1, .indexed2, .indexed4, .indexed8:
             let r:Int = .init(data[0]), 
                 g:Int = .init(data[1]), 
                 b:Int = .init(data[2])
-            for v:Int in [r, g, b] where !(range ~= v)
-            {
-                throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: range)
-            }
-            return .rgb((r, g, b))
+            self.case = .rgb((r, g, b))
+            precision = [r, g, b]
         
         case .va8, .va16:
             let v:Int = .init(data[0]), 
                 a:Int = .init(data[1])
-            for v:Int in [v, a] where !(range ~= v)
-            {
-                throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: range)
-            }
-            return .va((v, a))
+            self.case = .va((v, a))
+            precision = [v, a]
         
         case .rgba8, .rgba16:
             let r:Int = .init(data[0]), 
                 g:Int = .init(data[1]), 
                 b:Int = .init(data[2]),
                 a:Int = .init(data[3])
-            for v:Int in [r, g, b, a] where !(range ~= v)
-            {
-                throw PNG.ParsingError.invalidSignificantBitsSamplePrecision(v, 
-                    expected: range)
-            }
-            return .rgba((r, g, b, a))
+            self.case = .rgba((r, g, b, a))
+            precision = [r, g, b, a]
+        }
+        
+        let max:Int
+        switch pixel  
+        {
+        case .indexed1, .indexed2, .indexed4, .indexed8:    max = 8
+        default:                                            max = pixel.depth 
+        }
+        for v:Int in precision where !(1 ... max ~= v)
+        {
+            throw PNG.ParsingError.invalidSignificantBitsPrecision(v, max: max)
+        }
+    }
+    
+    public 
+    var serialized:[UInt8]
+    {
+        switch self.case 
+        {
+        case .v(   let c):  return [c].map(UInt8.init(_:))
+        case .va(  let c):  return [c.v, c.a].map(UInt8.init(_:))
+        case .rgb( let c):  return [c.r, c.g, c.b].map(UInt8.init(_:))
+        case .rgba(let c):  return [c.r, c.g, c.b, c.a].map(UInt8.init(_:))
         }
     }
 }
@@ -1305,12 +1396,62 @@ extension PNG
         let name:String 
         public 
         let profile:[UInt8]
+        
+        public 
+        init(name:String, profile:[UInt8])
+        {
+            guard PNG.Text.validate(name: name.unicodeScalars) 
+            else 
+            {
+                PNG.ParsingError.invalidColorProfileName(name).fatal 
+            }
+            
+            self.name       = name 
+            self.profile    = profile 
+        }
     }
 }
 extension PNG.ColorProfile 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8]) throws 
+    {
+        //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┐
+        //  │    name    │ 0 │ M │        profile         │
+        //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┘
+        //               k  k+1 k+2
+        let k:Int 
+        
+        (self.name, k) = try PNG.Text.name(parsing: data[...]) 
+        {
+            PNG.ParsingError.invalidColorProfileName($0)
+        }
+        
+        // assert existence of method byte
+        guard k + 1 < data.endIndex 
+        else 
+        {
+            throw PNG.ParsingError.invalidColorProfileChunkLength(data.count, min: k + 2)
+        }
+        
+        guard data[k + 1] == 0
+        else 
+        {
+            throw PNG.ParsingError.invalidColorProfileCompressionMethodCode(data[k + 1])
+        }
+        
+        var inflator:LZ77.Inflator = .init()
+        guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
+        else 
+        {
+            throw PNG.ParsingError.truncatedColorProfileCompressedContent
+        }
+        
+        self.profile = inflator.pull()
+    }
+    
+    public 
+    var serialized:[UInt8]
     {
         var data:[UInt8] = []
         data.reserveCapacity(2 + self.name.count)
@@ -1335,47 +1476,6 @@ extension PNG.ColorProfile
         
         return data
     }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
-    {
-        //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┐
-        //  │    name    │ 0 │ M │        profile         │
-        //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┘
-        //               k  k+1 k+2
-        guard let k:Int = data.firstIndex(of: 0)
-        else 
-        {
-            throw PNG.ParsingError.missingColorProfileName
-        }
-        // assert existence of method byte
-        guard k + 1 < data.endIndex 
-        else 
-        {
-            throw PNG.ParsingError.missingColorProfileFlags
-        }
-        
-        guard let name:String = PNG.Text.validate(name: data.prefix(k))
-        else 
-        {
-            throw PNG.ParsingError.invalidColorProfileName
-        }
-        
-        guard data[k + 1] == 0
-        else 
-        {
-            throw PNG.ParsingError.invalidColorProfileFlagsCode(method: data[k + 1])
-        }
-        
-        var inflator:LZ77.Inflator = .init()
-        guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
-        else 
-        {
-            throw PNG.ParsingError.truncatedColorProfileCompressedContent
-        }
-        
-        return .init(name: name, profile: inflator.pull())
-    }
 }
 
 
@@ -1392,12 +1492,39 @@ extension PNG
         
         public 
         let density:(x:Int, y:Int, unit:Unit?)
+        
+        public 
+        init(density:(x:Int, y:Int, unit:Unit?)) 
+        {
+            self.density = density 
+        }
     }
 }
 extension PNG.PhysicalDimensions 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8]) throws 
+    {
+        guard data.count == 9
+        else 
+        {
+            throw PNG.ParsingError.invalidPhysicalDimensionsChunkLength(data.count)
+        }
+        
+        self.density.x = data.load(bigEndian: UInt32.self, as: Int.self, at: 0)
+        self.density.y = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
+        
+        switch data[8]
+        {
+        case 0:     self.density.unit = nil 
+        case 1:     self.density.unit = .meter 
+        default:    
+            throw PNG.ParsingError.invalidPhysicalDimensionsDensityUnitCode(data[8])
+        }
+    }
+    
+    public 
+    var serialized:[UInt8]
     {
         .init(unsafeUninitializedCapacity: 9) 
         {
@@ -1411,29 +1538,6 @@ extension PNG.PhysicalDimensions
             }
             $1 = $0.count
         }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
-    {
-        guard data.count == 9
-        else 
-        {
-            throw PNG.ParsingError.invalidPhysicalDimensionsChunkLength(data.count)
-        }
-        
-        let x:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 0),
-            y:Int = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
-        
-        let unit:Unit?
-        switch data[8]
-        {
-        case 0:     unit = nil 
-        case 1:     unit = .meter 
-        default:    throw PNG.ParsingError.invalidPhysicalDimensionsDensityUnitCode(data[8])
-        }
-        
-        return .init(density: (x, y, unit))
     }
 }
 
@@ -1453,12 +1557,135 @@ extension PNG
         let name:String 
         public 
         var entries:Entries 
+        
+        init(name:String, entries:Entries) 
+        {
+            guard PNG.Text.validate(name: name.unicodeScalars) 
+            else 
+            {
+                PNG.ParsingError.invalidSuggestedPaletteName(name).fatal 
+            }
+            
+            self.name       = name 
+            self.entries    = entries
+            
+            guard self.descendingFrequency 
+            else 
+            {
+                PNG.ParsingError.invalidSuggestedPaletteFrequency.fatal
+            }
+        }
     }
 }
 extension PNG.SuggestedPalette 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8]) throws 
+    {
+        let k:Int 
+        
+        (self.name, k) = try PNG.Text.name(parsing: data[...])
+        {
+            PNG.ParsingError.invalidSuggestedPaletteName($0)
+        }
+        
+        guard k + 1 < data.count 
+        else 
+        {
+            throw PNG.ParsingError.invalidSuggestedPaletteChunkLength(data.count, min: k + 2)
+        }
+        
+        let bytes:Int = data.count - k - 2
+        switch data[k + 1] 
+        {
+        case 8:
+            guard bytes % 6 == 0 
+            else 
+            {
+                throw PNG.ParsingError.invalidSuggestedPaletteDataLength(bytes, stride: 6)
+            }
+            
+            self.entries = .rgba8(stride(from: k + 2, to: data.endIndex, by: 6).map 
+            {
+                (base:Int) -> (color:(r:UInt8, g:UInt8, b:UInt8, a:UInt8), frequency:UInt16) in
+                (
+                    (
+                        data[base    ],
+                        data[base + 1],
+                        data[base + 2],
+                        data[base + 3]
+                    ), 
+                    data.load(bigEndian: UInt16.self, as: UInt16.self, at: base + 4)
+                )
+            })
+        
+        case 16:
+            guard bytes % 10 == 0 
+            else 
+            {
+                throw PNG.ParsingError.invalidSuggestedPaletteDataLength(bytes, stride: 10)
+            }
+            
+            self.entries = .rgba16(stride(from: k + 2, to: data.endIndex, by: 10).map 
+            {
+                (base:Int) -> (color:(r:UInt16, g:UInt16, b:UInt16, a:UInt16), frequency:UInt16) in
+                (
+                    (
+                        data.load(bigEndian: UInt16.self, as: UInt16.self, at: base    ),
+                        data.load(bigEndian: UInt16.self, as: UInt16.self, at: base + 2),
+                        data.load(bigEndian: UInt16.self, as: UInt16.self, at: base + 4),
+                        data.load(bigEndian: UInt16.self, as: UInt16.self, at: base + 6)
+                    ), 
+                    data.load(bigEndian: UInt16.self, as: UInt16.self, at: base + 8)
+                )
+            })
+        
+        default:
+            throw PNG.ParsingError.invalidSuggestedPaletteDepthCode(data[k + 1])
+        }
+        
+        guard self.descendingFrequency 
+        else 
+        {
+            throw PNG.ParsingError.invalidSuggestedPaletteFrequency
+        }
+    }
+    
+    private 
+    var descendingFrequency:Bool 
+    {
+        var previous:UInt16 = .max
+        switch self.entries 
+        {
+        case .rgba8(let entries):
+            for current:UInt16 in entries.lazy.map(\.frequency)
+            {
+                guard current <= previous 
+                else 
+                {
+                    return false 
+                }
+                
+                previous = current 
+            }
+        case .rgba16(let entries):
+            for current:UInt16 in entries.lazy.map(\.frequency)
+            {
+                guard current <= previous 
+                else 
+                {
+                    return false 
+                }
+                
+                previous = current 
+            }
+        }
+        
+        return true
+    }
+    
+    public 
+    var serialized:[UInt8]
     {
         let head:Int = self.name.unicodeScalars.count
         let tail:Int 
@@ -1513,89 +1740,6 @@ extension PNG.SuggestedPalette
             $1 = $0.count
         }
     }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
-    {
-        guard let offset:Int = data.firstIndex(of: 0)
-        else 
-        {
-            throw PNG.ParsingError.missingSuggestedPaletteName
-        }
-        // validate keyword 
-        guard let name:String = PNG.Text.validate(name: data.prefix(offset))
-        else 
-        {
-            throw PNG.ParsingError.invalidSuggestedPaletteName
-        }
-        
-        guard offset + 1 < data.count 
-        else 
-        {
-            throw PNG.ParsingError.truncatedSuggestedPalette(data.count, 
-                minimum: offset + 2)
-        }
-        
-        switch data[offset + 1] 
-        {
-        case 8:
-            let (count, remainder):(Int, Int) = 
-                (data.count - offset - 2).quotientAndRemainder(dividingBy: 6)
-            guard remainder == 0 
-            else 
-            {
-                throw PNG.ParsingError.invalidSuggestedPaletteChunkLength(data.count,  
-                    offset: offset + 2, stride: 6)
-            }
-            
-            return .init(name: name, entries: .rgba8((0 ..< count).map 
-            {
-                (i:Int) -> (color:(r:UInt8, g:UInt8, b:UInt8, a:UInt8), frequency:UInt16) in
-                (
-                    (
-                        data[offset + 2 + 6 * i    ],
-                        data[offset + 2 + 6 * i + 1],
-                        data[offset + 2 + 6 * i + 2],
-                        data[offset + 2 + 6 * i + 3]
-                    ), 
-                    data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                        at:  offset + 2 + 6 * i + 4)
-                )
-            }))
-        
-        case 16:
-            let (count, remainder):(Int, Int) = 
-                (data.count - offset - 2).quotientAndRemainder(dividingBy: 10)
-            guard remainder == 0 
-            else 
-            {
-                throw PNG.ParsingError.invalidSuggestedPaletteChunkLength(data.count,  
-                    offset: offset + 2, stride: 10)
-            }
-            
-            return .init(name: name, entries: .rgba16((0 ..< count).map 
-            {
-                (i:Int) -> (color:(r:UInt16, g:UInt16, b:UInt16, a:UInt16), frequency:UInt16) in
-                (
-                    (
-                        data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                            at: offset + 2 + 10 * i    ),
-                        data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                            at: offset + 2 + 10 * i + 2),
-                        data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                            at: offset + 2 + 10 * i + 4),
-                        data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                            at: offset + 2 + 10 * i + 6)
-                    ), 
-                    data.load(bigEndian: UInt16.self, as: UInt16.self, 
-                        at:     offset + 2 + 10 * i + 8)
-                )
-            }))
-        
-        default:
-            throw PNG.ParsingError.invalidSuggestedPaletteDepthCode(data[offset + 1])
-        }
-    }
 }
 
 extension PNG 
@@ -1611,60 +1755,73 @@ extension PNG
             minute:Int, 
             second:Int
         
-        init(validating fields:(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int)) 
-            throws 
-        {
-            guard   0 ..< 1 << 16   ~= fields.year, 
-                    1 ... 12        ~= fields.month, 
-                    1 ... 31        ~= fields.day, 
-                    0 ... 23        ~= fields.hour, 
-                    0 ... 59        ~= fields.minute, 
-                    0 ... 60        ~= fields.second 
-            else 
-            {
-                throw PNG.ParsingError.invalidTimeModifiedTime(
-                    year:   fields.year, 
-                    month:  fields.month, 
-                    day:    fields.day, 
-                    hour:   fields.hour, 
-                    minute: fields.minute, 
-                    second: fields.second)
-            }
-            
-            self.year   = fields.year
-            self.month  = fields.month
-            self.day    = fields.day
-            self.hour   = fields.hour
-            self.minute = fields.minute
-            self.second = fields.second
-        }
-        
         public 
         init(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int) 
         {
-            do 
+            guard   0 ..< 1 << 16   ~= year, 
+                    1 ... 12        ~= month, 
+                    1 ... 31        ~= day, 
+                    0 ... 23        ~= hour, 
+                    0 ... 59        ~= minute, 
+                    0 ... 60        ~= second 
+            else 
             {
-                try self.init(validating: 
-                    (   
-                        year:   year, 
-                        month:  month, 
-                        day:    day, 
-                        hour:   hour, 
-                        minute: minute, 
-                        second: second
-                    ))
+                PNG.ParsingError.invalidTimeModifiedTime(
+                    year:   year, 
+                    month:  month, 
+                    day:    day, 
+                    hour:   hour, 
+                    minute: minute, 
+                    second: second).fatal 
             }
-            catch let error 
-            {
-                fatalError("\(error)")
-            }
+            
+            self.year   = year
+            self.month  = month
+            self.day    = day
+            self.hour   = hour
+            self.minute = minute
+            self.second = second
         }
     }
 }
 extension PNG.TimeModified 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8]) throws 
+    {
+        guard data.count == 7 
+        else 
+        {
+            throw PNG.ParsingError.invalidTimeModifiedChunkLength(data.count)
+        }
+        
+        self.year   = data.load(bigEndian: UInt16.self, as: Int.self, at: 0) 
+        self.month  = .init(data[2]) 
+        self.day    = .init(data[3]) 
+        self.hour   = .init(data[4]) 
+        self.minute = .init(data[5]) 
+        self.second = .init(data[6]) 
+        
+        guard   0 ..< 1 << 16   ~= self.year, 
+                1 ... 12        ~= self.month, 
+                1 ... 31        ~= self.day, 
+                0 ... 23        ~= self.hour, 
+                0 ... 59        ~= self.minute, 
+                0 ... 60        ~= self.second 
+        else 
+        {
+            throw PNG.ParsingError.invalidTimeModifiedTime(
+                year:   self.year, 
+                month:  self.month, 
+                day:    self.day, 
+                hour:   self.hour, 
+                minute: self.minute, 
+                second: self.second)
+        }
+    }
+    
+    public 
+    var serialized:[UInt8]
     {
         .init(unsafeUninitializedCapacity: 7) 
         {
@@ -1676,33 +1833,6 @@ extension PNG.TimeModified
             $0[6] = .init(self.second)
             $1 = $0.count
         }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
-    {
-        guard data.count == 7 
-        else 
-        {
-            throw PNG.ParsingError.invalidTimeModifiedChunkLength(data.count)
-        }
-        
-        let year:Int    = data.load(bigEndian: UInt16.self, as: Int.self, at: 0), 
-            month:Int   = .init(data[2]), 
-            day:Int     = .init(data[3]), 
-            hour:Int    = .init(data[4]), 
-            minute:Int  = .init(data[5]), 
-            second:Int  = .init(data[6]) 
-        
-        return try .init(validating: 
-            (   
-                year:   year, 
-                month:  month, 
-                day:    day, 
-                hour:   hour, 
-                minute: minute, 
-                second: second
-            ))
     }
 }
 
@@ -1718,12 +1848,222 @@ extension PNG
             language:[String]
         public 
         let content:String
+        
+        init(compressed:Bool, keyword:(english:String, localized:String), 
+            language:[String], content:String)
+        {
+            guard Self.validate(name: keyword.english.unicodeScalars)
+            else 
+            {
+                PNG.ParsingError.invalidTextEnglishKeyword(keyword.english).fatal 
+            }
+            for tag:String in language
+            {
+                guard Self.validate(language: tag.unicodeScalars)
+                else 
+                {
+                    PNG.ParsingError.invalidTextLanguageTag(tag).fatal 
+                }
+            }
+            
+            self.compressed = compressed 
+            self.keyword    = keyword 
+            self.language   = language 
+            self.content    = content
+        }
     }
 }
 extension PNG.Text 
 {
     public 
-    func serialized() -> [UInt8] 
+    init(parsing data:[UInt8], unicode:Bool = true) throws 
+    {
+        //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┐
+        //  │   keyword  │ 0 │ C │ M │  language  │ 0 │   keyword  │ 0 │    text    │
+        //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┘
+        //               k  k+1 k+2 k+3           l  l+1           m  m+1
+        let k:Int
+        (self.keyword.english, k) = try Self.name(parsing: data[...]) 
+        {
+            PNG.ParsingError.invalidTextEnglishKeyword($0)
+        }
+        
+        // parse iTXt chunk 
+        if unicode 
+        {
+            // assert existence of compression flag and method bytes 
+            guard k + 2 < data.endIndex 
+            else 
+            {
+                throw PNG.ParsingError.invalidTextChunkLength(data.count, min: k + 3)
+            }
+            
+            let l:Int 
+            // language can be empty, in which case it is unknown 
+            (self.language, l) = try Self.language(parsing: data[(k + 3)...]) 
+            {
+                PNG.ParsingError.invalidTextLanguageTag($0)
+            }
+            
+            guard let m:Int = data[(l + 1)...].firstIndex(of: 0) 
+            else 
+            {
+                throw PNG.ParsingError.invalidTextLocalizedKeyword
+            }
+            
+            let localized:String    = .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
+            self.keyword.localized  = self.keyword.english == localized ? "" : localized
+            
+            let uncompressed:ArraySlice<UInt8>
+            switch data[k + 1] 
+            {
+            case 0:
+                uncompressed    = data[(m + 1)...]
+                self.compressed = false
+            case 1:
+                guard data[k + 2] == 0 
+                else 
+                {
+                    throw PNG.ParsingError.invalidTextCompressionMethodCode(data[k + 2])
+                }
+                var inflator:LZ77.Inflator = .init()
+                guard try inflator.push(.init(data[(m + 1)...])) == nil 
+                else 
+                {
+                    throw PNG.ParsingError.truncatedTextCompressedContent
+                }
+                uncompressed    = inflator.pull()[...]
+                self.compressed = true
+            default: 
+                throw PNG.ParsingError.invalidTextCompressionCode(data[k + 1])
+            }
+            
+            self.content = .init(decoding: uncompressed, as: Unicode.UTF8.self)
+        }
+        // parse tEXt/zTXt chunk 
+        else 
+        {
+            self.keyword.localized  = ""
+            self.language           = ["en"]
+            // if the next byte is also null, the chunk uses compression
+            let uncompressed:ArraySlice<UInt8>
+            if k + 1 < data.endIndex, data[k + 1] == 0
+            {
+                var inflator:LZ77.Inflator = .init()
+                guard try inflator.push(.init(data[(k + 2)...])) == nil 
+                else 
+                {
+                    throw PNG.ParsingError.truncatedTextCompressedContent
+                }
+                uncompressed    = inflator.pull()[...]
+                self.compressed = true
+            }
+            else 
+            {
+                uncompressed    = data[(k + 1)...]
+                self.compressed = false
+            }
+            
+            self.content = .init(uncompressed.map{ Character.init(Unicode.Scalar.init($0)) })
+        }
+    }
+    
+    static 
+    func name<E>(parsing data:ArraySlice<UInt8>, else error:(String?) -> E) throws 
+        -> (name:String, offset:Int)
+        where E:Swift.Error 
+    {
+        guard let offset:Int = data.firstIndex(of: 0)
+        else 
+        {
+            throw error(nil)
+        }
+        
+        let scalars:LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> = 
+            data[..<offset].lazy.map(Unicode.Scalar.init(_:))
+            
+        let name:String = .init(scalars.map(Character.init(_:)))
+        guard Self.validate(name: scalars) 
+        else 
+        {
+            throw error(name)
+        }
+        
+        return (name, offset)
+    }
+    static 
+    func validate<C>(name scalars:C) -> Bool 
+        where C:Collection, C.Element == Unicode.Scalar 
+    {
+        // `count` in range `1 ... 80`
+        guard var previous:Unicode.Scalar = scalars.first, scalars.count <= 80
+        else 
+        {
+            return false
+        }
+        
+        for scalar:Unicode.Scalar in scalars
+        {
+            guard   "\u{20}" ... "\u{7d}" ~= scalar || 
+                    "\u{a1}" ... "\u{ff}" ~= scalar,
+                    // no multiple spaces, also checks for no leading spaces 
+                    (previous, scalar) != (" ", " ")
+            else 
+            {
+                return false 
+            }
+            
+            previous = scalar 
+        }
+        // no trailing spaces 
+        return previous != " "
+    }
+    
+    private static 
+    func language<E>(parsing data:ArraySlice<UInt8>, else error:(String?) -> E) throws
+        -> (language:[String], offset:Int)
+        where E:Swift.Error 
+    {
+        guard let offset:Int = data.firstIndex(of: 0)
+        else 
+        {
+            throw error(nil) 
+        }
+        
+        // split on '-' 
+        let language:[String] = 
+            try data[..<offset].split(separator: 0x2d, omittingEmptySubsequences: false).map 
+        {
+            let scalars:LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> = 
+                $0.lazy.map(Unicode.Scalar.init(_:))
+            let tag:String = .init(scalars.map(Character.init(_:)))
+            guard Self.validate(language: scalars) 
+            else 
+            {
+                throw error(tag)
+            }
+            
+            // canonical lowercase 
+            return tag.lowercased()
+        }
+        
+        return (language, offset)
+    }
+    static 
+    func validate<C>(language scalars:C) -> Bool 
+        where C:Collection, C.Element == Unicode.Scalar 
+    {
+        guard 1 ... 8 ~= scalars.count
+        else 
+        {
+            return false 
+        }
+        
+        return scalars.allSatisfy{ "a" ... "z" ~= $0 || "A" ... "Z" ~= $0 }
+    }
+    
+    public 
+    var serialized:[UInt8]
     {
         let size:Int = 5 +
             self.keyword.english.count                      + 
@@ -1770,168 +2110,5 @@ extension PNG.Text
         }
         
         return data
-    }
-    
-    static 
-    func validate<C>(name latin1:C) -> String?
-        where C:Collection, C.Index == Int, C.Element == UInt8 
-    {
-        guard 1 ..< 80 ~= latin1.count, 
-            (latin1.allSatisfy{ 0x20 ... 0x7d ~= $0 || 0xa1 ... 0xff ~= 0 })
-        else 
-        {
-            return nil
-        }
-        
-        let name:String = .init(latin1.map{ Character.init(Unicode.Scalar.init($0)) })
-        guard   !latin1.reversed().starts(with: [0x20]), // no trailing spaces 
-                !latin1.starts(           with: [0x20])  // no leading spaces 
-        else 
-        {
-            return nil
-        }
-        for i:Int in latin1.indices where latin1[i] == 0x20 
-        {
-            // don’t need to check index bounds because we already verified 
-            // it has no trailing spaces
-            guard latin1[i + 1] != 0x20 
-            else 
-            {
-                return nil
-            }
-        }
-        return name
-    }
-    
-    private static 
-    func validate<C>(keyword latin1:C) throws -> String
-        where C:Collection, C.Index == Int, C.Element == UInt8 
-    {
-        guard let keyword:String = Self.validate(name: latin1)
-        else 
-        {
-            throw PNG.ParsingError.invalidTextEnglishKeyword
-        }
-        return keyword
-    }
-    private static 
-    func validate<C>(language ascii:C) throws -> [String]
-        where C:Collection, C.Index == Int, C.Element == UInt8 
-    {
-        // split on '-' 
-        try ascii.split(separator: 0x2d, omittingEmptySubsequences: false).map 
-        {
-            guard 1 ... 8 ~= $0.count, 
-                ($0.allSatisfy{ 0x61 ... 0x7a ~= $0 || 0x41 ... 0x5a ~= $0 })
-            else 
-            {
-                throw PNG.ParsingError.invalidTextLanguage
-            }
-            
-            // 0x20 converts to canonical lowercase 
-            return .init($0.map{ Character.init(Unicode.Scalar.init($0 | 0x20)) })
-        }
-    }
-    
-    public static 
-    func parse(_ data:[UInt8]) throws -> Self
-    {
-        //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┐
-        //  │   keyword  │ 0 │ C │ M │  language  │ 0 │   keyword  │ 0 │    text    │
-        //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┘
-        //               k  k+1 k+2 k+3           l  l+1           m  m+1
-        guard let k:Int = data.firstIndex(of: 0)
-        else 
-        {
-            throw PNG.ParsingError.missingTextEnglishKeyword
-        }
-        // assert existence of compression flag and method bytes 
-        guard k + 2 < data.endIndex 
-        else 
-        {
-            throw PNG.ParsingError.missingTextFlags
-        }
-        guard let l:Int = data.dropFirst(k + 3).firstIndex(of: 0)
-        else 
-        {
-            throw PNG.ParsingError.missingTextLanguage
-        }
-        guard let m:Int = data.dropFirst(l + 1).firstIndex(of: 0) 
-        else 
-        {
-            throw PNG.ParsingError.missingTextLocalizedKeyword
-        }
-        
-        let localized:String = .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
-        let keyword:(english:String, localized:String) 
-        keyword.english     = try Self.validate(keyword: data.prefix(k))
-        keyword.localized   = keyword.english == localized ? "" : localized
-        
-        let uncompressed:ArraySlice<UInt8>
-        let compressed:Bool 
-        if      data[k + 1] == 0 
-        {
-            uncompressed = data.dropFirst(m + 1)
-            compressed   = false
-        }
-        else if data[k + 1] == 1, data[k + 2] == 0
-        {
-            var inflator:LZ77.Inflator = .init()
-            guard try inflator.push(.init(data.dropFirst(m + 1))) == nil 
-            else 
-            {
-                throw PNG.ParsingError.truncatedTextCompressedContent
-            }
-            uncompressed = inflator.pull()[...]
-            compressed   = true
-        }
-        else 
-        {
-            throw PNG.ParsingError.invalidTextFlagsCode(
-                compression: data[k + 1], method: data[k + 2])
-        }
-        
-        // language can be empty, in which case it is unknown 
-        let language:[String] = k + 3 == l ? 
-            [] : try Self.validate(language: data[k + 3 ..< l])
-        return .init(compressed: compressed, keyword: keyword, language: language, 
-            content: .init(decoding: uncompressed, as: Unicode.UTF8.self))
-    }
-    public static 
-    func parse(latin1 data:[UInt8]) throws -> Self
-    {
-        guard let k:Int = data.firstIndex(of: 0)
-        else 
-        {
-            throw PNG.ParsingError.missingTextEnglishKeyword
-        }
-        
-        let keyword:String = try Self.validate(keyword: data.prefix(k))
-        // if the next byte is also null, the chunk uses compression
-        let uncompressed:ArraySlice<UInt8>
-        let compressed:Bool 
-        if k + 1 < data.endIndex, data[k + 1] == 0
-        {
-            var inflator:LZ77.Inflator = .init()
-            guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
-            else 
-            {
-                throw PNG.ParsingError.truncatedTextCompressedContent
-            }
-            uncompressed = inflator.pull()[...]
-            compressed   = true
-        }
-        else 
-        {
-            uncompressed = data.dropFirst(k + 1)
-            compressed   = false
-        }
-        return .init(compressed: compressed, 
-            keyword:    (english: keyword, localized: ""), 
-            language:   ["en"], 
-            content:    .init(uncompressed.map 
-            {
-                Character.init(Unicode.Scalar.init($0))
-            }))
     }
 }
