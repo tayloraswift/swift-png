@@ -606,7 +606,7 @@ extension PNG.Decoder
         guard let _:Void = self.continue 
         else 
         {
-            throw PNG.DecodingError.extraneousCompressedImageData
+            throw PNG.DecodingError.extraneousImageDataCompressedBytes
         }
         
         self.continue = try self.inflator.push(data)
@@ -696,7 +696,7 @@ extension PNG.Decoder
         guard self.inflator.pull().isEmpty 
         else 
         {
-            throw PNG.DecodingError.extraneousUncompressedImageData
+            throw PNG.DecodingError.extraneousImageData
         }
         return self.continue
     }
@@ -815,7 +815,7 @@ extension PNG.Context
             guard self.decoder.continue == nil 
             else 
             {
-                throw PNG.DecodingError.missingCompressedImageData
+                throw PNG.DecodingError.incompleteImageDataCompressedBytestream
             } 
         default:
             self.image.metadata.application.append(chunk)

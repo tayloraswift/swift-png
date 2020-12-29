@@ -600,8 +600,8 @@ extension PNG.Header
             self.interlaced = false
         case 1:
             self.interlaced = true
-        default:
-            throw PNG.ParsingError.invalidHeaderInterlacingCode(data[12])
+        case let code:
+            throw PNG.ParsingError.invalidHeaderInterlacingCode(code)
         }
         
         self.size.x = data.load(bigEndian: UInt32.self, as: Int.self, at: 0)
@@ -1260,7 +1260,8 @@ extension PNG.ColorRendering
         case 1:     self = .relative 
         case 2:     self = .saturation 
         case 3:     self = .absolute 
-        default:    throw PNG.ParsingError.invalidColorRenderingCode(data[0])
+        case let code:    
+            throw PNG.ParsingError.invalidColorRenderingCode(code)
         }
     }
     
@@ -1444,7 +1445,7 @@ extension PNG.ColorProfile
         guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
         else 
         {
-            throw PNG.ParsingError.truncatedColorProfileCompressedContent
+            throw PNG.ParsingError.incompleteColorProfileCompressedBytestream
         }
         
         self.profile = inflator.pull()
@@ -1518,8 +1519,8 @@ extension PNG.PhysicalDimensions
         {
         case 0:     self.density.unit = nil 
         case 1:     self.density.unit = .meter 
-        default:    
-            throw PNG.ParsingError.invalidPhysicalDimensionsDensityUnitCode(data[8])
+        case let code:    
+            throw PNG.ParsingError.invalidPhysicalDimensionsDensityUnitCode(code)
         }
     }
     
@@ -1640,8 +1641,8 @@ extension PNG.SuggestedPalette
                 )
             })
         
-        default:
-            throw PNG.ParsingError.invalidSuggestedPaletteDepthCode(data[k + 1])
+        case let code:
+            throw PNG.ParsingError.invalidSuggestedPaletteDepthCode(code)
         }
         
         guard self.descendingFrequency 
@@ -1930,12 +1931,12 @@ extension PNG.Text
                 guard try inflator.push(.init(data[(m + 1)...])) == nil 
                 else 
                 {
-                    throw PNG.ParsingError.truncatedTextCompressedContent
+                    throw PNG.ParsingError.incompleteTextCompressedBytestream
                 }
                 uncompressed    = inflator.pull()[...]
                 self.compressed = true
-            default: 
-                throw PNG.ParsingError.invalidTextCompressionCode(data[k + 1])
+            case let code: 
+                throw PNG.ParsingError.invalidTextCompressionCode(code)
             }
             
             self.content = .init(decoding: uncompressed, as: Unicode.UTF8.self)
@@ -1953,7 +1954,7 @@ extension PNG.Text
                 guard try inflator.push(.init(data[(k + 2)...])) == nil 
                 else 
                 {
-                    throw PNG.ParsingError.truncatedTextCompressedContent
+                    throw PNG.ParsingError.incompleteTextCompressedBytestream
                 }
                 uncompressed    = inflator.pull()[...]
                 self.compressed = true
