@@ -1469,19 +1469,19 @@ extension LZ77.Inflator.Stream
             return nil 
         }
         
-        switch self.input[self.b + 0, count: 4, as: UInt.self] 
+        switch self.input[self.b + 0, count: 4, as: UInt8.self]  
         {
         case 8:
             break 
-        default:
-            throw LZ77.DecompressionError.invalidStreamMethod
+        case let code:
+            throw LZ77.DecompressionError.invalidStreamCompressionMethodCode(code)
         }
         
         let exponent:Int = self.input[self.b + 4, count: 4, as: Int.self] 
         guard exponent < 8 
         else 
         {
-            throw LZ77.DecompressionError.invalidStreamWindowSize(exponent: exponent)
+            throw LZ77.DecompressionError.invalidStreamWindowSize(exponent: exponent + 8)
         }
         
         let flags:Int = self.input[self.b + 8, count: 8, as: Int.self]
@@ -1513,9 +1513,9 @@ extension LZ77.Inflator.Stream
         }
         
         // read block header bits 
-        let final:Bool = self.input[self.b, count: 1, as: UInt16.self] != 0 
+        let final:Bool = self.input[self.b, count: 1, as: UInt8.self] != 0 
         let compression:Compression 
-        switch self.input[self.b + 1, count: 2, as: UInt16.self] 
+        switch self.input[self.b + 1, count: 2, as: UInt8.self] 
         {
         case 0:
             // skip to next byte boundary, read 4 bytes 
@@ -1531,7 +1531,7 @@ extension LZ77.Inflator.Stream
             guard l == ~m 
             else 
             {
-                throw LZ77.DecompressionError.invalidBlockElementCountParity
+                throw LZ77.DecompressionError.invalidBlockElementCountParity(l, m)
             }
             
             compression = .none(bytes: .init(l))
@@ -1583,8 +1583,8 @@ extension LZ77.Inflator.Stream
             self.b += 17 + 3 * codelengths
             compression = .dynamic(runliterals: runliterals, distances: distances)
         
-        default:
-            throw LZ77.DecompressionError.invalidBlockType
+        case let code:
+            throw LZ77.DecompressionError.invalidBlockTypeCode(code)
         }
         
         return (final, compression)
@@ -1871,10 +1871,12 @@ extension LZ77.Inflator.Stream
                                 bytes.1 << 16 |
                                 bytes.2 <<  8 |
                                 bytes.3
-        guard self.output.checksum() == checksum
+        let computed:UInt32   = self.output.checksum()
+        guard computed == checksum
         else 
         {
-            throw LZ77.DecompressionError.invalidStreamChecksum
+            throw LZ77.DecompressionError.invalidStreamChecksum(
+                declared: checksum, computed: computed)
         } 
         self.b = boundary + 32
         return ()

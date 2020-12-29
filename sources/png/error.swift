@@ -88,7 +88,7 @@ extension PNG
         case invalidColorProfileChunkLength(Int, min:Int) 
         case invalidColorProfileName(String?) 
         case invalidColorProfileCompressionMethodCode(UInt8)
-        case truncatedColorProfileCompressedContent
+        case incompleteColorProfileCompressedBytestream
         
         case invalidPhysicalDimensionsChunkLength(Int)
         case invalidPhysicalDimensionsDensityUnitCode(UInt8)
@@ -108,19 +108,19 @@ extension PNG
         case invalidTextCompressionMethodCode(UInt8)
         case invalidTextLanguageTag(String?)
         case invalidTextLocalizedKeyword
-        case truncatedTextCompressedContent
+        case incompleteTextCompressedBytestream
     }
     
     public 
-    enum DecodingError:Swift.Error 
+    enum DecodingError
     {
         case missingImageHeader
         case missingPalette
         case missingImageData
         
-        case extraneousCompressedImageData
-        case extraneousUncompressedImageData
-        case missingCompressedImageData
+        case incompleteImageDataCompressedBytestream
+        case extraneousImageDataCompressedBytes
+        case extraneousImageData
         
         case duplicateChunk(PNG.Chunk)
         case invalidChunkOrder(PNG.Chunk, after:PNG.Chunk)
@@ -129,17 +129,17 @@ extension PNG
 extension LZ77 
 {
     public 
-    enum DecompressionError:Swift.Error
+    enum DecompressionError
     {
         // stream errors
-        case invalidStreamMethod
+        case invalidStreamCompressionMethodCode(UInt8)
         case invalidStreamWindowSize(exponent:Int)
         case invalidStreamHeaderCheckBits
         case unexpectedStreamDictionary
-        case invalidStreamChecksum
+        case invalidStreamChecksum(declared:UInt32, computed:UInt32)
         // block errors 
-        case invalidBlockType
-        case invalidBlockElementCountParity
+        case invalidBlockTypeCode(UInt8)
+        case invalidBlockElementCountParity(UInt16, UInt16)
         case invalidHuffmanRunLiteralSymbolCount(Int)
         case invalidHuffmanCodelengthHuffmanTable
         case invalidHuffmanCodelengthSequence
@@ -193,7 +193,7 @@ extension PNG.LexingError:PNG.Error
             }
             return "type specifier '\(string)' is not a valid chunk type"
         case .invalidChunkChecksum(declared: let declared, computed: let computed):
-            return "computed checksum (\(computed)) does not match declared checksum (\(declared))"
+            return "computed crc-32 checksum (\(computed)) does not match declared checksum (\(declared))"
         }
     }
 }
@@ -276,7 +276,7 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidColorProfileChunkLength,
                 .invalidColorProfileName,
                 .invalidColorProfileCompressionMethodCode,
-                .truncatedColorProfileCompressedContent:
+                .incompleteColorProfileCompressedBytestream:
             return PNG.ColorProfile.self 
         case    .invalidPhysicalDimensionsChunkLength,
                 .invalidPhysicalDimensionsDensityUnitCode:
@@ -296,7 +296,7 @@ extension PNG.ParsingError:PNG.Error
                 .invalidTextCompressionMethodCode,
                 .invalidTextLanguageTag,
                 .invalidTextLocalizedKeyword,
-                .truncatedTextCompressedContent:
+                .incompleteTextCompressedBytestream:
             return PNG.Text.self
         }
     }
@@ -366,9 +366,9 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidSuggestedPaletteFrequency:
             text = "invalid frequency"
         
-        case    .truncatedColorProfileCompressedContent,
-                .truncatedTextCompressedContent:
-            text = "unexpected end-of-stream in compressed bytestream"
+        case    .incompleteColorProfileCompressedBytestream,
+                .incompleteTextCompressedBytestream:
+            text = "compressed bytestream is incomplete"
         case    .invalidTimeModifiedTime:
             text = "invalid time"
         case    .invalidTextEnglishKeyword, 
@@ -476,8 +476,8 @@ extension PNG.ParsingError:PNG.Error
         
 
         
-        case    .truncatedColorProfileCompressedContent, 
-                .truncatedTextCompressedContent:
+        case    .incompleteColorProfileCompressedBytestream, 
+                .incompleteTextCompressedBytestream:
             return nil
 
         case    .invalidSuggestedPaletteFrequency:
@@ -512,6 +512,124 @@ extension PNG.ParsingError:PNG.Error
             return "english keyword '\(name)' is not a valid keyword"
         case    .invalidTextLanguageTag(let tag?):
             return "language tag '\(tag)' is not a valid language tag"
+        }
+    }
+}
+extension PNG.DecodingError:PNG.Error 
+{
+    public static 
+    var namespace:String 
+    {
+        "decoding error"
+    }
+    
+    public 
+    var message:String 
+    {
+        switch self 
+        {
+        case .missingImageHeader:
+            return "missing image header"
+        case .missingPalette:
+            return "missing image palette"
+        case .missingImageData:
+            return "missing image data"
+        case .incompleteImageDataCompressedBytestream:
+            return "compressed image data bytestream is incomplete"
+        case .extraneousImageDataCompressedBytes:
+            return "unexpected data after end of compressed image data bytestream"
+        case .extraneousImageData:
+            return "uncompressed image data bytestream contains more data than expected"
+        case .duplicateChunk:
+            return "duplicate chunk"
+        case .invalidChunkOrder:
+            return "invalid chunk ordering"
+        }
+    }
+    
+    public 
+    var details:String? 
+    {
+        switch self 
+        {
+        case    .missingImageHeader,
+                .missingPalette,
+                .missingImageData,
+                .incompleteImageDataCompressedBytestream,
+                .extraneousImageDataCompressedBytes,
+                .extraneousImageData:
+            return nil
+        case .duplicateChunk(let chunk):
+            return "chunk of type '\(chunk)' can only appear once"
+        case .invalidChunkOrder(let chunk, after: let previous):
+            return "chunk of type '\(chunk)' cannot appear after chunk of type '\(previous)'"
+        }
+    }
+}
+extension LZ77.DecompressionError:PNG.Error 
+{
+    public static 
+    var namespace:String 
+    {
+        "inflate error"
+    }
+    
+    public 
+    var message:String 
+    {
+        switch self 
+        {
+        case .invalidStreamCompressionMethodCode:
+            return "invalid rfc-1950 stream compression method code"
+        case .invalidStreamWindowSize:
+            return "invalid rfc-1950 stream window size"
+        case .invalidStreamHeaderCheckBits:
+            return "invalid rfc-1950 stream header check bits"
+        case .unexpectedStreamDictionary:
+            return "unexpected rfc-1950 stream dictionary"
+        case .invalidStreamChecksum:
+            return "invalid rfc-1950 checksum"
+        case .invalidBlockTypeCode:
+            return "invalid rfc-1951 block type code"
+        case .invalidBlockElementCountParity:
+            return "invalid rfc-1951 block element count parity"
+        case .invalidHuffmanRunLiteralSymbolCount:
+            return "invalid rfc-1951 run-literal huffman symbol count"
+        case .invalidHuffmanCodelengthHuffmanTable:
+            return "invalid rfc-1951 codelength huffman table"
+        case .invalidHuffmanCodelengthSequence:
+            return "invalid rfc-1951 codelength sequence"
+        case .invalidHuffmanTable:
+            return "invalid rfc-1951 run-literal/distance huffman table"
+        case .invalidStringReference:
+            return "invalid rfc-1951 string reference"
+        }
+    }
+    
+    public 
+    var details:String? 
+    {
+        switch self 
+        {
+        case    .invalidStreamCompressionMethodCode(let code):
+            return "(\(code)) is not a valid compression method code"
+        case    .invalidStreamWindowSize(exponent: let exponent):
+            return "base-2 log of stream window size (\(exponent)) must be in the range 8 ... 15"
+        case    .invalidStreamHeaderCheckBits,
+                .unexpectedStreamDictionary,
+                .invalidHuffmanCodelengthHuffmanTable,
+                .invalidHuffmanCodelengthSequence,
+                .invalidHuffmanTable,
+                .invalidStringReference:
+            return nil
+        case    .invalidStreamChecksum(declared: let declared, computed: let computed):
+            return "computed mrc-32 checksum (\(computed)) does not match declared checksum (\(declared))"
+        case    .invalidBlockTypeCode(let code):
+            return "(\(code)) is not a valid block type code"
+        case    .invalidBlockElementCountParity(let l, let m):
+            return "inverted block element count (\(String.init(~l, radix: 2))) does not match declared parity bits (\(String.init(m, radix: 2)))"
+        case    .invalidHuffmanRunLiteralSymbolCount(let count):
+            return "run-literal symbol count (\(count)) must be in the range 257 ... 286"
         }
     }
 }
