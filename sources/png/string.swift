@@ -56,6 +56,19 @@ extension String
         .highlight(string, bg: Self.normalize(color: bg), fg: fg.map(Self.normalize(color:)))
     }
     
+    static 
+    func color<F>(_ string:Self, fg:(r:F, g:F, b:F)) 
+        -> Self where F:BinaryFloatingPoint 
+    {
+        "\(Self.fg(fg))\(string)\(Self.fg(nil))"
+    }
+    static 
+    func color<T>(_ string:Self, fg:(r:T, g:T, b:T)) 
+        -> Self where T:FixedWidthInteger & UnsignedInteger
+    {
+        .color(string, fg: Self.normalize(color: fg))
+    }
+    
     private static 
     func fg(_ color:(r:UInt8, g:UInt8, b:UInt8)?) -> Self 
     {
