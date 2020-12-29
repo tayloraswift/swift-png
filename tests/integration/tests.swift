@@ -400,6 +400,37 @@ extension Test
     }
     
     static 
+    func printError<E>(_ error:E) where E:PNG.Error
+    {
+        guard Global.options.contains(.printExpectedFailures)
+        else 
+        {
+            return
+        } 
+        
+        var width:Int 
+        {
+            80
+        }
+        
+        let accent:(Double, Double, Double) = (1.0, 0.6, 0.3)
+        
+        let heading:String = .pad(.init("\(E.namespace): \(error.message)"), right: width)
+        print(String.highlight("\(String.bold)\(heading)\(String.reset)", bg: accent))
+        if let details:String = error.details 
+        {
+            // wrap text 
+            let characters:[Character] = .init(details)
+            for start:Int in stride(from: 0, to: characters.count, by: width - 4) 
+            {
+                let end:Int = min(start + width - 4, characters.count)
+                print("    \(String.color(.init(characters[start ..< end]), fg: accent))")
+            }
+        }
+        print()
+    }
+    
+    static 
     func errorHandling() -> Result<Void, Failure>
     {
         func decode(_ name:String) throws -> Result<Void, Failure>?
@@ -429,8 +460,9 @@ extension Test
                     return result 
                 }
             }
-            catch PNG.LexingError.invalidSignature 
+            catch PNG.LexingError.invalidSignature(let signature) 
             {
+                Self.printError(PNG.LexingError.invalidSignature(signature))
             }
             catch let error 
             {
@@ -448,6 +480,8 @@ extension Test
         }
         catch PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 1443964200)
         {
+            Self.printError(
+                PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 1443964200))
         }
         catch let error 
         {
@@ -480,6 +514,8 @@ extension Test
                 {
                     return .failure(.init(message: "\(error)"))
                 }
+                
+                Self.printError(PNG.ParsingError.invalidHeaderPixelFormatCode(expected))
             }
         }
         
@@ -493,6 +529,7 @@ extension Test
         }
         catch PNG.DecodingError.missingImageData
         {
+            Self.printError(PNG.DecodingError.missingImageData)
         }
         catch let error 
         {
@@ -509,6 +546,8 @@ extension Test
         }
         catch PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 3492746441)
         {
+            Self.printError(
+                PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 3492746441))
         }
         catch let error 
         {
