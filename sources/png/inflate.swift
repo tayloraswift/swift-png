@@ -1681,6 +1681,21 @@ extension LZ77.Inflator.Stream
             throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
         }
         
+        #if DUMP_LZ77_TERMS 
+        print("< dynamic run-literal codelengths:")
+        for (i, length):(Int, Int) in self.lengths.prefix(runliterals).enumerated() 
+            where length > 0
+        {
+            print("    [\(String.pad("\(i)", left: 3))]: \(length)")
+        }
+        print("< dynamic distance codelengths:")
+        for (i, length):(Int, Int) in self.lengths.dropFirst(runliterals).enumerated() 
+            where length > 0
+        {
+            print("    [\(String.pad("\(i)", left: 3))]: \(length)")
+        }
+        #endif 
+        
         guard   let runliteral:LZ77.Huffman<UInt16> = .validate(
                     symbols:        0 ... 287,
                     lengths:        self.lengths.prefix(runliterals)),
