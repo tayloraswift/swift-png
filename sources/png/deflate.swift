@@ -87,29 +87,10 @@ extension LZ77.Huffman where Symbol:BinaryInteger
         }
         
         // cover 0-symbol and 1-symbol cases 
-        guard let first:Symbol = symbols.first 
-        else 
-        {
-            // degenerate tree with no symbols. we don’t care what symbols we 
-            // put into the tree, since they will never be used, so we just 
-            // fill it with two zeros.
-            self.init(symbols: [.zero, .zero], 
-                levels: [0 ..< 2] + .init(repeating: 2 ..< 2, count: 14))
-            return 
-        }
         guard symbols.count > 1 
         else 
         {
-            // almost-degenerate tree with one symbol. we need to choose a filler 
-            // symbol that is *different* from the nonzero-frequency symbol, so 
-            // we can lookup the correct codeword for it when building our 
-            // semi-static table. if we clone the symbol, we will get the wrong 
-            // codeword, since the `codewords(initializing:count:extra:)` method 
-            // will overwrite the original codeword table entry for that symbol, 
-            // the left-hand huffman code, with the right-hand huffman code, which 
-            // doesn’t actually exist. 
-            self.init(symbols: [first, .init(first != .zero ? 0 : 1)], 
-                levels: [0 ..< 2] + .init(repeating: 2 ..< 2, count: 14))
+            self.init(stub: symbols.first)
             return 
         }
         

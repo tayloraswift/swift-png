@@ -72,8 +72,35 @@ extension LZ77
         }
     }
 }
-extension LZ77.Huffman 
+extension LZ77.Huffman where Symbol:BinaryInteger
 {
+    // empty or single-element tree  
+    init(stub:Symbol?)
+    {
+        if let stub:Symbol = stub
+        {
+            self.symbols    = [stub]
+            self.levels     = [0 ..< 1] + repeatElement(1 ..< 1, count: 14)
+        }
+        else 
+        {
+            self.symbols    = []
+            self.levels     = [0 ..< 0] + repeatElement(0 ..< 0, count: 14)
+        }
+        self.size = (n: 256, z: 256)
+    }
+    
+    // non validating initializer, crashes on invalid input 
+    init(symbols:[Symbol], levels:[Range<Int>])
+    {
+        guard let size:(n:Int, z:Int) = Self.size(levels)
+        else 
+        {
+            fatalError("invalid huffman table leaf list")
+        }
+        self.init(symbols: symbols, levels: levels, size: size)
+    } 
+    
     // validate leaf counts
     private static
     func size(_ levels:[Range<Int>]) -> (n:Int, z:Int)?
@@ -108,33 +135,29 @@ extension LZ77.Huffman
     
     // handles 0-symbol and 1-symbol edge cases
     static
-    func validate<Symbols, Lengths>(
-        symbols:Symbols, normalizing lengths:Lengths, default:Symbol) -> Self?
+    func validate<Symbols, Lengths>(symbols:Symbols, normalizing lengths:Lengths) 
+        -> Self?
         where   Symbols:Collection,        Lengths:Collection, 
                 Symbols.Element == Symbol, Lengths.Element == Int
     {
-        var single:Symbol?
-        for (symbol, length):(Symbol, Int) in zip(symbols, lengths)
+        var first:Symbol?
+        for (symbol, length):(Symbol, Int) in zip(symbols, lengths) where length > 0
         {
-            if      length >  1
+            if first == nil, length == 1 
             {
+                first = symbol
+            }
+            else 
+            {
+                // only way to get here is if we have already encountered a symbol, 
+                // or we have encountered a symbol with a codelength greater than 1, 
+                // either of which means there are at least two symbols, so we can 
+                // use the normal constructor.
                 return Self.validate(symbols: symbols, lengths: lengths)
             }
-            else if length == 1
-            {
-                if single == nil
-                {
-                    single = symbol
-                }
-                else
-                {
-                    return Self.validate(symbols: symbols, lengths: lengths)
-                }
-            }
         }
-        
-        return .init(symbols: .init(repeating: single ?? `default`, count: 2),
-            levels: [0 ..< 2] + repeatElement(2 ..< 2, count: 14))
+        // zero- and single-symbol cases
+        return .init(stub: first)
     }
     
     static
@@ -174,17 +197,6 @@ extension LZ77.Huffman
             $1 = ranges[14].upperBound
         }
         return .init(symbols: packed, levels: ranges, size: size)
-    }
-    
-    // non validating initializer, crashes on invalid input 
-    init(symbols:[Symbol], levels:[Range<Int>])
-    {
-        guard let size:(n:Int, z:Int) = Self.size(levels)
-        else 
-        {
-            preconditionFailure("invalid huffman table leaf list")
-        }
-        self.init(symbols: symbols, levels: levels, size: size)
     }
     
     func table<Pattern>(initializing destination:UnsafeMutablePointer<Pattern>) 
@@ -1701,8 +1713,7 @@ extension LZ77.Inflator.Stream
                     lengths:        self.lengths.prefix(runliterals)),
                 let distance:LZ77.Huffman<UInt8> = .validate(
                     symbols:        0 ... 31,
-                    normalizing:    self.lengths.dropFirst(runliterals),
-                    default:        0)
+                    normalizing:    self.lengths.dropFirst(runliterals))
         else 
         {
             throw LZ77.DecompressionError.invalidHuffmanTable 
