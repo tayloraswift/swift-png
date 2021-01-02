@@ -17,7 +17,8 @@ enum Test
     
     // prints an image using terminal colors 
     static 
-    func terminal(image rgb:[PNG.RGBA<UInt16>], size:(x:Int, y:Int)) -> String
+    func terminal<T>(image rgb:[PNG.RGBA<T>], size:(x:Int, y:Int)) -> String
+        where T:FixedWidthInteger & UnsignedInteger
     {
         let downsample:Int = min(max(1, size.x / 16), max(1, size.y / 16))
         return stride(from: 0, to: size.y, by: downsample).map
@@ -35,7 +36,7 @@ enum Test
                 {
                     for x:Int in j ..< min(j + downsample, size.x)
                     {
-                        let c:PNG.RGBA<UInt16> = rgb[x + y * size.x]
+                        let c:PNG.RGBA<T> = rgb[x + y * size.x]
                         r += .init(c.r)
                         g += .init(c.g)
                         b += .init(c.b)
@@ -47,9 +48,9 @@ enum Test
                     (min(j + downsample, size.x) - j)
                 let color:(r:Double, g:Double, b:Double) = 
                 (
-                    .init(r) / (65535 * .init(count)),
-                    .init(g) / (65535 * .init(count)),
-                    .init(b) / (65535 * .init(count))
+                    .init(r) / (.init(T.max) * .init(count)),
+                    .init(g) / (.init(T.max) * .init(count)),
+                    .init(b) / (.init(T.max) * .init(count))
                 )
                 return .highlight("  ", bg: color)
             }.joined()

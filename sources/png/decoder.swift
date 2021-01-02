@@ -462,7 +462,7 @@ extension PNG.Metadata
         destination = try parser()
     }
     
-    mutating 
+    public mutating 
     func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8]), 
         pixel:PNG.Format.Pixel, palette:PNG.Palette?, 
         background:inout PNG.Background?, 
@@ -784,7 +784,7 @@ extension PNG.Context
         self.decoder    = .init(standard: standard, interlaced: image.layout.interlaced)
     }
     
-    mutating 
+    public mutating 
     func push(data:[UInt8]) throws 
     {
         try self.decoder.push(data, size: self.image.size, 
@@ -794,7 +794,7 @@ extension PNG.Context
         }
     }
     
-    mutating 
+    public mutating 
     func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8])) throws 
     {
         switch chunk.type 
