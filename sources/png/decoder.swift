@@ -90,142 +90,6 @@ extension PNG.Layout
         
         self.init(format: format, interlaced: interlaced)
     }
-    
-    var palette:PNG.Palette? 
-    {
-        switch self.format 
-        {
-        case    .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-            return nil 
-        
-        case    .rgb8       (palette: let palette, fill: _, key: _),
-                .rgb16      (palette: let palette, fill: _, key: _), 
-                .rgba8      (palette: let palette, fill: _),
-                .rgba16     (palette: let palette, fill: _):
-            // should be impossible for self.format to have invalid palettes
-            return palette.isEmpty ? nil : .init(entries: palette)
-        
-        case    .bgr8       (palette: let palette, fill: _, key: _),
-                .bgra8      (palette: let palette, fill: _):
-            return palette.isEmpty ? nil : .init(entries: palette.map 
-            {
-                ($0.r, $0.g, $0.b)
-            })
-        
-        case    .indexed1   (palette: let palette, fill: _),
-                .indexed2   (palette: let palette, fill: _),
-                .indexed4   (palette: let palette, fill: _),
-                .indexed8   (palette: let palette, fill: _):
-            return .init(entries: palette.map
-            { 
-                ($0.r, $0.g, $0.b) 
-            })
-        }
-    }
-    var transparency:PNG.Transparency? 
-    {
-        let c:PNG.Transparency.Case 
-        switch self.format 
-        {
-        case    .v1         (fill: _, key: nil), 
-                .v2         (fill: _, key: nil), 
-                .v4         (fill: _, key: nil), 
-                .v8         (fill: _, key: nil), 
-                .v16        (fill: _, key: nil),
-                .va8        (fill: _),
-                .va16       (fill: _),
-                .bgr8       (palette: _, fill: _, key: nil),
-                .rgb8       (palette: _, fill: _, key: nil),
-                .bgra8      (palette: _, fill: _), 
-                .rgba8      (palette: _, fill: _), 
-                .rgb16      (palette: _, fill: _, key: nil),
-                .rgba16     (palette: _, fill: _):
-            return nil 
-        
-        case    .v1         (fill: _, key: let k?), 
-                .v2         (fill: _, key: let k?), 
-                .v4         (fill: _, key: let k?), 
-                .v8         (fill: _, key: let k?):
-            c = .v(key: .init(k))
-        
-        case    .v16        (fill: _, key: let k?):
-            c = .v(key: k)
-            
-        case    .bgr8       (palette: _, fill: _, key: let k?):
-            c = .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
-        case    .rgb8       (palette: _, fill: _, key: let k?):
-            c = .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
-        
-        case    .rgb16      (palette: _, fill: _, key: let k?):
-            c = .rgb(key: k)
-        
-        case    .indexed1   (palette: let palette, fill: _),
-                .indexed2   (palette: let palette, fill: _),
-                .indexed4   (palette: let palette, fill: _),
-                .indexed8   (palette: let palette, fill: _):
-            guard let last:Int = (palette.lastIndex{ $0.a != .max })
-            else 
-            {
-                return nil 
-            }
-            c = .palette(alpha: palette.prefix(last + 1).map(\.a))
-        }
-        return .init(case: c)
-    }
-    var background:PNG.Background? 
-    {
-        let c:PNG.Background.Case 
-        switch self.format 
-        {
-        case    .v1         (fill: nil, key: _), 
-                .v2         (fill: nil, key: _), 
-                .v4         (fill: nil, key: _), 
-                .v8         (fill: nil, key: _), 
-                .v16        (fill: nil, key: _),
-                .va8        (fill: nil),
-                .va16       (fill: nil),
-                .bgr8       (palette: _, fill: nil, key: _),
-                .rgb8       (palette: _, fill: nil, key: _),
-                .bgra8      (palette: _, fill: nil), 
-                .rgba8      (palette: _, fill: nil), 
-                .rgb16      (palette: _, fill: nil, key: _),
-                .rgba16     (palette: _, fill: nil),
-                .indexed1   (palette: _, fill: nil),
-                .indexed2   (palette: _, fill: nil),
-                .indexed4   (palette: _, fill: nil),
-                .indexed8   (palette: _, fill: nil):
-            return nil 
-        
-        case    .v1         (fill: let f?, key: _), 
-                .v2         (fill: let f?, key: _), 
-                .v4         (fill: let f?, key: _), 
-                .v8         (fill: let f?, key: _), 
-                .va8        (fill: let f?):
-            c = .v(.init(f))
-        
-        case    .v16        (fill: let f?, key: _), 
-                .va16       (fill: let f?):
-            c = .v(f)
-            
-        case    .bgr8       (palette: _, fill: let f?, key: _),
-                .bgra8      (palette: _, fill: let f?):
-            c = .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
-        case    .rgb8       (palette: _, fill: let f?, key: _),
-                .rgba8      (palette: _, fill: let f?):
-            c = .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
-        
-        case    .rgb16      (palette: _, fill: let f?, key: _),
-                .rgba16     (palette: _, fill: let f?):
-            c = .rgb(f)
-        
-        case    .indexed1   (palette: _, fill: let i?),
-                .indexed2   (palette: _, fill: let i?),
-                .indexed4   (palette: _, fill: let i?),
-                .indexed8   (palette: _, fill: let i?):
-            c = .palette(index: i)
-        }
-        return .init(case: c)
-    }
 }
 
 extension PNG 
@@ -290,25 +154,11 @@ extension PNG.Data
 }
 extension PNG.Data.Rectangular 
 {
-    // these methods allocate but do not initialize `self.storage`
-    internal 
-    init(size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata)  
-    {
-        // precondition(size.x > 0 && size.y > 0, "image dimensions must be positive")
-        self.size       = size
-        self.layout     = layout
-        self.metadata   = metadata
-        
-        let bytes:Int   = size.x * size.y * (layout.format.pixel.volume + 7) >> 3
-        self.storage    = .init(unsafeUninitializedCapacity: bytes)
-        {
-            $1 = bytes
-        }
-    }
     internal 
     init?(standard:PNG.Standard, header:PNG.Header, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
-        metadata:PNG.Metadata) 
+        metadata:PNG.Metadata, 
+        uninitialized:Bool) 
     {
         guard let layout:PNG.Layout = PNG.Layout.init(standard: standard, 
             pixel:          header.pixel, 
@@ -320,7 +170,24 @@ extension PNG.Data.Rectangular
         {
             return nil 
         }
-        self.init(size: header.size, layout: layout, metadata: metadata)
+        
+        self.size       = header.size
+        self.layout     = layout
+        self.metadata   = metadata
+        
+        let count:Int   = header.size.x * header.size.y,
+            bytes:Int   = count * (layout.format.pixel.volume + 7) >> 3
+        if uninitialized 
+        {
+            self.storage    = .init(unsafeUninitializedCapacity: bytes)
+            {
+                $1 = bytes
+            }
+        }
+        else 
+        {
+            self.storage    = .init(repeating: 0, count: bytes)
+        }
     } 
     
     public 
@@ -351,6 +218,58 @@ extension PNG.Data.Rectangular
         
         return .init(size: self.size, layout: layout, metadata: self.metadata, 
             storage: self.storage)
+    }
+    
+    mutating 
+    func overdraw(at base:(x:Int, y:Int), brush:(x:Int, y:Int))
+    {
+        guard brush.x * brush.y > 1 
+        else 
+        {
+            return 
+        }
+        
+        switch self.layout.format 
+        {
+        // 1-byte stride 
+        case .v1, .v2, .v4, .v8, .indexed1, .indexed2, .indexed4, .indexed8:
+            self.overdraw(at: base, brush: brush, element: UInt8.self)
+        // 2-byte stride 
+        case .v16, .va8:
+            self.overdraw(at: base, brush: brush, element: UInt16.self)
+        // 3-byte stride 
+        case .bgr8, .rgb8:
+            self.overdraw(at: base, brush: brush, element: (UInt8, UInt8, UInt8).self)
+        // 4-byte stride 
+        case .bgra8, .rgba8, .va16:
+            self.overdraw(at: base, brush: brush, element: UInt32.self)
+        // 6-byte stride 
+        case .rgb16:
+            self.overdraw(at: base, brush: brush, element: (UInt16, UInt16, UInt16).self)
+        // 8-byte stride 
+        case .rgba16:
+            self.overdraw(at: base, brush: brush, element: UInt64.self)
+        }
+    }
+    
+    private mutating 
+    func overdraw<T>(at base:(x:Int, y:Int), brush:(x:Int, y:Int), element:T.Type)
+    {
+        self.storage.withUnsafeMutableBytes 
+        {
+            let storage:UnsafeMutableBufferPointer<T> = $0.bindMemory(to: T.self)
+            for y:Int in base.y ..< min(base.y + brush.y, self.size.y)
+            {
+                for x:Int in stride(from: base.x, to: self.size.x, by: brush.x)
+                {
+                    let i:Int = base.y * self.size.x + x
+                    for x:Int in x ..< min(x + brush.x, self.size.x) 
+                    {
+                        storage[y * self.size.x + x] = storage[i]
+                    }
+                }
+            }
+        }
     }
     
     mutating 
@@ -608,7 +527,7 @@ extension PNG.Decoder
     
     mutating 
     func push(_ data:[UInt8], size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
-        delegate:(UnsafeBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ()) 
+        delegate:(UnsafeBufferPointer<UInt8>, (x:Int, y:Int), (x:Int, y:Int)) throws -> ())
         throws -> Void?
     {
         guard let _:Void = self.continue 
@@ -661,9 +580,11 @@ extension PNG.Decoder
                     #endif 
                     
                     Self.defilter(&scanline, last: last, delay: delay)
+                    
+                    let base:(x:Int, y:Int) = (base.x, base.y + y * stride.y)
                     try scanline.dropFirst().withUnsafeBufferPointer 
                     {
-                        try delegate($0, (base.x, base.y + y * stride.y), stride.x)
+                        try delegate($0, base, stride)
                     }
                     
                     last = scanline 
@@ -693,7 +614,7 @@ extension PNG.Decoder
                 Self.defilter(&scanline, last: last, delay: delay)
                 try scanline.dropFirst().withUnsafeBufferPointer 
                 {
-                    try delegate($0, (0, y), 1)
+                    try delegate($0, (0, y), (1, 1))
                 }
                 
                 last = scanline 
@@ -774,7 +695,8 @@ extension PNG.Context
     public 
     init?(standard:PNG.Standard, header:PNG.Header, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
-        metadata:PNG.Metadata) 
+        metadata:PNG.Metadata, 
+        uninitialized:Bool = true) 
     {
         guard let image:PNG.Data.Rectangular = PNG.Data.Rectangular.init(
             standard:       standard, 
@@ -782,7 +704,8 @@ extension PNG.Context
             palette:        palette, 
             background:     background, 
             transparency:   transparency, 
-            metadata:       metadata)
+            metadata:       metadata, 
+            uninitialized:  uninitialized)
         else 
         {
             return nil 
@@ -793,13 +716,20 @@ extension PNG.Context
     }
     
     public mutating 
-    func push(data:[UInt8]) throws 
+    func push(data:[UInt8], overdraw:Bool = false) throws 
     {
         try self.decoder.push(data, size: self.image.size, 
-            pixel: self.image.layout.format.pixel) 
+            pixel: self.image.layout.format.pixel, 
+            delegate: overdraw ? 
         {
-            self.image.assign(scanline: $0, at: $1, stride: $2)
-        }
+            let s:(x:Int, y:Int) = ($1.x == 0 ? 0 : 1, $1.y & 0b111 == 0 ? 0 : 1)
+            self.image.assign(scanline: $0, at: $1, stride: $2.x)
+            self.image.overdraw(            at: $1, brush: ($2.x >> s.x, $2.y >> s.y))
+        } 
+        : 
+        {
+            self.image.assign(scanline: $0, at: $1, stride: $2.x)
+        }) 
     }
     
     public mutating 

@@ -252,11 +252,11 @@ extension PNG.Data.Rectangular
         }
     }
     public  
-    func compress(path:String, level:Int = 9) throws -> Void?
+    func compress(path:String, level:Int = 9, hint:Int = 1 << 15) throws -> Void?
     {
         try System.File.Destination.open(path: path)
         {
-            try self.compress(stream: &$0, level: level)
+            try self.compress(stream: &$0, level: level, hint: hint)
         }
     }
 }
