@@ -1,3 +1,141 @@
+extension PNG.Layout 
+{
+    var palette:PNG.Palette? 
+    {
+        switch self.format 
+        {
+        case    .v1, .v2, .v4, .v8, .v16, .va8, .va16:
+            return nil 
+        
+        case    .rgb8       (palette: let palette, fill: _, key: _),
+                .rgb16      (palette: let palette, fill: _, key: _), 
+                .rgba8      (palette: let palette, fill: _),
+                .rgba16     (palette: let palette, fill: _):
+            // should be impossible for self.format to have invalid palettes
+            return palette.isEmpty ? nil : .init(entries: palette)
+        
+        case    .bgr8       (palette: let palette, fill: _, key: _),
+                .bgra8      (palette: let palette, fill: _):
+            return palette.isEmpty ? nil : .init(entries: palette.map 
+            {
+                ($0.r, $0.g, $0.b)
+            })
+        
+        case    .indexed1   (palette: let palette, fill: _),
+                .indexed2   (palette: let palette, fill: _),
+                .indexed4   (palette: let palette, fill: _),
+                .indexed8   (palette: let palette, fill: _):
+            return .init(entries: palette.map
+            { 
+                ($0.r, $0.g, $0.b) 
+            })
+        }
+    }
+    var transparency:PNG.Transparency? 
+    {
+        let c:PNG.Transparency.Case 
+        switch self.format 
+        {
+        case    .v1         (fill: _, key: nil), 
+                .v2         (fill: _, key: nil), 
+                .v4         (fill: _, key: nil), 
+                .v8         (fill: _, key: nil), 
+                .v16        (fill: _, key: nil),
+                .va8        (fill: _),
+                .va16       (fill: _),
+                .bgr8       (palette: _, fill: _, key: nil),
+                .rgb8       (palette: _, fill: _, key: nil),
+                .bgra8      (palette: _, fill: _), 
+                .rgba8      (palette: _, fill: _), 
+                .rgb16      (palette: _, fill: _, key: nil),
+                .rgba16     (palette: _, fill: _):
+            return nil 
+        
+        case    .v1         (fill: _, key: let k?), 
+                .v2         (fill: _, key: let k?), 
+                .v4         (fill: _, key: let k?), 
+                .v8         (fill: _, key: let k?):
+            c = .v(key: .init(k))
+        
+        case    .v16        (fill: _, key: let k?):
+            c = .v(key: k)
+            
+        case    .bgr8       (palette: _, fill: _, key: let k?):
+            c = .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
+        case    .rgb8       (palette: _, fill: _, key: let k?):
+            c = .rgb(key: (r: .init(k.r), g: .init(k.g), b: .init(k.b)))
+        
+        case    .rgb16      (palette: _, fill: _, key: let k?):
+            c = .rgb(key: k)
+        
+        case    .indexed1   (palette: let palette, fill: _),
+                .indexed2   (palette: let palette, fill: _),
+                .indexed4   (palette: let palette, fill: _),
+                .indexed8   (palette: let palette, fill: _):
+            guard let last:Int = (palette.lastIndex{ $0.a != .max })
+            else 
+            {
+                return nil 
+            }
+            c = .palette(alpha: palette.prefix(last + 1).map(\.a))
+        }
+        return .init(case: c)
+    }
+    var background:PNG.Background? 
+    {
+        let c:PNG.Background.Case 
+        switch self.format 
+        {
+        case    .v1         (fill: nil, key: _), 
+                .v2         (fill: nil, key: _), 
+                .v4         (fill: nil, key: _), 
+                .v8         (fill: nil, key: _), 
+                .v16        (fill: nil, key: _),
+                .va8        (fill: nil),
+                .va16       (fill: nil),
+                .bgr8       (palette: _, fill: nil, key: _),
+                .rgb8       (palette: _, fill: nil, key: _),
+                .bgra8      (palette: _, fill: nil), 
+                .rgba8      (palette: _, fill: nil), 
+                .rgb16      (palette: _, fill: nil, key: _),
+                .rgba16     (palette: _, fill: nil),
+                .indexed1   (palette: _, fill: nil),
+                .indexed2   (palette: _, fill: nil),
+                .indexed4   (palette: _, fill: nil),
+                .indexed8   (palette: _, fill: nil):
+            return nil 
+        
+        case    .v1         (fill: let f?, key: _), 
+                .v2         (fill: let f?, key: _), 
+                .v4         (fill: let f?, key: _), 
+                .v8         (fill: let f?, key: _), 
+                .va8        (fill: let f?):
+            c = .v(.init(f))
+        
+        case    .v16        (fill: let f?, key: _), 
+                .va16       (fill: let f?):
+            c = .v(f)
+            
+        case    .bgr8       (palette: _, fill: let f?, key: _),
+                .bgra8      (palette: _, fill: let f?):
+            c = .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
+        case    .rgb8       (palette: _, fill: let f?, key: _),
+                .rgba8      (palette: _, fill: let f?):
+            c = .rgb((r: .init(f.r), g: .init(f.g), b: .init(f.b)))
+        
+        case    .rgb16      (palette: _, fill: let f?, key: _),
+                .rgba16     (palette: _, fill: let f?):
+            c = .rgb(f)
+        
+        case    .indexed1   (palette: _, fill: let i?),
+                .indexed2   (palette: _, fill: let i?),
+                .indexed4   (palette: _, fill: let i?),
+                .indexed8   (palette: _, fill: let i?):
+            c = .palette(index: i)
+        }
+        return .init(case: c)
+    }
+}
 extension PNG.Data.Rectangular 
 {
     public 
@@ -157,7 +295,7 @@ extension PNG
 }
 extension PNG.Encoder 
 {
-    init(standard:PNG.Standard, interlaced:Bool, level:Int, hint:Int = 1 << 15)
+    init(standard:PNG.Standard, interlaced:Bool, level:Int, hint:Int)
     {
         self.row        = nil
         self.pass       = interlaced ? .subimage(0) : .image
@@ -169,7 +307,7 @@ extension PNG.Encoder
         case .ios:      format = .ios
         }
         
-        self.deflator   = .init(format: format, level: level, hint: hint)
+        self.deflator   = .init(format: format, level: level, hint: max(hint, 1))
     }
     
     mutating 
@@ -380,7 +518,8 @@ extension PNG.Encoder
 extension PNG.Data.Rectangular 
 {
     public 
-    func compress<Destination>(stream:inout Destination, level:Int = 9) throws
+    func compress<Destination>(stream:inout Destination, level:Int = 9, hint:Int = 1 << 15) 
+        throws
         where Destination:PNG.Bytestream.Destination
     {
         try stream.signature()
@@ -462,7 +601,7 @@ extension PNG.Data.Rectangular
         }
         
         var encoder:PNG.Encoder = .init(standard: cgbi == nil ? .common : .ios, 
-            interlaced: self.layout.interlaced, level: level)
+            interlaced: self.layout.interlaced, level: level, hint: hint)
         while let data:[UInt8] = encoder.pull(size: self.size, 
             pixel:      self.layout.format.pixel, 
             delegate:   self.collect(scanline:at:stride:))  
