@@ -18,6 +18,7 @@ let package = Package(
         .executable(name: "iphone-optimized",           targets: ["PNGiPhoneOptimized"]),
         .executable(name: "metadata",                   targets: ["PNGMetadata"]),
         .executable(name: "in-memory",                  targets: ["PNGInMemory"]),
+        .executable(name: "decode-online",              targets: ["PNGDecodeOnline"]),
     ],
     targets: 
     [
@@ -35,6 +36,7 @@ let package = Package(
         .target(name: "PNGiPhoneOptimized",         dependencies: ["PNG"],  path: "examples/iphone-optimized"),
         .target(name: "PNGMetadata",                dependencies: ["PNG"],  path: "examples/metadata"),
         .target(name: "PNGInMemory",                dependencies: ["PNG"],  path: "examples/in-memory"),
+        .target(name: "PNGDecodeOnline",            dependencies: ["PNG"],  path: "examples/decode-online"),
     ],
     swiftLanguageVersions: [.v5]
 )
