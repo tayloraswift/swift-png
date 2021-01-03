@@ -324,25 +324,33 @@ extension PNG.Data.Rectangular
     } 
     
     public 
-    func encode() -> 
-    (
-        header:PNG.Header, 
-        palette:PNG.Palette?, 
-        background:PNG.Background?, 
-        transparency:PNG.Transparency?,
-        cgbi:[UInt8]?
-    ) 
+    func withStorageRebound(to layout:PNG.Layout) -> Self 
     {
-        let header:PNG.Header = .init(size: self.size, 
-            pixel: self.layout.format.pixel, interlaced: self.layout.interlaced)
-        let cgbi:[UInt8]? 
-        switch self.layout.format 
+        switch (self.layout.format, layout.format) 
         {
-        case .bgr8:     cgbi = [48, 0, 32, 6]
-        case .bgra8:    cgbi = [48, 0, 32, 2]
-        default:        cgbi = nil 
+        case    (.indexed1(palette: let old, fill: _), .indexed1(palette: let new, fill: _)),
+                (.indexed2(palette: let old, fill: _), .indexed2(palette: let new, fill: _)),
+                (.indexed4(palette: let old, fill: _), .indexed4(palette: let new, fill: _)),
+                (.indexed8(palette: let old, fill: _), .indexed8(palette: let new, fill: _)):
+            guard old.count == new.count 
+            else 
+            {
+                fatalError("new palette count (\(new.count)) must match old palette count (\(old.count))")
+            }
+        
+        case    (.v1, .v1), (.v2, .v2), (.v4, .v4), (.v8, .v8 ), (.v16, .v16),
+                ( .bgr8,  .bgr8), 
+                ( .rgb8,  .rgb8), ( .rgb16,  .rgb16),
+                (  .va8,   .va8), (  .va16,   .va16),
+                (.bgra8, .bgra8), 
+                (.rgba8, .rgba8), (.rgba16, .rgba16):
+            break 
+        default:
+            fatalError("new pixel format (\(layout.format.pixel)) must match old pixel format (\(self.layout.format.pixel))")
         }
-        return (header, self.layout.palette, self.layout.background, self.layout.transparency, cgbi)
+        
+        return .init(size: self.size, layout: layout, metadata: self.metadata, 
+            storage: self.storage)
     }
     
     mutating 
