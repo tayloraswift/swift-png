@@ -1,5 +1,27 @@
 extension PNG.Data.Rectangular 
 {
+    public 
+    func encode() -> 
+    (
+        header:PNG.Header, 
+        palette:PNG.Palette?, 
+        background:PNG.Background?, 
+        transparency:PNG.Transparency?,
+        cgbi:[UInt8]?
+    ) 
+    {
+        let header:PNG.Header = .init(size: self.size, 
+            pixel: self.layout.format.pixel, interlaced: self.layout.interlaced)
+        let cgbi:[UInt8]? 
+        switch self.layout.format 
+        {
+        case .bgr8:     cgbi = [48, 0, 32, 6]
+        case .bgra8:    cgbi = [48, 0, 32, 2]
+        default:        cgbi = nil 
+        }
+        return (header, self.layout.palette, self.layout.background, self.layout.transparency, cgbi)
+    }
+    
     func collect<C>(scanline:inout C, at base:(x:Int, y:Int), stride:Int)
         where   C:RandomAccessCollection & MutableCollection, 
                 C.Index == Int, C.Element == UInt8
