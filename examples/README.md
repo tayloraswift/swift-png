@@ -704,7 +704,7 @@ Let’s go back to the custom indexing function:
 
 Since we just want to convert the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
 
-On appropriate platforms, we can encode the image to a file with the path:level:hint:)` method. 
+On appropriate platforms, we can encode the image to a file with the `compress(path:level:hint:)` method. 
 
 ```swift 
 try indexed.compress(path: "\(path)-indexed.png")
@@ -1488,7 +1488,7 @@ In the last phase of the loop, we process all the trailing metadata chunks by pa
 
 > **note:** you can pass an `IEND` chunk to the `push(ancillary:)` method, as we have done above, even though `IEND` is a critical chunk type. this makes the decoder context check that the compressed image data stream has been properly terminated. it doesn’t affect decoding at all; it’s just one of those things we do to dot our *t*’s.
 
-We can invoke the `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal `PNG.Data.Rectangular` instances that we can treat like any other image data instance.
+We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal `PNG.Data.Rectangular` instances that we can treat like any other image data instance.
 
 ```swift 
 var counter:Int                 = 0
@@ -1530,7 +1530,7 @@ let progressive:PNG.Data.Rectangular = image.bindStorage(to: layout)
 try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
 ```
 
-We can invoke `decodeOnline(stream:overdraw:)` on the interlaced image as follows. 
+We can invoke `decodeOnline(stream:overdraw:capture:)` on the interlaced image as follows. 
 
 ```swift
 stream                      = .init(path: "\(path)-progressive.png")
