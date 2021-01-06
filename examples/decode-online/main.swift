@@ -123,10 +123,10 @@ func decodeOnline(stream:inout Stream, overdraw:Bool,
         default:
             standard    = .common
         }
-        switch chunk 
+        switch chunk.type 
         {
-        case (.IHDR, let data):
-            return (standard, try .init(parsing: data, standard: standard))
+        case .IHDR:
+            return (standard, try .init(parsing: chunk.data, standard: standard))
         default:
             fatalError("missing image header")
         }
@@ -147,8 +147,7 @@ func decodeOnline(stream:inout Stream, overdraw:Bool,
             case .PLTE:
                 guard   palette             == nil, 
                         background          == nil, 
-                        transparency        == nil, 
-                        metadata.histogram  == nil 
+                        transparency        == nil
                 else 
                 {
                     fatalError("invalid chunk ordering")
@@ -221,9 +220,9 @@ let image:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: fa
 }
 
 let layout:PNG.Layout = .init(format: image.layout.format, interlaced: true)
-let progressive:PNG.Data.Rectangular = image.withStorageRebound(to: layout)
+let progressive:PNG.Data.Rectangular = image.bindStorage(to: layout)
 
-try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 13)
+try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
 
 stream                      = .init(path: "\(path)-progressive.png")
 counter                     = 0
@@ -235,7 +234,8 @@ let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
     counter += 1
 }
 
-stream                      = .init(path: "\(path)-progressive.png")
+stream.reset(position: 0)
+
 counter                     = 0
 let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: true)
 {
