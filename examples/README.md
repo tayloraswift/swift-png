@@ -8,6 +8,7 @@
 4. [using iphone-optimized images](#using-iphone-optimized-images) ([sources](iphone-optimized/))
 5. [working with metadata](#working-with-metadata) ([sources](metadata/))
 6. [using in-memory images](#using-in-memory-images) ([sources](in-memory/))
+7. [online decoding](#online-decoding) ([sources](decode-online/))
 
 ## basic decoding 
 
@@ -175,7 +176,9 @@ To create a rectangular image data instance, use the `init(packing:size:layout:m
 let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.rgb)
 ```
 
-On platforms with built-in file system support, we can compress it to a file using the `compress(path:level)` method. The `level` argument specifies the **compression level**. It should be in the range `0 ... 13`, where `13` is the most aggressive setting. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
+On platforms with built-in file system support, we can compress it to a file using the `compress(path:level:hint:)` method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
+
+The `level` argument specifies the **compression level**. It should be in the range `0 ... 13`, where `13` is the most aggressive setting. Its default value is `9`. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
 
 Compression level `9` is roughly equivalent to *libpng*’s maximum compression setting in terms of compression ratio and encoding speed. The higher levels (`10` through `13`) are very computationally expensive, so you should only use them if you really need to optimize for file size. You can find experimental comparisons between *Swift PNG* and *libpng*’s compression settings on [this page](../benchmarks).
 
@@ -701,7 +704,7 @@ Let’s go back to the custom indexing function:
 
 Since we just want to convert the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
 
-On appropriate platforms, we can encode the image to a file with the `compress(path:level:)` method. (The `level` argument has a default value of `9`.) 
+On appropriate platforms, we can encode the image to a file with the path:level:hint:)` method. 
 
 ```swift 
 try indexed.compress(path: "\(path)-indexed.png")
@@ -1083,7 +1086,7 @@ let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
 let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
 ```
 
-Just as with the decompression APIs, the `compress(path:level:)` function has a generic `compress(stream:level:)` counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
+Just as with the decompression APIs, the `compress(path:level:hint:)` function has a generic `compress(stream:level:hint:)` counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
 
 ```swift 
 blob = .init([])
@@ -1110,3 +1113,484 @@ else
 <img src="in-memory/example.png.png" alt="input png" width=500/>
 
 > example image, re-encoded to a memory blob, and saved to disk. 
+
+## online decoding 
+
+[`sources`](decode-online/)
+
+> ***by the end of this tutorial, you should be able to:***
+> - *use the contextual api to manually manage decoder state*
+> - *display partially-downloaded images*
+> - *display previews of partially-downloaded interlaced images with overdrawing*
+> - *rebind image data to a different image layout*
+> - *customize the chunk granularity in emitted png files*
+
+> ***key terms:***
+> - **decoder context**
+> - **critical chunk** 
+> - **ancillary chunk**
+> - **chunk granularity**
+> - **overdrawing**
+
+Many applications using PNG images transmit them to users over a network. It is often valuable for such applications to be able to display a lower-quality preview of the image before it is fully downloaded onto a user’s device.
+
+In this tutorial, we will simulate an asynchronously-loaded PNG file, and use *Swift PNG*’s contextual decoding API to display partial “snapshots” of the image as portions of the file arrive. (As with the [previous tutorial](#using-in-memory-images), if you have used the analogous [*Swift JPEG* API](https://github.com/kelvin13/jpeg/tree/master/examples#online-decoding), the process here should be very familiar.) We will also explore ways to make these previews more user-friendly through interlacing and overdrawing.
+
+<img src="decode-online/example.png" alt="input png" width=500/>
+
+> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Africa_and_Europe_from_a_Million_Miles_Away.png)*
+
+To simulate a file being transferred over a network, we are going to modify the blob type from the [previous tutorial](#using-in-memory-images) by adding an integer field available representing the amount of the file we “have” at a given moment.
+
+```swift 
+import PNG 
+
+struct Stream  
+{
+    private(set)
+    var data:[UInt8], 
+        position:Int, 
+        available:Int 
+}
+```
+
+Each time we try to `read` from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
+
+```swift 
+extension Stream:PNG.Bytestream.Source
+{
+    init(_ data:[UInt8]) 
+    {
+        self.data       = data 
+        self.position   = data.startIndex
+        self.available  = data.startIndex
+    }
+    
+    mutating 
+    func read(count:Int) -> [UInt8]? 
+    {
+        guard self.position + count <= data.endIndex 
+        else 
+        {
+            return nil 
+        }
+        guard self.position + count < self.available 
+        else 
+        {
+            self.available += 4096
+            return nil 
+        }
+        
+        defer 
+        {
+            self.position += count 
+        }
+        
+        return .init(self.data[self.position ..< self.position + count])
+    }
+    
+    mutating 
+    func reset(position:Int) 
+    {
+        precondition(self.data.indices ~= position)
+        self.position = position
+    }
+}
+```
+
+For the purposes of this tutorial we again initialize our mock data stream using the file system APIs, though we could just as easily imagine the data coming over an actual network.
+
+```swift 
+extension Stream 
+{
+    init(path:String) 
+    {
+        guard let data:[UInt8]  = (System.File.Source.open(path: path) 
+        {
+            (source:inout System.File.Source) -> [UInt8]? in
+            
+            guard let count:Int = source.count
+            else 
+            {
+                return nil 
+            }
+            return source.read(count: count)
+        } ?? nil)
+        else 
+        {
+            fatalError("failed to open or read file '\(path)'")
+        }
+
+        self.init(data)
+    }
+}
+```
+
+```swift 
+let path:String     = "examples/decode-online/example"
+
+var stream:Stream   = .init(path: "\(path).png")
+```
+
+The key to making this work is understanding that if the `read(count:)` call on the stream instance returns `nil`, then one of three library errors will get thrown:
+
+- `PNG.LexingError.truncatedSignature`
+- `PNG.LexingError.truncatedChunkHeader`
+- `PNG.LexingError.truncatedChunkBody(expected:)`
+
+These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The `signature()` method lexes the PNG signature bytes from the beginning of a PNG file, and it can `throw` a `truncatedSignature` error. The `chunk()` method lexes a PNG chunk, and it can `throw` a `truncatedChunkHeader` or `truncatedChunkBody(expected:)` error. 
+
+```swift 
+mutating 
+func signature() throws 
+
+mutating
+func chunk() throws -> (type:PNG.Chunk, data:[UInt8])
+```
+
+A valid PNG file consists of a signature, followed by a sequence of chunks.
+
+The lexer functions are provided as extensions on the `PNG.Bytestream.Source` protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
+
+Normally, the three aforementioned errors would indicate an unexpected end-of-stream. In this case, they just mean that there is not enough data available yet, so the client needs to wait for more of the file to arrive before decoding can proceed. To allow the lexing functions to recover on end-of-stream instead of crashing the application, we wrap them in the following `waitSignature(stream:)` and `waitChunk(stream:)` functions, making sure to reset the file position if end-of-stream is encountered.
+
+```swift 
+func waitSignature(stream:inout Stream) throws  
+{
+    let position:Int = stream.position
+    while true 
+    {
+        do 
+        {
+            return try stream.signature()
+        }
+        catch PNG.LexingError.truncatedSignature
+        {
+            stream.reset(position: position)
+            continue 
+        }
+    }
+}
+func waitChunk(stream:inout Stream) throws -> (type:PNG.Chunk, data:[UInt8]) 
+{
+    let position:Int = stream.position
+    while true 
+    {
+        do 
+        {
+            return try stream.chunk()
+        }
+        catch PNG.LexingError.truncatedChunkHeader, PNG.LexingError.truncatedChunkBody 
+        {
+            stream.reset(position: position)
+            continue 
+        }
+    }
+}
+```
+
+There are other `LexingError`s that report problems such as invalid signatures or corrupted chunk data, so we only sequester the three end-of-stream errors.
+
+Because we are trying to interact with a decoded image while it is in an incomplete state, we have to take on the responsibility of managing decoder state ourselves. The basic rules that apply here are:
+
+1. The first chunk in a PNG file is an `IHDR` (`PNG.Header`) chunk, unless it is an [iphone-optimized image](#using-iphone-optimized-images), in which case the first chunk is a `CgBI` chunk, immediately followed by an `IHDR` chunk.
+
+2. A PNG file can contain, at most, one `PLTE` (`PNG.Palette`), one `tRNS` (`PNG.Transparency`), and one `bKGD` (`PNG.Background`) chunk. If it contains a `PLTE` chunk, it must come before the `tRNS` and `bKGD` chunks, if applicable. 
+
+3. The image data in a PNG file is stored in a series of `IDAT` chunks, which must occur in a single, contiguous sequence, and after any `PLTE`, `tRNS`, or `bKGD` chunks.
+
+4. The last chunk in a PNG file is an `IEND` chunk.
+
+The `CgBI`, `IHDR`, `PLTE`, `IDAT`, and `IEND` chunks are known as **critical chunks**. The rest of the chunk types are known as **ancillary chunks**. The ancillary chunks can be thought of as “metadata chunks”, though the line between data and metadata isn’t always clear. Notably, *Swift PNG* treats the `tRNS` and `bKGD` chunks as part of the image color format, so our custom decoder implementation should handle them explicitly, along with all of the critical chunks. 
+
+A full list of critical and ancillary chunk types is given below.
+
+| type code     | *Swift PNG* type  | unique | ordering                           | dependencies    |
+| ------------- | ----------------- | ------ | ---------------------------------- | --------------- |
+| **`CgBI`**    | `Void?`           | yes    | first                              |                 |
+| **`IHDR`**    | `PNG.Header`      | yes    | first, or immediately after `CgBI` | `CgBI`          |
+| **`PLTE`**    | `PNG.Palette?`    | yes    | after `IHDR`, and before `IDAT`    | `IHDR`          |
+| **`IDAT`**    | `[UInt8]`         | no     |                                    | `IHDR`, `PLTE`, `tRNS`, `bKGD` |
+| **`IEND`**    | `Void`            | yes    | last                               |                 |
+||||||
+|   `cHRM`      | `PNG.Chromaticity?`       | yes    | before `PLTE`                      |                 |
+|   `gAMA`      | `PNG.Gamma?`              | yes    | before `PLTE`                      |                 |
+|   `iCCP`      | `PNG.ColorProfile?`       | yes    | before `PLTE`                      |                 |
+|   `sRGB`      | `PNG.ColorRendering?`     | yes    | before `PLTE`                      |                 |
+|   `sBIT`      | `PNG.SignificantBits?`    | yes    | before `PLTE`                      | `IHDR`          |
+||||||
+|   `tRNS`      | `PNG.Transparency?`       | yes    | after `PLTE`, and before `IDAT`    | `IHDR`, `PLTE`  |
+|   `bKGD`      | `PNG.Background?`         | yes    | after `PLTE`, and before `IDAT`    | `IHDR`, `PLTE`  |
+|   `hIST`      | `PNG.Histogram?`          | yes    | after `PLTE`, and before `IDAT`    | `IHDR`, `PLTE`  |
+||||||
+|   `pHYs`      | `PNG.PhysicalDimensions?` | yes    | before `IDAT`                      |                 |
+|   `sPLT`      | `PNG.SuggestedPalette?`   | no     | before `IDAT`                      |                 |
+||||||
+|   `tIME`      | `PNG.TimeModified?`       | yes    |                                    |                 |
+|   `iTXt`      | `PNG.Text?`               | no     |                                    |                 |
+|   `tEXt`      | `PNG.Text?`               | no     |                                    |                 |
+|   `zTXt`      | `PNG.Text?`               | no     |                                    |                 |
+
+If a chunk has dependencies, that means it gets parsed differently depending on the contents of the upstream chunks. It does not mean that the upstream chunks must appear — indeed, in some situations, the upstream chunks must *not* appear. It *does* mean that none of the upstream chunks may appear after the dependent chunk.
+
+> **note:** the full lexing space of a png file can be expressed as a directed graph. if you ignore text chunks and `sPLT` chunks, and collapse sequences of `IDAT` chunks into a single node, this graph is also acyclic.
+
+The ordering constraints and chunk dependencies might seem like a lot to keep track of, but they come out naturally in the type signatures of *Swift PNG*’s contextual decoding interfaces, so everything should just click together. The amount of code we have to write is actually quite small.
+
+To do online decoding, we are going to write a function `decodeOnline(stream:overdraw:capture:)` with the following signature: 
+
+```swift 
+func decodeOnline(stream:inout Stream, overdraw:Bool, 
+    capture:(PNG.Data.Rectangular) throws -> ()) throws 
+    -> PNG.Data.Rectangular
+```
+
+The `capture` parameter is a closure that will receive a partially-decoded image each time an image data chunk has been decompressed. The `overdraw` parameter is a switch which we will use later in this tutorial.
+
+The first thing we do is lex the PNG signature bytes from the beginning of the file. 
+
+```swift 
+{
+    try waitSignature(stream: &stream)
+```
+
+The next step is to parse the PNG header, and the preceeding `CgBI` chunk, if present. The following code reads at least one chunk (and at most two chunks) from the beginning of the PNG file using the `waitChunk(stream:)` function. If the first chunk is a `CgBI` chunk, the image is an iphone-optimized image, and we move on to the next chunk. Otherwise we mark the image as non-iphone-optimized, and do not advance the chunk position. We then check that the current chunk is an `IHDR` chunk, and use the `PNG.Header.init(parsing:standard:)` initializer to parse the chunk data. (`CgBI` chunks also contain data, but it isn’t relevant for us, so we do not parse them.)
+
+```swift 
+    let (standard, header):(PNG.Standard, PNG.Header) = try
+    {
+        var chunk:(type:PNG.Chunk, data:[UInt8]) = try waitChunk(stream: &stream)
+        let standard:PNG.Standard
+        switch chunk.type
+        {
+        case .CgBI:
+            standard    = .ios
+            chunk       = try waitChunk(stream: &stream)
+        default:
+            standard    = .common
+        }
+        switch chunk.type 
+        {
+        case .IHDR:
+            return (standard, try .init(parsing: chunk.data, standard: standard))
+        default:
+            fatalError("missing image header")
+        }
+    }()
+```
+
+> **note:** the parsing interfaces in [*swift jpeg*](https://github.com/kelvin13/jpeg) are spelled as static `.parse(_:...)` constructors. in *swift png*, these have been provided as `init(parsing:...)` initializers to better conform to swift api conventions.
+
+The next step is to process all the chunks up to, but not including, the first `IDAT` chunk. The goal is to be able to construct a **decoder context** (`PNG.Context`) by the time we reach the image data, using any `PLTE`, `bKGD`, or `tRNS` chunks we have encountered in the meantime.
+
+There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a `Context` structure upon encountering the first `IDAT` chunk, which reduces the amount of [`Optional<T>`](https://developer.apple.com/documentation/swift/optional)s we have to deal with. A competent Swift developer should be able to translate it into their preferred pattern.
+
+We declare variables to hold a palette (`PNG.Palette?`), background (`PNG.Background?`), and transparency (`PNG.Transparency?`) structure. A `PNG.Metadata` structure tracks all other chunk types.
+
+```swift 
+    var chunk:(type:PNG.Chunk, data:[UInt8]) = try waitChunk(stream: &stream)
+
+    var context:PNG.Context = try 
+    {
+        var palette:PNG.Palette?
+        var background:PNG.Background?, 
+            transparency:PNG.Transparency?
+        var metadata:PNG.Metadata = .init()
+        while true 
+        {
+            switch chunk.type 
+            {
+```
+
+If we encounter a `PLTE` chunk, we parse it with the `PNG.Palette.init(parsing:pixel:)` initializer. Since palette chunks have a dependency on the header chunk, this initializer takes a `PNG.Format.Pixel` parameter.
+
+For any other (allowed) chunk type besides `IDAT`, we delegate it to the metadata structure through its `push(ancillary:pixel:palette:background:transparency:)` method. This method parses the chunk using the appropriate parsing function, and stores it internally, or in its two `inout` parameters, if applicable. It also enforces all relevant chunk ordering constraints.
+
+> **note:** the `Metadata` type does not handle palette chunks, because `PLTE` is a critical chunk type. it also does not track background or transparency chunks internally, since this information will ultimately live in the image color format, so storing it in the image metadata would be redundant.
+
+Finally, if we encounter an `IDAT` chunk, we construct the decoder context using everything we have parsed so far. The `PNG.Context.init(standard:header:palette:background:transparency:metadata:uninitialized:)` initializer is failable. It returns `nil` if an image with an indexed color format is missing a palette. (The opposite problem — an image with a grayscale or grayscale-alpha color format containing a palette that shouldn’t be there — would have gotten caught by the `Palette.init(parsing:pixel:)` initializer.) 
+
+The `uninitialized` parameter specifies whether the image buffer in the decoder context gets cleared or not. It’s not uncommon for Swift to allocate new image buffers right on top of recently-deallocated image buffers, so a partially-decoded image might contain pieces of a previously decoded image. When doing non-progressive decoding, this doesn’t matter, but it can look weird for the progressive use-case, so we have set this parameter to `false`.
+
+We return from the closure before advancing to the next chunk.
+
+```swift
+            case .PLTE:
+                guard   palette             == nil, 
+                        background          == nil, 
+                        transparency        == nil
+                else 
+                {
+                    fatalError("invalid chunk ordering")
+                }
+                palette = try .init(parsing: chunk.data, pixel: header.pixel)
+            
+            case .IDAT:
+                guard let context:PNG.Context = PNG.Context.init(
+                    standard:       standard, 
+                    header:         header, 
+                    palette:        palette, 
+                    background:     background, 
+                    transparency:   transparency, 
+                    metadata:       metadata, 
+                    uninitialized:  false)
+                else 
+                {
+                    fatalError("missing palette")
+                }
+                return context
+                
+            case .IHDR, .IEND:
+                fatalError("unexpected chunk")
+            
+            default:
+                try metadata.push(ancillary: chunk, pixel: header.pixel, 
+                    palette:        palette, 
+                    background:     &background, 
+                    transparency:   &transparency)
+            }
+            
+            chunk = try waitChunk(stream: &stream)
+        }
+    }()
+```
+
+The actual image decoding takes place in the next phase of the loop. The `push(data:overdraw:)` method on the decoder context does this for each `IDAT` chunk. This is also the usage point of the `overdraw` parameter provided to the `decodeOnline(stream:overdraw:capture:)` function. We’ll see later what it does. For now, assume it has been set to `false`. 
+
+After decompressing an image data chunk, we feed the image state, which is available through the `image` property on the decoder context, to the `capture` function.
+
+```swift 
+    while chunk.type == .IDAT  
+    {
+        try context.push(data: chunk.data, overdraw: overdraw)
+        
+        try capture(context.image)
+        
+        chunk = try waitChunk(stream: &stream)
+    }
+```
+
+In the last phase of the loop, we process all the trailing metadata chunks by passing them to the `push(ancillary:)` method on the decoder context. This method is a lot like the `push(ancillary:pixel:palette:background:transparency:)` method on a `PNG.Metadata` structure, except it only accepts chunk types that are allowed to appear after the image data. We halt upon encountering the `IEND` chunk.
+
+```swift 
+    while true 
+    {
+        try context.push(ancillary: chunk)
+        guard chunk.type != .IEND 
+        else 
+        {
+            return context.image 
+        }
+        chunk = try stream.chunk()
+    }
+} 
+```
+
+> **note:** you can pass an `IEND` chunk to the `push(ancillary:)` method, as we have done above, even though `IEND` is a critical chunk type. this makes the decoder context check that the compressed image data stream has been properly terminated. it doesn’t affect decoding at all; it’s just one of those things we do to dot our *t*’s.
+
+We can invoke the `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal `PNG.Data.Rectangular` instances that we can treat like any other image data instance.
+
+```swift 
+var counter:Int                 = 0
+let image:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
+{
+    (snapshot:PNG.Data.Rectangular) in 
+    
+    let _:[PNG.RGBA<UInt8>] = snapshot.unpack(as: PNG.RGBA<UInt8>.self)
+    
+    try snapshot.compress(path: "\(path)-\(counter).png")
+    counter += 1
+}
+```
+
+| `IDAT` chunks | image snapshot |
+| ---:| ---------------------------------------------------:|
+|   1 | <img width=500 src="decode-online/example-0.png"/>  |
+|   2 | <img width=500 src="decode-online/example-1.png"/>  |
+|   3 | <img width=500 src="decode-online/example-2.png"/>  |
+|   4 | <img width=500 src="decode-online/example-3.png"/>  |
+|   5 | <img width=500 src="decode-online/example-4.png"/>  |
+|   6 | <img width=500 src="decode-online/example-5.png"/>  |
+|   7 | <img width=500 src="decode-online/example-6.png"/>  |
+|   8 | <img width=500 src="decode-online/example-7.png"/>  |
+|   9 | <img width=500 src="decode-online/example-8.png"/>  |
+|  10 | <img width=500 src="decode-online/example-9.png"/>  |
+|  11 | <img width=500 src="decode-online/example-10.png"/> |
+
+Our example image was a non-interlaced image, so it gets decoded as a sequence of scanlines from top-to-bottom.
+
+We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the `bindStorage(to:)` method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
+
+When emitting the preprocessed file, we have manually set the **chunk granularity** to 2<sup>12</sup> bytes, which is much smaller than the default of 2<sup>15</sup> bytes. The purpose of this is to make the encoder emit smaller `IDAT` chunks, so that we can observe a larger number of intermediate snapshots.
+
+```swift 
+let layout:PNG.Layout = .init(format: image.layout.format, interlaced: true)
+let progressive:PNG.Data.Rectangular = image.bindStorage(to: layout)
+
+try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
+```
+
+We can invoke `decodeOnline(stream:overdraw:)` on the interlaced image as follows. 
+
+```swift
+stream                      = .init(path: "\(path)-progressive.png")
+counter                     = 0
+let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
+{
+    (snapshot:PNG.Data.Rectangular) in 
+    
+    try snapshot.compress(path: "\(path)-progressive-\(counter).png")
+    counter += 1
+}
+```
+
+| `IDAT` chunks | image snapshot |
+| ---:| ---------------------------------------------------:|
+|   1 | <img width=500 src="decode-online/example-progressive-0.png"/>  |
+|   2 | <img width=500 src="decode-online/example-progressive-1.png"/>  |
+|   3 | <img width=500 src="decode-online/example-progressive-2.png"/>  |
+|   4 | <img width=500 src="decode-online/example-progressive-3.png"/>  |
+|   5 | <img width=500 src="decode-online/example-progressive-4.png"/>  |
+|   6 | <img width=500 src="decode-online/example-progressive-5.png"/>  |
+|   7 | <img width=500 src="decode-online/example-progressive-6.png"/>  |
+|   8 | <img width=500 src="decode-online/example-progressive-7.png"/>  |
+|   9 | <img width=500 src="decode-online/example-progressive-8.png"/>  |
+|  10 | <img width=500 src="decode-online/example-progressive-9.png"/>  |
+|  11 | <img width=500 src="decode-online/example-progressive-10.png"/> |
+|  12 | <img width=500 src="decode-online/example-progressive-11.png"/> |
+
+If we enable **overdrawing**, *Swift PNG* will pre-fill missing pixels with values from nearby pixels that are currently available. The term *overdrawing* comes from the fact that these pre-filled pixels will be overwritten when their actual contents become available. We can enable overdrawing by setting the `overdraw` parameter to `true` as follows. 
+
+```swift 
+stream.reset(position: 0)
+
+counter                     = 0
+let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: true)
+{
+    (snapshot:PNG.Data.Rectangular) in 
+    
+    try snapshot.compress(path: "\(path)-progressive-overdrawn-\(counter).png")
+    counter += 1
+}
+```
+
+> **warning:** overdrawing does not eliminate the need to initialize the image buffer. however, every pixel in the image buffer will be written to by the end of the first [adam7 scan](https://en.wikipedia.org/wiki/Adam7_algorithm), which often fits easily into the first `IDAT` chunk. this makes it significantly less likely that you will observe zombie pixels.
+
+When overdrawing is enabled, the intermediate snapshots look somewhat more user-friendly than they do without it.
+
+| `IDAT` chunks | image snapshot |
+| ---:| ---------------------------------------------------:|
+|   1 | <img width=500 src="decode-online/example-progressive-overdrawn-0.png"/>  |
+|   2 | <img width=500 src="decode-online/example-progressive-overdrawn-1.png"/>  |
+|   3 | <img width=500 src="decode-online/example-progressive-overdrawn-2.png"/>  |
+|   4 | <img width=500 src="decode-online/example-progressive-overdrawn-3.png"/>  |
+|   5 | <img width=500 src="decode-online/example-progressive-overdrawn-4.png"/>  |
+|   6 | <img width=500 src="decode-online/example-progressive-overdrawn-5.png"/>  |
+|   7 | <img width=500 src="decode-online/example-progressive-overdrawn-6.png"/>  |
+|   8 | <img width=500 src="decode-online/example-progressive-overdrawn-7.png"/>  |
+|   9 | <img width=500 src="decode-online/example-progressive-overdrawn-8.png"/>  |
+|  10 | <img width=500 src="decode-online/example-progressive-overdrawn-9.png"/>  |
+|  11 | <img width=500 src="decode-online/example-progressive-overdrawn-10.png"/> |
+|  12 | <img width=500 src="decode-online/example-progressive-overdrawn-11.png"/> |
+
+Overdrawing has no effect if the image is not interlaced.

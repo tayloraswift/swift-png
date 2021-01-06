@@ -191,7 +191,7 @@ extension PNG.Data.Rectangular
     } 
     
     public 
-    func withStorageRebound(to layout:PNG.Layout) -> Self 
+    func bindStorage(to layout:PNG.Layout) -> Self 
     {
         switch (self.layout.format, layout.format) 
         {
@@ -781,10 +781,10 @@ extension PNG.Data.Rectangular
             default:
                 standard    = .common
             }
-            switch chunk 
+            switch chunk.type 
             {
-            case (.IHDR, let data):
-                return (standard, try .init(parsing: data, standard: standard))
+            case .IHDR:
+                return (standard, try .init(parsing: chunk.data, standard: standard))
             default:
                 throw PNG.DecodingError.missingImageHeader
             }
@@ -821,11 +821,7 @@ extension PNG.Data.Rectangular
                     {
                         throw PNG.DecodingError.invalidChunkOrder(.PLTE, after: .tRNS)
                     }
-                    guard metadata.histogram == nil 
-                    else 
-                    {
-                        throw PNG.DecodingError.invalidChunkOrder(.PLTE, after: .hIST)
-                    }
+                    
                     palette = try .init(parsing: chunk.data, pixel: header.pixel)
                 
                 case .IDAT:
