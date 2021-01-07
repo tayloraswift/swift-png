@@ -190,7 +190,7 @@ try image.compress(path: "\(path)-color-rgb.png", level: 9)
 
 <img src="encode-basic/example-color-rgb.png" alt="output png" width=300/>
 
-> the example image, encoded by *swift png* in the 8-bit RGB color format.
+> the example image, encoded by *swift png* in the 8-bit rgb color format.
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Another_explosion_at_hand_-_Keppler._LCCN2010651330.jpg)*
 
@@ -261,7 +261,7 @@ try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
 
 <img src="encode-basic/example-luminance-rgb.png" alt="output png" width=300/>
 
-> the computed luminance of the example image, encoded by *swift png* in the 8-bit RGB color format. the output image is 880.4 kb in size.
+> the computed luminance of the example image, encoded by *swift png* in the 8-bit rgb color format. the output image is 880.4 kb in size.
 
 The resulting file is much larger than the one encoded in the grayscale format, since it contains two redundant color channels. So there’s rarely a good reason to save a grayscale image in an non-grayscale color format.
 
