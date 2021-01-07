@@ -2031,6 +2031,13 @@ extension PNG.Text
             throw error(nil) 
         }
         
+        // check for empty language tag 
+        guard offset > data.startIndex 
+        else 
+        {
+            return ([], offset)
+        }
+        
         // split on '-' 
         let language:[String] = 
             try data[..<offset].split(separator: 0x2d, omittingEmptySubsequences: false).map 
