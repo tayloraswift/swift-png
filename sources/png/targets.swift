@@ -427,7 +427,7 @@ extension PNG
         _ kernel:(C) -> (T, T, T, T), _ transform:(T) -> A)
         where A:FixedWidthInteger & UnsignedInteger
     {
-        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 3), pixels)
+        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 4), pixels)
         {
             let (r, g, b, a):(T, T, T, T)   = kernel(pixel)
             samples[i     ]                 = transform(r).bigEndian
