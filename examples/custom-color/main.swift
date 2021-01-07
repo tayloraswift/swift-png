@@ -79,10 +79,9 @@ struct HSVA
 
 extension HSVA:PNG.Color 
 {
-    public 
     typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
     
-    public static 
+    static 
     func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
         deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
         -> [Self] 
@@ -204,7 +203,7 @@ extension HSVA:PNG.Color
         }
     }
     
-    public static 
+    static 
     func pack(_ pixels:[Self], as format:PNG.Format, 
         indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
         -> [UInt8] 

@@ -9,6 +9,7 @@
 5. [working with metadata](#working-with-metadata) ([sources](metadata/))
 6. [using in-memory images](#using-in-memory-images) ([sources](in-memory/))
 7. [online decoding](#online-decoding) ([sources](decode-online/))
+8. [custom color targets](#custom-color-targets) ([sources](custom-color/))
 
 ## basic decoding 
 
@@ -275,6 +276,7 @@ The resulting file is much larger than the one encoded in the grayscale format, 
 
 > ***key terms:***
 > - **image palette** 
+> - **palette aggregate**
 > - **indexing function** 
 > - **deindexing function** 
 
@@ -692,7 +694,7 @@ The return value of the outer function is an *inner function* of type `(UInt8) -
 
 Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to perform index manipulation without re-indexing the entire image.
 
-Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the `PNG.VA<T>` color target, the inner function recieves `(UInt8, UInt8)` tuples. For the `PNG.RGBA<T>` color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always [`Int`](https://developer.apple.com/documentation/swift/int).)
+Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the `PNG.VA<T>` color target, the inner function recieves `(UInt8, UInt8)` tuples. For the `PNG.RGBA<T>` color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always [`Int`](https://developer.apple.com/documentation/swift/int).) In *Swift PNG*, the inner function argument is called a **palette aggregate**.
 
 Let’s go back to the custom indexing function: 
 
@@ -1594,3 +1596,601 @@ When overdrawing is enabled, the intermediate snapshots look somewhat more user-
 |  12 | <img width=500 src="decode-online/example-progressive-overdrawn-11.png"/> |
 
 Overdrawing has no effect if the image is not interlaced.
+
+## custom color targets 
+
+[`sources`](custom-color/)
+
+> ***by the end of this tutorial, you should be able to:***
+> - *understand and use the library’s convolution and deconvolution helper functions*
+> - *implement pixel packing and unpacking for a custom HSVA color target*
+> - *apply chroma keys from applicable color formats*
+
+> ***key terms:***
+> - **pixel kernel**
+> - **convolution**
+> - **deconvolution**
+> - **atom type** 
+> - **intensity type**
+
+As we have already seen, *Swift PNG*’s pixel packing and unpacking interfaces are generic over the library protocol `PNG.Color`. The built-in color targets `PNG.VA<T>` and `PNG.RGBA<T>` both conform to it. In this tutorial, we will implement a custom color target, `HSVA`, which uses the [hue-saturation-value color model](https://en.wikipedia.org/wiki/HSL_and_HSV).
+
+At this point, it is important to reiterate the difference between color formats and color targets. A color format is the internal representation that pixels are stored as in a PNG file. A color target is an interpretation of those pixels that we obtain by unpacking pixels from an image instance. 
+
+If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library also has the concept of a *color format type*, which can also be customized. This is because JPEG is an *open standard*, meaning that users can encode images with user-defined internal representation. Thus, JPEG is actually a family of file formats, rather than a single standard. PNG is a *closed standard*, so *Swift PNG* does not allow you to customize the color format. 
+
+> **note:** strictly speaking, png is also a family of file formats, with two color format types — the standard set of color formats, and the iphone-optimized color formats. however, the png specification provides no means of defining custom color formats within its headers (thus, the need for the `CgBI` chunk), so for ease-of-use, *swift png* merges both png color format types into a single library-defined color format type.
+
+<img src="custom-color/example.png" alt="input png" width=500/>
+
+> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Madrid_%2836178965285%29.jpg)*
+
+We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like `PNG.VA<T>` or `PNG.RGBA<T>`. It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will actually be used.)
+
+```swift 
+import PNG 
+
+struct HSVA 
+{
+    var h:UInt32 
+    var s:UInt16 
+    var v:UInt8 
+    var a:UInt8 
+    
+    init(h:UInt32, s:UInt16, v:UInt8, a:UInt8)
+    {
+        self.h = h 
+        self.s = s 
+        self.v = v 
+        self.a = a
+    }
+```
+
+We define the following conversion function, which initializes an HSVA color from an RGBA input. The conversion formula is unimportant, so it’s fine if you don’t understand exactly how it works.
+
+```swift 
+    init(r:UInt8, g:UInt8, b:UInt8, a:UInt8) 
+    {
+        let sorted:(min:UInt8, mid:UInt8, max:UInt8) 
+        let sector:UInt32
+        switch (r < g, g < b, r < b) 
+        {
+        case (true , true , _    ): sorted = (r, g, b); sector = 3
+        case (false, true , true ): sorted = (g, r, b); sector = 4
+        case (false, true , false): sorted = (g, b, r); sector = 5
+        case (true , false, true ): sorted = (r, b, g); sector = 2
+        case (true , false, false): sorted = (b, r, g); sector = 1
+        case (false, false, _    ): sorted = (b, g, r); sector = 0
+        }
+        let d:UInt32 = .init(sorted.max - sorted.min)
+        if d > 0 
+        {
+            let f:UInt32 = .init(sorted.mid - sorted.min) << 16 / d + 1, 
+                r:UInt32 = sector & 1 == 0 ? f : 65537 - f
+            
+            self.h = 65537 * sector + r
+            self.s = .init((d << 16 - 1) / .init(sorted.max))
+        }
+        else 
+        {
+            self.h = 0 
+            self.s = 0
+        }
+        
+        self.v = sorted.max 
+        self.a = a
+    }
+```
+
+We also define the HSVA-to-RGBA conversion, using `PNG.RGBA<UInt8>` as the return type. Again, the details of the conversion formula are unimportant. 
+
+```swift 
+    var rgba:PNG.RGBA<UInt8> 
+    {
+        guard self.s > 0, self.v > 0 
+        else 
+        {
+            return .init(self.v, self.v, self.v, self.a)
+        }
+        
+        let (sector, r):(UInt32, UInt32) = 
+            self.h.quotientAndRemainder(dividingBy: 65537)
+        let f:UInt32 = sector & 1 == 0 ? r : 65537 - r
+        let d:UInt32 = (.init(self.s) * .init(self.v)) >> 16 + 1
+        
+        let x:UInt8 = self.v, 
+            y:UInt8 = x - .init(d),
+            z:UInt8 = .init((f * d) >> 16) + y
+        
+        switch sector 
+        {
+        case 0: return .init(x, z, y, self.a)
+        case 1: return .init(z, x, y, self.a)
+        case 2: return .init(y, x, z, self.a)
+        case 3: return .init(y, z, x, self.a)
+        case 4: return .init(z, y, x, self.a)
+        case 5: return .init(x, y, z, self.a)
+        default: fatalError("unreachable")
+        }
+    }
+}
+```
+
+Now that we have a working HSVA implementation, we need to conform it to the `PNG.Color` protocol so we can use it as a color target. To do this, we need to implement the following requirements: 
+
+```swift 
+protocol PNG.Color 
+{
+    associatedtype Aggregate 
+    
+    static 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
+        -> [Self]
+    static 
+    func pack(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
+        -> [UInt8] 
+        
+    static 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    static 
+    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
+}
+```
+
+For certain associated `Aggregate` types, the library provides default implementations for `unpack(_:of:)` and `pack(_:as:)`, which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement `unpack(_:of:deindexer:)` and `pack(_:as:indexer:)`. The specific `Aggregate` types are: 
+
+- `(UInt8, UInt8)`, and 
+- `(UInt8, UInt8, UInt8, UInt8)`.
+
+In the [indexed color tutorial](#using-indexed-images), we saw how they were used by the `PNG.VA<T>` and `PNG.RGBA<T>` color targets. (The scalar color targets also use their own `Aggregate` type, `UInt8`, though this does not go through the `PNG.Color` protocol.)
+
+The core idea of a color target is the **pixel kernel**. Pixel kernels convert groups of image data samples into instances of a color target, and vice-versa. In *Swift PNG*, the application of a pixel kernel to an image data buffer is called a **convolution**, and the inverse operation is called a **deconvolution**. The simplest deconvolution is to flatten an array of RGBA pixels to an array of [*r*, *g*, *b*, *a*, *r*, *g*, *b*, *a*, …] samples, and the simplest convolution is to group the elements of such an array into an array of RGBA pixels. Conceptually, this is a Swift [`flatMap(_:)`](https://developer.apple.com/documentation/swift/sequence/2905332-flatmap), and whatever you would call the opposite of a flatmap, respectively. We are allowed to do arbitrary computations in the pixel kernels, which is why we call it a (de)convolution, and not just a flatmap.
+
+Let’s tackle the unpacking operation first. *Swift PNG* provides a set of helper functions to reduce the amount of boilerplate you have to write.
+
+```swift 
+extension PNG 
+{
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> A,
+        kernel:(T) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A),
+        kernel:((T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A),
+        kernel:((T, T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A, A),
+        kernel:((T, T, T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:(T, A) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:((T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:((T, T, T), (A, A, A)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
+        kernel:((T, T, T, T)) -> C)
+        -> [C]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+}
+```
+
+The first four convolution functions are meant to be used with indexed color formats, and the remaining four are meant to be used with non-indexed color formats. To understand how they work, let’s first go over what the generic parameters `A`, `T`, and `C` mean.
+
+- The `A` type is the **atom type**. (The `A` stands for ***a***tom.) The atom type is closely related to the image color format. For images with a bit depth of 16, the appropriate atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16). Otherwise, it is [`UInt8`](https://developer.apple.com/documentation/swift/uint8). In the image data storage buffer, which has a type of `[UInt8]`, the `UInt16` atoms are stored in big-endian order. 
+ 
+ Atoms are unscaled samples. For example, in a `v4(fill:key:)` image, which has a bit depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
+
+- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) The intensity type is closely related to the color target. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in `PNG.RGBA<T>` color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
+
+ As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a `v4(fill:key:)` image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
+ 
+ The use of intensity types in *Swift PNG* means that you don’t have to worry about normalizing samples when implementing custom color targets.
+ 
+- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack an `va16(fill:)` image to an array of `PNG.RGBA<UInt8>` pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be `PNG.RGBA<UInt8>`. Indeed, this is exactly what the built-in `PNG.RGBA<T>` color target does.
+
+The four non-indexed convolution functions perform the following operations: 
+
+1. Load (big-endian) atoms from the given data buffer. 
+2. Convert the atoms to the intensity type, and scale them to fill the range of the intensity type, according to the given bit depth. 
+3. Feed the intensities, and in certain cases, the original atoms as well, to the given pixel kernel, and get pixel instances in return.
+
+The reason why some of the pixel kernels receive the original atoms in addition to the intensity values is because their associated color formats (namely, the grayscale, RGB, and BGR formats) require us to do chroma key comparisons, which must be performed in the original atom type.
+
+The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the `Aggregate` types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image bit depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a bit depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
+
+Now, let’s write the implementation for the unpacking function. 
+
+First, we set the associated `Aggregate` type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
+
+```swift 
+extension HSVA:PNG.Color 
+{
+    typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
+    
+    static 
+    func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
+        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
+        -> [Self] 
+```
+
+We can handle all of the indexed color formats in one `switch` case. We assume that the `dereference` function returns RGBA samples as the `(UInt8, UInt8, UInt8, UInt8)` aggregate, and forward them to `HSVA.init(r:g:b:a:)`. (If you don’t understand how to get the `dereference` function from `deindexer`, read the [indexed color tutorial](#using-indexed-images).)
+
+```swift 
+    {
+        let depth:Int = format.pixel.depth 
+        switch format 
+        {
+        case    .indexed1(palette: let palette, fill: _), 
+                .indexed2(palette: let palette, fill: _), 
+                .indexed4(palette: let palette, fill: _), 
+                .indexed8(palette: let palette, fill: _):
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) 
+            {
+                (c:(UInt8, UInt8, UInt8, UInt8)) in 
+                .init(r: c.0, g: c.1, b: c.2, a: c.3)
+            }
+```
+
+For grayscale color formats without a chroma key, we assign the grayscale sample to the value channel of the HSVA output, set the hue and saturation to zero, and the alpha to full opacity. We need a separate case for the `v16(fill:key:)` color format, since its atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16) and not [`UInt8`](https://developer.apple.com/documentation/swift/uint8).
+
+```swift 
+        case    .v1(fill: _, key: nil),
+                .v2(fill: _, key: nil),
+                .v4(fill: _, key: nil),
+                .v8(fill: _, key: nil):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) 
+            {
+                (v:UInt8, _) in 
+                .init(h: 0, s: 0, v: v, a: .max)
+            }
+        case    .v16(fill: _, key: nil):
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) 
+            {
+                (v:UInt8, _) in 
+                .init(h: 0, s: 0, v: v, a: .max)
+            }
+```
+
+For the grayscale formats with a chroma key, we do the same thing, except we clear the alpha if the original grayscale atom matches the chroma key. 
+
+```swift 
+        case    .v1(fill: _, key: let key?),
+                .v2(fill: _, key: let key?),
+                .v4(fill: _, key: let key?),
+                .v8(fill: _, key: let key?):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (v:UInt8, k:UInt8 ) in 
+                .init(h: 0, s: 0, v: v, a: k == key ? .min : .max)
+            }
+        case    .v16(fill: _, key: let key?):
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) 
+            {
+                (v:UInt8, k:UInt16) in 
+                .init(h: 0, s: 0, v: v, a: k == key ? .min : .max)
+            }
+```
+
+The rest of the cases are quite boilerplatey, and therefore should be incredibly straightforward. 
+
+```swift 
+        case    .va8(fill: _):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8)) in 
+                .init(h: 0, s: 0, v: c.0, a: c.1)
+            }
+        case    .va16(fill: _):
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
+            {
+                (c:(UInt8, UInt8)) in 
+                .init(h: 0, s: 0, v: c.0, a: c.1)
+            }
+
+        case    .bgr8(palette: _, fill: _, key: nil):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8), _) in 
+                .init(r: c.2, g: c.1, b: c.0, a: .max)
+            }
+        case    .bgr8(palette: _, fill: _, key: let key?):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8), k:(UInt8,  UInt8,  UInt8 )) in 
+                .init(r: c.2, g: c.1, b: c.0, a: k == key ? .min : .max)
+            }
+
+        case    .rgb8(palette: _, fill: _, key: nil):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8), _) in 
+                .init(r: c.0, g: c.1, b: c.2, a: .max)
+            }
+        case    .rgb16(palette: _, fill: _, key: nil):
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8), _) in 
+                .init(r: c.0, g: c.1, b: c.2, a: .max)
+            }
+        case    .rgb8(palette: _, fill: _, key: let key?):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8), k:(UInt8,  UInt8,  UInt8 )) in 
+                .init(r: c.0, g: c.1, b: c.2, a: k == key ? .min : .max)
+            }
+        case    .rgb16(palette: _, fill: _, key: let key?):
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8), k:(UInt16, UInt16, UInt16)) in 
+                .init(r: c.0, g: c.1, b: c.2, a: k == key ? .min : .max)
+            }
+
+        case    .bgra8(palette: _, fill: _):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8, UInt8)) in 
+                .init(r: c.2, g: c.1, b: c.0, a: c.3)
+            }
+
+        case    .rgba8(palette: _, fill: _):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8, UInt8)) in 
+                .init(r: c.0, g: c.1, b: c.2, a: c.3)
+            }
+        case    .rgba16(palette: _, fill: _):
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
+            {
+                (c:(UInt8, UInt8, UInt8, UInt8)) in 
+                .init(r: c.0, g: c.1, b: c.2, a: c.3)
+            }
+        }
+    }
+```
+
+If you understood how we implemented the unpacking function, then the packing function should be easy to understand too. Mirroring the convolution functions, *Swift PNG* provides eight deconvolution helper functions. The generic parameters have the exact same meanings as they did before.
+
+```swift 
+extension PNG 
+{
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:(A) -> Int,
+        kernel:(C) -> T)
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A)) -> Int,
+        kernel:(C) -> (T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A)) -> Int,
+        kernel:(C) -> (T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A, A)) -> Int,
+        kernel:(C) -> (T, T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> T)
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> (T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+    
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> (T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+
+    static 
+    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
+        kernel:(C) -> (T, T, T, T))
+        -> [UInt8]
+        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
+}
+```
+
+The four non-indexed deconvolution functions perform the following operations: 
+
+1. Feed the pixel instances from the given pixel array to the given pixel kernel, and get intensity tuples (or a scalar) in return.
+2. Convert the intensities to the atom type, and scale them to the range specified by the given bit depth.
+3. Store the atoms in the returned data buffer (as big-endian integers).
+
+The main difference is that none of the deconvolution kernels interact with the generated atoms, since chroma keys aren’t relevant to pixel packing. 
+
+The four indexed deconvolution functions have essentially the same relationship to the non-indexed deconvolution functions as the indexed convolution functions do to the non-indexed convolution functions.
+
+The implementation of the packing function is straightforward. When applicable, we have used the `rgba` property we defined on the `HSVA` type to perform the HSVA-to-RGBA conversion. Note that we have explicitly written the return types in the pixel kernels since, at the time of writing, the Swift compiler seems to have some issues with its type inferencer.
+
+```swift 
+    static 
+    func pack(_ pixels:[Self], as format:PNG.Format, 
+        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
+        -> [UInt8] 
+    {
+        let depth:Int = format.pixel.depth 
+        switch format 
+        {
+        case    .indexed1(palette: let palette, fill: _), 
+                .indexed2(palette: let palette, fill: _), 
+                .indexed4(palette: let palette, fill: _), 
+                .indexed8(palette: let palette, fill: _):
+            return PNG.deconvolve(pixels, reference: indexer(palette)) 
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.r, rgba.g, rgba.b, c.a)
+            }
+                
+        case    .v1(fill: _, key: _),
+                .v2(fill: _, key: _),
+                .v4(fill: _, key: _),
+                .v8(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self,  depth: depth, kernel: \.v) 
+        case    .v16(fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth, kernel: \.v)
+
+        case    .va8(fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8) in 
+                return (c.v, c.a)
+            }
+        case    .va16(fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8) in 
+                return (c.v, c.a)
+            }
+        
+        case    .bgr8(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.b, rgba.g, rgba.r)
+            }
+
+        case    .rgb8(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.r, rgba.g, rgba.b)
+            }
+        case    .rgb16(palette: _, fill: _, key: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.r, rgba.g, rgba.b)
+            }
+        
+        case    .bgra8(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.b, rgba.g, rgba.r, c.a)
+            }
+        
+        case    .rgba8(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.r, rgba.g, rgba.b, c.a)
+            }
+        case    .rgba16(palette: _, fill: _):
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
+            {
+                (c:Self) -> (UInt8, UInt8, UInt8, UInt8) in 
+                let rgba:PNG.RGBA<UInt8> = c.rgba 
+                return (rgba.r, rgba.g, rgba.b, c.a)
+            }
+        }
+    }
+}
+```
+
+Now, we can put our custom `HSVA` color target to work. 
+
+```swift 
+let path:String = "examples/custom-color/example"
+guard let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+else 
+{
+    fatalError("failed to open file '\(path).png'")
+}
+
+let hsva:[HSVA] = image.unpack(as: HSVA.self)
+```
+
+We can visualize the hue, saturation, and value channels as follows: 
+
+```swift 
+let hue:PNG.Data.Rectangular = .init(
+    packing: hsva.map{ HSVA.init(h: $0.h, s: .max / 2, v: .max, a: $0.a) }, 
+    size: image.size, layout: image.layout, metadata: image.metadata) 
+try hue.compress(path: "\(path)-hue.png")
+```
+
+<img src="custom-color/example-hue.png" alt="output png" width=500/>
+
+> visualization of the example image hue.
+
+```swift
+let saturation:PNG.Data.Rectangular = .init(
+    packing: hsva.map{ HSVA.init(h: 370000, s: $0.s, v: .max, a: $0.a) }, 
+    size: image.size, layout: image.layout, metadata: image.metadata) 
+try saturation.compress(path: "\(path)-saturation.png")
+```
+
+<img src="custom-color/example-saturation.png" alt="output png" width=500/>
+
+> visualization of the example image saturation.
+
+```swift
+let value:PNG.Data.Rectangular = .init(
+    packing: hsva.map{ HSVA.init(h: 0, s: 0, v: $0.v, a: $0.a) }, 
+    size: image.size, layout: image.layout, metadata: image.metadata) 
+try value.compress(path: "\(path)-value.png")
+```
+
+<img src="custom-color/example-value.png" alt="output png" width=500/>
+
+> visualization of the example image value.
+
+We can test our pixel packing implementation by re-encoding the HSVA image. 
+
+```swift 
+let new:PNG.Data.Rectangular = .init(packing: hsva, 
+    size: image.size, layout: image.layout, metadata: image.metadata)
+try new.compress(path: "\(path).png.png")
+```
+
+<img src="custom-color/example.png.png" alt="output png" width=500/>
+
+> the example image, re-encoded from the previously-obtained HSVA representation.
