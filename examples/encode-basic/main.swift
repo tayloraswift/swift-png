@@ -1,6 +1,6 @@
 import PNG
 
-let path:String         = "examples/encode-basic/another-explosion-at-hand", 
+let path:String         = "examples/encode-basic/example", 
     size:(x:Int, y:Int) = (800, 1228)
 guard let rgba:[PNG.RGBA<UInt8>] = (System.File.Source.open(path: "\(path).rgba")
 {

@@ -27,18 +27,18 @@ On platforms with built-in file system support (MacOS, Linux), decoding a PNG fi
 ```swift 
 import PNG 
 
-let path:String = "examples/decode-basic/ada-lovelace-1840.png"
+let path:String = "examples/decode-basic/example"
 
-guard let image:PNG.Data.Rectangular = try .decompress(path: path)
+guard let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
 else 
 {
-    fatalError("failed to open file '\(path)'")
+    fatalError("failed to open file '\(path).png'")
 }
 
 let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
 ```
 
-<img src="decode-basic/ada-lovelace-1840.png.rgba.png" alt="output (as png)" width=300/>
+<img src="decode-basic/example.png.rgba.png" alt="output png" width=300/>
 
 > example image, decoded to an rgba data file, and re-encoded as a png (for display purposes).
 > 
@@ -52,7 +52,7 @@ We could also have unpacked the image pixels to the `PNG.VA<UInt8>` built-in col
 let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
 ```
 
-<img src="decode-basic/ada-lovelace-1840.png.va.png" alt="output (as png)" width=300/>
+<img src="decode-basic/example.png.va.png" alt="output png" width=300/>
 
 > the same example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 
@@ -64,7 +64,7 @@ The `unpack(as:)` method also has an overload which allows you to unpack an imag
 let v:[UInt8] = image.unpack(as: UInt8.self)
 ```
 
-<img src="decode-basic/ada-lovelace-1840.png.v.png" alt="output (as png)" width=300/>
+<img src="decode-basic/example.png.v.png" alt="output png" width=300/>
 
 > the same example image, decoded to an grayscale data file, and re-encoded as a png. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
 
@@ -97,7 +97,7 @@ This tutorial will assume you have the image you want to encode stored as an arr
 ```swift 
 import PNG
 
-let path:String         = "examples/encode-basic/another-explosion-at-hand", 
+let path:String         = "examples/encode-basic/example", 
     size:(x:Int, y:Int) = (800, 1228)
 guard let rgba:[PNG.RGBA<UInt8>] = (System.File.Source.open(path: "\(path).rgba")
 {
@@ -187,7 +187,7 @@ Compression level `9` is roughly equivalent to *libpng*’s maximum compression 
 try image.compress(path: "\(path)-color-rgb.png", level: 9)
 ```
 
-<img src="encode-basic/another-explosion-at-hand-color-rgb.png" alt="output png" width=300/>
+<img src="encode-basic/example-color-rgb.png" alt="output png" width=300/>
 
 > example image, encoded by *swift png* in the 8-bit RGB color format.
 > 
@@ -221,7 +221,7 @@ try image.compress(path: "\(path)-color-v.png", level: 9)
 
 The built-in `PNG.RGBA` color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
 
-<img src="encode-basic/another-explosion-at-hand-color-v.png" alt="output png" width=300/>
+<img src="encode-basic/example-color-v.png" alt="output png" width=300/>
 
 > example image, encoded by *swift png* in the 8-bit grayscale color format.
 
@@ -245,7 +245,7 @@ let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: 
 try image.compress(path: "\(path)-luminance-v.png", level: 9)
 ```
 
-<img src="encode-basic/another-explosion-at-hand-luminance-v.png" alt="output png" width=300/>
+<img src="encode-basic/example-luminance-v.png" alt="output png" width=300/>
 
 > computed luminance of the example image, encoded by *swift png* in the 8-bit grayscale color format. the output image is 590.6 kb in size.
 
@@ -258,7 +258,7 @@ let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: 
 try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
 ```
 
-<img src="encode-basic/another-explosion-at-hand-luminance-rgb.png" alt="output png" width=300/>
+<img src="encode-basic/example-luminance-rgb.png" alt="output png" width=300/>
 
 > computed luminance of the example image, encoded by *swift png* in the 8-bit RGB color format. the output image is 880.4 kb in size.
 
