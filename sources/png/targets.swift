@@ -137,7 +137,7 @@ extension PNG
         T.max >> (T.bitWidth - destination) / T.max >> (T.bitWidth - source)
     }
     
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> A,
         kernel:(T) -> C)
         -> [C]
@@ -167,7 +167,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A),
         kernel:((T, T)) -> C)
         -> [C]
@@ -197,7 +197,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A),
         kernel:((T, T, T)) -> C)
         -> [C]
@@ -227,7 +227,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A, A),
         kernel:((T, T, T, T)) -> C)
         -> [C]
@@ -259,7 +259,7 @@ extension PNG
     }
     // cannot genericize the kernel parameters, since it produces an unacceptable slowdown
     // so we have to manually specialize for all four cases (using the exact same function body)
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
         kernel:(T, A) -> C)
         -> [C]
@@ -290,7 +290,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
         kernel:((T, T)) -> C)
         -> [C]
@@ -321,7 +321,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
         kernel:((T, T, T), (A, A, A)) -> C)
         -> [C]
@@ -352,7 +352,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
         kernel:((T, T, T, T)) -> C)
         -> [C]
@@ -484,7 +484,7 @@ extension PNG
         }
     }
     
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], reference:(A) -> Int,
         kernel:(C) -> T)
         -> [UInt8]
@@ -521,7 +521,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A)) -> Int,
         kernel:(C) -> (T, T))
         -> [UInt8]
@@ -558,7 +558,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A)) -> Int,
         kernel:(C) -> (T, T, T))
         -> [UInt8]
@@ -595,7 +595,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A, A)) -> Int,
         kernel:(C) -> (T, T, T, T))
         -> [UInt8]
@@ -633,7 +633,7 @@ extension PNG
         }
     }
     
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
         kernel:(C) -> T)
         -> [UInt8]
@@ -669,7 +669,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
         kernel:(C) -> (T, T))
         -> [UInt8]
@@ -705,7 +705,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
         kernel:(C) -> (T, T, T))
         -> [UInt8]
@@ -741,7 +741,7 @@ extension PNG
             }
         }
     }
-    static 
+    public static 
     func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
         kernel:(C) -> (T, T, T, T))
         -> [UInt8]
@@ -1189,15 +1189,9 @@ extension PNG.RGBA:PNG.Color
                 .v2(fill: _, key: _),
                 .v4(fill: _, key: _),
                 .v8(fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) 
-            {
-                (c) in c.r
-            }
+            return PNG.deconvolve(pixels, as: UInt8.self,  depth: depth, kernel: \.r) 
         case    .v16(fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) 
-            {
-                (c) in c.r
-            }
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth, kernel: \.r) 
 
         case    .va8(fill: _):
             return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
