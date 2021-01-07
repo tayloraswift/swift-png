@@ -52,7 +52,7 @@ done
 check   "error: runtime error" \
         .build/$build_configuration/decode-basic 
 
-for file in examples/decode-basic/ada-lovelace-1840.png ; do 
+for file in examples/decode-basic/example.png ; do 
     size=$(identify -format "%wx%h" png:$file)
     convert -depth 8 -size $size "rgba:$file.rgba" "png:$file.rgba.png"
     convert -depth 8 -size $size  "graya:$file.va" "png:$file.va.png"
@@ -79,3 +79,9 @@ for file in examples/in-memory/example.png ; do
     size=$(identify -format "%wx%h" png:$file)
     convert -depth 8 -size $size "rgba:$file.rgba" "png:$file.rgba.png"
 done 
+# run `decode-online` example
+check   "error: runtime error" \
+        .build/$build_configuration/decode-online
+# run `custom-color` example
+check   "error: runtime error" \
+        .build/$build_configuration/custom-color
