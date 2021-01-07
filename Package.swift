@@ -19,6 +19,7 @@ let package = Package(
         .executable(name: "metadata",                   targets: ["PNGMetadata"]),
         .executable(name: "in-memory",                  targets: ["PNGInMemory"]),
         .executable(name: "decode-online",              targets: ["PNGDecodeOnline"]),
+        .executable(name: "custom-color",               targets: ["PNGCustomColor"]),
     ],
     targets: 
     [
@@ -37,6 +38,7 @@ let package = Package(
         .target(name: "PNGMetadata",                dependencies: ["PNG"],  path: "examples/metadata"),
         .target(name: "PNGInMemory",                dependencies: ["PNG"],  path: "examples/in-memory"),
         .target(name: "PNGDecodeOnline",            dependencies: ["PNG"],  path: "examples/decode-online"),
+        .target(name: "PNGCustomColor",             dependencies: ["PNG"],  path: "examples/custom-color"),
     ],
     swiftLanguageVersions: [.v5]
 )
