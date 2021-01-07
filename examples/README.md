@@ -22,7 +22,7 @@
 > ***key terms:***
 > - **color target**
 
-On platforms with built-in file system support (MacOS, Linux), decoding a PNG file to a pixel array takes just two function calls.
+On platforms with built-in file system support (MacOS and Linux), decoding a PNG file to a pixel array takes just two function calls.
 
 ```swift 
 import PNG 
@@ -40,7 +40,7 @@ let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
 
 <img src="decode-basic/example.png.rgba.png" alt="output png" width=300/>
 
-> example image, decoded to an rgba data file, and re-encoded as a png (for display purposes).
+> the example image, decoded to an rgba data file, and re-encoded as a png (for display purposes).
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)*
 
@@ -54,7 +54,7 @@ let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
 
 <img src="decode-basic/example.png.va.png" alt="output png" width=300/>
 
-> the same example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
+> the example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 
 The `unpack(as:)` method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
 
@@ -66,11 +66,11 @@ let v:[UInt8] = image.unpack(as: UInt8.self)
 
 <img src="decode-basic/example.png.v.png" alt="output png" width=300/>
 
-> the same example image, decoded to an grayscale data file, and re-encoded as a png. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
+> the example image, decoded to an grayscale data file, and re-encoded as a png. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
 
 The two `unpack(as:)` methods support all Swift integer types that conform to [`FixedWidthInteger`](https://developer.apple.com/documentation/swift/fixedwidthinteger)`&`[`UnsignedInteger`](https://developer.apple.com/documentation/swift/unsignedinteger). They have generic specializations for [`UInt8`](https://developer.apple.com/documentation/swift/uint8), [`UInt16`](https://developer.apple.com/documentation/swift/uint16), [`UInt32`](https://developer.apple.com/documentation/swift/uint32), [`UInt64`](https://developer.apple.com/documentation/swift/uint64), and [`UInt`](https://developer.apple.com/documentation/swift/uint). 
 
-If you unpack an image to an integer type `T` with a bit width different from the bit depth of the original image, the samples will be scaled to fill the range `T.min ... T.max`. The scaling is done arithmetically, so if you unpack an 8-bit image to a [`UInt16`](https://developer.apple.com/documentation/swift/uint16)-based color target, then samples with the value `255` will become `65535`, not `65280`.
+If you unpack an image to an integer type `T` with a bit width different from the color depth of the original image, the samples will be scaled to fill the range `T.min ... T.max`. The scaling is done arithmetically, so if you unpack an 8-bit image to a [`UInt16`](https://developer.apple.com/documentation/swift/uint16)-based color target, then samples with the value `255` will become `65535`, not `65280`.
 
 > **warning:** the built-in grayscale color targets do not compute luminance for rgb- and rgba-type images. they simply use the red component as the gray value, and discard the green and blue components. to perform more sophisticated pixel unpacking, [define a custom pixel kernel](#custom-color-targets).
 
@@ -90,6 +90,7 @@ If you unpack an image to an integer type `T` with a bit width different from th
 > - **color format** 
 > - **color depth** 
 > - **bit depth**
+> - **chroma key**
 > - **compression level**
 
 This tutorial will assume you have the image you want to encode stored as an array of pixels. In the [example code](encode-basic/main.swift) for this tutorial, we have loaded it from a raw `.rgba` data file using the library’s file system APIs. (As previously mentioned, these APIs are only available on MacOS and Linux.)
@@ -119,7 +120,7 @@ else
 }
 ```
 
-The first step to encoding a PNG file is to define an **image layout**. An image layout specifies everything about a PNG image that is not strictly “metadata” or specific to the image content. Here, we have defined an 8-bit RGB layout, as well as an 8-bit grayscale layout which we will use later.
+The first step to encoding a PNG file is to define an **image layout**. An image layout specifies everything about a PNG image that is not strictly “metadata” or content. Here, we have defined an 8-bit RGB layout, as well as an 8-bit grayscale layout which we will use later.
 
 ```swift 
 let layout:(rgb:PNG.Layout, v:PNG.Layout) = 
@@ -137,7 +138,7 @@ init(format:PNG.Format, interlaced:Bool = false)
 
 The `format` parameter specifies the **color format** of the layout. A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of the `PNG.RGBA<UInt8>` pixel array will be lost when encoding in the 8-bit RGB format.
 
-We can enable **interlacing** by setting the `interlaced` parameter to `true`. [Interlacing](https://en.wikipedia.org/wiki/Adam7_algorithm) is an alternative way of storing the image data within the PNG file’s internal representation. This parameter is `false` by default. There is rarely a good reason to enable it, and it usually hurts the compression ratio, so we have omitted it in this example. We will explore a possible use case for it in a [later tutorial](#online-decoding).
+We can enable **interlacing** by setting the `interlaced` parameter to `true`. [Interlacing](https://en.wikipedia.org/wiki/Adam7_algorithm) is an alternative way of storing the image data within the PNG file’s internal representation. This parameter is `false` by default. There is rarely a good reason to enable it, and it usually hurts the compression ratio, so we have omitted it in this example. We will explore a possible use case for it in the [online decoding tutorial](#online-decoding).
 
 *Swift PNG* supports all fifteen standard PNG color formats, plus two formats from Apple’s PNG extensions. The **bit depth** refers to the bit width of the samples in each pixel. The **color depth** refers to the bit width of the color channels in each pixel. The bit depth is different from the color depth for the indexed color formats, because the pixel samples are indices referencing 8-bit palette colors.
 
@@ -165,13 +166,13 @@ We can enable **interlacing** by setting the `interlaced` parameter to `true`. [
 | `PNG.Format.rgba8(palette:fill:)`     | RGBA              | 8         | 8           | core      |
 | `PNG.Format.rgba16(palette:fill:)`    | RGBA              | 16        | 16          | core      |
 
-The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a chroma key. Most PNG viewers use this chroma key to display transparency for such images. The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the `rgb8(palette:fill:key:)` format, and [`Int`](https://developer.apple.com/documentation/swift/int) indices in the `indexed8(palette:fill:)` format. 
+The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a **chroma key**. Most PNG viewers use this chroma key to display transparency for such images. Such viewers will display pixels as transparent if they match the chroma key. The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the `rgb8(palette:fill:key:)` format, and [`Int`](https://developer.apple.com/documentation/swift/int) indices in the `indexed8(palette:fill:)` format. (Indexed images do not support chroma keys, because they contain a full alpha channel.)
 
 Most PNG viewers ignore the `fill` field, and a few ignore the `key` field as well. It is common to leave both fields as `nil` to disable this functionality.
 
-The non-grayscale color formats include a `palette` field. Setting it to the empty array `[]` is analogous to setting `fill` or `key` to `nil`. For the indexed color formats, a non-empty `palette` is mandatory. For the other formats, it is optional (meaning it can be set to `[]`), and furthermore, ignored by almost all PNG clients, since it only specifies a suggested quantization for the image.
+The non-grayscale color formats include a `palette` field. Setting it to the empty array `[]` is analogous to setting `fill` or `key` to `nil`. For the indexed color formats, a non-empty `palette` is mandatory. For the other formats, it is optional (meaning it can be set to `[]`), and furthermore, ignored by almost all PNG clients, since it only specifies a suggested [posterization](https://en.wikipedia.org/wiki/Posterization) for the image.
 
-To create a rectangular image data instance, use the `init(packing:size:layout:metadata:)` initializer. This initializer is the inverse of the `unpack(as:)` method used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
+To create a rectangular image data instance, use the `init(packing:size:layout:metadata:)` initializer. This initializer is the inverse of the `unpack(as:)` method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
 
 ```swift 
 let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.rgb)
@@ -189,7 +190,7 @@ try image.compress(path: "\(path)-color-rgb.png", level: 9)
 
 <img src="encode-basic/example-color-rgb.png" alt="output png" width=300/>
 
-> example image, encoded by *swift png* in the 8-bit RGB color format.
+> the example image, encoded by *swift png* in the 8-bit RGB color format.
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Another_explosion_at_hand_-_Keppler._LCCN2010651330.jpg)*
 
@@ -223,7 +224,7 @@ The built-in `PNG.RGBA` color target will discard the green, blue, and alpha cha
 
 <img src="encode-basic/example-color-v.png" alt="output png" width=300/>
 
-> example image, encoded by *swift png* in the 8-bit grayscale color format.
+> the example image, encoded by *swift png* in the 8-bit grayscale color format.
 
 Like the `unpack(as:)` method, the `init(packing:size:layout:metadata:)` initializer is generic and can take an array of any color target. It also has an overload which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array. 
 
@@ -247,7 +248,7 @@ try image.compress(path: "\(path)-luminance-v.png", level: 9)
 
 <img src="encode-basic/example-luminance-v.png" alt="output png" width=300/>
 
-> computed luminance of the example image, encoded by *swift png* in the 8-bit grayscale color format. the output image is 590.6 kb in size.
+> the computed luminance of the example image, encoded by *swift png* in the 8-bit grayscale color format. the output image is 590.6 kb in size.
 
 Observe that it looks different from the previous output, since we used information from all three color channels to compute the grayscale values.
 
@@ -260,9 +261,9 @@ try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
 
 <img src="encode-basic/example-luminance-rgb.png" alt="output png" width=300/>
 
-> computed luminance of the example image, encoded by *swift png* in the 8-bit RGB color format. the output image is 880.4 kb in size.
+> the computed luminance of the example image, encoded by *swift png* in the 8-bit RGB color format. the output image is 880.4 kb in size.
 
-The resulting file is much larger than the one encoded in the grayscale format, since it contains two redundant color channels. So there’s usually not a good reason to save a grayscale image in an non-grayscale color format.
+The resulting file is much larger than the one encoded in the grayscale format, since it contains two redundant color channels. So there’s rarely a good reason to save a grayscale image in an non-grayscale color format.
 
 ## using indexed images 
 
@@ -284,7 +285,7 @@ In this tutorial, we will use *Swift PNG*’s indexing APIs to colorize the foll
 
 <img src="indexing/example.png" alt="input png" width=300/>
 
-> example image, which is an 8-bit grayscale png.
+> the example image, which is an 8-bit grayscale png.
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:20081206_Alexandros_Grigoropoulos_december_2008_riots_Sina_Street_Athens_Greece.jpg)*
 
@@ -637,7 +638,6 @@ let gradient:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)] =
 
 </details>
 
-
 We can visualize the gradient using the same APIs we used in the [basic encoding](#basic-encoding) tutorial.
 
 ```swift 
@@ -655,9 +655,9 @@ let visualization:PNG.Data.Rectangular = .init(packing: swatch, size: (256, 16),
 try visualization.compress(path: "examples/indexing/gradient-visualization.png")
 ```
 
-<img src="indexing/gradient-visualization.png" alt="output png" width=512/>
+<img src="indexing/gradient-visualization.png" alt="gradient visualization" width=512/>
 
-> visualization of the generated gradient.
+> a visualization of the generated gradient.
 
 We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The `init(packing:size:layout:metadata:)` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, `init(packing:size:layout:metadata:indexer:)`, and pass it a custom **indexing function**.
 
@@ -692,7 +692,7 @@ The default implementation of the outer function then constructs a dictionary ma
 
 The return value of the outer function is an *inner function* of type `(UInt8) -> Int`. As its signature suggests, the inner function takes an argument of type [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and returns an [`Int`](https://developer.apple.com/documentation/swift/int) index. The [`UInt8`](https://developer.apple.com/documentation/swift/uint8) is a grayscale sample from the given pixel array. The inner function is not generic. If you pass a `[UInt16]` array to the packing initializer, the 16-bit grayscale samples will get rescaled to the range of a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) before getting passed to the inner function.
 
-Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to perform index manipulation without re-indexing the entire image.
+Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to manipulate indices without re-indexing the entire image.
 
 Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the `PNG.VA<T>` color target, the inner function recieves `(UInt8, UInt8)` tuples. For the `PNG.RGBA<T>` color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always [`Int`](https://developer.apple.com/documentation/swift/int).) In *Swift PNG*, the inner function argument is called a **palette aggregate**.
 
@@ -704,7 +704,7 @@ Let’s go back to the custom indexing function:
 }
 ```
 
-Since we just want to convert the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
+Since we just want to cast the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
 
 On appropriate platforms, we can encode the image to a file with the `compress(path:level:hint:)` method. 
 
@@ -714,7 +714,7 @@ try indexed.compress(path: "\(path)-indexed.png")
 
 <img src="indexing/example-indexed.png" alt="output png" width=300/>
 
-> example image, colorized as an indexed png.
+> the example image, colorized as an indexed png.
 
 To read back the index values from the indexed image, we can use a custom **deindexing function**. 
 
@@ -765,7 +765,7 @@ true
 
 As of version 4.0, *Swift PNG* has first-class support for **iphone-optimized images**. iPhone-optimized images are an Apple extension to the PNG standard. Sometimes people refer to them as *CgBI images*. This name comes from the `CgBI` application chunk present at the beginning of such files, whose name in turn comes from the [`CGBitmapInfo`](https://developer.apple.com/documentation/coregraphics/cgbitmapinfo) option set in the Apple Core Graphics framework. 
 
-iPhone-optimized images are occasionally more space-efficient than standard PNG images, because the color model they use (discussed shortly) sometimes quantizes away color information that the user will never see. It is a common misconception that iphone-optimized images are optimized for file size. They are mainly optimized for computational efficiency, by omitting the [**modular redundancy check**](https://en.wikipedia.org/wiki/Adler-32) from the compressed image data stream. ([Some authors](https://iphonedevwiki.net/index.php/CgBI_file_format) erroneously refer to it as the *cyclic redundancy check*, which is a distinct concept, and completely unaffected by iphone optimizations.) iPhone-optimized images also use the **BGR/BGRA color formats**, the latter of which is the native color format of an iphone. This makes it possible to blit image data to an idevice’s graphics hardware without having to do as much post-processing on it.
+iPhone-optimized images are occasionally more space-efficient than standard PNG images, because the color model they use (discussed shortly) quantizes away color information that the user will never see. It is a common misconception that iphone-optimized images are optimized for file size. They are mainly optimized for computational efficiency, by omitting the [**modular redundancy check**](https://en.wikipedia.org/wiki/Adler-32) from the compressed image data stream. ([Some authors](https://iphonedevwiki.net/index.php/CgBI_file_format) erroneously refer to it as the *cyclic redundancy check*, which is a distinct concept, and completely unaffected by iphone optimizations.) iPhone-optimized images also use the **BGR/BGRA color formats**, the latter of which is the native color format of an iphone. This makes it possible to blit image data to an idevice’s graphics hardware without having to do as much post-processing on it.
 
 First-class support means that *Swift PNG* supports iphone-optimized images out of the box. Most PNG libraries such as *libpng* require third-party plugins to handle them, since there is some debate in the open source community over whether such images should be considered real PNG files. *Swift PNG* is, of course, a Swift library, so it supports them anyway, on all platforms, including non-Apple platforms. A possible use case is to have a Linux server serve iphone-optimized images to an iOS client, thus reducing battery consumption on users’ devices.
 
@@ -773,7 +773,7 @@ In this tutorial, we will convert the following iphone-optimized image to a stan
 
 <img src="iphone-optimized/example.png" alt="input png" width=500/>
 
-> iphone-optimized example image. unless you are using safari, your browser most likely cannot display this image. if you are on an apple platform, you can probably download this file and view it normally.
+> an iphone-optimized example image. unless you are using safari, your browser most likely cannot display this image. if you are on an apple platform, you can download this file and view it normally.
 >
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Soviet_Union-1963-stamp-Valentina_Vladimirovna_Tereshkova.jpg)*
 
@@ -803,7 +803,7 @@ bgra8(palette: [], fill: nil)
 
 The `bgra8(palette:fill:)` format is one of two iphone-optimized color formats. It is analogous to the `rgba8(palette:fill:)` format. Another possibility is `bgr8(palette:fill:key:)`, which lacks an alpha channel, and is analogous to `rgb8(palette:fill:key:)`.
 
-We can unpack iphone-optimized images to any color target. iPhone-optimized images use **premultiplied alpha**, which means the color samples (the blue, green, and red samples in a BGRA image) are scaled by the alpha sample. Occasionally, this facilitates compression by zeroing-out all color channels in fully-transparent pixels. We can convert the pixels back to **straight alpha**, the normal PNG color space, by using the `straightened` property on the built-in `PNG.RGBA<T>` and `PNG.VA<T>`. color targets.
+We can unpack iphone-optimized images to any color target. iPhone-optimized images use **premultiplied alpha**, which means the color samples (the blue, green, and red channels in a BGRA image) are scaled by the alpha sample. Occasionally, this facilitates compression by zeroing-out all color channels in fully-transparent pixels. We can convert the pixels back to **straight alpha**, the normal PNG color space, by using the `straightened` property on the built-in `PNG.RGBA<T>` and `PNG.VA<T>`. color targets.
 
 ```swift 
 let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straightened)
@@ -836,7 +836,7 @@ try standard.compress(path: "\(path)-rgb8.png")
 
 <img src="iphone-optimized/example-rgb8.png" alt="output png" width=500/>
 
-> iphone-optimized example image, re-encoded as a standard png file.
+> the iphone-optimized example image, re-encoded as a standard png file.
 
 We can convert it back into an iphone-optimized image by specifying one of the iphone-optimized color formats. The `premultiplied` property on the `PNG.RGBA<T>` color target converts the pixels to the premultiplied color space. Again, this step is unnecessary if you know the image contains no transparency.
 
@@ -851,7 +851,7 @@ try apple.compress(path: "\(path)-bgr8.png")
 
 <img src="iphone-optimized/example-bgr8.png" alt="output png" width=500/>
 
-> the previous output, re-encoded as an iphone-optimized file. unless you are using safari, your browser most likely cannot display this image. some versions of safari have a bug which reverses the color channels. if you are on an apple platform, you can probably download this file and view it normally.
+> the previous output, re-encoded as an iphone-optimized file. unless you are using safari, your browser most likely cannot display this image. some versions of safari have a bug which reverses the color channels. if you are on an apple platform, you can download this file and view it normally.
 
 The `premultiplied` and `straightened` properties satisfy the condition that `x.premultiplied.straightened == x.premultiplied.straightened.premultiplied.straightened` for all `x`.
 
@@ -945,7 +945,7 @@ PNG.PhysicalDimensions (pHYs)
 
 Accordingly, we can see that the example image was last saved on December 24th, 2020, at 11:09:19 PM, that it has a gamma of 0.45455, and a physical resolution of 11,811 pixels per meter (300 dpi).
 
-The image also has several text chunks which contain machine-readable data that GIMP added to the image. We can pretty-print *all* of the metadata in the image by passing the entire `PNG.Metadata` structure to the [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. For the sake of brevity, we won’t show the output here.
+The example image also has several text chunks which contain machine-readable data that [GIMP](https://www.gimp.org/) added to the image when it was first saved. We can pretty-print *all* of the metadata in the image by passing the entire `PNG.Metadata` structure to the [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. For the sake of brevity, we won’t show the output here.
 
 ```swift 
 print(image.metadata)
@@ -981,7 +981,7 @@ PNG.TimeModified (tIME)
 }
 ```
 
-> **note:** many PNG viewers ignore the `tIME` chunk and display the image modification time stored in the image’s [exif data](https://en.wikipedia.org/wiki/Exif), which we did not modify. the png file format does not have a metadata chunk for exif data, so this information is usually encoded as a base-64 string in a png text chunk. parsing and editing this string is beyond the scope of this tutorial, so we won’t go over it.
+> **note:** many png viewers ignore the `tIME` chunk and display the image modification time stored in the image’s [exif data](https://en.wikipedia.org/wiki/Exif), which we did not modify. the png file format does not have a metadata chunk for exif data, so this information is usually encoded as a base-64 string in a png text chunk. parsing and editing this string is beyond the scope of this tutorial, so we won’t go over it.
 
 ## using in-memory images 
 
@@ -995,7 +995,7 @@ PNG.TimeModified (tIME)
 > ***key terms:***
 > - **bytestream protocol**
 
-Up to this point we have been using the built-in file system API that the library provides on Linux and MacOS platforms. These APIs are built atop of the library’s core data stream APIs, which are available on all Swift platforms. (The core library is universally portable because it is written in pure Swift, with no dependencies, even [Foundation](https://developer.apple.com/documentation/foundation).) In this tutorial, we will use this lower-level interface to implement reading and writing PNG files in memory.
+Up to this point we have been using the built-in file system API that the library provides on Linux and MacOS platforms. These APIs are built atop of the library’s core data stream APIs, which are available on all Swift platforms. The core library is universally portable because it is written in pure Swift, with no dependencies, even [Foundation](https://developer.apple.com/documentation/foundation). In this tutorial, we will use this lower-level interface to implement reading and writing PNG files in memory.
 
 If you have used *Swift PNG*’s companion library [*Swift JPEG*](https://github.com/kelvin13/jpeg), the interface here is exactly the same. In fact, you can copy-and-paste large swaths of the code from the corresponding [JPEG tutorial](https://github.com/kelvin13/jpeg/tree/master/examples#using-in-memory-images), and it will just work.
 
@@ -1077,18 +1077,18 @@ var blob:System.Blob = .init(data)
 
 <img src="in-memory/example.png" alt="input png" width=500/>
 
-> example input image. 
+> the example image. 
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Agence_Rol,_24.4.21,_concours_de_machines_-_BnF.jpg)*
 
-To decode using our `System.Blob` type, we use the `decompress(stream:)` function, which is part of the core library, and does essentially the same thing as the file system-aware `decompress(path:)` function. We can then unpack pixels from the returned image data structure as we would in any other situation. 
+To decode from our `System.Blob` type, we use the `decompress(stream:)` function, which is part of the core library, and does essentially the same thing as the file system-aware `decompress(path:)` function. We can then unpack pixels from the returned image data structure as we would in any other situation. 
 
 ```swift 
 let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
 let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
 ```
 
-Just as with the decompression APIs, the `compress(path:level:hint:)` function has a generic `compress(stream:level:hint:)` counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
+Just as with the decompression interfaces, the `compress(path:level:hint:)` function has a generic `compress(stream:level:hint:)` counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
 
 ```swift 
 blob = .init([])
@@ -1112,9 +1112,9 @@ else
 } 
 ```
 
-<img src="in-memory/example.png.png" alt="input png" width=500/>
+<img src="in-memory/example.png.png" alt="output png" width=500/>
 
-> example image, re-encoded to a memory blob, and saved to disk. 
+> the example image, re-encoded to a memory blob, and saved to disk. 
 
 ## online decoding 
 
@@ -1136,10 +1136,12 @@ else
 
 Many applications using PNG images transmit them to users over a network. It is often valuable for such applications to be able to display a lower-quality preview of the image before it is fully downloaded onto a user’s device.
 
-In this tutorial, we will simulate an asynchronously-loaded PNG file, and use *Swift PNG*’s contextual decoding API to display partial “snapshots” of the image as portions of the file arrive. (As with the [previous tutorial](#using-in-memory-images), if you have used the analogous [*Swift JPEG* API](https://github.com/kelvin13/jpeg/tree/master/examples#online-decoding), the process here should be very familiar.) We will also explore ways to make these previews more user-friendly through interlacing and overdrawing.
+In this tutorial, we will simulate an asynchronously-loaded PNG file, and use *Swift PNG*’s contextual decoding API to display partial “snapshots” of the image as portions of the file arrive. As with the [previous tutorial](#using-in-memory-images), if you have used the analogous [*Swift JPEG* API](https://github.com/kelvin13/jpeg/tree/master/examples#online-decoding), the process here should be very familiar. We will also explore ways to make these previews more user-friendly through interlacing and overdrawing.
 
 <img src="decode-online/example.png" alt="input png" width=500/>
 
+> the example image. 
+> 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Africa_and_Europe_from_a_Million_Miles_Away.png)*
 
 To simulate a file being transferred over a network, we are going to modify the blob type from the [previous tutorial](#using-in-memory-images) by adding an integer field available representing the amount of the file we “have” at a given moment.
@@ -1200,7 +1202,7 @@ extension Stream:PNG.Bytestream.Source
 }
 ```
 
-For the purposes of this tutorial we again initialize our mock data stream using the file system APIs, though we could just as easily imagine the data coming over an actual network.
+For the purposes of this tutorial we again populate our mock data stream using the file system APIs, though we could just as easily imagine the data coming over an actual network.
 
 ```swift 
 extension Stream 
@@ -1291,11 +1293,11 @@ func waitChunk(stream:inout Stream) throws -> (type:PNG.Chunk, data:[UInt8])
 }
 ```
 
-There are other `LexingError`s that report problems such as invalid signatures or corrupted chunk data, so we only sequester the three end-of-stream errors.
+There are other possible `LexingError`s that report problems such as invalid signatures or corrupted chunk data, so we only sequester the three end-of-stream errors.
 
 Because we are trying to interact with a decoded image while it is in an incomplete state, we have to take on the responsibility of managing decoder state ourselves. The basic rules that apply here are:
 
-1. The first chunk in a PNG file is an `IHDR` (`PNG.Header`) chunk, unless it is an [iphone-optimized image](#using-iphone-optimized-images), in which case the first chunk is a `CgBI` chunk, immediately followed by an `IHDR` chunk.
+1. The first chunk in a PNG file is an `IHDR` (`PNG.Header`) chunk, unless it is an [iphone-optimized image](#using-iphone-optimized-images), in which case the first chunk is a `CgBI` chunk, immediately followed by the `IHDR` chunk.
 
 2. A PNG file can contain, at most, one `PLTE` (`PNG.Palette`), one `tRNS` (`PNG.Transparency`), and one `bKGD` (`PNG.Background`) chunk. If it contains a `PLTE` chunk, it must come before the `tRNS` and `bKGD` chunks, if applicable. 
 
@@ -1335,7 +1337,7 @@ A full list of critical and ancillary chunk types is given below.
 
 If a chunk has dependencies, that means it gets parsed differently depending on the contents of the upstream chunks. It does not mean that the upstream chunks must appear — indeed, in some situations, the upstream chunks must *not* appear. It *does* mean that none of the upstream chunks may appear after the dependent chunk.
 
-> **note:** the full lexing space of a png file can be expressed as a directed graph. if you ignore text chunks and `sPLT` chunks, and collapse sequences of `IDAT` chunks into a single node, this graph is also acyclic.
+> **note:** the full lexing space of a png file can be expressed as a directed graph. if you ignore text chunks and `sPLT` chunks, and collapse sequences of `IDAT` chunks into a single vertex, this graph is also acyclic.
 
 The ordering constraints and chunk dependencies might seem like a lot to keep track of, but they come out naturally in the type signatures of *Swift PNG*’s contextual decoding interfaces, so everything should just click together. The amount of code we have to write is actually quite small.
 
@@ -1347,7 +1349,7 @@ func decodeOnline(stream:inout Stream, overdraw:Bool,
     -> PNG.Data.Rectangular
 ```
 
-The `capture` parameter is a closure that will receive a partially-decoded image each time an image data chunk has been decompressed. The `overdraw` parameter is a switch which we will use later in this tutorial.
+The `capture` parameter is a delegate that will receive a partially-decoded image each time an image data chunk has been decompressed. The `overdraw` parameter is a switch which we will use later in this tutorial.
 
 The first thing we do is lex the PNG signature bytes from the beginning of the file. 
 
@@ -1381,11 +1383,11 @@ The next step is to parse the PNG header, and the preceeding `CgBI` chunk, if pr
     }()
 ```
 
-> **note:** the parsing interfaces in [*swift jpeg*](https://github.com/kelvin13/jpeg) are spelled as static `.parse(_:...)` constructors. in *swift png*, these have been provided as `init(parsing:...)` initializers to better conform to swift api conventions.
+> **note:** the parsing interfaces in [*swift jpeg*](https://github.com/kelvin13/jpeg) are spelled as static `parse(_:...)` constructors. in *swift png*, these have been provided as `init(parsing:...)` initializers to better conform to swift api conventions.
 
 The next step is to process all the chunks up to, but not including, the first `IDAT` chunk. The goal is to be able to construct a **decoder context** (`PNG.Context`) by the time we reach the image data, using any `PLTE`, `bKGD`, or `tRNS` chunks we have encountered in the meantime.
 
-There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a `Context` structure upon encountering the first `IDAT` chunk, which reduces the amount of [`Optional<T>`](https://developer.apple.com/documentation/swift/optional)s we have to deal with. A competent Swift developer should be able to translate it into their preferred pattern.
+There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a `Context` structure upon encountering the first `IDAT` chunk. This reduces the amount of [`Optional<T>`](https://developer.apple.com/documentation/swift/optional)s we have to deal with. A competent Swift developer should be able to translate it into their preferred pattern.
 
 We declare variables to hold a palette (`PNG.Palette?`), background (`PNG.Background?`), and transparency (`PNG.Transparency?`) structure. A `PNG.Metadata` structure tracks all other chunk types.
 
@@ -1410,9 +1412,9 @@ For any other (allowed) chunk type besides `IDAT`, we delegate it to the metadat
 
 > **note:** the `Metadata` type does not handle palette chunks, because `PLTE` is a critical chunk type. it also does not track background or transparency chunks internally, since this information will ultimately live in the image color format, so storing it in the image metadata would be redundant.
 
-Finally, if we encounter an `IDAT` chunk, we construct the decoder context using everything we have parsed so far. The `PNG.Context.init(standard:header:palette:background:transparency:metadata:uninitialized:)` initializer is failable. It returns `nil` if an image with an indexed color format is missing a palette. (The opposite problem — an image with a grayscale or grayscale-alpha color format containing a palette that shouldn’t be there — would have gotten caught by the `Palette.init(parsing:pixel:)` initializer.) 
+Finally, once we encounter an `IDAT` chunk, we construct the decoder context using everything we have parsed so far. The `PNG.Context.init(standard:header:palette:background:transparency:metadata:uninitialized:)` initializer is failable. It returns `nil` if an image with an indexed color format is missing a palette. (The opposite problem — an image with a grayscale or grayscale-alpha color format containing a palette that shouldn’t be there — would have gotten caught by the `Palette.init(parsing:pixel:)` initializer.) 
 
-The `uninitialized` parameter specifies whether the image buffer in the decoder context gets cleared or not. It’s not uncommon for Swift to allocate new image buffers right on top of recently-deallocated image buffers, so a partially-decoded image might contain pieces of a previously decoded image. When doing non-progressive decoding, this doesn’t matter, but it can look weird for the progressive use-case, so we have set this parameter to `false`.
+The `uninitialized` parameter specifies whether the image buffer in the decoder context gets cleared or not. It’s not uncommon for Swift to allocate new image buffers right on top of recently-deallocated image buffers, so a partially-decoded image might contain pieces of a previously decoded image. When doing non-progressive decoding, this doesn’t matter, but it can look weird for the progressive use case, so we have set this parameter to `false`.
 
 We return from the closure before advancing to the next chunk.
 
@@ -1457,9 +1459,9 @@ We return from the closure before advancing to the next chunk.
     }()
 ```
 
-The actual image decoding takes place in the next phase of the loop. The `push(data:overdraw:)` method on the decoder context does this for each `IDAT` chunk. This is also the usage point of the `overdraw` parameter provided to the `decodeOnline(stream:overdraw:capture:)` function. We’ll see later what it does. For now, assume it has been set to `false`. 
+The image decoding takes place in the next phase of the loop. The `push(data:overdraw:)` method on the decoder context does this for each `IDAT` chunk. This is also the usage point of the `overdraw` parameter provided to the `decodeOnline(stream:overdraw:capture:)` function. We’ll see later what it does. For now, assume it has been set to `false`. 
 
-After decompressing an image data chunk, we feed the image state, which is available through the `image` property on the decoder context, to the `capture` function.
+After decompressing an image data chunk, we feed the image state, which is available through the `image` property on the decoder context, to the `capture` delegate.
 
 ```swift 
     while chunk.type == .IDAT  
@@ -1521,7 +1523,7 @@ let image:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: fa
 
 Our example image was a non-interlaced image, so it gets decoded as a sequence of scanlines from top-to-bottom.
 
-We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the `bindStorage(to:)` method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
+We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the `bindStorage(to:)` method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format enumeration case, though not necessarily the same values for `fill` or `key`. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
 
 When emitting the preprocessed file, we have manually set the **chunk granularity** to 2<sup>12</sup> bytes, which is much smaller than the default of 2<sup>15</sup> bytes. The purpose of this is to make the encoder emit smaller `IDAT` chunks, so that we can observe a larger number of intermediate snapshots.
 
@@ -1561,7 +1563,7 @@ let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
 |  11 | <img width=500 src="decode-online/example-progressive-10.png"/> |
 |  12 | <img width=500 src="decode-online/example-progressive-11.png"/> |
 
-If we enable **overdrawing**, *Swift PNG* will pre-fill missing pixels with values from nearby pixels that are currently available. The term *overdrawing* comes from the fact that these pre-filled pixels will be overwritten when their actual contents become available. We can enable overdrawing by setting the `overdraw` parameter to `true` as follows. 
+If we enable **overdrawing**, *Swift PNG* will pre-fill missing pixels with values from nearby pixels that are currently available. The term *overdrawing* comes from the fact that these pre-filled pixels will be overwritten when their actual contents become available. We can enable overdrawing by setting the `overdraw` parameter to `true`. 
 
 ```swift 
 stream.reset(position: 0)
@@ -1576,7 +1578,7 @@ let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: true)
 }
 ```
 
-> **warning:** overdrawing does not eliminate the need to initialize the image buffer. however, every pixel in the image buffer will be written to by the end of the first [adam7 scan](https://en.wikipedia.org/wiki/Adam7_algorithm), which often fits easily into the first `IDAT` chunk. this makes it significantly less likely that you will observe zombie pixels.
+> **warning:** overdrawing does not eliminate the need to initialize the image buffer. however, every pixel in the image buffer will be written to by the end of the first [adam7 scan](https://en.wikipedia.org/wiki/Adam7_algorithm), which often fits easily into the first `IDAT` chunk. this makes it significantly less likely that you will observe uninitialized pixels.
 
 When overdrawing is enabled, the intermediate snapshots look somewhat more user-friendly than they do without it.
 
@@ -1615,17 +1617,19 @@ Overdrawing has no effect if the image is not interlaced.
 
 As we have already seen, *Swift PNG*’s pixel packing and unpacking interfaces are generic over the library protocol `PNG.Color`. The built-in color targets `PNG.VA<T>` and `PNG.RGBA<T>` both conform to it. In this tutorial, we will implement a custom color target, `HSVA`, which uses the [hue-saturation-value color model](https://en.wikipedia.org/wiki/HSL_and_HSV).
 
-At this point, it is important to reiterate the difference between color formats and color targets. A color format is the internal representation that pixels are stored as in a PNG file. A color target is an interpretation of those pixels that we obtain by unpacking pixels from an image instance. 
+At this point, it is important to reiterate the difference between color formats and color targets. A color format is the internal representation that pixels are stored as in a PNG file. A color target is an interpretation of those pixels that we obtain by unpacking pixels from an image data instance. 
 
-If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library also has the concept of a *color format type*, which can also be customized. This is because JPEG is an *open standard*, meaning that users can encode images with user-defined internal representation. Thus, JPEG is actually a family of file formats, rather than a single standard. PNG is a *closed standard*, so *Swift PNG* does not allow you to customize the color format. 
+If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library has the concept of a *color format type*, which can also be customized. This is because JPEG is an *open standard*, meaning that users can encode images with a user-defined internal representation. Thus, JPEG is actually a family of file formats, rather than a single standard. PNG is a *closed standard*, so *Swift PNG* does not allow you to customize the color format. 
 
 > **note:** strictly speaking, png is also a family of file formats, with two color format types — the standard set of color formats, and the iphone-optimized color formats. however, the png specification provides no means of defining custom color formats within its headers (thus, the need for the `CgBI` chunk), so for ease-of-use, *swift png* merges both png color format types into a single library-defined color format type.
 
 <img src="custom-color/example.png" alt="input png" width=500/>
 
+> the example image. 
+>
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Madrid_%2836178965285%29.jpg)*
 
-We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like `PNG.VA<T>` or `PNG.RGBA<T>`. It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will actually be used.)
+We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like `PNG.VA<T>` or `PNG.RGBA<T>`. It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will be inhabited.)
 
 ```swift 
 import PNG 
@@ -1646,7 +1650,7 @@ struct HSVA
     }
 ```
 
-We define the following conversion function, which initializes an HSVA color from an RGBA input. The conversion formula is unimportant, so it’s fine if you don’t understand exactly how it works.
+We define the following conversion function, which initializes an HSVA color from RGBA samples. The conversion formula is unimportant, so it’s fine if you don’t understand exactly how it works.
 
 ```swift 
     init(r:UInt8, g:UInt8, b:UInt8, a:UInt8) 
@@ -1716,7 +1720,7 @@ We also define the HSVA-to-RGBA conversion, using `PNG.RGBA<UInt8>` as the retur
 }
 ```
 
-Now that we have a working HSVA implementation, we need to conform it to the `PNG.Color` protocol so we can use it as a color target. To do this, we need to implement the following requirements: 
+Now that we have a working HSVA implementation, we need to conform it to the `PNG.Color` protocol so we can use it as a color target. To do this, we need to fulfill the following requirements: 
 
 ```swift 
 protocol PNG.Color 
@@ -1739,7 +1743,7 @@ protocol PNG.Color
 }
 ```
 
-For certain associated `Aggregate` types, the library provides default implementations for `unpack(_:of:)` and `pack(_:as:)`, which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement `unpack(_:of:deindexer:)` and `pack(_:as:indexer:)`. The specific `Aggregate` types are: 
+For certain associated `Aggregate` types, the library provides default implementations for `unpack(_:of:)` and `pack(_:as:)`, which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement `unpack(_:of:deindexer:)` and `pack(_:as:indexer:)`. The specific `Aggregate` types are 
 
 - `(UInt8, UInt8)`, and 
 - `(UInt8, UInt8, UInt8, UInt8)`.
@@ -1805,27 +1809,27 @@ extension PNG
 
 The first four convolution functions are meant to be used with indexed color formats, and the remaining four are meant to be used with non-indexed color formats. To understand how they work, let’s first go over what the generic parameters `A`, `T`, and `C` mean.
 
-- The `A` type is the **atom type**. (The `A` stands for ***a***tom.) The atom type is closely related to the image color format. For images with a bit depth of 16, the appropriate atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16). Otherwise, it is [`UInt8`](https://developer.apple.com/documentation/swift/uint8). In the image data storage buffer, which has a type of `[UInt8]`, the `UInt16` atoms are stored in big-endian order. 
+- The `A` type is the **atom type**. (The `A` stands for ***a***tom.) Atom types are closely related to color formats. For images with a color depth of 16, the appropriate atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16). Otherwise, it is [`UInt8`](https://developer.apple.com/documentation/swift/uint8). In the image data storage buffer, which has a type of `[UInt8]`, `UInt16` atoms are stored in big-endian order. 
  
- Atoms are unscaled samples. For example, in a `v4(fill:key:)` image, which has a bit depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
+    Atoms are unscaled samples. For example, in a `v4(fill:key:)` image, which has a color depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
 
-- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) The intensity type is closely related to the color target. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in `PNG.RGBA<T>` color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
+- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) Intensity types are closely related to color targets. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in `PNG.RGBA<T>` color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
 
- As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a `v4(fill:key:)` image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
+    As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a `v4(fill:key:)` image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
  
- The use of intensity types in *Swift PNG* means that you don’t have to worry about normalizing samples when implementing custom color targets.
+    The use of intensity types in *Swift PNG* means that you don’t have to worry about normalizing samples when implementing custom color targets.
  
-- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack an `va16(fill:)` image to an array of `PNG.RGBA<UInt8>` pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be `PNG.RGBA<UInt8>`. Indeed, this is exactly what the built-in `PNG.RGBA<T>` color target does.
+- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack a `va16(fill:)` image to an array of `PNG.RGBA<UInt8>` pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be `PNG.RGBA<UInt8>`. Indeed, this is exactly what the built-in `PNG.RGBA<T>` color target does.
 
 The four non-indexed convolution functions perform the following operations: 
 
 1. Load (big-endian) atoms from the given data buffer. 
-2. Convert the atoms to the intensity type, and scale them to fill the range of the intensity type, according to the given bit depth. 
+2. Convert the atoms to the intensity type, and scale them to fill the range of the intensity type, according to the given color depth. 
 3. Feed the intensities, and in certain cases, the original atoms as well, to the given pixel kernel, and get pixel instances in return.
 
 The reason why some of the pixel kernels receive the original atoms in addition to the intensity values is because their associated color formats (namely, the grayscale, RGB, and BGR formats) require us to do chroma key comparisons, which must be performed in the original atom type.
 
-The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the `Aggregate` types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image bit depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a bit depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
+The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the `Aggregate` types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
 
 Now, let’s write the implementation for the unpacking function. 
 
@@ -1842,7 +1846,7 @@ extension HSVA:PNG.Color
         -> [Self] 
 ```
 
-We can handle all of the indexed color formats in one `switch` case. We assume that the `dereference` function returns RGBA samples as the `(UInt8, UInt8, UInt8, UInt8)` aggregate, and forward them to `HSVA.init(r:g:b:a:)`. (If you don’t understand how to get the `dereference` function from `deindexer`, read the [indexed color tutorial](#using-indexed-images).)
+We can handle all of the indexed color formats in one `switch` case. We assume that the `dereference` function returns RGBA samples in the `(UInt8, UInt8, UInt8, UInt8)` aggregate, and we forward them to `HSVA.init(r:g:b:a:)`. (If you don’t understand how to get the `dereference` function from `deindexer`, read the [indexed color tutorial](#using-indexed-images).)
 
 ```swift 
     {
@@ -1977,7 +1981,7 @@ The rest of the cases are quite boilerplatey, and therefore should be incredibly
     }
 ```
 
-If you understood how we implemented the unpacking function, then the packing function should be easy to understand too. Mirroring the convolution functions, *Swift PNG* provides eight deconvolution helper functions. The generic parameters have the exact same meanings as they did before.
+If you understood how we implemented the unpacking function, then the packing function should be easy to write too. Mirroring the convolution functions, *Swift PNG* provides eight deconvolution helper functions. The generic parameters have the exact same meanings as they did before.
 
 ```swift 
 extension PNG 
@@ -2035,14 +2039,14 @@ extension PNG
 The four non-indexed deconvolution functions perform the following operations: 
 
 1. Feed the pixel instances from the given pixel array to the given pixel kernel, and get intensity tuples (or a scalar) in return.
-2. Convert the intensities to the atom type, and scale them to the range specified by the given bit depth.
+2. Convert the intensities to the atom type, and scale them to the range specified by the given color depth.
 3. Store the atoms in the returned data buffer (as big-endian integers).
 
-The main difference is that none of the deconvolution kernels interact with the generated atoms, since chroma keys aren’t relevant to pixel packing. 
+The main difference is that none of the deconvolution kernels interact with the generated atoms, since chroma keys aren’t relevant to pixel packing. This is because any chroma key-based transparency would have already been baked into the pixel array when it was first unpacked from the image data instance.
 
 The four indexed deconvolution functions have essentially the same relationship to the non-indexed deconvolution functions as the indexed convolution functions do to the non-indexed convolution functions.
 
-The implementation of the packing function is straightforward. When applicable, we have used the `rgba` property we defined on the `HSVA` type to perform the HSVA-to-RGBA conversion. Note that we have explicitly written the return types in the pixel kernels since, at the time of writing, the Swift compiler seems to have some issues with its type inferencer.
+The implementation of the packing function is straightforward. When necessary, we have used the `rgba` property we defined on the `HSVA` type to perform the HSVA-to-RGBA conversion. Note that we have explicitly written the return types in the pixel kernels since, at the time of writing, the Swift compiler seems to have some issues with type inferencing across module boundaries.
 
 ```swift 
     static 
@@ -2159,7 +2163,7 @@ try hue.compress(path: "\(path)-hue.png")
 
 <img src="custom-color/example-hue.png" alt="output png" width=500/>
 
-> visualization of the example image hue.
+> a visualization of the example image hue.
 
 ```swift
 let saturation:PNG.Data.Rectangular = .init(
@@ -2170,7 +2174,7 @@ try saturation.compress(path: "\(path)-saturation.png")
 
 <img src="custom-color/example-saturation.png" alt="output png" width=500/>
 
-> visualization of the example image saturation.
+> a visualization of the example image saturation.
 
 ```swift
 let value:PNG.Data.Rectangular = .init(
@@ -2181,7 +2185,7 @@ try value.compress(path: "\(path)-value.png")
 
 <img src="custom-color/example-value.png" alt="output png" width=500/>
 
-> visualization of the example image value.
+> a visualization of the example image value.
 
 We can test our pixel packing implementation by re-encoding the HSVA image. 
 
@@ -2193,4 +2197,4 @@ try new.compress(path: "\(path).png.png")
 
 <img src="custom-color/example.png.png" alt="output png" width=500/>
 
-> the example image, re-encoded from the previously-obtained HSVA representation.
+> the example image, re-encoded from the previously-obtained hsva representation.
