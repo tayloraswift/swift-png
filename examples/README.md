@@ -670,7 +670,7 @@ let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size,
 }
 ```
 
-The best way to understand the indexing function is to compare it with the behavior of the `init(packing:size:layout:metadata)` initializer. Calling that initializer is equivalent to calling `init(packing:size:layout:metadata:indexer:)` with the following indexing function.
+The best way to understand the indexing function is to compare it with the behavior of the `init(packing:size:layout:metadata:)` initializer. Calling that initializer is equivalent to calling `init(packing:size:layout:metadata:indexer:)` with the following indexing function.
 
 ```swift 
 {
