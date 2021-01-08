@@ -15,6 +15,7 @@
 ///     implementing [`(Source).read(count:)`]. It can 
 ///     then be used with the library’s core decompression interfaces.
 /// #  [See also](file-io-protocols)
+/// #  [Stream interface](file-io-source-interface)
 /// ## (1:file-io-protocols)
 /// ## (1:lexing-and-formatting)
 public
@@ -35,6 +36,7 @@ protocol _PNGBytestreamSource
     ///     The `count` bytes read, or `nil` if the read attempt failed. This 
     ///     method should return `nil` even if any number of bytes less than `count`
     ///     were successfully read.
+    /// ## (file-io-source-interface)
     mutating
     func read(count:Int) -> [UInt8]?
 }
@@ -44,6 +46,7 @@ protocol _PNGBytestreamSource
 ///     To implement a custom data destination type, conform it to this protocol by 
 ///     implementing [`(Destination).write(_:)`]. It can 
 ///     then be used with the library’s core compression interfaces.
+/// #  [Stream interface](file-io-destination-interface)
 /// #  [See also](file-io-protocols)
 /// ## (2:file-io-protocols)
 /// ## (2:lexing-and-formatting)
@@ -65,6 +68,7 @@ protocol _PNGBytestreamDestination
     ///     A [`Swift.Void`] tuple, or `nil` if the write attempt failed. This 
     ///     method should return `nil` even if any number of bytes less than 
     ///     `bytes.count` were successfully written.
+    /// ## (file-io-destination-interface)
     mutating
     func write(_ buffer:[UInt8]) -> Void?
 }
@@ -95,12 +99,22 @@ enum PNG
         typealias Destination   = _PNGBytestreamDestination
     }
     
+    /// struct PNG.Chunk 
+    /// :   Swift.Hashable 
+    /// :   Swift.Equatable 
+    /// :   Swift.CustomStringConvertible
+    ///     A chunk type identifier.
+    /// # [Chunk types](chunk-type-identifiers)
+    /// ## (lexing-and-formatting)
     public 
     struct Chunk:Hashable, Equatable, CustomStringConvertible
     {
-        // The four-byte name of this PNG chunk type.
+        /// let PNG.Chunk.name  : Swift.UInt32
+        ///     The chunk type code.
+        public 
         let name:UInt32
-        // A string displaying the ASCII representation of this PNG chunk type’s name.
+        /// var PNG.Chunk.description : Swift.String { get }
+        ///     A string displaying the ASCII representation of this chunk type identifier.
         public
         var description:String
         {
@@ -116,6 +130,29 @@ enum PNG
             self.name = name
         }
         
+        /// init PNG.Chunk.init(name:)
+        ///     Creates a chunk type identifier. 
+        /// 
+        ///     The chunk type code is a four byte integer, where bit 5 in each 
+        ///     constituent byte is a flag bit. 
+        /// 
+        ///     The flag bit in the uppermost byte (bit 29) is the **ancillary bit**. 
+        ///     
+        ///     The flag bit in the third byte (bit 21) is the **private bit**. 
+        /// 
+        ///     The flag bit in the second byte (bit 13) is reserved and must be set.
+        /// 
+        ///     The flag bit in the lowest byte (bit 5) is the **safe-to-copy** bit.
+        /// 
+        ///     Passing an invalid type code will result in a precondition failure. 
+        ///     For a failable version of this initializer, use [`init(validating:)`].
+        ///     For more details on type code semantics, consult the 
+        ///     [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html).
+        /// - name : Swift.UInt32 
+        ///     The chunk type code. Bit 13 must be set. If the type code is not 
+        ///     a public PNG chunk type code, then bit 29 must be clear.
+        /// #  [See also](chunk-type-identifier-initializers)
+        /// ## (chunk-type-identifier-initializers)
         public
         init(name:UInt32)
         {
@@ -131,6 +168,16 @@ enum PNG
             self = chunk 
         }
         
+        /// init PNG.Chunk.init?(validating:)
+        ///     Creates a chunk type identifier, returning `nil` if the type code 
+        ///     is invalid. 
+        /// 
+        ///     This initializer is a non-trapping version of [`init(name:)`].
+        /// - name : Swift.UInt32 
+        ///     The chunk type code. Bit 13 must be set. If the type code is not 
+        ///     a public PNG chunk type code, then bit 29 must be clear.
+        /// #  [See also](chunk-type-identifier-initializers)
+        /// ## (chunk-type-identifier-initializers)
         public 
         init?(validating name:UInt32) 
         {
@@ -153,64 +200,160 @@ enum PNG
             self.name = name
         }
         
+        /// static let PNG.Chunk.CgBI : Self 
+        ///     The `CgBI` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x43674249`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let CgBI:Self = .init(unchecked: 0x43_67_42_49)
-        // The PNG header chunk type.
+        /// static let PNG.Chunk.IHDR : Self 
+        ///     The `IHDR` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x49484452`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let IHDR:Self = .init(unchecked: 0x49_48_44_52)
-        // The PNG palette chunk type.
+        /// static let PNG.Chunk.PLTE : Self 
+        ///     The `PLTE` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x504c5445`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let PLTE:Self = .init(unchecked: 0x50_4c_54_45)
-        // The PNG image data chunk type.
+        /// static let PNG.Chunk.IDAT : Self 
+        ///     The `IDAT` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x49444154`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let IDAT:Self = .init(unchecked: 0x49_44_41_54)
-        // The PNG image end chunk type.
+        /// static let PNG.Chunk.IEND : Self 
+        ///     The `IEND` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x49454e44`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let IEND:Self = .init(unchecked: 0x49_45_4e_44)
 
-        // The PNG chromaticity chunk type.
+        /// static let PNG.Chunk.cHRM : Self 
+        ///     The `cHRM` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x6348524d`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let cHRM:Self = .init(unchecked: 0x63_48_52_4d)
-        // The PNG gamma chunk type.
+        /// static let PNG.Chunk.gAMA : Self 
+        ///     The `gAMA` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x67414d41`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let gAMA:Self = .init(unchecked: 0x67_41_4d_41)
-        // The PNG embedded ICC chunk type.
+        /// static let PNG.Chunk.iCCP : Self 
+        ///     The `iCCP` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x69434350`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let iCCP:Self = .init(unchecked: 0x69_43_43_50)
-        // The PNG significant bits chunk type.
+        /// static let PNG.Chunk.sBIT : Self 
+        ///     The `sBIT` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x73424954`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let sBIT:Self = .init(unchecked: 0x73_42_49_54)
-        // The PNG *s*RGB chunk type.
+        /// static let PNG.Chunk.sRGB : Self 
+        ///     The `sRGB` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x73524742`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let sRGB:Self = .init(unchecked: 0x73_52_47_42)
-        // The PNG background chunk type.
+        /// static let PNG.Chunk.bKGD : Self 
+        ///     The `bKGD` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x624b4744`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let bKGD:Self = .init(unchecked: 0x62_4b_47_44)
-        // The PNG histogram chunk type.
+        /// static let PNG.Chunk.hIST : Self 
+        ///     The `hIST` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x68495354`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let hIST:Self = .init(unchecked: 0x68_49_53_54)
-        // The PNG transparency chunk type.
+        /// static let PNG.Chunk.tRNS : Self 
+        ///     The `tRNS` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x74524e53`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let tRNS:Self = .init(unchecked: 0x74_52_4e_53)
 
-        // The PNG physical dimensions chunk type.
+        /// static let PNG.Chunk.pHYs : Self 
+        ///     The `pHYs` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x70485973`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let pHYs:Self = .init(unchecked: 0x70_48_59_73)
 
-        // The PNG suggested palette chunk type.
+        /// static let PNG.Chunk.sPLT : Self 
+        ///     The `sPLT` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x73504c54`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let sPLT:Self = .init(unchecked: 0x73_50_4c_54)
-        // The PNG time chunk type.
+        /// static let PNG.Chunk.tIME : Self 
+        ///     The `tIME` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x74494d45`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let tIME:Self = .init(unchecked: 0x74_49_4d_45)
 
-        // The PNG UTF-8 text chunk type.
+        /// static let PNG.Chunk.iTXt : Self 
+        ///     The `iTXt` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x69545874`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let iTXt:Self = .init(unchecked: 0x69_54_58_74)
-        // The PNG Latin-1 text chunk type.
+        /// static let PNG.Chunk.tEXt : Self 
+        ///     The `tEXt` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x74455874`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let tEXt:Self = .init(unchecked: 0x74_45_58_74)
-        // The PNG compressed Latin-1 text chunk type.
+        /// static let PNG.Chunk.zTXt : Self 
+        ///     The `zTXt` chunk type. 
+        /// 
+        ///     The numerical type code for this type identifier is `0x7a545874`.
+        /// # [See also](chunk-type-identifiers)
+        /// ## (chunk-type-identifiers)
         public static
         let zTXt:Self = .init(unchecked: 0x7a_54_58_74)
     }
@@ -250,6 +393,17 @@ extension PNG
 
 extension PNG.Bytestream.Source 
 {
+    /// mutating func PNG.Bytestream.Source.signature()
+    /// throws 
+    ///     Lexes the eight PNG signature bytes from this bytestream. 
+    /// 
+    ///     This function expects to read the byte sequence 
+    ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It will throw a 
+    ///     [`LexingError.truncatedSignature`] if it fails to obtain eight bytes 
+    ///     from this bytestream, or a [`LexingError.invalidSignature(_:)`] if 
+    ///     the bytes do not match the expected signature.
+    /// 
+    ///     This function is the inverse of [`Destination.signature()`].
     public mutating 
     func signature() throws 
     {
@@ -265,6 +419,18 @@ extension PNG.Bytestream.Source
         }
     }
     
+    /// mutating func PNG.Bytestream.Source.chunk()
+    /// throws 
+    ///     Lexes a chunk from this bytestream. 
+    /// 
+    ///     This function reads a chunk, validating its stored checksum for 
+    ///     data integrity. It will throw a [`LexingError`] if the chunk is 
+    ///     unreadable, malformed, or corrupted.
+    /// 
+    ///     This function is the inverse of [`Destination.format(type:data:)`].
+    /// - -> : (type:PNG.Chunk, data:[Swift.UInt8])
+    ///     The type identifier, and contents of the lexed chunk. The chunk 
+    ///     contents do not include the checksum footer.
     public mutating
     func chunk() throws -> (type:PNG.Chunk, data:[UInt8])
     {
@@ -305,6 +471,15 @@ extension PNG.Bytestream.Source
 
 extension PNG.Bytestream.Destination 
 {
+    /// mutating func PNG.Bytestream.Destination.signature()
+    /// throws 
+    ///     Emits the eight PNG signature bytes into this bytestream. 
+    /// 
+    ///     This function emits the constant byte sequence 
+    ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It will throw a 
+    ///     [`FormattingError`] if it fails to write to the bytestream.
+    /// 
+    ///     This function is the inverse of [`Source.signature()`].
     public mutating 
     func signature() throws 
     {
@@ -314,7 +489,22 @@ extension PNG.Bytestream.Destination
             throw PNG.FormattingError.invalidDestination
         }
     }
-    
+    /// mutating func PNG.Bytestream.Destination.format(type:data:)
+    /// throws 
+    ///     Emits a chunk into this bytestream. 
+    /// 
+    ///     This function will compute the checksum for the given chunk contents and 
+    ///     format it with the appropriate chunk headers and footers. It will throw a 
+    ///     [`FormattingError`] if it fails to write to the bytestream.
+    /// 
+    ///     This function is the inverse of [`Source.chunk()`].
+    /// - type : PNG.Chunk 
+    ///     The type identifier of the chunk to emit.
+    /// - data : [Swift.UInt8]
+    ///     The contents of the chunk to emit. It should not include a checksum 
+    ///     footer, as this function computes and appends it automatically. 
+    /// 
+    ///     The default value is `[]`.
     public mutating 
     func format(type:PNG.Chunk, data:[UInt8] = []) throws 
     {
