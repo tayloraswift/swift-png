@@ -1,6 +1,7 @@
 .DS_Store
 /.build
 /.entrapta
+/documentation
 Package.resolved
 /*.xcodeproj
 .swiftpm
