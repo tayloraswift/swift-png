@@ -1,3 +1,6 @@
+/// protocol PNG.Color 
+///     A color target.
+/// ## (0:color-space-apis)
 public 
 protocol _PNGColor 
 {
@@ -817,20 +820,40 @@ extension PNG
         return alpha.dividingFullWidth(product).quotient
     }
     
+    /// struct PNG.RGBA<T> 
+    /// :   Swift.Hashable
+    /// :   PNG.Color
+    /// @   frozen
+    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    ///     An RGBA color. 
+    /// 
+    ///     This type is a built-in color target.
+    /// # [Color channels](PNG-RGBA-color-channels)
+    /// # [See also](builtin-color-targets)
+    /// ## (builtin-color-targets)
+    /// ## (2:color-space-apis)
     @frozen
     public
     struct RGBA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
     {
-        /// The red component of this color.
+        /// var PNG.RGBA.r  : T
+        ///     The red component of this color.
+        /// ## (0:PNG-RGBA-color-channels)
         public
         var r:T
-        /// The green component of this color.
+        /// var PNG.RGBA.g  : T
+        ///     The green component of this color.
+        /// ## (1:PNG-RGBA-color-channels)
         public
         var g:T
-        /// The blue component of this color.
+        /// var PNG.RGBA.b  : T
+        ///     The blue component of this color.
+        /// ## (2:PNG-RGBA-color-channels)
         public
         var b:T
-        /// The alpha component of this color.
+        /// var PNG.RGBA.a  : T
+        ///     The alpha component of this color.
+        /// ## (3:PNG-RGBA-color-channels)
         public
         var a:T
     }
@@ -839,23 +862,14 @@ extension PNG
     public
     struct VA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
     {
-        /// The value component of this color.
         public
         var v:T
-        /// The alpha component of this color.
         public
         var a:T
     }
 }
 extension PNG.RGBA 
 {
-    /// Creates an opaque grayscale color with all color components set to the given
-    /// value sample, and the alpha component set to `T.max`.
-    /// 
-    /// *Specialized* for `T` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-    ///     and `UInt`.
-    /// - Parameters:
-    ///     - value: The value to initialize all color components to.
     @inlinable
     public
     init(_ value:T)
@@ -863,14 +877,6 @@ extension PNG.RGBA
         self.init(value, value, value, T.max)
     }
 
-    /// Creates a grayscale color with all color components set to the given
-    /// value sample, and the alpha component set to the given alpha sample.
-    /// 
-    /// *Specialized* for `T` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-    ///     and `UInt`.
-    /// - Parameters:
-    ///     - value: The value to initialize all color components to.
-    ///     - alpha: The value to initialize the alpha component to.
     @inlinable
     public
     init(_ value:T, _ alpha:T)
@@ -878,15 +884,6 @@ extension PNG.RGBA
         self.init(value, value, value, alpha)
     }
 
-    /// Creates an opaque color with the given color samples, and the alpha
-    /// component set to `T.max`.
-    /// 
-    /// *Specialized* for `T` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-    ///     and `UInt`.
-    /// - Parameters:
-    ///     - red: The value to initialize the red component to.
-    ///     - green: The value to initialize the green component to.
-    ///     - blue: The value to initialize the blue component to.
     @inlinable
     public
     init(_ red:T, _ green:T, _ blue:T)
@@ -894,15 +891,6 @@ extension PNG.RGBA
         self.init(red, green, blue, T.max)
     }
 
-    /// Creates an opaque color with the given color and alpha samples.
-    /// 
-    /// *Specialized* for `T` types `UInt8`, `UInt16`, `UInt32`, UInt64,
-    ///     and `UInt`.
-    /// - Parameters:
-    ///     - red: The value to initialize the red component to.
-    ///     - green: The value to initialize the green component to.
-    ///     - blue: The value to initialize the blue component to.
-    ///     - alpha: The value to initialize the alpha component to.
     @inlinable
     public
     init(_ red:T, _ green:T, _ blue:T, _ alpha:T)
@@ -920,10 +908,6 @@ extension PNG.RGBA
         self.init(va.v, va.a)
     }
 
-    /// The red, and alpha components of this color, stored as a grayscale-alpha
-    /// color.
-    /// 
-    /// *Inlinable*.
     @inlinable
     public
     var va:PNG.VA<T>

@@ -230,13 +230,6 @@ extension General.Heap:ExpressibleByArrayLiteral
 
 extension Array where Element == UInt8
 {
-    /// Loads a misaligned big-endian integer value from the given byte offset
-    /// and casts it to a desired format.
-    /// - Parameters:
-    ///     - bigEndian: The size and type to interpret the data to load as.
-    ///     - type: The type to cast the read integer value to.
-    ///     - byte: The byte offset to load the big-endian integer from.
-    /// - Returns: The read integer value, cast to `U`.
     func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U
         where T:FixedWidthInteger, U:BinaryInteger
     {
@@ -266,12 +259,6 @@ extension UnsafeMutableBufferPointer where Element == UInt8
 
 extension ArraySlice where Element == UInt8
 {
-    /// Loads this array slice as a misaligned big-endian integer value,
-    /// and casts it to a desired format.
-    /// - Parameters:
-    ///     - bigEndian: The size and type to interpret this array slice as.
-    ///     - type: The type to cast the read integer value to.
-    /// - Returns: The read integer value, cast to `U`.
     func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U
         where T:FixedWidthInteger, U:BinaryInteger
     {

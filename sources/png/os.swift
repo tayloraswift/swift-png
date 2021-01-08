@@ -16,7 +16,7 @@
 ///     A namespace for platform-dependent functionality.
 /// 
 ///     These APIs are only available on MacOS and Linux. However, the rest of the 
-///     framework is pure Swift and should support all Swift platforms.
+///     framework is pure Swift and supports all Swift platforms.
 /// #  [File IO](system-file-io)
 /// #  [See also](top-level-namespaces)
 /// ## (2:top-level-namespaces)

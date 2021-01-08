@@ -1,35 +1,91 @@
-/// An abstract data source. To provide a custom data source to the library, conform
-/// your type to this protocol by implementing the `read(count:)` method.
+//  This Source Code Form is subject to the terms of the Mozilla Public
+//  License, v. 2.0. If a copy of the MPL was not distributed with this
+//  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
+
+/// module PNG 
+///     Decode, inspect, edit, and encode PNG images.
+/// 
+///     See example programs and library tutorials [here](https://github.com/kelvin13/png/tree/master/examples).
+/// #  [Top level namespaces](top-level-namespaces)
+
+/// protocol PNG.Bytestream.Source 
+///     A source bytestream.
+/// 
+///     To implement a custom data source type, conform it to this protocol by 
+///     implementing [`(Source).read(count:)`]. It can 
+///     then be used with the library’s core decompression interfaces.
+/// #  [See also](file-io-protocols)
+/// ## (1:file-io-protocols)
+/// ## (1:lexing-and-formatting)
 public
 protocol _PNGBytestreamSource
 {
-    /// Read the specified number of bytes from this data source.
-    /// - Parameters:
-    ///     - count: The number of bytes to read.
-    /// - Returns: An array of size `count`, if `count` bytes could be read, and
-    ///     `nil` otherwise.
+    /// mutating func PNG.Bytestream.Source.read(count:)
+    /// required 
+    ///     Attempts to read and return the given number of bytes from this stream.
+    /// 
+    ///     A successful call to this function should affect the bytestream state 
+    ///     such that subsequent calls should pick up where the last call left off.
+    /// 
+    ///     The rest of the library interprets a `nil` return value from this function 
+    ///     as indicating end-of-stream.
+    /// - count     : Swift.Int 
+    ///     The number of bytes to read. 
+    /// - ->        : [Swift.UInt8]?
+    ///     The `count` bytes read, or `nil` if the read attempt failed. This 
+    ///     method should return `nil` even if any number of bytes less than `count`
+    ///     were successfully read.
     mutating
     func read(count:Int) -> [UInt8]?
 }
-/// An abstract data destination. To specify a custom data destination for the library,
-/// conform your type to this protocol by implementing the `write(_:)` method.
+/// protocol PNG.Bytestream.Destination 
+///     A destination bytestream.
+/// 
+///     To implement a custom data destination type, conform it to this protocol by 
+///     implementing [`(Destination).write(_:)`]. It can 
+///     then be used with the library’s core compression interfaces.
+/// #  [See also](file-io-protocols)
+/// ## (2:file-io-protocols)
+/// ## (2:lexing-and-formatting)
 public
 protocol _PNGBytestreamDestination
 {
-    /// Write the given data buffer to this data destination.
-    /// - Parameters:
-    ///     - buffer: The data to write.
-    /// - Returns: `()` on success, and `nil` otherwise.
+    /// mutating func PNG.Bytestream.Destination.write(_:)
+    /// required 
+    ///     Attempts to write the given bytes to this stream.
+    /// 
+    ///     A successful call to this function should affect the bytestream state 
+    ///     such that subsequent calls should pick up where the last call left off.
+    /// 
+    ///     The rest of the library interprets a `nil` return value from this function 
+    ///     as indicating a write failure.
+    /// - bytes     : [Swift.UInt8]
+    ///     The bytes to write. 
+    /// - ->        : Swift.Void?
+    ///     A [`Swift.Void`] tuple, or `nil` if the write attempt failed. This 
+    ///     method should return `nil` even if any number of bytes less than 
+    ///     `bytes.count` were successfully written.
     mutating
     func write(_ buffer:[UInt8]) -> Void?
 }
 
+/// enum PNG 
+///     A namespace for PNG-related functionality. 
+/// #  [Color spaces](color-space-apis)
+/// #  [Data IO and file structure](lexing-and-formatting)
+/// #  [See also](top-level-namespaces)
+/// ## (0:top-level-namespaces)
 public 
 enum PNG 
 {
     static 
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
     
+    /// enum PNG.Bytestream 
+    ///     A namespace for bytestream utilities.
+    /// #  [File IO](file-io-protocols)
+    /// ## (0:file-io-protocols)
+    /// ## (0:lexing-and-formatting)
     public 
     enum Bytestream 
     {
@@ -42,9 +98,9 @@ enum PNG
     public 
     struct Chunk:Hashable, Equatable, CustomStringConvertible
     {
-        /// The four-byte name of this PNG chunk type.
+        // The four-byte name of this PNG chunk type.
         let name:UInt32
-        /// A string displaying the ASCII representation of this PNG chunk type’s name.
+        // A string displaying the ASCII representation of this PNG chunk type’s name.
         public
         var description:String
         {
@@ -99,62 +155,62 @@ enum PNG
         
         public static
         let CgBI:Self = .init(unchecked: 0x43_67_42_49)
-        /// The PNG header chunk type.
+        // The PNG header chunk type.
         public static
         let IHDR:Self = .init(unchecked: 0x49_48_44_52)
-        /// The PNG palette chunk type.
+        // The PNG palette chunk type.
         public static
         let PLTE:Self = .init(unchecked: 0x50_4c_54_45)
-        /// The PNG image data chunk type.
+        // The PNG image data chunk type.
         public static
         let IDAT:Self = .init(unchecked: 0x49_44_41_54)
-        /// The PNG image end chunk type.
+        // The PNG image end chunk type.
         public static
         let IEND:Self = .init(unchecked: 0x49_45_4e_44)
 
-        /// The PNG chromaticity chunk type.
+        // The PNG chromaticity chunk type.
         public static
         let cHRM:Self = .init(unchecked: 0x63_48_52_4d)
-        /// The PNG gamma chunk type.
+        // The PNG gamma chunk type.
         public static
         let gAMA:Self = .init(unchecked: 0x67_41_4d_41)
-        /// The PNG embedded ICC chunk type.
+        // The PNG embedded ICC chunk type.
         public static
         let iCCP:Self = .init(unchecked: 0x69_43_43_50)
-        /// The PNG significant bits chunk type.
+        // The PNG significant bits chunk type.
         public static
         let sBIT:Self = .init(unchecked: 0x73_42_49_54)
-        /// The PNG *s*RGB chunk type.
+        // The PNG *s*RGB chunk type.
         public static
         let sRGB:Self = .init(unchecked: 0x73_52_47_42)
-        /// The PNG background chunk type.
+        // The PNG background chunk type.
         public static
         let bKGD:Self = .init(unchecked: 0x62_4b_47_44)
-        /// The PNG histogram chunk type.
+        // The PNG histogram chunk type.
         public static
         let hIST:Self = .init(unchecked: 0x68_49_53_54)
-        /// The PNG transparency chunk type.
+        // The PNG transparency chunk type.
         public static
         let tRNS:Self = .init(unchecked: 0x74_52_4e_53)
 
-        /// The PNG physical dimensions chunk type.
+        // The PNG physical dimensions chunk type.
         public static
         let pHYs:Self = .init(unchecked: 0x70_48_59_73)
 
-        /// The PNG suggested palette chunk type.
+        // The PNG suggested palette chunk type.
         public static
         let sPLT:Self = .init(unchecked: 0x73_50_4c_54)
-        /// The PNG time chunk type.
+        // The PNG time chunk type.
         public static
         let tIME:Self = .init(unchecked: 0x74_49_4d_45)
 
-        /// The PNG UTF-8 text chunk type.
+        // The PNG UTF-8 text chunk type.
         public static
         let iTXt:Self = .init(unchecked: 0x69_54_58_74)
-        /// The PNG Latin-1 text chunk type.
+        // The PNG Latin-1 text chunk type.
         public static
         let tEXt:Self = .init(unchecked: 0x74_45_58_74)
-        /// The PNG compressed Latin-1 text chunk type.
+        // The PNG compressed Latin-1 text chunk type.
         public static
         let zTXt:Self = .init(unchecked: 0x7a_54_58_74)
     }
