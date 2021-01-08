@@ -77,6 +77,7 @@ protocol _PNGBytestreamDestination
 ///     A namespace for PNG-related functionality. 
 /// #  [Color spaces](color-space-apis)
 /// #  [Data IO and file structure](lexing-and-formatting)
+/// #  [Currency types](currency-types)
 /// #  [See also](top-level-namespaces)
 /// ## (0:top-level-namespaces)
 public 
