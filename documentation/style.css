@@ -1,0 +1,379 @@
+body 
+{
+    font-size: 16px;
+    
+    font-family: 'EB Garamond';
+    font-weight: 400;
+    font-kerning: normal;
+    font-variant-numeric: oldstyle-nums;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+    
+    background-color: #f4f4f4;
+    color: #222222;
+    padding-bottom: 8em;
+}
+nav 
+{
+    width: 100%;
+    position: fixed;
+}
+h1, h2, h3, nav
+{
+    font-family: 'Questrial';
+    font-weight: 400;
+}
+h2, h3 
+{
+    text-transform: lowercase;
+}
+h1 
+{
+    font-size: 3em;
+    margin-top: 0.25em;
+}
+h2
+{
+    font-size: 2em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+h3
+{
+    font-size: 1.65em;
+}
+
+.eyebrow 
+{
+    font-size: 1.05em;
+    font-style: italic;
+    color: #555555;
+}
+.topic-blurb 
+{
+}
+.topic-required, .topic-symbol-required
+{
+    font-size: 1.05em;
+    color: #555555;
+}
+
+.declaration-container  
+{
+    margin-top: 1.5em;
+    margin-left: 2em;
+    display: block;
+}
+p 
+{
+    font-size: 1.25em;
+}
+
+code
+{
+    font-family: 'EB Garamond';
+}
+code.declaration > * , code.signature > *
+{
+    font-size: 1.33em;
+    line-height: 1.33em;
+}
+code span.signature-group, code span.syntax-group
+{
+    white-space: pre;
+    display: inline-block;
+}
+code span.signature-group:after
+{
+    content: '\2006';
+}
+code span.signature-group:last-child:after
+{
+    content: none;
+}
+code.signature, code.declaration 
+{
+    margin-left: -2em;
+}
+
+/* raspberry pink */
+code .syntax-keyword, code .signature-highlight, p a
+{
+    color: #ff4086;
+}
+code.signature a
+{
+    outline-color: #ff4086;
+}
+/* dark gray */
+code .syntax-identifier
+{
+    color: #333333;
+}
+/* medium gray */
+code .signature-text, code .signature-punctuation
+{
+    color: #666666;
+}
+/* light gray */
+code .syntax-punctuation
+{
+    color: #888888;
+}
+
+
+code span.syntax-group:after
+{
+    content: '\2006';
+}
+code span.syntax-group:last-child:after
+{
+    content: '';
+}
+
+code .syntax-whitespace 
+{
+    margin: 0 0.05em;
+}
+code .syntax-punctuation 
+{
+    margin: 0 0.1em;
+}
+.syntax-punctuation + .syntax-punctuation
+{
+    margin-left: 0;
+}
+
+code .signature-punctuation:before, code .signature-punctuation:after
+{
+    content: '\2009';
+}
+
+a:focus 
+{
+    outline-style: dashed;
+    outline-width: 1px;
+}
+code a.syntax-type
+{
+    color: #ffa010;
+}
+code a.syntax-swift-type
+{
+    color: #ff5840;
+}
+
+
+nav 
+{
+    background-color: #222222;
+    padding: 0.8em 0 0;
+}
+nav ul 
+{
+    margin-top: 0;
+    padding-left: 0.2em;
+}
+nav ul li 
+{
+    display: inline-block;
+    margin-right: 0.75em;
+    color: #aaaaaa;
+    font-size: 1em;
+    
+    vertical-align: middle;
+}
+nav ul li:before
+{
+    margin-right: 0.75em;
+    content: '›';
+}
+nav ul li:first-child:before
+{
+    content: '';
+}
+nav ul li a 
+{
+    color: #eeeeee;
+}
+/* github icon */
+nav li.github-icon-container a 
+{
+    border-radius: 10em;
+    display: inline-block;
+    padding: 4px;
+    border: 1px solid transparent;
+    line-height: 0;
+}
+nav li.github-icon-container a:hover 
+{
+    border: 1px solid #eeeeee;
+}
+nav li.github-icon-container .github-icon 
+{
+    display: inline-block;
+    width:  1.25em;
+    height: 1.25em;
+    background-image: url('github-icon.svg');
+}
+
+
+
+.section-container, .navigation-container
+{
+    width: 50em;
+    margin-left: auto;
+    margin-right: auto;
+}
+.discussion, .introduction 
+{
+    background-color: #f8f8f8;
+}
+.introduction 
+{
+    padding-top: 5em;
+}
+.introduction .section-container 
+{
+    padding-bottom: 1em;
+    border-bottom: solid 1px #cccccc;
+}
+.discussion 
+{
+    padding-bottom: 2em;
+    padding-top: 2.5em;
+}
+.discussion .section-container > *:first-child
+{
+    margin-top: 0;
+}
+.discussion p, .introduction p
+{
+    padding-right: 5em;
+}
+
+.topic 
+{
+    border-top: solid 1px #cccccc;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+.topic-container-right 
+{
+    width: 15em;
+    margin-right: 2em;
+}
+.topic-container-left 
+{
+    margin-top: 1.5em;
+    width: 100%;
+}
+.topic-container-symbol 
+{
+    margin-left: 2em;
+    margin-bottom: 2em;
+}
+.topic-container-symbol p 
+{
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+dl.parameter-list 
+{
+    margin-left: 2em;
+}
+dl.parameter-list dt 
+{
+    font-size: 1.33em;
+    font-weight: 600;
+    margin-bottom: 0.5em;
+}
+dl.parameter-list dd
+{
+    margin-left: 0;
+}
+dl.parameter-list dd p 
+{
+    margin-top: 0.5em;
+}
+
+p code 
+{
+    wrap: pre;
+    margin: 0 0.15em;
+    letter-spacing: 0.025em;
+    color: #444444;
+}
+p strong 
+{
+    font-weight: 600;
+}
+
+/* underlining */
+a
+{
+    text-decoration: none;
+}
+@supports (text-decoration-thickness: 1px) and (text-underline-offset: 0.3em)
+{
+    body 
+    {
+        text-underline-offset: 0.3em;
+        text-decoration-thickness: 1px;
+    }
+    a:hover, a:hover span
+    {
+        text-decoration: underline;
+    }
+    /* makes all signature underlines pink, even the gray parts */
+    code.signature a span
+    {
+        text-decoration-color: #ff4086;
+    }
+    /* underline style for inline code */
+    p code, p code a
+    {
+        text-decoration: underline;
+        text-decoration-style: dashed;
+    }
+}
+@supports not ((text-decoration-thickness: 1px) and (text-underline-offset: 0.3em)) 
+{
+    a:hover, a:hover span 
+    {
+        border-bottom: 1px solid;
+    }
+    code.signature a:hover span
+    {
+        text-decoration: none;
+        border: none;
+    }
+    code.signature a:hover 
+    {
+        border-bottom: 1px solid #ff4086;
+    }
+    p code, p code a
+    {
+        border-bottom: 1px dashed;
+    }
+    /* prevent github icon from getting second border */
+    nav li.github-icon-container a:hover span 
+    {
+        border: none;
+    }
+}
+
+/* 404 page */ 
+.introduction .error-404-message > *
+{
+    text-align: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+.introduction .error-404-message 
+{
+    border-bottom: none;
+}

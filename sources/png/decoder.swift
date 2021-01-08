@@ -99,7 +99,7 @@ extension PNG
     {
     }
     
-    /// Returns the value of the paeth filter function with the given parameters.
+    // Returns the value of the paeth filter function with the given parameters.
     static
     func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
     {
