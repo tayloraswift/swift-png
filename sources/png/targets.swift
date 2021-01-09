@@ -1,6 +1,6 @@
 /// protocol PNG.Color 
 ///     A color target.
-/// ## (0:color-space-apis)
+/// ## (1:color-spaces)
 public 
 protocol _PNGColor 
 {
@@ -831,7 +831,7 @@ extension PNG
     /// # [Color channels](PNG-RGBA-color-channels)
     /// # [See also](builtin-color-targets)
     /// ## (builtin-color-targets)
-    /// ## (2:color-space-apis)
+    /// ## (2:color-spaces)
     @frozen
     public
     struct RGBA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger

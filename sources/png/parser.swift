@@ -113,33 +113,400 @@ extension PNG
         }
     }
     
+    /// enum PNG.Format 
+    ///     A color format.
+    /// 
+    ///     This color format enumeration combines two sets of PNG color formats. 
+    ///     It can represent the fifteen standard color formats from the core 
+    ///     [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html#C.IHDR), 
+    ///     as well as two iphone-optimized color formats from Apple’s PNG extensions.
+    /// 
+    ///     Some color formats contain a `palette`, an optional background `fill` color, 
+    ///     and an optional chroma `key`. For most use cases, the background `fill` 
+    ///     and chroma `key` can be set to `nil`. For the indexed color formats, 
+    ///     a non-empty `palette` is mandatory. For all other color formats, the `palette` 
+    ///     can be set to the empty array `[]`. 
+    /// 
+    ///     Color format validation takes place when initializing a [`Layout`] instance, 
+    ///     which stores the color format in a [`Data.Rectangular`] image.
+    /// # [Grayscale formats](grayscale-color-formats)
+    /// # [Grayscale-alpha formats](grayscale-alpha-color-formats)
+    /// # [Indexed formats](indexed-color-formats)
+    /// # [RGB formats](rgb-color-formats)
+    /// # [RGBA formats](rgba-color-formats)
+    /// # [iPhone-optimized color formats](ios-color-formats)
+    /// # [See also](color-spaces)
+    /// ## (0:color-spaces)
     public 
     enum Format 
     {
+        /// enum PNG.Format.Pixel 
+        ///     A pixel format. 
+        /// 
+        ///     A pixel format specifies the color model and bit depth used by an 
+        ///     image. They do not specify the ordering of the color samples within 
+        ///     the internal representation of a PNG image. For example, the color formats
+        ///     [`(Format).rgba8(palette:fill:)`] and [`(Format).bgra8(palette:fill:)`] 
+        ///     both correspond to the pixel format [`(Pixel).rgba8`].
+        /// 
+        ///     The pixel format associated with a color format can be accessed 
+        ///     through the [`(Format).pixel`] instance property.
+        /// # [Pixel formats](pixel-formats)
+        /// # [See also](color-spaces)
+        /// ## (0:color-spaces)
         public 
         enum Pixel 
         {
+            /// case PNG.Format.Pixel.v1 
+            ///     Pixels are stored as 1-bit grayscale values. 
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `1`. Each sample is in the range `0 ... 1`.
+            /// ## (pixel-formats)
             case v1
+            /// case PNG.Format.Pixel.v2 
+            ///     Pixels are stored as 2-bit grayscale values.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `2`. Each sample is in the range `0 ... 3`.
+            /// ## (pixel-formats)
             case v2 
+            /// case PNG.Format.Pixel.v4 
+            ///     Pixels are stored as 4-bit grayscale values.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `4`. Each sample is in the range `0 ... 15`.
+            /// ## (pixel-formats)
             case v4 
+            /// case PNG.Format.Pixel.v8 
+            ///     Pixels are stored as 8-bit grayscale values.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `8`. Each sample is in the range `0 ... 255`.
+            /// ## (pixel-formats)
             case v8 
+            /// case PNG.Format.Pixel.v16 
+            ///     Pixels are stored as 16-bit grayscale values.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `16`. Each sample is in the range `0 ... 65535`.
+            /// ## (pixel-formats)
             case v16 
             
+            /// case PNG.Format.Pixel.rgb8 
+            ///     Pixels are stored as 8-bit RGB triplets.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `8`, for a total stride of `24` bits. 
+            ///     Each sample is in the range `0 ... 255`.
+            /// ## (pixel-formats)
             case rgb8 
+            /// case PNG.Format.Pixel.rgb16 
+            ///     Pixels are stored as 16-bit RGB triplets.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `16`, for a total stride of `48` bits. 
+            ///     Each sample is in the range `0 ... 65535`.
+            /// ## (pixel-formats)
             case rgb16 
             
+            /// case PNG.Format.Pixel.indexed1 
+            ///     Pixels are stored as 1-bit indices. 
+            /// 
+            ///     An image with this pixel format has a bit depth of `1`, and 
+            ///     a color depth of `8`. Each index is in the range `0 ... 1`, 
+            ///     and can reference an entry in a palette with at most `2` elements.
+            /// ## (pixel-formats)
             case indexed1
+            /// case PNG.Format.Pixel.indexed2 
+            ///     Pixels are stored as 2-bit indices. 
+            /// 
+            ///     An image with this pixel format has a bit depth of `2`, and 
+            ///     a color depth of `8`. Each index is in the range `0 ... 3`, 
+            ///     and can reference an entry in a palette with at most `4` elements.
+            /// ## (pixel-formats)
             case indexed2
+            /// case PNG.Format.Pixel.indexed4 
+            ///     Pixels are stored as 4-bit indices. 
+            /// 
+            ///     An image with this pixel format has a bit depth of `4`, and 
+            ///     a color depth of `8`. Each index is in the range `0 ... 15`, 
+            ///     and can reference an entry in a palette with at most `16` elements.
+            /// ## (pixel-formats)
             case indexed4
+            /// case PNG.Format.Pixel.indexed8 
+            ///     Pixels are stored as 8-bit indices. 
+            /// 
+            ///     An image with this pixel format has a bit depth and color depth 
+            ///     of `8`. Each index is in the range `0 ... 255`, and can reference 
+            ///     an entry in a palette with at most `256` elements.
+            /// ## (pixel-formats)
             case indexed8 
             
+            /// case PNG.Format.Pixel.va8 
+            ///     Pixels are stored as 8-bit grayscale-alpha pairs.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `8`, for a total stride of `16` bits. Each sample 
+            ///     is in the range `0 ... 255`.
+            /// ## (pixel-formats)
             case va8 
+            /// case PNG.Format.Pixel.va16 
+            ///     Pixels are stored as 16-bit grayscale-alpha pairs.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `16`, for a total stride of `32` bits. Each sample 
+            ///     is in the range `0 ... 65535`.
+            /// ## (pixel-formats)
             case va16 
             
+            /// case PNG.Format.Pixel.rgba8 
+            ///     Pixels are stored as 8-bit RGBA quadruplets.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `8`, for a total stride of `32` bits. 
+            ///     Each sample is in the range `0 ... 255`.
+            /// ## (pixel-formats)
             case rgba8 
+            /// case PNG.Format.Pixel.rgba16 
+            ///     Pixels are stored as 16-bit RGBA quadruplets.
+            /// 
+            ///     An image with this pixel format has a bit depth and a color 
+            ///     depth of `16`, for a total stride of `64` bits. 
+            ///     Each sample is in the range `0 ... 65535`.
+            /// ## (pixel-formats)
             case rgba16 
         }
         
+        /// case PNG.Format.v1(fill:key:)
+        ///     A 1-bit grayscale color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).v1`].
+        /// - fill  : Swift.UInt8? 
+        ///     An optional background color. The sample is unscaled, and must 
+        ///     be in the range `0 ... 1`. Most PNG viewers ignore this field.
+        /// - key   : Swift.UInt8? 
+        ///     An optional chroma key. If present, pixels matching it
+        ///     will be displayed as transparent, if possible. The sample is 
+        ///     unscaled, and must be in the range `0 ... 1`. 
+        /// ## (grayscale-color-formats)
+        
+        /// case PNG.Format.v2(fill:key:)
+        ///     A 2-bit grayscale color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).v2`].
+        /// - fill  : Swift.UInt8? 
+        ///     An optional background color. The sample is unscaled, and must 
+        ///     be in the range `0 ... 3`. Most PNG viewers ignore this field.
+        /// - key   : Swift.UInt8? 
+        ///     An optional chroma key. If present, pixels matching it
+        ///     will be displayed as transparent, if possible. The sample is 
+        ///     unscaled, and must be in the range `0 ... 3`. 
+        /// ## (grayscale-color-formats)
+        
+        /// case PNG.Format.v4(fill:key:)
+        ///     A 4-bit grayscale color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).v4`].
+        /// - fill  : Swift.UInt8? 
+        ///     An optional background color. The sample is unscaled, and must 
+        ///     be in the range `0 ... 15`. Most PNG viewers ignore this field.
+        /// - key   : Swift.UInt8? 
+        ///     An optional chroma key. If present, pixels matching it
+        ///     will be displayed as transparent, if possible. The sample is 
+        ///     unscaled, and must be in the range `0 ... 15`. 
+        /// ## (grayscale-color-formats)
+        
+        /// case PNG.Format.v8(fill:key:)
+        ///     An 8-bit grayscale color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).v8`].
+        /// - fill  : Swift.UInt8? 
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// - key   : Swift.UInt8? 
+        ///     An optional chroma key. If present, pixels matching it
+        ///     will be displayed as transparent, if possible. 
+        /// ## (grayscale-color-formats)
+        
+        /// case PNG.Format.v16(fill:key:)
+        ///     A 16-bit grayscale color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).v16`].
+        /// - fill  : Swift.UInt16? 
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// - key   : Swift.UInt16? 
+        ///     An optional chroma key. If present, pixels matching it
+        ///     will be displayed as transparent, if possible. 
+        /// ## (grayscale-color-formats)
+        
+        /// case PNG.Format.bgr8(palette:fill:key:)
+        ///     An 8-bit BGR color format. 
+        /// 
+        ///     This color format is an iphone-optimized format. 
+        ///     It has a [`pixel`] format of [`(Pixel).rgb8`].
+        /// - palette   : [(b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)]
+        ///     An palette of suggested posterization values. Most PNG viewers 
+        ///     ignore this field. 
+        /// 
+        ///     This field is unrelated to, and should not be confused with a 
+        ///     [`SuggestedPalette`].
+        /// - fill      : (b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// - key       : (b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)?
+        ///     An optional chroma key. If present, pixels matching it 
+        ///     will be displayed as transparent, if possible. 
+        /// ## (ios-color-formats)
+        
+        /// case PNG.Format.rgb8(palette:fill:key:)
+        ///     An 8-bit RGB color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).rgb8`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+        ///     An palette of suggested posterization values. Most PNG viewers 
+        ///     ignore this field. 
+        /// 
+        ///     This field is unrelated to, and should not be confused with a 
+        ///     [`SuggestedPalette`].
+        /// - fill      : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// - key       : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)?
+        ///     An optional chroma key. If present, pixels matching it 
+        ///     will be displayed as transparent, if possible. 
+        /// ## (rgb-color-formats)
+        
+        /// case PNG.Format.rgb16(palette:fill:key:)
+        ///     A 16-bit RGB color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).rgb16`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+        ///     An palette of suggested posterization values. Most PNG viewers 
+        ///     ignore this field. Although the image color depth is `16`, the 
+        ///     palette atom type is [`Swift.UInt8`], not [`Swift.UInt16`].
+        /// 
+        ///     This field is unrelated to, and should not be confused with a 
+        ///     [`SuggestedPalette`].
+        /// - fill      : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// - key       : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)?
+        ///     An optional chroma key. If present, pixels matching it 
+        ///     will be displayed as transparent, if possible. 
+        /// ## (rgb-color-formats)
+        
+        /// case PNG.Format.indexed1(palette:fill:)
+        ///     A 1-bit indexed color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).indexed1`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
+        ///     The palette values referenced by an image with this color format. 
+        ///     This palette must be non-empty, and can have at most `2` entries.
+        /// - fill      : Swift.Int?
+        ///     A palette index specifying an optional background color. This index 
+        ///     must be within the index range of the `palette` array.
+        /// 
+        ///     Most PNG viewers ignore this field.
+        /// ## (indexed-color-formats)
+        
+        /// case PNG.Format.indexed2(palette:fill:)
+        ///     A 2-bit indexed color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).indexed2`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
+        ///     The palette values referenced by an image with this color format. 
+        ///     This palette must be non-empty, and can have at most `4` entries.
+        /// - fill      : Swift.Int?
+        ///     A palette index specifying an optional background color. This index 
+        ///     must be within the index range of the `palette` array.
+        /// 
+        ///     Most PNG viewers ignore this field.
+        /// ## (indexed-color-formats)
+        
+        /// case PNG.Format.indexed4(palette:fill:)
+        ///     A 4-bit indexed color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).indexed4`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
+        ///     The palette values referenced by an image with this color format. 
+        ///     This palette must be non-empty, and can have at most `16` entries.
+        /// - fill      : Swift.Int?
+        ///     A palette index specifying an optional background color. This index 
+        ///     must be within the index range of the `palette` array.
+        /// 
+        ///     Most PNG viewers ignore this field.
+        /// ## (indexed-color-formats)
+        
+        /// case PNG.Format.indexed8(palette:fill:)
+        ///     An 8-bit indexed color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).indexed8`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
+        ///     The palette values referenced by an image with this color format. 
+        ///     This palette must be non-empty, and can have at most `256` entries.
+        /// - fill      : Swift.Int?
+        ///     A palette index specifying an optional background color. This index 
+        ///     must be within the index range of the `palette` array.
+        /// 
+        ///     Most PNG viewers ignore this field.
+        /// ## (indexed-color-formats)
+        
+        /// case PNG.Format.va8(fill:)
+        ///     An 8-bit grayscale-alpha color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).va8`].
+        /// - fill      : Swift.UInt8?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// ## (grayscale-alpha-color-formats)
+        
+        /// case PNG.Format.va16(fill:)
+        ///     A 16-bit grayscale-alpha color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).va16`].
+        /// - fill      : Swift.UInt16?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// ## (grayscale-alpha-color-formats)
+        
+        /// case PNG.Format.bgra8(palette:fill:)
+        ///     An 8-bit BGRA color format. 
+        /// 
+        ///     This color format is an iphone-optimized format. 
+        ///     It has a [`pixel`] format of [`(Pixel).rgba8`].
+        /// - palette   : [(b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)]
+        ///     An palette of suggested posterization values. Most PNG viewers 
+        ///     ignore this field. 
+        /// 
+        ///     This field is unrelated to, and should not be confused with a 
+        ///     [`SuggestedPalette`].
+        /// - fill      : (b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// ## (ios-color-formats)
+        
+        /// case PNG.Format.rgba8(palette:fill:)
+        ///     An 8-bit RGBA color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).rgba8`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+        ///     An palette of suggested posterization values. Most PNG viewers 
+        ///     ignore this field. 
+        /// 
+        ///     This field is unrelated to, and should not be confused with a 
+        ///     [`SuggestedPalette`].
+        /// - fill      : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// ## (rgba-color-formats)
+        
+        /// case PNG.Format.rgba16(palette:fill:)
+        ///     A 16-bit RGBA color format. 
+        /// 
+        ///     This color format has a [`pixel`] format of [`(Pixel).rgba16`].
+        /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+        ///     An palette of suggested posterization values. Most PNG viewers 
+        ///     ignore this field. Although the image color depth is `16`, the 
+        ///     palette atom type is [`Swift.UInt8`], not [`Swift.UInt16`].
+        /// 
+        ///     This field is unrelated to, and should not be confused with a 
+        ///     [`SuggestedPalette`].
+        /// - fill      : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)?
+        ///     An optional background color. Most PNG viewers ignore this field.
+        /// ## (rgba-color-formats)
         case v1      (                                                fill:   UInt8?,                       key:   UInt8?                      )
         case v2      (                                                fill:   UInt8?,                       key:   UInt8?                      )
         case v4      (                                                fill:   UInt8?,                       key:   UInt8?                      )
@@ -167,6 +534,13 @@ extension PNG
 }
 extension PNG.Format.Pixel 
 {
+    /// var PNG.Format.Pixel.hasColor   : Swift.Bool 
+    /// @   inlinable 
+    ///     Indicates whether an image with this pixel format contains more than one 
+    ///     non-alpha color component.
+    /// 
+    ///     This property is `true` for all RGB, RGBA, and indexed pixel formats, 
+    ///     and `false` otherwise.
     @inlinable
     public
     var hasColor:Bool
@@ -179,6 +553,15 @@ extension PNG.Format.Pixel
             return true 
         }
     }
+    /// var PNG.Format.Pixel.hasAlpha   : Swift.Bool 
+    /// @   inlinable 
+    ///     Indicates whether an image with this pixel format contains an alpha 
+    ///     component.
+    /// 
+    ///     This property is `true` for all grayscale-alpha and RGBA pixel formats, 
+    ///     and `false` otherwise. Note that indexed pixel formats are not 
+    ///     considered transparent pixel formats, even though images using them 
+    ///     can contain per-pixel alpha information.
     @inlinable
     public
     var hasAlpha:Bool
@@ -199,6 +582,23 @@ extension PNG.Format.Pixel
         self.depth * self.channels
     }
     
+    /// var PNG.Format.Pixel.channels   : Swift.Int
+    /// @   inlinable 
+    ///     The number of channels encoded per-pixel in the internal representation 
+    ///     of an image with this pixel format. 
+    /// 
+    ///     This number is *not* the number of components in the encoded image; 
+    ///     it indicates the dimensionality of the stored image data. Notably, 
+    ///     indexed images are defined as having one channel, even though each 
+    ///     scalar index represents a four-component color value.
+    /// 
+    ///     This property returns `1` for all grayscale and indexed pixel formats. 
+    /// 
+    ///     This property returns `2` for all grayscale-alpha pixel formats. 
+    /// 
+    ///     This property returns `3` for all RGB pixel formats. 
+    /// 
+    ///     This property returns `4` for all RGBA pixel formats. 
     @inlinable
     public
     var channels:Int
@@ -212,7 +612,26 @@ extension PNG.Format.Pixel
         case .rgba8, .rgba16:                               return 4
         }
     }
-    
+    /// var PNG.Format.Pixel.depth      : Swift.Int
+    /// @   inlinable 
+    ///     The bit depth of an image with this pixel format. 
+    /// 
+    ///     This number is *not* the color depth the encoded image; 
+    ///     it indicates the bit depth of the stored image data. Notably, 
+    ///     indexed images always have a color depth of `8`, even though they may 
+    ///     have a bit depth less than `8`.
+    /// 
+    ///     This property returns `1` for the [`v1`] and [`indexed1`] pixel formats. 
+    /// 
+    ///     This property returns `2` for the [`v2`] and [`indexed2`] pixel formats. 
+    /// 
+    ///     This property returns `4` for the [`v4`] and [`indexed4`] pixel formats. 
+    /// 
+    ///     This property returns `8` for the [`v8`], [`va8`], [`indexed8`], 
+    ///     [`rgb8`], and [`rgba8`] pixel formats. 
+    /// 
+    ///     This property returns `16` for the [`v16`], [`va16`], 
+    ///     [`rgb16`], and [`rgba16`] pixel formats. 
     @inlinable
     public
     var depth:Int 
@@ -288,6 +707,9 @@ extension PNG.Format
     typealias RGB<T>  = (r:T, g:T, b:T)
     typealias RGBA<T> = (r:T, g:T, b:T, a:T)
     
+    /// var PNG.Format.pixel    : Pixel 
+    /// @   inlinable 
+    ///     The pixel format used by an image with this color format.
     @inlinable
     public
     var pixel:Pixel
