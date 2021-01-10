@@ -1791,56 +1791,78 @@ extension PNG.Background
 
 extension PNG 
 {
+    /// struct PNG.Histogram 
+    ///     An image histogram.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).hIST`] chunk.
+    /// # [Parsing and serialization](histogram-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct Histogram 
     {
+        /// let PNG.Histogram.frequencies : [Swift.UInt16]
+        ///     The frequency values of this histogram.
+        /// 
+        ///     The *i*th frequency value corresponds to the *i*th entry in the 
+        ///     image palette.
         public 
         let frequencies:[UInt16]
     }
 }
 extension PNG.Histogram 
 {
+    /// init PNG.Histogram.init(frequencies:palette:)
+    ///     Creates an image histogram instance.
+    /// 
+    ///     This initializer validates the background information against the 
+    ///     given image palette.
+    /// - frequencies : [Swift.UInt16]
+    ///     The frequency of each palette entry in the image. The *i*th frequency 
+    ///     value corresponds to the *i*th palette entry. This array must have the 
+    ///     the exact same number of elements as entries in the image palette. 
+    ///     Passing an array of the wrong length will result in a precondition 
+    ///     failure.
+    /// - palette   : PNG.Palette 
+    ///     The image palette this histogram provides frequency information for.
     public 
-    init(frequencies:[UInt16], pixel:PNG.Format.Pixel, palette:PNG.Palette)
+    init(frequencies:[UInt16], palette:PNG.Palette)
     {
-        switch pixel 
+        guard frequencies.count == palette.count
+        else 
         {
-        case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
-            PNG.ParsingError.unexpectedHistogram(pixel: pixel).fatal
+            fatalError("number of histogram entries (\(frequencies.count)) must match number of palette entries (\(palette.count))")
+        }
         
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard frequencies.count == palette.count
-            else 
-            {
-                fatalError("number of histogram entries (\(frequencies.count)) must match number of palette entries (\(palette.count))")
-            }
-            
-            self.frequencies = frequencies
+        self.frequencies = frequencies
+    }
+    /// init PNG.Histogram.init(parsing:palette:) 
+    /// throws 
+    ///     Creates an image histogram by parsing the given chunk data, 
+    ///     validating it according to the given image palette.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).hIST`] chunk to parse. 
+    /// - palette   : Palette
+    ///     The image palette the chunk data is to be validated against.
+    /// ## (histogram-parsing-and-serialization)
+    public 
+    init(parsing data:[UInt8], palette:PNG.Palette) throws
+    {
+        guard data.count == 2 * palette.count
+        else 
+        {
+            throw PNG.ParsingError.invalidHistogramChunkLength(data.count, 
+                expected: 2 * palette.count)
+        }
+        self.frequencies = (0 ..< data.count >> 1).map 
+        {
+            data.load(bigEndian: UInt16.self, as: UInt16.self, at: $0 << 1)
         }
     }
-    
-    public 
-    init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette) throws
-    {
-        switch pixel 
-        {
-        case .v1, .v2, .v4, .v8, .v16, .va8, .va16, .rgb8, .rgb16, .rgba8, .rgba16:
-            throw PNG.ParsingError.unexpectedHistogram(pixel: pixel)
-        
-        case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard data.count == 2 * palette.count
-            else 
-            {
-                throw PNG.ParsingError.invalidHistogramChunkLength(data.count, 
-                    expected: 2 * palette.count)
-            }
-            self.frequencies = (0 ..< data.count >> 1).map 
-            {
-                data.load(bigEndian: UInt16.self, as: UInt16.self, at: $0 << 1)
-            }
-        }
-    }
-    
+    /// var PNG.Histogram.serialized : [Swift.UInt8] { get }
+    ///     Encodes this histogram as the contents of a 
+    ///     [`(Chunk).hIST`] chunk.
+    /// ## (histogram-parsing-and-serialization)
     public 
     var serialized:[UInt8] 
     {
@@ -1857,21 +1879,39 @@ extension PNG.Histogram
 
 extension PNG 
 {
+    /// struct PNG.Gamma 
+    ///     An image gamma descriptor.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).gAMA`] chunk.
+    /// # [Parsing and serialization](gamma-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct Gamma 
     {
+        /// let PNG.Gamma.value : Percentmille 
+        ///     The gamma value of an image, expressed as a fraction.
         public 
-        let pcm:Percentmille 
-        
+        let value:Percentmille 
+        /// init PNG.Gamma.init(value:)
+        ///     Creates a gamma descriptor with the given value.
+        /// - value : Percentmille 
+        ///     A rational gamma value.
         public 
-        init(pcm:Percentmille) 
+        init(value:Percentmille) 
         {
-            self.pcm = pcm
+            self.value = value
         }
     }
 }
 extension PNG.Gamma 
 {
+    /// init PNG.Gamma.init(parsing:) 
+    /// throws 
+    ///     Creates an image gamma descriptor by parsing the given chunk data.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).gAMA`] chunk to parse. 
+    /// ## (gamma-parsing-and-serialization)
     public 
     init(parsing data:[UInt8]) throws 
     {
@@ -1881,15 +1921,18 @@ extension PNG.Gamma
             throw PNG.ParsingError.invalidGammaChunkLength(data.count)
         }
         
-        self.pcm = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 0))
+        self.value = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 0))
     }
-    
+    /// var PNG.Gamma.serialized : [Swift.UInt8] { get }
+    ///     Encodes this gamma descriptor as the contents of a 
+    ///     [`(Chunk).gAMA`] chunk.
+    /// ## (gamma-parsing-and-serialization)
     public 
     var serialized:[UInt8] 
     {
         .init(unsafeUninitializedCapacity: MemoryLayout<UInt32>.size) 
         {
-            $0.store(self.pcm.points, asBigEndian: UInt32.self, at: 0)
+            $0.store(self.value.points, asBigEndian: UInt32.self, at: 0)
             $1 = $0.count
         }
     }
