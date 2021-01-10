@@ -1041,7 +1041,7 @@ extension PNG
             interlaced:Bool
         
         /// init PNG.Header.init(size:pixel:interlaced:)
-        ///     Creates an image header instance. 
+        ///     Creates an image header. 
         /// - size      : (x:Swift.Int, y:Swift.Int) 
         ///     An image size, measured in pixels.
         /// 
@@ -1180,7 +1180,7 @@ extension PNG
 extension PNG.Palette 
 {
     /// init PNG.Palette.init(_:pixel:)
-    ///     Creates an image palette instance.
+    ///     Creates an image palette.
     /// 
     ///     This initializer validates the palette information against the given 
     ///     pixel format.
@@ -1300,7 +1300,7 @@ extension PNG.Palette:RandomAccessCollection
 extension PNG 
 {
     /// struct PNG.Transparency 
-    ///     An image transparency descriptor.
+    ///     A transparency descriptor.
     /// 
     ///     This type models the information stored in a [`(Chunk).tRNS`] chunk.
     ///     This information either used to populate the `key` field in 
@@ -1315,7 +1315,7 @@ extension PNG
     struct Transparency 
     {
         /// enum PNG.Transparency.Case 
-        ///     An image transparency case.
+        ///     A transparency case.
         public 
         enum Case 
         {
@@ -1333,7 +1333,7 @@ extension PNG
             /// case PNG.Transparency.Case.rgb(key:)
             ///     A transparency descriptor for an RGB or BGR image.
             /// - key     : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)
-            ///     A chroma key used to display image transparency. Pixels 
+            ///     A chroma key used to display transparency. Pixels 
             ///     matching this key will be displayed as transparent, if possible.
             /// 
             ///     Note that the chroma key components are unscaled samples. If 
@@ -1343,7 +1343,7 @@ extension PNG
             /// case PNG.Transparency.Case.v(key:)
             ///     A transparency descriptor for a grayscale image.
             /// - key     : Swift.UInt16
-            ///     A chroma key used to display image transparency. Pixels 
+            ///     A chroma key used to display transparency. Pixels 
             ///     matching this key will be displayed as transparent, if possible.
             /// 
             ///     Note that the chroma key is an unscaled sample. If 
@@ -1361,7 +1361,7 @@ extension PNG
 extension PNG.Transparency 
 {
     /// init PNG.Transparency.init(case:pixel:palette:)
-    ///     Creates an image transparency instance.
+    ///     Creates a transparency descriptor.
     /// 
     ///     This initializer validates the transparency information against the 
     ///     given pixel format and image palette.
@@ -1443,7 +1443,7 @@ extension PNG.Transparency
     }
     /// init PNG.Transparency.init(parsing:pixel:palette:) 
     /// throws 
-    ///     Creates an image transparency descriptor by parsing the given chunk data, 
+    ///     Creates a transparency descriptor by parsing the given chunk data, 
     ///     interpreting and validating it according to the given pixel format and 
     ///     image palette.
     /// - data      : [Swift.UInt8]
@@ -1552,7 +1552,7 @@ extension PNG.Transparency
 extension PNG 
 {
     /// struct PNG.Background 
-    ///     An image background descriptor.
+    ///     A background descriptor.
     /// 
     ///     This type models the information stored in a [`(Chunk).bKGD`] chunk.
     ///     This information is used to populate the `fill` field in 
@@ -1567,7 +1567,7 @@ extension PNG
     struct Background 
     {
         /// enum PNG.Background.Case 
-        ///     An image background case.
+        ///     A background case.
         public 
         enum Case 
         {
@@ -1606,7 +1606,7 @@ extension PNG
 extension PNG.Background 
 {
     /// init PNG.Background.init(case:pixel:palette:)
-    ///     Creates an image background instance.
+    ///     Creates a background descriptor.
     /// 
     ///     This initializer validates the background information against the 
     ///     given pixel format and image palette.
@@ -1684,7 +1684,7 @@ extension PNG.Background
     }
     /// init PNG.Background.init(parsing:pixel:palette:) 
     /// throws 
-    ///     Creates an image background descriptor by parsing the given chunk data, 
+    ///     Creates a background descriptor by parsing the given chunk data, 
     ///     interpreting and validating it according to the given pixel format and 
     ///     image palette.
     /// - data      : [Swift.UInt8]
@@ -1813,7 +1813,7 @@ extension PNG
 extension PNG.Histogram 
 {
     /// init PNG.Histogram.init(frequencies:palette:)
-    ///     Creates an palette histogram instance.
+    ///     Creates a palette histogram.
     /// 
     ///     This initializer validates the background information against the 
     ///     given image palette.
@@ -1880,7 +1880,7 @@ extension PNG.Histogram
 extension PNG 
 {
     /// struct PNG.Gamma 
-    ///     An image gamma descriptor.
+    ///     A gamma descriptor.
     /// 
     ///     This type models the information stored in a [`(Chunk).gAMA`] chunk.
     /// # [Parsing and serialization](gamma-parsing-and-serialization)
@@ -1908,7 +1908,7 @@ extension PNG.Gamma
 {
     /// init PNG.Gamma.init(parsing:) 
     /// throws 
-    ///     Creates an image gamma descriptor by parsing the given chunk data.
+    ///     Creates a gamma descriptor by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
     ///     The contents of a [`(Chunk).gAMA`] chunk to parse. 
     /// ## (gamma-parsing-and-serialization)
@@ -1941,7 +1941,7 @@ extension PNG.Gamma
 extension PNG 
 {
     /// struct PNG.Chromaticity 
-    ///     An image chromaticity descriptor.
+    ///     A chromaticity descriptor.
     /// 
     ///     This type models the information stored in a [`(Chunk).cHRM`] chunk.
     /// # [Parsing and serialization](chromaticity-parsing-and-serialization)
@@ -2002,7 +2002,7 @@ extension PNG.Chromaticity
 {
     /// init PNG.Chromaticity.init(parsing:) 
     /// throws 
-    ///     Creates an image chromaticity descriptor by parsing the given chunk data.
+    ///     Creates a chromaticity descriptor by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
     ///     The contents of a [`(Chunk).cHRM`] chunk to parse. 
     /// ## (chromaticity-parsing-and-serialization)
@@ -2324,14 +2324,39 @@ extension PNG.SignificantBits
 
 extension PNG 
 {
+    /// struct PNG.ColorProfile 
+    ///     An embedded color profile.
+    /// 
+    ///     This type models the information stored in an [`(Chunk).iCCP`] chunk.
+    /// # [Parsing and serialization](colorprofile-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct ColorProfile
     {
+        /// let PNG.ColorProfile.name : Swift.String 
+        ///     The name of this profile. 
         public 
         let name:String 
+        /// let PNG.ColorProfile.profile : [Swift.UInt8]
+        ///     The uncompressed [ICC](http://www.color.org/index.xalter) color 
+        ///     profile data. 
         public 
         let profile:[UInt8]
         
+        /// init PNG.ColorProfile.init(name:profile:)
+        ///     Creates a color profile. 
+        /// - name : Swift.String 
+        ///     The profile name. 
+        /// 
+        ///     This string must contain only unicode scalars 
+        ///     in the ranges `"\u{20}" ... "\u{7d}"` or `"\u{a1}" ... "\u{ff}"`. 
+        ///     Leading, trailing, and consecutive spaces are not allowed. 
+        ///     Passing an invalid string will result in a precondition failure.
+        /// - profile : [Swift.UInt8]
+        ///     The uncompressed [ICC](http://www.color.org/index.xalter) color 
+        ///     profile data. The data will be compressed when this color profile 
+        ///     is [`serialized`] into an [`(Chunk).iCCP`] chunk.
         public 
         init(name:String, profile:[UInt8])
         {
@@ -2348,6 +2373,12 @@ extension PNG
 }
 extension PNG.ColorProfile 
 {
+    /// init PNG.ColorProfile.init(parsing:) 
+    /// throws 
+    ///     Creates a color profile by parsing the given chunk data.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of an [`(Chunk).iCCP`] chunk to parse. 
+    /// ## (colorprofile-parsing-and-serialization)
     public 
     init(parsing data:[UInt8]) throws 
     {
@@ -2384,7 +2415,10 @@ extension PNG.ColorProfile
         
         self.profile = inflator.pull()
     }
-    
+    /// var PNG.ColorProfile.serialized : [Swift.UInt8] { get }
+    ///     Encodes this color profile as the contents of an 
+    ///     [`(Chunk).iCCP`] chunk.
+    /// ## (colorprofile-parsing-and-serialization)
     public 
     var serialized:[UInt8]
     {
@@ -2416,18 +2450,46 @@ extension PNG.ColorProfile
 
 extension PNG 
 {
+    /// struct PNG.PhysicalDimensions 
+    ///     A physical dimensions descriptor.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).pHYs`] chunk.
+    /// # [Parsing and serialization](physicaldimensions-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct PhysicalDimensions
     {
+        /// enum PNG.PhysicalDimensions.Unit 
+        ///     A unit of measurement.
         public 
         enum Unit 
         {
+            /// case PNG.PhysicalDimensions.Unit.meter 
+            ///     The meter. 
+            /// 
+            ///     For conversion purposes, one inch is assumed to equal exactly 
+            ///     `254 / 10000` meters.
             case meter
         }
         
+        /// let PNG.PhysicalDimensions.density : (x:Swift.Int, y:Swift.Int, unit:Unit?)
+        ///     The number of pixels in each dimension per the given `unit` of 
+        ///     measurement. 
+        /// 
+        ///     If `unit` is `nil`, the pixel density is unknown, 
+        ///     and the `x` and `y` values specify the pixel aspect ratio only.
         public 
         let density:(x:Int, y:Int, unit:Unit?)
         
+        /// init PNG.PhysicalDimensions.init(density:) 
+        ///     Creates a physical dimensions descriptor. 
+        /// - density : (x:Swift.Int, y:Swift.Int, unit:Unit?)
+        ///     The number of pixels in each dimension per the given `unit` of 
+        ///     measurement. 
+        /// 
+        ///     If `unit` is `nil`, the pixel density is unknown, 
+        ///     and the `x` and `y` values specify the pixel aspect ratio only.
         public 
         init(density:(x:Int, y:Int, unit:Unit?)) 
         {
@@ -2437,6 +2499,12 @@ extension PNG
 }
 extension PNG.PhysicalDimensions 
 {
+    /// init PNG.PhysicalDimensions.init(parsing:) 
+    /// throws 
+    ///     Creates a physical dimensions descriptor by parsing the given chunk data.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).pHYs`] chunk to parse. 
+    /// ## (physicaldimensions-parsing-and-serialization)
     public 
     init(parsing data:[UInt8]) throws 
     {
@@ -2457,7 +2525,10 @@ extension PNG.PhysicalDimensions
             throw PNG.ParsingError.invalidPhysicalDimensionsDensityUnitCode(code)
         }
     }
-    
+    /// var PNG.PhysicalDimensions.serialized : [Swift.UInt8] { get }
+    ///     Encodes this physical dimensions descriptor as the contents of a 
+    ///     [`(Chunk).pHYs`] chunk.
+    /// ## (physicaldimensions-parsing-and-serialization)
     public 
     var serialized:[UInt8]
     {
@@ -2478,21 +2549,57 @@ extension PNG.PhysicalDimensions
 
 extension PNG 
 {
+    /// struct PNG.SuggestedPalette 
+    ///     A suggested image palette.
+    /// 
+    ///     This type models the information stored in an [`(Chunk).sPLT`] chunk. 
+    ///     It should not be confused with the suggested palette stored in the 
+    ///     color [`Format`] of an RGB, BGR, RGBA, or BGRA image.
+    /// # [Parsing and serialization](suggestedpalette-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct SuggestedPalette 
     {
+        /// enum PNG.SuggestedPalette.Entries 
+        ///     A variant array of palette colors and frequencies.
         public 
         enum Entries 
         {
+            /// case PNG.SuggestedPalette.Entries.rgba8(_:)
+            ///     A suggested palette with an 8-bit color depth.
+            /// - _ : [(color:(r:Swift.UInt8,  g:Swift.UInt8,  b:Swift.UInt8,  a:Swift.UInt8),  frequency:Swift.UInt16)] 
+            ///     An array of 8-bit palette colors and frequencies.
+            /// ## ()
             case rgba8( [(color:(r:UInt8,  g:UInt8,  b:UInt8,  a:UInt8),  frequency:UInt16)])
+            /// case PNG.SuggestedPalette.Entries.rgba16(_:)
+            ///     A suggested palette with a 16-bit color depth.
+            /// - _ : [(color:(r:Swift.UInt16,  g:Swift.UInt16,  b:Swift.UInt16,  a:Swift.UInt16),  frequency:Swift.UInt16)] 
+            ///     An array of 16-bit palette colors and frequencies.
+            /// ## ()
             case rgba16([(color:(r:UInt16, g:UInt16, b:UInt16, a:UInt16), frequency:UInt16)])
         }
-        
+        /// let PNG.SuggestedPalette.name : Swift.String 
+        ///     The name of this suggested palette. 
         public 
         let name:String 
+        /// let PNG.SuggestedPalette.entries : Entries 
+        ///     The colors in this suggested palette, and their frequencies.
         public 
         var entries:Entries 
         
+        /// init PNG.SuggestedPalette.init(name:entries:)
+        ///     Creates a suggested palette. 
+        /// - name : Swift.String
+        ///     The palette name. 
+        /// 
+        ///     This string must contain only unicode scalars 
+        ///     in the ranges `"\u{20}" ... "\u{7d}"` or `"\u{a1}" ... "\u{ff}"`. 
+        ///     Leading, trailing, and consecutive spaces are not allowed. 
+        ///     Passing an invalid string will result in a precondition failure.
+        /// - entries : Entries 
+        ///     A variant array of palette colors and frequencies.
+        public 
         init(name:String, entries:Entries) 
         {
             guard PNG.Text.validate(name: name.unicodeScalars) 
@@ -2514,6 +2621,12 @@ extension PNG
 }
 extension PNG.SuggestedPalette 
 {
+    /// init PNG.SuggestedPalette.init(parsing:) 
+    /// throws 
+    ///     Creates a suggested palette by parsing the given chunk data.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of an [`(Chunk).sPLT`] chunk to parse. 
+    /// ## (suggestedpalette-parsing-and-serialization)
     public 
     init(parsing data:[UInt8]) throws 
     {
@@ -2618,7 +2731,10 @@ extension PNG.SuggestedPalette
         
         return true
     }
-    
+    /// var PNG.SuggestedPalette.serialized : [Swift.UInt8] { get }
+    ///     Encodes this suggested palette as the contents of an 
+    ///     [`(Chunk).sPLT`] chunk.
+    /// ## (suggestedpalette-parsing-and-serialization)
     public 
     var serialized:[UInt8]
     {
@@ -2679,17 +2795,71 @@ extension PNG.SuggestedPalette
 
 extension PNG 
 {
+    /// struct PNG.TimeModified 
+    ///     An image modification time. 
+    /// 
+    ///     This type models the information stored in a [`(Chunk).tIME`] chunk. 
+    ///     This type is time-zone agnostic, and so all time values are assumed 
+    ///     to be in universal time (UTC).
+    /// # [Parsing and serialization](timemodified-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types) 
     public 
     struct TimeModified 
     {
+        /// let PNG.TimeModified.year : Swift.Int 
+        ///     The complete [gregorian](https://en.wikipedia.org/wiki/Gregorian_calendar) 
+        ///     year.
+        /// ## ()
         public 
         let year:Int, 
+        /// let PNG.TimeModified.month : Swift.Int 
+        ///     The calendar month, expressed as a 1-indexed integer.
+        /// ## ()
             month:Int, 
+        /// let PNG.TimeModified.day : Swift.Int 
+        ///     The calendar day, expressed as a 1-indexed integer. 
+        /// ## ()
             day:Int, 
+        /// let PNG.TimeModified.hour : Swift.Int 
+        ///     The hour, in 24-hour time, expressed as a 0-indexed integer.
+        /// ## ()
             hour:Int, 
+        /// let PNG.TimeModified.minute : Swift.Int 
+        ///     The minute, expressed as a 0-indexed integer.
+        /// ## ()
             minute:Int, 
+        /// let PNG.TimeModified.second : Swift.Int 
+        ///     The second, expressed as a 0-indexed integer.
+        /// ## ()
             second:Int
         
+        /// init PNG.TimeModified.init(year:month:day:hour:minute:second:)
+        ///     Creates an image modification time. 
+        /// 
+        ///     The time is time-zone agnostic, and so all time parameters are 
+        ///     assumed to be in universal time (UTC). Passing out-of-range 
+        ///     time parameters will result in a precondition failure.
+        /// - year : Swift.Int 
+        ///     The complete [gregorian](https://en.wikipedia.org/wiki/Gregorian_calendar) 
+        ///     year. It must be in the range `0 ..< 1 << 16`. It can be 
+        ///     reasonably expected to have four decimal digits.
+        /// - month : Swift.Int 
+        ///     The calendar month, expressed as a 1-indexed integer. It must 
+        ///     be in the range `1 ... 12`.
+        /// - day : Swift.Int 
+        ///     The calendar day, expressed as a 1-indexed integer.
+        ///     It must be in the range `1 ... 31`.
+        /// - hour : Swift.Int 
+        ///     The hour, in 24-hour time, expressed as a 0-indexed integer.
+        ///     It must be in the range `0 ... 23`.
+        /// - minute : Swift.Int 
+        ///     The minute, expressed as a 0-indexed integer.
+        ///     It must be in the range `0 ... 59`.
+        /// - second : Swift.Int 
+        ///     The second, expressed as a 0-indexed integer. 
+        ///     It must be in the range `0 ... 60`, where the value `60` is 
+        ///     used to represent leap seconds.
         public 
         init(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int) 
         {
@@ -2721,6 +2891,12 @@ extension PNG
 }
 extension PNG.TimeModified 
 {
+    /// init PNG.TimeModified.init(parsing:) 
+    /// throws 
+    ///     Creates an image modification time by parsing the given chunk data.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).tIME`] chunk to parse. 
+    /// ## (timemodified-parsing-and-serialization)
     public 
     init(parsing data:[UInt8]) throws 
     {
@@ -2754,7 +2930,10 @@ extension PNG.TimeModified
                 second: self.second)
         }
     }
-    
+    /// var PNG.TimeModified.serialized : [Swift.UInt8] { get }
+    ///     Encodes this image modification time as the contents of a 
+    ///     [`(Chunk).tIME`] chunk.
+    /// ## (timemodified-parsing-and-serialization)
     public 
     var serialized:[UInt8]
     {
@@ -2773,17 +2952,76 @@ extension PNG.TimeModified
 
 extension PNG 
 {
+    /// struct PNG.Text 
+    ///     A text comment.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).tEXt`], 
+    ///     [`(Chunk).zTXt`], or [`(Chunk).iTXt`] chunk. 
+    /// # [Parsing and serialization](text-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types) 
     public 
     struct Text 
     {
+        /// let PNG.Text.compressed : Swift.Bool 
+        ///     Indicates if the text is (or is to be) stored in compressed or 
+        ///     uncompressed form within a PNG file.
+        /// 
+        ///     This flag is `true` if the original text chunk was a 
+        ///     [`(Chunk).zTXt`] chunk, and `false` if it was a [`(Chunk).tEXt`] 
+        ///     chunk. If the original chunk was an [`(Chunk).iTXt`] chunk, 
+        ///     this flag can be either `true` or `false`.
         public 
         let compressed:Bool 
+        /// let PNG.Text.keyword : (english:Swift.String, localized:Swift.String)
+        ///     A keyword tag, in english, and possibly a non-english language. 
+        /// 
+        ///     If the text is in english, the `localized` keyword is the empty 
+        ///     string `""`.
         public 
         let keyword:(english:String, localized:String), 
+        /// let PNG.Text.language : [Swift.String]
+        ///     An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt) 
+        ///     language tag, where each element is a language subtag. 
+        /// 
+        ///     If this array is empty, then the language is unspecified.
             language:[String]
+        /// let PNG.Text.content : Swift.String 
+        ///     The text content.
         public 
         let content:String
         
+        /// init PNG.Text.init(compressed:keyword:language:content:)
+        ///     Creates a text comment.
+        /// - compressed : Swift.Bool 
+        ///     Indicates if the text is to be stored in compressed or 
+        ///     uncompressed form within a PNG file.
+        /// - keyword : (english:Swift.String, localized:Swift.String)
+        ///     A keyword tag, in english, and possibly a non-english language. 
+        /// 
+        ///     The english keyword must contain only unicode scalars 
+        ///     in the ranges `"\u{20}" ... "\u{7d}"` or `"\u{a1}" ... "\u{ff}"`. 
+        ///     Leading, trailing, and consecutive spaces are not allowed. 
+        ///     There are no restrictions on the `localized` keyword, other than 
+        ///     that it must not contain any null characters.
+        /// 
+        ///     Passing invalid keyword strings will result in a precondition failure.
+        /// 
+        ///     If the text is in english, the `localized` keyword should be 
+        ///     set to the empty string `""`.
+        /// - language : [Swift.String]
+        ///     An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt) 
+        ///     language tag, where each element is a language subtag. 
+        /// 
+        ///     Each subtag must be a 1-8 character string containing alphabetical 
+        ///     ASCII characters only. Passing an invalid language tag array 
+        ///     will result in a precondition failure.
+        /// 
+        ///     If this array is empty, then the language is unspecified.
+        /// - content : Swift.String 
+        ///     The text content. There are no restrictions on it. It is allowed 
+        ///     (but not recommended) to contain null characters.
+        public 
         init(compressed:Bool, keyword:(english:String, localized:String), 
             language:[String], content:String)
         {
@@ -2791,6 +3029,11 @@ extension PNG
             else 
             {
                 PNG.ParsingError.invalidTextEnglishKeyword(keyword.english).fatal 
+            }
+            guard (keyword.localized.unicodeScalars.allSatisfy{ $0 != "\u{0}" })
+            else 
+            {
+                fatalError("localized keyword must not contain any null characters")
             }
             for tag:String in language
             {
@@ -2810,6 +3053,22 @@ extension PNG
 }
 extension PNG.Text 
 {
+    /// init PNG.Text.init(parsing:unicode:) 
+    /// throws 
+    ///     Creates a text comment by parsing the given chunk data, interpreting 
+    ///     it either as a unicode text chunk, or a latin-1 text chunk.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).tEXt`], [`(Chunk).zTXt`], or [`(Chunk).iTXt`] 
+    ///     chunk to parse. 
+    /// - unicode   : Swift.Bool 
+    ///     Specifies if the given chunk `data` should be interpreted as a 
+    ///     unicode chunk, or a latin-1 chunk. It should be set to `true` if the 
+    ///     original text chunk was an [`(Chunk).iTXt`] chunk, and `false` 
+    ///     otherwise. The default value is `true`.
+    /// 
+    ///     If this flag is set to `false`, the text is assumed to be in english, 
+    ///     and the [`language`] tag will be set to `["en"]`.
+    /// ## (text-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], unicode:Bool = true) throws 
     {
@@ -2991,7 +3250,7 @@ extension PNG.Text
         
         return (language, offset)
     }
-    static 
+    private static 
     func validate<C>(language scalars:C) -> Bool 
         where C:Collection, C.Element == Unicode.Scalar 
     {
@@ -3003,7 +3262,16 @@ extension PNG.Text
         
         return scalars.allSatisfy{ "a" ... "z" ~= $0 || "A" ... "Z" ~= $0 }
     }
-    
+    /// var PNG.Text.serialized : [Swift.UInt8] { get }
+    ///     Encodes this text comment as the contents of a 
+    ///     [`(Chunk).iTXt`] chunk. 
+    /// 
+    ///     This property *always* emits a unicode [`(Chunk).iTXt`] 
+    ///     chunk, regardless of the type of the original chunk, if it was parsed 
+    ///     from raw chunk data. It is the opinion of the library that the 
+    ///     latin-1 chunk types [`(Chunk).tEXt`] and [`(Chunk).zTXt`] are 
+    ///     deprecated.
+    /// ## (text-parsing-and-serialization)
     public 
     var serialized:[UInt8]
     {
