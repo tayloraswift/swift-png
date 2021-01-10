@@ -106,7 +106,6 @@ enum PNG
     /// :   Swift.Equatable 
     /// :   Swift.CustomStringConvertible
     ///     A chunk type identifier.
-    /// # [Chunk types](chunk-type-identifiers)
     /// ## (lexing-and-formatting)
     public 
     struct Chunk:Hashable, Equatable, CustomStringConvertible
@@ -208,6 +207,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x43674249`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let CgBI:Self = .init(unchecked: 0x43_67_42_49)
         /// static let PNG.Chunk.IHDR : Self 
@@ -216,6 +216,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x49484452`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let IHDR:Self = .init(unchecked: 0x49_48_44_52)
         /// static let PNG.Chunk.PLTE : Self 
@@ -224,6 +225,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x504c5445`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let PLTE:Self = .init(unchecked: 0x50_4c_54_45)
         /// static let PNG.Chunk.IDAT : Self 
@@ -232,6 +234,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x49444154`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let IDAT:Self = .init(unchecked: 0x49_44_41_54)
         /// static let PNG.Chunk.IEND : Self 
@@ -240,6 +243,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x49454e44`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let IEND:Self = .init(unchecked: 0x49_45_4e_44)
 
@@ -249,6 +253,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x6348524d`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let cHRM:Self = .init(unchecked: 0x63_48_52_4d)
         /// static let PNG.Chunk.gAMA : Self 
@@ -257,6 +262,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x67414d41`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let gAMA:Self = .init(unchecked: 0x67_41_4d_41)
         /// static let PNG.Chunk.iCCP : Self 
@@ -265,6 +271,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x69434350`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let iCCP:Self = .init(unchecked: 0x69_43_43_50)
         /// static let PNG.Chunk.sBIT : Self 
@@ -273,6 +280,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x73424954`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let sBIT:Self = .init(unchecked: 0x73_42_49_54)
         /// static let PNG.Chunk.sRGB : Self 
@@ -281,6 +289,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x73524742`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let sRGB:Self = .init(unchecked: 0x73_52_47_42)
         /// static let PNG.Chunk.bKGD : Self 
@@ -289,6 +298,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x624b4744`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let bKGD:Self = .init(unchecked: 0x62_4b_47_44)
         /// static let PNG.Chunk.hIST : Self 
@@ -297,6 +307,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x68495354`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let hIST:Self = .init(unchecked: 0x68_49_53_54)
         /// static let PNG.Chunk.tRNS : Self 
@@ -305,6 +316,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x74524e53`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let tRNS:Self = .init(unchecked: 0x74_52_4e_53)
 
@@ -314,6 +326,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x70485973`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let pHYs:Self = .init(unchecked: 0x70_48_59_73)
 
@@ -323,6 +336,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x73504c54`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let sPLT:Self = .init(unchecked: 0x73_50_4c_54)
         /// static let PNG.Chunk.tIME : Self 
@@ -331,6 +345,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x74494d45`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let tIME:Self = .init(unchecked: 0x74_49_4d_45)
 
@@ -340,6 +355,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x69545874`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let iTXt:Self = .init(unchecked: 0x69_54_58_74)
         /// static let PNG.Chunk.tEXt : Self 
@@ -348,6 +364,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x74455874`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let tEXt:Self = .init(unchecked: 0x74_45_58_74)
         /// static let PNG.Chunk.zTXt : Self 
@@ -356,6 +373,7 @@ enum PNG
         ///     The numerical type code for this type identifier is `0x7a545874`.
         /// # [See also](chunk-type-identifiers)
         /// ## (chunk-type-identifiers)
+        /// ## ()
         public static
         let zTXt:Self = .init(unchecked: 0x7a_54_58_74)
     }
