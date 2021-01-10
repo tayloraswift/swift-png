@@ -534,7 +534,7 @@ extension PNG
 }
 extension PNG.Format.Pixel 
 {
-    /// var PNG.Format.Pixel.hasColor   : Swift.Bool 
+    /// var PNG.Format.Pixel.hasColor   : Swift.Bool { get }
     /// @   inlinable 
     ///     Indicates whether an image with this pixel format contains more than one 
     ///     non-alpha color component.
@@ -553,7 +553,7 @@ extension PNG.Format.Pixel
             return true 
         }
     }
-    /// var PNG.Format.Pixel.hasAlpha   : Swift.Bool 
+    /// var PNG.Format.Pixel.hasAlpha   : Swift.Bool { get }
     /// @   inlinable 
     ///     Indicates whether an image with this pixel format contains an alpha 
     ///     component.
@@ -582,7 +582,7 @@ extension PNG.Format.Pixel
         self.depth * self.channels
     }
     
-    /// var PNG.Format.Pixel.channels   : Swift.Int
+    /// var PNG.Format.Pixel.channels   : Swift.Int { get }
     /// @   inlinable 
     ///     The number of channels encoded per-pixel in the internal representation 
     ///     of an image with this pixel format. 
@@ -612,7 +612,7 @@ extension PNG.Format.Pixel
         case .rgba8, .rgba16:                               return 4
         }
     }
-    /// var PNG.Format.Pixel.depth      : Swift.Int
+    /// var PNG.Format.Pixel.depth      : Swift.Int { get }
     /// @   inlinable 
     ///     The bit depth of an image with this pixel format. 
     /// 
@@ -707,7 +707,7 @@ extension PNG.Format
     typealias RGB<T>  = (r:T, g:T, b:T)
     typealias RGBA<T> = (r:T, g:T, b:T, a:T)
     
-    /// var PNG.Format.pixel    : Pixel 
+    /// var PNG.Format.pixel    : Pixel { get }
     /// @   inlinable 
     ///     The pixel format used by an image with this color format.
     @inlinable
@@ -1019,14 +1019,38 @@ extension PNG.Format
 
 extension PNG 
 {
+    /// struct PNG.Header 
+    ///     An image header.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).IHDR`] chunk.
+    /// # [Parsing and serialization](header-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct Header
     {
+        /// let PNG.Header.size         : (x:Swift.Int, y:Swift.Int) 
+        ///     The size of an image, measured in pixels.
         public
         let size:(x:Int, y:Int), 
+        /// let PNG.Header.size         : Format.Pixel
+        ///     The pixel format of an image.
             pixel:PNG.Format.Pixel, 
+        /// let PNG.Header.interlaced   : Swift.Bool 
+        ///     Indicates whether an image uses interlacing.
             interlaced:Bool
         
+        /// init PNG.Header.init(size:pixel:interlaced:)
+        ///     Creates an image header instance. 
+        /// - size      : (x:Swift.Int, y:Swift.Int) 
+        ///     An image size, measured in pixels.
+        /// 
+        ///     Passing a `size` with a zero or negative dimension 
+        ///     will result in a precondition failure.
+        /// - pixel     : Format.Pixel
+        ///     A pixel format.
+        /// - interlaced: Swift.Bool 
+        ///     Indicates if interlacing is enabled.
         public 
         init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
         {
@@ -1043,6 +1067,20 @@ extension PNG
 }
 extension PNG.Header 
 {
+    /// init PNG.Header.init(parsing:standard:) 
+    /// throws 
+    ///     Creates an image header by parsing the given chunk data, interpreting it 
+    ///     according to the given PNG standard.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of an [`(Chunk).IHDR`] chunk to parse. 
+    /// - standard  : Standard 
+    ///     Indicates if the header should be interpreted as a standard PNG header, 
+    ///     or an iphone-optimized PNG header. 
+    /// 
+    ///     If `standard` is [`(Standard).ios`], then the pixel format encoded 
+    ///     in the chunk data must be either [`(Format.Pixel).rgb8`] or 
+    ///     [`(Format.Pixel).rgba8`].
+    /// ## (header-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], standard:PNG.Standard) throws 
     {
@@ -1102,6 +1140,9 @@ extension PNG.Header
         }
     }
     
+    /// var PNG.Header.serialized   : [Swift.UInt8] { get }
+    ///     Encodes this image header as the contents of an [`(Chunk).IHDR`] chunk.
+    /// ## (header-parsing-and-serialization)
     public 
     var serialized:[UInt8] 
     {
@@ -1120,6 +1161,16 @@ extension PNG.Header
 
 extension PNG 
 {
+    /// struct PNG.Palette 
+    /// :   Swift.RandomAccessCollection
+    ///     An image palette.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).PLTE`] chunk. 
+    ///     This information is used to populate the non-alpha components of the 
+    ///     `palette` field in an image color [`Format`], when appropriate.
+    /// # [Parsing and serialization](palette-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct Palette 
     {
@@ -1128,6 +1179,17 @@ extension PNG
 }
 extension PNG.Palette 
 {
+    /// init PNG.Palette.init(_:pixel:)
+    ///     Creates an image palette instance.
+    /// 
+    ///     This initializer validates the palette information against the given 
+    ///     pixel format.
+    /// - entries   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+    ///     An array of palette entries. This array must be non-empty, and can 
+    ///     contain at most `256`, or `1 << pixel.`[`(Format.Pixel).depth`] elements, 
+    ///     whichever is lower.
+    /// - pixel     : Format.Pixel 
+    ///     The pixel format of the image this palette is to be used for.
     public 
     init(_ entries:[(r:UInt8, g:UInt8, b:UInt8)], pixel:PNG.Format.Pixel) 
     {
@@ -1145,7 +1207,15 @@ extension PNG.Palette
         
         self.entries = entries 
     }
-    
+    /// init PNG.Palette.init(parsing:pixel:) 
+    /// throws 
+    ///     Creates an image palette by parsing the given chunk data, interpreting 
+    ///     and validating it according to the given pixel format.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).PLTE`] chunk to parse. 
+    /// - pixel     : Format.Pixel 
+    ///     The pixel format specifying how the chunk data is to be interpreted.
+    /// ## (palette-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel) throws
     {
@@ -1175,7 +1245,9 @@ extension PNG.Palette
             (base:Int) in (r: data[base], g: data[base + 1], b: data[base + 2])
         }
     }
-    
+    /// var PNG.Palette.serialized   : [Swift.UInt8] { get }
+    ///     Encodes this image palette as the contents of a [`(Chunk).PLTE`] chunk.
+    /// ## (palette-parsing-and-serialization)
     public 
     var serialized:[UInt8] 
     {
@@ -1194,16 +1266,30 @@ extension PNG.Palette
 }
 extension PNG.Palette:RandomAccessCollection 
 {
+    /// var PNG.Palette.startIndex : Swift.Int { get }
+    /// ?:  Swift.RandomAccessCollection 
+    ///     The index of the first entry in this palette.
     public 
     var startIndex:Int 
     {
         self.entries.startIndex
     }
+    /// var PNG.Palette.endIndex : Swift.Int { get }
+    /// ?:  Swift.RandomAccessCollection 
+    ///     The index after the index of the last entry in this palette.
     public 
     var endIndex:Int 
     {
         self.entries.endIndex
     }
+    /// subscript PNG.Palette[_:] { get }
+    /// ?:  Swift.RandomAccessCollection 
+    ///     Returns the palette entry at the given index.
+    /// - index : Swift.Int 
+    ///     The index of the palette entry to retrieve. This index must be in the 
+    ///     range [`startIndex`] `..<` [`endIndex`].
+    /// - ->    : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8) 
+    ///     The palette entry stored at `index`.
     public 
     subscript(index:Int) -> (r:UInt8, g:UInt8, b:UInt8) 
     {
@@ -1213,23 +1299,88 @@ extension PNG.Palette:RandomAccessCollection
 
 extension PNG 
 {
+    /// struct PNG.Transparency 
+    ///     An image transparency descriptor.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).tRNS`] chunk.
+    ///     This information either used to populate the `key` field in 
+    ///     an image color [`Format`], or augment its `palette` field, when appropriate.
+    /// 
+    ///     The value of this descriptor is stored in the [`(PNG.Transparency).case`] 
+    ///     property, after validation.
+    /// # [Parsing and serialization](transparency-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct Transparency 
     {
+        /// enum PNG.Transparency.Case 
+        ///     An image transparency case.
         public 
         enum Case 
         {
+            /// case PNG.Transparency.Case.palette(alpha:)
+            ///     A transparency descriptor for an indexed image.
+            /// - alpha     : [Swift.UInt8]
+            ///     An array of alpha samples, where each sample augments an 
+            ///     RGB triple in an image [`Palette`]. This array can contain no 
+            ///     more elements than entries in the image palette, but it can 
+            ///     contain fewer. 
+            /// 
+            ///     It is acceptable (though pointless) for the `alpha` array to be 
+            ///     empty.
             case palette(alpha:[UInt8])
+            /// case PNG.Transparency.Case.rgb(key:)
+            ///     A transparency descriptor for an RGB or BGR image.
+            /// - key     : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)
+            ///     A chroma key used to display image transparency. Pixels 
+            ///     matching this key will be displayed as transparent, if possible.
+            /// 
+            ///     Note that the chroma key components are unscaled samples. If 
+            ///     the image color depth is less than `16`, only the least-significant 
+            ///     bits of each sample are inhabited.
             case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
+            /// case PNG.Transparency.Case.v(key:)
+            ///     A transparency descriptor for a grayscale image.
+            /// - key     : Swift.UInt16
+            ///     A chroma key used to display image transparency. Pixels 
+            ///     matching this key will be displayed as transparent, if possible.
+            /// 
+            ///     Note that the chroma key is an unscaled sample. If 
+            ///     the image color depth is less than `16`, only the least-significant 
+            ///     bits are inhabited.
             case v(key:UInt16)
         }
         
+        /// let PNG.Transparency.case : Case 
+        ///     The value of this transparency descriptor.
         public 
         let `case`:Case
     }
 }
 extension PNG.Transparency 
 {
+    /// init PNG.Transparency.init(case:pixel:palette:)
+    ///     Creates an image transparency instance.
+    /// 
+    ///     This initializer validates the transparency information against the 
+    ///     given pixel format and image palette.
+    /// - case      : Case 
+    ///     A transparency descriptor value.
+    /// - pixel     : Format.Pixel 
+    ///     The pixel format of the image this transparency descriptor is to be 
+    ///     used for. Passing a mismatched enumeration `case` will result in a 
+    ///     precondition failure.
+    /// - palette   : PNG.Palette? 
+    ///     The palette of the image this transparency descriptor is to be 
+    ///     used for. 
+    /// 
+    ///     If `case` is not a [`(Case).palette(alpha:)`] case, `palette`
+    ///     must be `nil`, and the chroma key payload samples must fall within the 
+    ///     appropriate range, as determined by the image color depth. 
+    /// 
+    ///     Otherwise, the array payload of the given `case` must have the same 
+    ///     number, or fewer, elements as entries in the given palette.
     public 
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
     {
@@ -1290,7 +1441,20 @@ extension PNG.Transparency
         
         self.case = `case`
     }
-    
+    /// init PNG.Transparency.init(parsing:pixel:palette:) 
+    /// throws 
+    ///     Creates an image transparency descriptor by parsing the given chunk data, 
+    ///     interpreting and validating it according to the given pixel format and 
+    ///     image palette.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).tRNS`] chunk to parse. 
+    /// - pixel     : Format.Pixel 
+    ///     The pixel format specifying how the chunk data is to be interpreted 
+    ///     and validated against.
+    /// - palette   : Palette?
+    ///     The image palette the chunk data is to be validated against, if 
+    ///     applicable. Otherwise, this parameter must be set to `nil`.
+    /// ## (transparency-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws 
     {
@@ -1352,7 +1516,10 @@ extension PNG.Transparency
             throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
         }
     }
-    
+    /// var PNG.Transparency.serialized : [Swift.UInt8] { get }
+    ///     Encodes this transparency descriptor as the contents of a 
+    ///     [`(Chunk).tRNS`] chunk.
+    /// ## (transparency-parsing-and-serialization)
     public 
     var serialized:[UInt8] 
     {
@@ -1384,23 +1551,81 @@ extension PNG.Transparency
 
 extension PNG 
 {
+    /// struct PNG.Background 
+    ///     An image background descriptor.
+    /// 
+    ///     This type models the information stored in a [`(Chunk).bKGD`] chunk.
+    ///     This information is used to populate the `fill` field in 
+    ///     an image color [`Format`].
+    /// 
+    ///     The value of this descriptor is stored in the [`(PNG.Background).case`] 
+    ///     property, after validation.
+    /// # [Parsing and serialization](background-parsing-and-serialization)
+    /// # [See also](parsed-chunk-types)
+    /// ## (parsed-chunk-types)
     public 
     struct Background 
     {
+        /// enum PNG.Background.Case 
+        ///     An image background case.
         public 
         enum Case 
         {
+            /// case PNG.Background.Case.palette(index:)
+            ///     A background descriptor for an indexed image.
+            /// - index    : Swift.Int
+            ///     The index of the palette entry to be used as a background color.
+            /// 
+            ///     This index must be within the index range of the image palette.
             case palette(index:Int)
+            /// case PNG.Background.Case.rgb(_:)
+            ///     A background descriptor for an RGB, BGR, RGBA, or BGRA image.
+            /// - _     : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)
+            ///     A background color.
+            /// 
+            ///     Note that the background components are unscaled samples. If 
+            ///     the image color depth is less than `16`, only the least-significant 
+            ///     bits of each sample are inhabited.
             case rgb((r:UInt16, g:UInt16, b:UInt16))
+            /// case PNG.Background.Case.v(_:)
+            ///     A background descriptor for a grayscale or grayscale-alpha image.
+            /// - _       : Swift.UInt16
+            ///     A background color.
+            /// 
+            ///     Note that the background value is an unscaled sample. If 
+            ///     the image color depth is less than `16`, only the least-significant 
+            ///     bits are inhabited.
             case v(UInt16)
         }
-        
+        /// let PNG.Background.case : Case 
+        ///     The value of this background descriptor.
         public 
         let `case`:Case
     }
 }
 extension PNG.Background 
 {
+    /// init PNG.Background.init(case:pixel:palette:)
+    ///     Creates an image background instance.
+    /// 
+    ///     This initializer validates the background information against the 
+    ///     given pixel format and image palette.
+    /// - case      : Case 
+    ///     A background descriptor value.
+    /// - pixel     : Format.Pixel 
+    ///     The pixel format of the image this background descriptor is to be 
+    ///     used for. Passing a mismatched enumeration `case` will result in a 
+    ///     precondition failure.
+    /// - palette   : PNG.Palette? 
+    ///     The palette of the image this background descriptor is to be 
+    ///     used for. 
+    /// 
+    ///     If `case` is not a [`(Case).palette(index:)`] case, `palette`
+    ///     must be `nil`, and the background samples must fall within the 
+    ///     appropriate range, as determined by the image color depth. 
+    /// 
+    ///     Otherwise, the index payload of the given `case` must be within the 
+    ///     index range of the given palette.
     public 
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
     {
@@ -1457,6 +1682,20 @@ extension PNG.Background
         
         self.case = `case`
     }
+    /// init PNG.Background.init(parsing:pixel:palette:) 
+    /// throws 
+    ///     Creates an image background descriptor by parsing the given chunk data, 
+    ///     interpreting and validating it according to the given pixel format and 
+    ///     image palette.
+    /// - data      : [Swift.UInt8]
+    ///     The contents of a [`(Chunk).bKGD`] chunk to parse. 
+    /// - pixel     : Format.Pixel 
+    ///     The pixel format specifying how the chunk data is to be interpreted 
+    ///     and validated against.
+    /// - palette   : Palette?
+    ///     The image palette the chunk data is to be validated against, if 
+    ///     applicable. Otherwise, this parameter must be set to `nil`.
+    /// ## (background-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
     {
@@ -1521,7 +1760,10 @@ extension PNG.Background
             self.case = .palette(index: index)
         }
     }
-    
+    /// var PNG.Background.serialized : [Swift.UInt8] { get }
+    ///     Encodes this background descriptor as the contents of a 
+    ///     [`(Chunk).bKGD`] chunk.
+    /// ## (background-parsing-and-serialization)
     public 
     var serialized:[UInt8] 
     {
