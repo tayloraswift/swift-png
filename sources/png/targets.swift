@@ -828,7 +828,6 @@ extension PNG
     ///     An RGBA color. 
     /// 
     ///     This type is a built-in color target.
-    /// # [Color channels](PNG-RGBA-color-channels)
     /// # [See also](builtin-color-targets)
     /// ## (builtin-color-targets)
     /// ## (2:color-spaces)
@@ -838,22 +837,22 @@ extension PNG
     {
         /// var PNG.RGBA.r  : T
         ///     The red component of this color.
-        /// ## (0:PNG-RGBA-color-channels)
+        /// ## ()
         public
         var r:T
         /// var PNG.RGBA.g  : T
         ///     The green component of this color.
-        /// ## (1:PNG-RGBA-color-channels)
+        /// ## ()
         public
         var g:T
         /// var PNG.RGBA.b  : T
         ///     The blue component of this color.
-        /// ## (2:PNG-RGBA-color-channels)
+        /// ## ()
         public
         var b:T
         /// var PNG.RGBA.a  : T
         ///     The alpha component of this color.
-        /// ## (3:PNG-RGBA-color-channels)
+        /// ## ()
         public
         var a:T
     }
