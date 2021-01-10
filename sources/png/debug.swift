@@ -108,7 +108,7 @@ extension PNG.Gamma:CustomStringConvertible
         """
         PNG.\(Self.self) (\(PNG.Chunk.gAMA)) 
         {
-            pcm         : \(self.pcm) 
+            value       : \(self.value) 
         }
         """
     }
