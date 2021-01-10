@@ -429,7 +429,7 @@ extension PNG.Metadata
             }
             try Self.unique(assign: chunk.type, to: &self.histogram) 
             {
-                try .init(parsing: chunk.data, pixel: pixel, palette: palette)
+                try .init(parsing: chunk.data, palette: palette)
             }
         
         case .cHRM:
