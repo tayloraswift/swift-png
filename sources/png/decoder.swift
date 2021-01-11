@@ -1,23 +1,76 @@
 extension PNG 
 {
+    /// struct PNG.Metadata 
+    ///     The metadata in an image.
+    /// ## (2:images)
     public 
     struct Metadata 
     {
+        /// var PNG.Metadata.time : TimeModified?
+        ///     The image modification time. 
         public 
         var time:PNG.TimeModified?, 
+        /// var PNG.Metadata.chromaticity : Chromaticity? 
+        ///     The image chromaticity.
             chromaticity:PNG.Chromaticity?,
+        /// var PNG.Metadata.colorProfile : ColorProfile? 
+        ///     The image color profile.
             colorProfile:PNG.ColorProfile?,
+        /// var PNG.Metadata.colorRendering : ColorRendering? 
+        ///     The image color rendering mode. 
             colorRendering:PNG.ColorRendering?,
+        /// var PNG.Metadata.gamma : Gamma? 
+        ///     The image gamma. 
             gamma:PNG.Gamma?,
+        /// var PNG.Metadata.histogram : Histogram? 
+        ///     The frequency histogram of the image palette.
             histogram:PNG.Histogram?,
+        /// var PNG.Metadata.physicalDimensions : PhysicalDimensions? 
+        ///     The physical dimensions of the image.
             physicalDimensions:PNG.PhysicalDimensions?,
+        /// var PNG.Metadata.significantBits : SignificantBits? 
+        ///     The image color precision.
             significantBits:PNG.SignificantBits?
-        
+        /// var PNG.Metadata.suggestedPalettes : [SuggestedPalette]
+        ///     The suggested palettes of the image.
         public 
         var suggestedPalettes:[PNG.SuggestedPalette]        = [],
+        /// var PNG.Metadata.text : [Text]
+        ///     The text comments in the image.
             text:[PNG.Text]                                 = [],
+        /// var PNG.Metadata.application : [(type:Chunk, data:[Swift.UInt8])] 
+        ///     An array containing any unparsed application-specific chunks 
+        ///     in the image.
             application:[(type:PNG.Chunk, data:[UInt8])]    = []
         
+        /// init PNG.Metadata.init(time:chromaticity:colorProfile:colorRendering:gamma:histogram:physicalDimensions:significantBits:suggestedPalettes:text:application:)
+        ///     Creates a metadata structure. 
+        /// - time : TimeModified?
+        ///     An optional modification time. 
+        /// - chromaticity : Chromaticity? 
+        ///     An optional chromaticity descriptor.
+        /// - colorProfile : ColorProfile? 
+        ///     An optional color profile.
+        /// - colorRendering : ColorRendering? 
+        ///     An optional color rendering mode. 
+        /// - gamma : Gamma? 
+        ///     An optional gamma descriptor. 
+        /// - histogram : Histogram? 
+        ///     An optional palette frequency histogram.
+        /// - physicalDimensions : PhysicalDimensions? 
+        ///     An optional physical dimensions descriptor.
+        /// - significantBits : SignificantBits? 
+        ///     An optional color precision descriptor.
+        /// - suggestedPalettes : [SuggestedPalette]
+        ///     An array of suggested palettes.
+        /// - text : [Text]
+        ///     An array of text comments.
+        /// - application : [(type:Chunk, data:[Swift.UInt8])] 
+        ///     An array of unparsed application-specific chunks.
+        /// 
+        ///     This array is allowed to contain public PNG chunks, though it 
+        ///     is recommended to use the library’s strongly-typed interfaces 
+        ///     instead for such chunks.
         public 
         init(time:PNG.TimeModified?                     = nil,
             chromaticity:PNG.Chromaticity?              = nil,
@@ -47,21 +100,49 @@ extension PNG
         }
     }
     
+    /// enum PNG.Standard 
+    ///     A PNG standard.
+    /// ## (contextual-decoding)
     public 
     enum Standard 
     {
+        /// case PNG.Standard.common 
+        ///     The core PNG color formats.
         case common
+        /// case PNG.Standard.ios 
+        ///     The iphone-optimized PNG color formats.
         case ios
     }
     
+    /// struct PNG.Layout 
+    ///     An image layout. 
+    /// 
+    ///     This type stores all the information in an image that is not strictly 
+    ///     metadata, or image content.
+    /// ## (1:images)
     public 
     struct Layout 
     {
+        /// let PNG.Layout.format : Format 
+        ///     The image color format.
         public 
         let format:PNG.Format 
+        /// let PNG.Layout.interlaced : Swift.Bool 
+        ///     Indicates if the image uses interlacing or not.
         public 
         let interlaced:Bool
         
+        /// init PNG.Layout.init(format:interlaced:)
+        ///     Creates an image layout. 
+        /// 
+        ///     This initializer will validate the fields of the given color 
+        ///     `format`. Passing an invalid `format` will result in a 
+        ///     precondition failure.
+        /// - format : Format 
+        ///     A color format. 
+        /// - interlaced : Swift.Bool 
+        ///     Specifies if the image uses interlacing. The default value is 
+        ///     `false`.
         public 
         init(format:PNG.Format, interlaced:Bool = false) 
         {
@@ -94,6 +175,9 @@ extension PNG.Layout
 
 extension PNG 
 {
+    /// enum PNG.Data 
+    ///     A namespace containing the [`Data.Rectangular`] type.
+    /// ## (0:images)
     public 
     enum Data 
     {
@@ -128,16 +212,33 @@ extension PNG
 }
 extension PNG.Data 
 {
+    /// struct PNG.Data.Rectangular 
+    ///     A rectangular image.
+    /// ## (0:images)
     public 
     struct Rectangular 
     {
+        /// let PNG.Data.Rectangular.size : (x:Swift.Int, y:Swift.Int)
+        ///     The size of this image, measured in pixels.
         public 
         let size:(x:Int, y:Int)
+        /// let PNG.Data.Rectangular.layout : Layout 
+        ///     The layout of this image.
         public 
         let layout:PNG.Layout 
+        /// var PNG.Data.Rectangular.metadata : Metadata 
+        ///     The metadata in this image.
         public 
         var metadata:PNG.Metadata
-        
+        /// var PNG.Data.Rectangular.storage : [Swift.UInt8] { get }
+        ///     The raw backing storage of the image content. 
+        ///
+        ///     Depending on the bit depth of the image, it either stores a matrix 
+        ///     of [`Swift.UInt8`] samples, or a matrix of big-endian [`Swift.UInt16`]
+        ///     samples. The pixels are arranged in row-major order, where the 
+        ///     beginning of the storage array corresponds to the visual top-left 
+        ///     corner of the image, regardless of whether the [`layout`] is 
+        ///     [`(Layout).interlaced`] or not.
         public private(set)
         var storage:[UInt8]
         
@@ -190,6 +291,22 @@ extension PNG.Data.Rectangular
         }
     } 
     
+    /// func PNG.Data.Rectangular.bindStorage(to:)
+    ///     Rebinds this image to a compatible layout.
+    /// 
+    ///     This interface can be used to switch image layouts without unpacking 
+    ///     to and repacking from a color target array. Rebinding to an 
+    ///     incompatible layout will result in a precondition failure. 
+    /// - layout : Layout 
+    ///     The new image layout. 
+    /// 
+    ///     Both the original color [`(Layout).format`] and the new 
+    ///     color [`(Layout).format`] must be of the same enumeration case, though the fields 
+    ///     may differ. The exceptions are the indexed color formats, which require 
+    ///     the lengths of their `palette` payloads to match exactly.  
+    /// - -> : Self 
+    ///     An image with the given layout. This image will share backing [`storage`] 
+    ///     with the original image until it is copied-on-write.
     public 
     func bindStorage(to layout:PNG.Layout) -> Self 
     {
@@ -388,22 +505,62 @@ extension PNG.Metadata
         }
         destination = try parser()
     }
-    
+    /// mutating func PNG.Metadata.push(ancillary:pixel:palette:background:transparency:)
+    /// throws 
+    ///     Parses an ancillary chunk, and either adds it to this metadata instance, 
+    ///     or stores it in one of the two `inout` parameters. 
+    /// 
+    ///     If the given `chunk` is a [`(Chunk).bKGD`] or [`(Chunk).tRNS`] chunk, 
+    ///     it will be stored in its respective `inout` variable. Otherwise it 
+    ///     will be stored within this metadata instance.
+    /// 
+    ///     This function parses and validates the given `chunk` according to the 
+    ///     image `pixel` format and `palette`. It also validates its multiplicity, and 
+    ///     its chunk ordering with respect to the [`(Chunk).PLTE`] chunk. 
+    /// - chunk : (type:Chunk, data:[Swift.UInt8])
+    ///     The chunk to process. 
+    /// 
+    ///     The `type` identifier of this chunk must not be a critical chunk type. 
+    ///     (Critical chunk types are [`(Chunk).CgBI`], [`(Chunk).IHDR`], 
+    ///     [`(Chunk).PLTE`], [`(Chunk).IDAT`], and [`(Chunk).IEND`].) Passing 
+    ///     a critical chunk to this function will result in a precondition 
+    ///     failure. 
+    /// - pixel : Format.Pixel 
+    ///     The image pixel format.
+    /// - palette : Palette? 
+    ///     The image palette, if available. Client applications are expected to 
+    ///     set this parameter to `nil` if the [`(Chunk).PLTE`] chunk has not 
+    ///     yet been encountered.
+    /// - background : inout Background? 
+    ///     The background descriptor, if available. If this function receives 
+    ///     a [`(Chunk).bKGD`] chunk, it will be parsed and stored in this 
+    ///     variable. Client applications are expected to initialize it to `nil`, 
+    ///     and should not overwrite it between subsequent calls while processing 
+    ///     the same image.
+    /// - transparency : inout Transparency? 
+    ///     The transparency descriptor, if available. If this function receives 
+    ///     a [`(Chunk).tRNS`] chunk, it will be parsed and stored in this 
+    ///     variable. Client applications are expected to initialize it to `nil`, 
+    ///     and should not overwrite it between subsequent calls while processing 
+    ///     the same image.
     public mutating 
     func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8]), 
         pixel:PNG.Format.Pixel, palette:PNG.Palette?, 
         background:inout PNG.Background?, 
         transparency:inout PNG.Transparency?) throws 
     {
-        // check before-palette chunk ordering 
         switch chunk.type 
         {
+        // check before-palette chunk ordering 
         case .cHRM, .gAMA, .sRGB, .iCCP, .sBIT:
             guard palette == nil 
             else 
             {
                 throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .PLTE)
-            }
+            } 
+        // check that chunk is not a critical chunk 
+        case .CgBI, .IHDR, .PLTE, .IDAT, .IEND: 
+            fatalError("Metadata.push(ancillary:pixel:palette:background:transparency:) cannot be used with critical chunk type '\(chunk.type)'")
         default:
             break 
         }
@@ -680,9 +837,18 @@ extension PNG.Decoder
 
 extension PNG 
 {
+    /// struct PNG.Context 
+    ///     A decoding context. 
+    /// 
+    ///     This type provides support for custom decoding schemes. You can 
+    ///     work through an example of its usage in the 
+    ///     [online decoding tutorial](https://github.com/kelvin13/png/tree/master/examples#online-decoding).
+    /// ## (contextual-decoding)
     public 
     struct Context 
     {
+        /// var PNG.Context.image : Data.Rectangular { get } 
+        ///     The current image state.
         public private(set)
         var image:PNG.Data.Rectangular 
         
@@ -692,6 +858,41 @@ extension PNG
 }
 extension PNG.Context 
 {
+    /// init PNG.Context.init?(standard:header:palette:background:transparency:metadata:uninitialized:)
+    ///     Creates a fresh decoding context. 
+    /// 
+    ///     It is expected that client applications will initialize a decoding 
+    ///     context upon encountering the first [`(Chunk).IDAT`] chunk in the image.
+    /// - standard : Standard 
+    ///     The PNG standard of the image being decoded. This should be [`(Standard).ios`]
+    ///     if the image began with a [`(Chunk).CgBI`] chunk, and [`(Standard).common`]
+    ///     otherwise.
+    /// - header : Header 
+    ///     The header of the image being decoded. This is expected to have been 
+    ///     parsed from a previously-encountered [`(Chunk).IHDR`] chunk.
+    /// - palette : Palette? 
+    ///     The palette of the image being decoded, if present. If not `nil`, 
+    ///     this is expected to have been parsed from a previously-encountered 
+    ///     [`(Chunk).PLTE`] chunk.
+    /// - background : Background? 
+    ///     The background descriptor of the image being decoded, if present. 
+    ///     If not `nil`, this is expected to have been parsed from a 
+    ///     previously-encountered [`(Chunk).bKGD`] chunk.
+    /// - transparency : Transparency? 
+    ///     The transparency descriptor of the image being decoded, if present. 
+    ///     If not `nil`, this is expected to have been parsed from a 
+    ///     previously-encountered [`(Chunk).tRNS`] chunk.
+    /// - metadata : Metadata 
+    ///     A metadata instance. It is expected to contain metadata from all 
+    ///     previously-encountered ancillary chunks, with the exception of 
+    ///     [`(Chunk).bKGD`] and [`(Chunk).tRNS`].
+    /// - uninitialized : Swift.Bool 
+    ///     Specifies if the [`image`] [`(Data.Rectangular).storage`] should 
+    ///     be initialized. If `false`, the storage buffer will be initialized 
+    ///     to all zeros. This can be safely set to `true` if there is no need 
+    ///     to access the image while it is in a partially-decoded state.
+    /// 
+    ///     The default value is `true`.
     public 
     init?(standard:PNG.Standard, header:PNG.Header, 
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?, 
@@ -714,7 +915,19 @@ extension PNG.Context
         self.image      = image 
         self.decoder    = .init(standard: standard, interlaced: image.layout.interlaced)
     }
-    
+    /// mutating func PNG.Context.push(data:overdraw:)
+    /// throws 
+    ///     Decompresses the contents of an [`(Chunk).IDAT`] chunk, and updates 
+    ///     the image state with the newly-decompressed image data. 
+    /// - data : [Swift.UInt8]
+    ///     The contents of the [`(Chunk).IDAT`] chunk to process.
+    /// - overdraw : Swift.Bool 
+    ///     If `true`, pixels that are not yet available will be filled-in 
+    ///     with values from nearby available pixels. This option only has an 
+    ///     effect for [`(Layout).interlaced`] images. 
+    /// 
+    ///     The default value is `false`.
+    /// ## ()
     public mutating 
     func push(data:[UInt8], overdraw:Bool = false) throws 
     {
@@ -731,7 +944,26 @@ extension PNG.Context
             self.image.assign(scanline: $0, at: $1, stride: $2.x)
         }) 
     }
-    
+    /// mutating func PNG.Context.push(ancillary:)
+    /// throws 
+    ///     Parses an ancillary chunk appearing after the last [`(Chunk).IDAT`] 
+    ///     chunk, and adds it to the [`image`] [`(Data.Rectangular).metadata`]. 
+    /// 
+    ///     This function validates the multiplicity of the given `chunk`, and 
+    ///     its chunk ordering with respect to the [`(Chunk).IDAT`] chunks. The 
+    ///     caller is expected to have consumed all preceeding [`(Chunk).IDAT`] 
+    ///     chunks in the image being decoded.
+    /// 
+    ///     Despite its name, this function can also accept an [`(Chunk).IEND`] 
+    ///     critical chunk, in which case this function will verify that the 
+    ///     compressed image data stream has been properly-terminated.
+    /// - chunk : (type:Chunk, data:[Swift.UInt8])
+    ///     The chunk to process. Its `type` must be one of [`(Chunk).tIME`], 
+    ///     [`(Chunk).iTXt`], [`(Chunk).tEXt`], [`(Chunk).zTXt`], or [`(Chunk).IEND`], 
+    ///     or a private application data chunk type. 
+    /// 
+    ///     All other chunk types will `throw` appropriate errors.
+    /// ## ()
     public mutating 
     func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8])) throws 
     {
@@ -746,9 +978,9 @@ extension PNG.Context
             self.image.metadata.text.append(try .init(parsing: chunk.data))
         case .tEXt, .zTXt:
             self.image.metadata.text.append(try .init(parsing: chunk.data, unicode: false))
-        case .IHDR, .PLTE, .bKGD, .tRNS, .hIST, 
-            .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT:
-            throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT)
+        case .CgBI, .IHDR, .PLTE, .bKGD, .tRNS, .hIST, 
+            .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT, .IDAT:
+            throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT) 
         case .IEND: 
             guard self.decoder.continue == nil 
             else 
@@ -763,7 +995,18 @@ extension PNG.Context
 
 
 extension PNG.Data.Rectangular 
-{    
+{
+    /// static func PNG.Data.Rectangular.decompress<Source>(stream:)
+    /// throws 
+    /// where Source:Bytestream.Source 
+    ///     Decompresses and decodes a PNG file from the given bytestream. 
+    /// 
+    ///     On appropriate platforms, the [`decompress(path:)`] function provides 
+    ///     a file system-aware interface to this function.
+    /// - stream : inout Source 
+    ///     A bytestream providing the contents of a PNG file.
+    /// - -> : Self 
+    ///     The decoded image.
     public static 
     func decompress<Source>(stream:inout Source) throws -> Self 
         where Source:PNG.Bytestream.Source

@@ -76,8 +76,10 @@ protocol _PNGBytestreamDestination
 /// enum PNG 
 ///     A namespace for PNG-related functionality. 
 /// #  [Color spaces](color-spaces)
+/// #  [Image data](images)
 /// #  [Data IO and file structure](lexing-and-formatting)
 /// #  [Parsed chunks](parsed-chunk-types)
+/// #  [Contextual decoding](contextual-decoding)
 /// #  [Currency types](currency-types)
 /// #  [See also](top-level-namespaces)
 /// ## (0:top-level-namespaces)

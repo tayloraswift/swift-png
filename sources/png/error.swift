@@ -561,6 +561,8 @@ extension PNG.DecodingError:PNG.Error
             return nil
         case .duplicateChunk(let chunk):
             return "chunk of type '\(chunk)' can only appear once"
+        case .invalidChunkOrder(.IDAT, after: .IDAT):
+            return "chunks of type 'IDAT' must be contiguous"
         case .invalidChunkOrder(let chunk, after: let previous):
             return "chunk of type '\(chunk)' cannot appear after chunk of type '\(previous)'"
         }
