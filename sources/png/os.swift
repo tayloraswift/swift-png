@@ -15,7 +15,7 @@
 /// enum System 
 ///     A namespace for platform-dependent functionality.
 /// 
-///     These APIs are only available on MacOS and Linux. However, the rest of the 
+///     These APIs are only available on MacOS and Linux. The rest of the 
 ///     framework is pure Swift and supports all Swift platforms.
 /// #  [File IO](system-file-io)
 /// #  [See also](top-level-namespaces)
@@ -243,6 +243,21 @@ extension System.File.Destination:PNG.Bytestream.Destination
 
 extension PNG.Data.Rectangular 
 {
+    /// static func PNG.Data.Rectangular.decompress(path:)
+    /// throws 
+    ///     Decompresses and decodes a PNG file at the given file path. 
+    /// 
+    ///     This interface is only available on MacOS and Linux. The 
+    ///     [`decompress(stream:)`] function provides a platform-independent 
+    ///     decoding interface.
+    /// - path : Swift.String  
+    ///     A path to a PNG file.
+    /// - -> : Self? 
+    ///     The decoded image, or `nil` if the file at the given `path` could 
+    ///     not be opened.
+    /// # [See also](encoding-and-decoding)
+    /// ## (1:encoding-and-decoding)
+    /// ## (1:decoding)
     public static 
     func decompress(path:String) throws -> Self?
     {

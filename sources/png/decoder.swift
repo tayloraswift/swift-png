@@ -214,6 +214,7 @@ extension PNG.Data
 {
     /// struct PNG.Data.Rectangular 
     ///     A rectangular image.
+    /// # [Decoding an image](decoding)
     /// ## (0:images)
     public 
     struct Rectangular 
@@ -1007,6 +1008,9 @@ extension PNG.Data.Rectangular
     ///     A bytestream providing the contents of a PNG file.
     /// - -> : Self 
     ///     The decoded image.
+    /// # [See also](encoding-and-decoding)
+    /// ## (0:encoding-and-decoding)
+    /// ## (0:decoding)
     public static 
     func decompress<Source>(stream:inout Source) throws -> Self 
         where Source:PNG.Bytestream.Source
