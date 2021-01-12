@@ -1033,7 +1033,7 @@ extension PNG
         ///     The size of an image, measured in pixels.
         public
         let size:(x:Int, y:Int), 
-        /// let PNG.Header.size         : Format.Pixel
+        /// let PNG.Header.pixel        : Format.Pixel
         ///     The pixel format of an image.
             pixel:PNG.Format.Pixel, 
         /// let PNG.Header.interlaced   : Swift.Bool 
@@ -2305,7 +2305,7 @@ extension PNG.SignificantBits
             throw PNG.ParsingError.invalidSignificantBitsPrecision(v, max: max)
         }
     }
-    /// var PNG.ColorRendering.serialized : [Swift.UInt8] { get }
+    /// var PNG.SignificantBits.serialized : [Swift.UInt8] { get }
     ///     Encodes this color precision descriptor as the contents of an 
     ///     [`(Chunk).sBIT`] chunk.
     /// ## (significantbits-parsing-and-serialization)
