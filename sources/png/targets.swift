@@ -1,22 +1,161 @@
 /// protocol PNG.Color 
 ///     A color target.
+/// # [Unpacking functions](unpacking-functions)
+/// # [Packing functions](packing-functions)
 /// ## (1:color-spaces)
 public 
 protocol _PNGColor 
 {
+    /// associatedtype PNG.Color.Aggregate 
+    /// required 
+    ///     A palette aggregate type. 
+    /// 
+    ///     This type is the return type of a dereferencing function produced by a 
+    ///     deindexer, and the parameter type of a referencing function produced 
+    ///     by an indexer. 
     associatedtype Aggregate 
     
+    /// static func PNG.Color.unpack(_:of:deindexer:) 
+    /// required
+    ///     Unpacks an image data storage buffer to an array of this color target. 
+    /// - interleaved : [Swift.UInt8] 
+    ///     An image data buffer. It is expected to be obtained from the 
+    ///     [`(Data.Rectangular).storage`] property of a [`(Data).Rectangular`]
+    ///     image.
+    /// - format : Format 
+    ///     The color format associated with the given data buffer.
+    ///     It is expected to be obtained from the the [`(Layout).format`] property 
+    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     [`(Data).Rectangular`] image.
+    /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate 
+    ///     A function which uses the palette entries in the color `format` to 
+    ///     generate a dereferencing function. This function should only be invoked 
+    ///     if the color `format` is an indexed format.
+    /// 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of this function.
+    /// - -> : [Self]
+    ///     A pixel array containing instances of this color target. The pixels 
+    ///     should appear in the same order as they do in the image data buffer.
+    /// # [See also](unpacking-functions)
+    /// ## (unpacking-functions)
     static 
     func unpack(_ interleaved:[UInt8], of format:PNG.Format, 
         deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) 
         -> [Self]
+    /// static func PNG.Color.pack(_:as:indexer:)
+    /// required 
+    ///     Packs an array of this color target to an image data storage buffer.
+    /// - pixels : [Self] 
+    ///     A pixel array containing instances of this color target.
+    /// - format : Format 
+    ///     The color format to pack the given pixels as in the returned data buffer. 
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this color format will be stored in 
+    ///     the [`(Layout).format`] property of its 
+    ///     [`(Data.Rectangular).layout`].
+    /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int 
+    ///     A function which uses the palette entries in the color `format` to 
+    ///     generate a referencing function. This function should only be invoked 
+    ///     if the color `format` is an indexed format.
+    /// 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of this function.
+    /// - -> : [Swift.UInt8]
+    ///     An image data buffer. The packed samples in this buffer should appear 
+    ///     in the same order as the pixels in the `pixels` array. (But not 
+    ///     necessarily in the same order within each individual pixel.)
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this data buffer will be stored in 
+    ///     its [`(Data.Rectangular).storage`] property.
+    /// # [See also](packing-functions)
+    /// ## (packing-functions)
     static 
     func pack(_ pixels:[Self], as format:PNG.Format, 
         indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) 
         -> [UInt8] 
-        
+    
+    /// static func PNG.Color.unpack(_:of:) 
+    /// defaulted where Aggregate == (Swift.UInt8, Swift.UInt8)
+    /// defaulted where Aggregate == (Swift.UInt8, Swift.UInt8, Swift.UInt8, Swift.UInt8)
+    ///     Unpacks an image data storage buffer to an array of this color target. 
+    /// 
+    ///     If [`Aggregate`] is 
+    ///     [[`(Swift.UInt8, Swift.UInt8)`]], the default implementation of this 
+    ///     function will use the red and alpha components of the *i*th palette 
+    ///     entry, in that order, as the palette aggregate, given an index *i*, 
+    ///     when unpacking from an indexed color format.
+    /// 
+    ///     If [`Aggregate`] is 
+    ///     [[`(Swift.UInt8, Swift.UInt8, Swift.UInt8, Swift.UInt8)`]], 
+    ///     the default implementation of this function will use the red, green, 
+    ///     blue, and alpha components of the *i*th palette entry, in that order, 
+    ///      as the palette aggregate, given an index *i*.
+    ///  
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of the default implementations.
+    /// - interleaved : [Swift.UInt8] 
+    ///     An image data buffer. It is expected to be obtained from the 
+    ///     [`(Data.Rectangular).storage`] property of a [`(Data).Rectangular`]
+    ///     image.
+    /// - format : Format 
+    ///     The color format associated with the given data buffer.
+    ///     It is expected to be obtained from the the [`(Layout).format`] property 
+    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     [`(Data).Rectangular`] image.
+    /// - -> : [Self]
+    ///     A pixel array containing instances of this color target. The pixels 
+    ///     should appear in the same order as they do in the image data buffer.
+    /// # [See also](unpacking-functions)
+    /// ## (unpacking-functions)
     static 
     func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+    /// static func PNG.Color.pack(_:as:)
+    /// defaulted where Aggregate == (Swift.UInt8, Swift.UInt8)
+    /// defaulted where Aggregate == (Swift.UInt8, Swift.UInt8, Swift.UInt8, Swift.UInt8)
+    ///     Packs an array of this color target to an image data storage buffer.
+    /// 
+    ///     If [`Aggregate`] is 
+    ///     [[`(Swift.UInt8, Swift.UInt8)`]], the default implementation of this 
+    ///     function will search for a matching palette entry by treating the 
+    ///     first member of the palette aggregate as the red, green, and blue 
+    ///     components, and the second member as the alpha component, 
+    ///     when packing to an indexed color format. If there is no matching 
+    ///     palette entry, it chooses the first palette entry.
+    /// 
+    ///     If [`Aggregate`] is 
+    ///     [[`(Swift.UInt8, Swift.UInt8, Swift.UInt8, Swift.UInt8)`]], 
+    ///     the default implementation of this function will search for a 
+    ///     matching palette entry by treating the 
+    ///     first member of the palette aggregate as the red component, the 
+    ///     second member as the green component, the third member as the blue 
+    ///     component, and the fourth member as the alpha component, 
+    ///     when packing to an indexed color format. If there is no matching 
+    ///     palette entry, it chooses the first palette entry.
+    ///  
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of the default implementations.
+    /// - pixels : [Self] 
+    ///     A pixel array containing instances of this color target.
+    /// - format : Format 
+    ///     The color format to pack the given pixels as in the returned data buffer. 
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this color format will be stored in 
+    ///     the [`(Layout).format`] property of its 
+    ///     [`(Data.Rectangular).layout`].
+    /// - -> : [Swift.UInt8]
+    ///     An image data buffer. The packed samples in this buffer should appear 
+    ///     in the same order as the pixels in the `pixels` array. (But not 
+    ///     necessarily in the same order within each individual pixel.)
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this data buffer will be stored in 
+    ///     its [`(Data.Rectangular).storage`] property.
+    /// # [See also](packing-functions)
+    /// ## (packing-functions)
     static 
     func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8] 
 }

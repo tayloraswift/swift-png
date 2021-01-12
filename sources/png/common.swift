@@ -4,7 +4,6 @@
 
 /// enum General 
 ///     A namespace for general functionality.
-/// #  [Range types](general-range-types)
 /// #  [Integer storage](general-storage-types)
 /// #  [See also](top-level-namespaces)
 /// ## (1:top-level-namespaces)

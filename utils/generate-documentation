@@ -19,7 +19,6 @@ check()
     echo $@
     "$@" || error "$message"
 }
-
 local=
 while [ "$1" != "" ] ; do
     case $1 in 
@@ -49,7 +48,8 @@ fi
 
 cd entrapta/ 
 
-swift build -c release
+check   "failed to build entrapta" \
+        swift build -c release
 
 if [ -z $local ]; then 
     .build/release/entrapta ../../sources/png/*.swift --directory ../../documentation/ --url-prefix https://kelvin13.github.io/png --github https://github.com/kelvin13/png --project Swift\ PNG\ Documentation --theme eternia
