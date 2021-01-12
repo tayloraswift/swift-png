@@ -215,6 +215,8 @@ extension PNG.Data
     /// struct PNG.Data.Rectangular 
     ///     A rectangular image.
     /// # [Decoding an image](decoding)
+    /// # [Unpacking pixels](unpacking-pixels)
+    /// # [Packing pixels](packing-pixels)
     /// ## (0:images)
     public 
     struct Rectangular 
