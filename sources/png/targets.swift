@@ -2,6 +2,7 @@
 ///     A color target.
 /// # [Unpacking functions](unpacking-functions)
 /// # [Packing functions](packing-functions)
+/// # [Conforming types](builtin-color-targets)
 /// ## (1:color-spaces)
 public 
 protocol _PNGColor 
@@ -165,767 +166,41 @@ extension PNG
     typealias Color = _PNGColor
 }
 
-extension PNG
-{
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
-        _ kernel:(T, A) -> C, _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        samples.map
-        {
-            let v:A = .init(bigEndian: $0)
-            return kernel(transform(v), v)
-        }
-    }
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
-        _ kernel:((T, T)) -> C, _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        stride(from: samples.startIndex, to: samples.endIndex, by: 2).map
-        {
-            let v:A = .init(bigEndian: samples[$0     ])
-            let a:A = .init(bigEndian: samples[$0 &+ 1])
-            return kernel((transform(v), transform(a)))
-        }
-    }
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
-        _ kernel:((T, T, T), (A, A, A)) -> C, _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        stride(from: samples.startIndex, to: samples.endIndex, by: 3).map
-        {
-            let r:A = .init(bigEndian: samples[$0     ])
-            let g:A = .init(bigEndian: samples[$0 &+ 1])
-            let b:A = .init(bigEndian: samples[$0 &+ 2])
-            return kernel((transform(r), transform(g), transform(b)), (r, g, b))
-        }
-    }
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<A>, 
-        _ kernel:((T, T, T, T)) -> C, _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        stride(from: samples.startIndex, to: samples.endIndex, by: 4).map
-        {
-            let r:A = .init(bigEndian: samples[$0     ])
-            let g:A = .init(bigEndian: samples[$0 &+ 1])
-            let b:A = .init(bigEndian: samples[$0 &+ 2])
-            let a:A = .init(bigEndian: samples[$0 &+ 3])
-            return kernel((transform(r), transform(g), transform(b), transform(a)))
-        }
-    }
-    
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
-        _ kernel:(T) -> C, _ dereference:(Int) -> A, _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        samples.map
-        {
-            return kernel(transform(dereference(.init($0))))
-        }
-    }
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
-        _ kernel:((T, T)) -> C, _ dereference:(Int) -> (A, A), _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        samples.map
-        {
-            let (v, a):(A, A) = dereference(.init($0))
-            return kernel((transform(v), transform(a)))
-        }
-    }
-    // not used by any of the built-in targets, but here for completeness
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
-        _ kernel:((T, T, T)) -> C, _ dereference:(Int) -> (A, A, A), _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        samples.map
-        {
-            let (r, g, b):(A, A, A) = dereference(.init($0))
-            return kernel((transform(r), transform(g), transform(b)))
-        }
-    }
-    private static 
-    func convolve<A, T, C>(_ samples:UnsafeBufferPointer<UInt8>, 
-        _ kernel:((T, T, T, T)) -> C, _ dereference:(Int) -> (A, A, A, A), _ transform:(A) -> T)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        samples.map
-        {
-            let (r, g, b, a):(A, A, A, A) = dereference(.init($0))
-            return kernel((transform(r), transform(g), transform(b), transform(a)))
-        }
-    }
-    
-    private static 
-    func quantum<T>(source:Int, destination:Int) -> T 
-        where T:FixedWidthInteger & UnsignedInteger 
-    {
-        // needless to say, `destination` can be no greater than `T.bitWidth`
-        T.max >> (T.bitWidth - destination) / T.max >> (T.bitWidth - source)
-    }
-    
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> A,
-        kernel:(T) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBufferPointer
-        {
-            if      T.bitWidth == A.bitWidth 
-            {
-                return Self.convolve($0, kernel, dereference, T.init(_:))
-            }
-            else if T.bitWidth >  A.bitWidth 
-            {
-                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
-                return Self.convolve($0, kernel, dereference)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = A.bitWidth - T.bitWidth 
-                return Self.convolve($0, kernel, dereference)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A),
-        kernel:((T, T)) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBufferPointer
-        {
-            if      T.bitWidth == A.bitWidth 
-            {
-                return Self.convolve($0, kernel, dereference, T.init(_:))
-            }
-            else if T.bitWidth >  A.bitWidth 
-            {
-                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
-                return Self.convolve($0, kernel, dereference)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = A.bitWidth - T.bitWidth 
-                return Self.convolve($0, kernel, dereference)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A),
-        kernel:((T, T, T)) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBufferPointer
-        {
-            if      T.bitWidth == A.bitWidth 
-            {
-                return Self.convolve($0, kernel, dereference, T.init(_:))
-            }
-            else if T.bitWidth >  A.bitWidth 
-            {
-                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
-                return Self.convolve($0, kernel, dereference)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = A.bitWidth - T.bitWidth 
-                return Self.convolve($0, kernel, dereference)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], dereference:(Int) -> (A, A, A, A),
-        kernel:((T, T, T, T)) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBufferPointer
-        {
-            if      T.bitWidth == A.bitWidth 
-            {
-                return Self.convolve($0, kernel, dereference, T.init(_:))
-            }
-            else if T.bitWidth >  A.bitWidth 
-            {
-                let quantum:T = Self.quantum(source: A.bitWidth, destination: T.bitWidth)
-                return Self.convolve($0, kernel, dereference)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = A.bitWidth - T.bitWidth 
-                return Self.convolve($0, kernel, dereference)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    // cannot genericize the kernel parameters, since it produces an unacceptable slowdown
-    // so we have to manually specialize for all four cases (using the exact same function body)
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
-        kernel:(T, A) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBytes
-        {
-            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                return Self.convolve(samples, kernel, T.init(_:))
-            }
-            else if T.bitWidth >  depth
-            {
-                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
-                return Self.convolve(samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = depth - T.bitWidth
-                return Self.convolve(samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
-        kernel:((T, T)) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBytes
-        {
-            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                return Self.convolve(samples, kernel, T.init(_:))
-            }
-            else if T.bitWidth >  depth
-            {
-                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
-                return Self.convolve(samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = depth - T.bitWidth
-                return Self.convolve(samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
-        kernel:((T, T, T), (A, A, A)) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBytes
-        {
-            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                return Self.convolve(samples, kernel, T.init(_:))
-            }
-            else if T.bitWidth >  depth
-            {
-                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
-                return Self.convolve(samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = depth - T.bitWidth
-                return Self.convolve(samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func convolve<A, T, C>(_ buffer:[UInt8], of _:A.Type, depth:Int, 
-        kernel:((T, T, T, T)) -> C)
-        -> [C]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        buffer.withUnsafeBytes
-        {
-            let samples:UnsafeBufferPointer<A> = $0.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                return Self.convolve(samples, kernel, T.init(_:))
-            }
-            else if T.bitWidth >  depth
-            {
-                let quantum:T = Self.quantum(source: depth, destination: T.bitWidth)
-                return Self.convolve(samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = depth - T.bitWidth
-                return Self.convolve(samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-}
-// deconvolution methods 
-extension PNG
-{
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
-        _ kernel:(C) -> T, _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(samples.indices, pixels)
-        {
-            samples[i]                      = transform(kernel(pixel)).bigEndian 
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
-        _ kernel:(C) -> (T, T), _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 2), pixels)
-        {
-            let (v, a):(T, T)               = kernel(pixel)
-            samples[i     ]                 = transform(v).bigEndian
-            samples[i &+ 1]                 = transform(a).bigEndian
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
-        _ kernel:(C) -> (T, T, T), _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 3), pixels)
-        {
-            let (r, g, b):(T, T, T)         = kernel(pixel)
-            samples[i     ]                 = transform(r).bigEndian
-            samples[i &+ 1]                 = transform(g).bigEndian
-            samples[i &+ 2]                 = transform(b).bigEndian
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<A>, 
-        _ kernel:(C) -> (T, T, T, T), _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(stride(from: samples.startIndex, to: samples.endIndex, by: 4), pixels)
-        {
-            let (r, g, b, a):(T, T, T, T)   = kernel(pixel)
-            samples[i     ]                 = transform(r).bigEndian
-            samples[i &+ 1]                 = transform(g).bigEndian
-            samples[i &+ 2]                 = transform(b).bigEndian
-            samples[i &+ 3]                 = transform(a).bigEndian
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
-        _ reference:(A) -> Int, _ kernel:(C) -> T, _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(samples.indices, pixels) 
-        {
-            let v:T                         = kernel(pixel) 
-            samples[i]                      = .init(reference(transform(v)))
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
-        _ reference:((A, A)) -> Int, _ kernel:(C) -> (T, T), _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(samples.indices, pixels) 
-        {
-            let (v, a):(T, T)               = kernel(pixel) 
-            samples[i]                      = .init(reference(
-                (transform(v), transform(a))))
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
-        _ reference:((A, A, A)) -> Int, _ kernel:(C) -> (T, T, T), _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(samples.indices, pixels) 
-        {
-            let (r, g, b):(T, T, T)         = kernel(pixel) 
-            samples[i]                      = .init(reference(
-                (transform(r), transform(g), transform(b))))
-        }
-    }
-    private static 
-    func deconvolve<A, T, C>(pixels:[C], _ samples:UnsafeMutableBufferPointer<UInt8>, 
-        _ reference:((A, A, A, A)) -> Int, _ kernel:(C) -> (T, T, T, T), _ transform:(T) -> A)
-        where A:FixedWidthInteger & UnsignedInteger
-    {
-        for (i, pixel) in zip(samples.indices, pixels) 
-        {
-            let (r, g, b, a):(T, T, T, T)   = kernel(pixel) 
-            samples[i]                      = .init(reference(
-                (transform(r), transform(g), transform(b), transform(a))))
-        }
-    }
-    
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], reference:(A) -> Int,
-        kernel:(C) -> T)
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        .init(unsafeUninitializedCapacity: pixels.count)
-        {
-            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = pixels.count 
-            if      T.bitWidth == A.bitWidth 
-            {
-                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  A.bitWidth 
-            {
-                // there are essentially no situations where this path will actually get 
-                // executed since  palette entries are always 8-bits deep. however, 
-                // the implementation is here in case someone wants to use a 
-                // customized kernel that takes a wider integer type for some reason
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = T.bitWidth - A.bitWidth 
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A)) -> Int,
-        kernel:(C) -> (T, T))
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        .init(unsafeUninitializedCapacity: pixels.count)
-        {
-            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = pixels.count 
-            if      T.bitWidth == A.bitWidth 
-            {
-                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  A.bitWidth 
-            {
-                // there are essentially no situations where this path will actually get 
-                // executed since  palette entries are always 8-bits deep. however, 
-                // the implementation is here in case someone wants to use a 
-                // customized kernel that takes a wider integer type for some reason
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = T.bitWidth - A.bitWidth 
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A)) -> Int,
-        kernel:(C) -> (T, T, T))
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        .init(unsafeUninitializedCapacity: pixels.count)
-        {
-            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = pixels.count 
-            if      T.bitWidth == A.bitWidth 
-            {
-                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  A.bitWidth 
-            {
-                // there are essentially no situations where this path will actually get 
-                // executed since  palette entries are always 8-bits deep. however, 
-                // the implementation is here in case someone wants to use a 
-                // customized kernel that takes a wider integer type for some reason
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = T.bitWidth - A.bitWidth 
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], reference:((A, A, A, A)) -> Int,
-        kernel:(C) -> (T, T, T, T))
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        .init(unsafeUninitializedCapacity: pixels.count)
-        {
-            (samples:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = pixels.count 
-            if      T.bitWidth == A.bitWidth 
-            {
-                Self.deconvolve(pixels: pixels, samples, reference, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  A.bitWidth 
-            {
-                // there are essentially no situations where this path will actually get 
-                // executed since  palette entries are always 8-bits deep. however, 
-                // the implementation is here in case someone wants to use a 
-                // customized kernel that takes a wider integer type for some reason
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: A.bitWidth)
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else 
-            {
-                let shift:Int = T.bitWidth - A.bitWidth 
-                Self.deconvolve(pixels: pixels, samples, reference, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
-        kernel:(C) -> T)
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        let bytes:Int = pixels.count * MemoryLayout<A>.stride 
-        return .init(unsafeUninitializedCapacity: bytes)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = bytes
-            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
-            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  depth
-            {
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = T.bitWidth - depth
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
-        kernel:(C) -> (T, T))
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        let bytes:Int = pixels.count * MemoryLayout<A>.stride * 2
-        return .init(unsafeUninitializedCapacity: bytes)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = bytes
-            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
-            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  depth
-            {
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = T.bitWidth - depth
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
-        kernel:(C) -> (T, T, T))
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        let bytes:Int = pixels.count * MemoryLayout<A>.stride * 3
-        return .init(unsafeUninitializedCapacity: bytes)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = bytes
-            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
-            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  depth
-            {
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = T.bitWidth - depth
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    }
-    public static 
-    func deconvolve<A, T, C>(_ pixels:[C], as _:A.Type, depth:Int, 
-        kernel:(C) -> (T, T, T, T))
-        -> [UInt8]
-        where A:FixedWidthInteger & UnsignedInteger, T:FixedWidthInteger & UnsignedInteger
-    {
-        let bytes:Int = pixels.count * MemoryLayout<A>.stride * 4
-        return .init(unsafeUninitializedCapacity: bytes)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in 
-            
-            count = bytes
-            let raw:UnsafeMutableRawBufferPointer       = .init(buffer)
-            let samples:UnsafeMutableBufferPointer<A>   = raw.bindMemory(to: A.self)
-            if      T.bitWidth == depth
-            {
-                Self.deconvolve(pixels: pixels, samples, kernel, A.init(_:))
-            }
-            else if T.bitWidth <  depth
-            {
-                let quantum:A = Self.quantum(source: T.bitWidth, destination: depth)
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    quantum &* .init($0)
-                }
-            }
-            else
-            {
-                let shift:Int = T.bitWidth - depth
-                Self.deconvolve(pixels: pixels, samples, kernel)
-                {
-                    .init($0 &>> shift)
-                }
-            }
-        }
-    } 
-}
-
 extension PNG 
 {
+    /// static func PNG.premultiply<T>(_:alpha:)
+    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    /// @   inlinable 
+    ///     Premultiplies a color component with an alpha value. 
+    /// 
+    ///     The `color` and `alpha` parameters are interpreted as rational numbers 
+    ///     in the range [0, 1], where `T.min` maps to 0, 
+    ///     and `T.max` maps to 1. 
+    /// 
+    ///     This function uses no floating point operations, and satisfies the 
+    ///     property that 
+    /// 
+    ///     [`premultiply(_:alpha:)`]
+    /// 
+    ///     is equivalent to  
+    ///
+    ///     [`premultiply(_:alpha:)`] ∘ [`straighten(_:alpha:)`] ∘ [`premultiply(_:alpha:)`]
+    /// 
+    ///     Premultiplication is a destructive operation. In the most extreme case, 
+    ///     if `alpha` is `T.min`, this function will return `T.min` for any 
+    ///     value of `color`.
+    /// - color : T 
+    ///     The color component to premultiply. 
+    /// - alpha : T 
+    ///     The alpha component to premultiply `color` with.
+    /// - ->    : T 
+    ///     The premultiplied color component, rounded to the nearest integer.
+    /// # [See also](componentwise-premultiplication)
+    /// ## (componentwise-premultiplication)
+    /// ## (color-spaces)
     @inlinable
     public static
-    func premultiply<T>(color:T, alpha:T) -> T 
+    func premultiply<T>(_ color:T, alpha:T) -> T 
         where T:FixedWidthInteger & UnsignedInteger
     {
         // this generates pretty good assembly, though Swift/LLVM doesn’t 
@@ -938,10 +213,42 @@ extension PNG
         biased.high             = product.high &+ (carried ? 1 : 0)
         return T.max.dividingFullWidth(biased).quotient
     }
-    
+    /// static func PNG.straighten<T>(_:alpha:)
+    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    /// @   inlinable 
+    ///     Straightens a premultiplied color component given an alpha value. 
+    /// 
+    ///     The `color` and `alpha` parameters are interpreted as rational numbers 
+    ///     in the range [0, 1], where `T.min` maps to 0, 
+    ///     and `T.max` maps to 1. 
+    /// 
+    ///     This function uses no floating point operations, and satisfies the 
+    ///     property that 
+    /// 
+    ///     [`premultiply(_:alpha:)`]
+    /// 
+    ///     is equivalent to  
+    ///
+    ///     [`premultiply(_:alpha:)`] ∘ [`straighten(_:alpha:)`] ∘ [`premultiply(_:alpha:)`]
+    /// 
+    ///     Premultiplication is a destructive operation. This function cannot 
+    ///     recover the original color unless `alpha` is `T.max`, in which case 
+    ///     this function performs a division by 1, and returns the original 
+    ///     `premultiplied` argument.
+    /// - premultiplied : T 
+    ///     The premultiplied color component to straighten. 
+    /// - alpha : T 
+    ///     The alpha component that `premultiplied` was premultiplied by.
+    /// - ->    : T 
+    ///     The straightened color component, rounded to the nearest integer. 
+    ///     If `alpha` is `T.min`, this function returns the original 
+    ///     `premultiplied` argument.
+    /// # [See also](componentwise-premultiplication)
+    /// ## (componentwise-premultiplication)
+    /// ## (color-spaces)
     @inlinable
     public static
-    func straighten<T>(premultiplied:T, alpha:T) -> T 
+    func straighten<T>(_ premultiplied:T, alpha:T) -> T 
         where T:FixedWidthInteger & UnsignedInteger
     {
         guard alpha > 0 
@@ -964,7 +271,7 @@ extension PNG
     /// :   PNG.Color
     /// @   frozen
     /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
-    ///     An RGBA color. 
+    ///     An RGBA color target. 
     /// 
     ///     This type is a built-in color target.
     /// # [See also](builtin-color-targets)
@@ -995,40 +302,101 @@ extension PNG
         public
         var a:T
     }
-    
+    /// struct PNG.VA<T> 
+    /// :   Swift.Hashable
+    /// :   PNG.Color
+    /// @   frozen
+    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    ///     A grayscale-alpha color target. 
+    /// 
+    ///     This type is a built-in color target.
+    /// # [See also](builtin-color-targets)
+    /// ## (builtin-color-targets)
+    /// ## (2:color-spaces)
     @frozen
     public
     struct VA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
     {
+        /// var PNG.VA.v  : T
+        ///     The gray component of this color.
+        /// ## ()
         public
         var v:T
+        /// var PNG.VA.a  : T
+        ///     The alpha component of this color.
+        /// ## ()
         public
         var a:T
     }
 }
 extension PNG.RGBA 
 {
+    /// init PNG.RGBA.init(_:) 
+    /// @   inlinable 
+    ///     Creates an opaque, monochromatic RGBA color.
+    /// 
+    ///     The [`r`], [`g`], and [`b`] components will be set to `value`, 
+    ///     and the [`a`] component will be set to [`T`max`]. 
+    /// - value : T 
+    ///     A gray value.
+    /// ## ()
     @inlinable
     public
     init(_ value:T)
     {
         self.init(value, value, value, T.max)
     }
-
+    /// init PNG.RGBA.init(_:_:) 
+    /// @   inlinable 
+    ///     Creates a monochromatic RGBA color.
+    /// 
+    ///     The [`r`], [`g`], and [`b`] components will be set to `value`, 
+    ///     and the [`a`] component will be set to `alpha`. 
+    /// - value : T 
+    ///     A gray value.
+    /// - alpha : T 
+    ///     An alpha value.
+    /// ## ()
     @inlinable
     public
     init(_ value:T, _ alpha:T)
     {
         self.init(value, value, value, alpha)
     }
-
+    /// init PNG.RGBA.init(_:_:_:) 
+    /// @   inlinable 
+    ///     Creates an opaque RGBA color.
+    /// 
+    ///     The [`r`], [`g`], and [`b`] components will be set to `red`, `green`, 
+    ///     and `blue`, respectively. The [`a`] component will be set to [`T`max`]. 
+    /// - red : T 
+    ///     A red value.
+    /// - green : T 
+    ///     A green value.
+    /// - blue : T 
+    ///     A blue value.
+    /// ## ()
     @inlinable
     public
     init(_ red:T, _ green:T, _ blue:T)
     {
         self.init(red, green, blue, T.max)
     }
-
+    /// init PNG.RGBA.init(_:_:_:_:) 
+    /// @   inlinable 
+    ///     Creates an RGBA color.
+    /// 
+    ///     The [`r`], [`g`], [`b`], and [`a`] components will be set to `red`, 
+    ///     `green`, `blue`, and `alpha` respectively. 
+    /// - red : T 
+    ///     A red value.
+    /// - green : T 
+    ///     A green value.
+    /// - blue : T 
+    ///     A blue value.
+    /// - alpha : T 
+    ///     An alpha value.
+    /// ## ()
     @inlinable
     public
     init(_ red:T, _ green:T, _ blue:T, _ alpha:T)
@@ -1039,29 +407,66 @@ extension PNG.RGBA
         self.a = alpha
     }
     
+    /// init PNG.RGBA.init(_:) 
+    /// @   inlinable 
+    ///     Creates an RGBA color from a grayscale-alpha color. 
+    /// 
+    ///     This function is equivalent to calling [`init(_:_:)`] with 
+    ///     the [`(VA).v`] and [`(VA).a`] components of `va`.
+    /// - va : VA<T> 
+    ///     A grayscale-alpha color. 
     @inlinable
     public 
     init(_ va:PNG.VA<T>)
     {
         self.init(va.v, va.a)
     }
-
+    /// var PNG.RGBA.va : VA<T> { get }
+    /// @   inlinable 
+    ///     The grayscale-alpha color obtained by discarding the green and blue 
+    ///     components of this color.
+    /// ## ()
     @inlinable
     public
     var va:PNG.VA<T>
     {
         .init(self.r, self.a)
     } 
-    
+    /// var PNG.RGBA.premultiplied : Self { get }
+    /// @   inlinable 
+    ///     The color obtained by premultiplying the red, green, and blue 
+    ///     components of this color with its alpha channel.
+    /// 
+    ///     The premultiplied color is obtained by invoking [`premultiply(_:alpha:)`]
+    ///     on [`r`], [`g`], and [`b`].
     @inlinable
     public
     var premultiplied:Self
     {
-        .init(  PNG.premultiply(color: self.r, alpha: self.a),
-                PNG.premultiply(color: self.g, alpha: self.a),
-                PNG.premultiply(color: self.b, alpha: self.a),
+        .init(  PNG.premultiply(self.r, alpha: self.a),
+                PNG.premultiply(self.g, alpha: self.a),
+                PNG.premultiply(self.b, alpha: self.a),
                 self.a)
     }
+    /// func PNG.RGBA.premultiplied<U>(as:) 
+    /// where U:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    /// @   inlinable 
+    ///     The color obtained by premultiplying the red, green, and blue 
+    ///     components of this color with its alpha channel, performing the 
+    ///     premultiplication in the given integer type.
+    /// 
+    ///     Premultiplication in a different integer type is sometimes necessary 
+    ///     to reproduce the output of other image processing frameworks.
+    /// 
+    ///     The premultiplied color is obtained by invoking [`premultiply(_:alpha:)`]
+    ///     on [`r`], [`g`], and [`b`], after scaling them to the range of `U`. 
+    ///     The returned components are then scaled back to the range of [`T`]. 
+    ///     The rescaling operation also affects the [`a`] component.
+    /// - _ : U.Type 
+    ///     The integer type to perform the premultiplications in. `U.bitWidth`
+    ///     must be less than [`T`bitWidth`].
+    /// - -> : Self 
+    ///     The premultiplied color.
     @inlinable
     public
     func premultiplied<U>(as _:U.Type) -> Self
@@ -1073,21 +478,46 @@ extension PNG.RGBA
         let q:T         = T.max / T.max >> shift
         let a:U         = .init(self.a >> shift) 
         
-        let r:T = T.init(PNG.premultiply(color: U.init(self.r >> shift), alpha: a)) * q, 
-            g:T = T.init(PNG.premultiply(color: U.init(self.g >> shift), alpha: a)) * q, 
-            b:T = T.init(PNG.premultiply(color: U.init(self.b >> shift), alpha: a)) * q
+        let r:T = T.init(PNG.premultiply(U.init(self.r >> shift), alpha: a)) * q, 
+            g:T = T.init(PNG.premultiply(U.init(self.g >> shift), alpha: a)) * q, 
+            b:T = T.init(PNG.premultiply(U.init(self.b >> shift), alpha: a)) * q
         return .init(r, g, b, T.init(a) * q)
     }
-    
+    /// var PNG.RGBA.straightened : Self { get }
+    /// @   inlinable 
+    ///     The color obtained by straightening the red, green, and blue 
+    ///     components of this color according to its alpha channel.
+    /// 
+    ///     The straightened color is obtained by invoking [`straighten(_:alpha:)`]
+    ///     on [`r`], [`g`], and [`b`].
     @inlinable
     public
     var straightened:Self
     {
-        .init(  PNG.straighten(premultiplied: self.r, alpha: self.a),
-                PNG.straighten(premultiplied: self.g, alpha: self.a),
-                PNG.straighten(premultiplied: self.b, alpha: self.a),
+        .init(  PNG.straighten(self.r, alpha: self.a),
+                PNG.straighten(self.g, alpha: self.a),
+                PNG.straighten(self.b, alpha: self.a),
                 self.a)
     }
+    /// func PNG.RGBA.straightened<U>(as:) 
+    /// where U:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    /// @   inlinable 
+    ///     The color obtained by straightening the red, green, and blue 
+    ///     components of this color according to its alpha channel, performing the 
+    ///     straightening in the given integer type.
+    /// 
+    ///     Straightening in a different integer type is sometimes necessary 
+    ///     to reproduce the output of other image processing frameworks.
+    /// 
+    ///     The straightened color is obtained by invoking [`straighten(_:alpha:)`]
+    ///     on [`r`], [`g`], and [`b`], after scaling them to the range of `U`. 
+    ///     The returned components are then scaled back to the range of [`T`].
+    ///     The rescaling operation also affects the [`a`] component.
+    /// - _ : U.Type 
+    ///     The integer type to perform the straightening in. `U.bitWidth`
+    ///     must be less than [`T`bitWidth`].
+    /// - -> : Self 
+    ///     The straightened color.
     @inlinable
     public
     func straightened<U>(as _:U.Type) -> Self
@@ -1100,21 +530,40 @@ extension PNG.RGBA
         let q:T         = T.max / T.max >> shift
         let a:U         = .init(self.a >> shift) 
         
-        let r:T = T.init(PNG.straighten(premultiplied: U.init(self.r >> shift), alpha: a)) * q, 
-            g:T = T.init(PNG.straighten(premultiplied: U.init(self.g >> shift), alpha: a)) * q, 
-            b:T = T.init(PNG.straighten(premultiplied: U.init(self.b >> shift), alpha: a)) * q
+        let r:T = T.init(PNG.straighten(U.init(self.r >> shift), alpha: a)) * q, 
+            g:T = T.init(PNG.straighten(U.init(self.g >> shift), alpha: a)) * q, 
+            b:T = T.init(PNG.straighten(U.init(self.b >> shift), alpha: a)) * q
         return .init(r, g, b, T.init(a) * q)
     }
 }
 extension PNG.VA 
 {
+    /// init PNG.VA.init(_:) 
+    /// @   inlinable 
+    ///     Creates an opaque grayscale-alpha color.
+    /// 
+    ///     The [`v`] component will be set to `value`, 
+    ///     and the [`a`] component will be set to [`T`max`]. 
+    /// - value : T 
+    ///     A gray value.
+    /// ## ()
     @inlinable
     public
     init(_ value:T)
     {
         self.init(value, T.max)
     }
-    
+    /// init PNG.VA.init(_:_:) 
+    /// @   inlinable 
+    ///     Creates a grayscale-alpha color.
+    /// 
+    ///     The [`v`] component will be set to `value`, 
+    ///     and the [`a`] component will be set to `alpha`. 
+    /// - value : T 
+    ///     A gray value.
+    /// - alpha : T 
+    ///     An alpha value.
+    /// ## ()
     @inlinable
     public
     init(_ value:T, _ alpha:T)
@@ -1122,13 +571,38 @@ extension PNG.VA
         self.v = value
         self.a = alpha
     }
-    
+    /// var PNG.VA.premultiplied : Self { get }
+    /// @   inlinable 
+    ///     The color obtained by premultiplying the gray
+    ///     component of this color with its alpha channel.
+    /// 
+    ///     The premultiplied color is obtained by invoking [`premultiply(_:alpha:)`]
+    ///     on [`v`].
     @inlinable
     public
     var premultiplied:Self
     {
-        .init(PNG.premultiply(color: self.v, alpha: self.a), self.a)
+        .init(PNG.premultiply(self.v, alpha: self.a), self.a)
     }
+    /// func PNG.VA.premultiplied<U>(as:) 
+    /// where U:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    /// @   inlinable 
+    ///     The color obtained by premultiplying the gray
+    ///     component of this color with its alpha channel, performing the 
+    ///     premultiplication in the given integer type.
+    /// 
+    ///     Premultiplication in a different integer type is sometimes necessary 
+    ///     to reproduce the output of other image processing frameworks.
+    /// 
+    ///     The premultiplied color is obtained by invoking [`premultiply(_:alpha:)`]
+    ///     on [`v`], after scaling it to the range of `U`. 
+    ///     The returned component is then scaled back to the range of [`T`].
+    ///     The rescaling operation also affects the [`a`] component.
+    /// - _ : U.Type 
+    ///     The integer type to perform the premultiplications in. `U.bitWidth`
+    ///     must be less than [`T`bitWidth`].
+    /// - -> : Self 
+    ///     The premultiplied color.
     @inlinable
     public
     func premultiplied<U>(as _:U.Type) -> Self
@@ -1140,16 +614,41 @@ extension PNG.VA
         let q:T         = T.max / T.max >> shift
         let a:U         = .init(self.a >> shift) 
         
-        let v:T = T.init(PNG.premultiply(color: U.init(self.v >> shift), alpha: a)) * q
+        let v:T = T.init(PNG.premultiply(U.init(self.v >> shift), alpha: a)) * q
         return .init(v, T.init(a) * q)
     }
-    
+    /// var PNG.VA.straightened : Self { get }
+    /// @   inlinable 
+    ///     The color obtained by straightening the gray
+    ///     component of this color according to its alpha channel.
+    /// 
+    ///     The straightened color is obtained by invoking [`straighten(_:alpha:)`]
+    ///     on [`v`].
     @inlinable
     public
     var straightened:Self
     {
-        .init(PNG.straighten(premultiplied: self.v, alpha: self.a), self.a)
+        .init(PNG.straighten(self.v, alpha: self.a), self.a)
     }
+    /// func PNG.VA.straightened<U>(as:) 
+    /// where U:Swift.FixedWidthInteger & Swift.UnsignedInteger
+    /// @   inlinable 
+    ///     The color obtained by straightening the gray
+    ///     component of this color according to its alpha channel, performing the 
+    ///     straightening in the given integer type.
+    /// 
+    ///     Straightening in a different integer type is sometimes necessary 
+    ///     to reproduce the output of other image processing frameworks.
+    /// 
+    ///     The straightened color is obtained by invoking [`straighten(_:alpha:)`]
+    ///     on [`v`], after scaling it to the range of `U`. 
+    ///     The returned component is then scaled back to the range of [`T`].
+    ///     The rescaling operation also affects the [`a`] component.
+    /// - _ : U.Type 
+    ///     The integer type to perform the straightening in. `U.bitWidth`
+    ///     must be less than [`T`bitWidth`].
+    /// - -> : Self 
+    ///     The straightened color.
     @inlinable
     public
     func straightened<U>(as _:U.Type) -> Self
@@ -1161,16 +660,66 @@ extension PNG.VA
         let q:T         = T.max / T.max >> shift
         let a:U         = .init(self.a >> shift) 
         
-        let v:T = T.init(PNG.straighten(premultiplied: U.init(self.v >> shift), alpha: a)) * q
+        let v:T = T.init(PNG.straighten(U.init(self.v >> shift), alpha: a)) * q
         return .init(v, T.init(a) * q)
     }
 }
 
 extension PNG.RGBA:PNG.Color 
 {
+    /// typealias PNG.RGBA.Aggregate = (Swift.UInt8, Swift.UInt8, Swift.UInt8, Swift.UInt8)
+    /// ?:  Color
+    ///     Palette aggregates are (*red*, *green*, *blue*, *alpha*) quadruplets.
     public 
     typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
     
+    /// static func PNG.RGBA.unpack(_:of:deindexer:) 
+    /// @   specialized where T == Swift.UInt8
+    /// @   specialized where T == Swift.UInt16
+    /// @   specialized where T == Swift.UInt32
+    /// @   specialized where T == Swift.UInt64
+    /// @   specialized where T == Swift.UInt
+    /// ?:  Color 
+    ///     Unpacks an image data storage buffer to an array of RGBA pixels. 
+    /// 
+    ///     For a grayscale color `format`, this function expands 
+    ///     pixels of the form (*v*) to RGBA quadruplets (*v*, *v*, *v*, [`T`max`]).
+    /// 
+    ///     For a grayscale-alpha color `format`, this function expands 
+    ///     pixels of the form (*v*, *a*) to RGBA quadruplets (*v*, *v*, *v*, *a*).
+    /// 
+    ///     For an RGB color `format`, this function expands 
+    ///     pixels of the form (*r*, *g*, *b*) to RGBA quadruplets (*r*, *g*, *b*, [`T`max`]).
+    /// 
+    ///     For a BGR color `format`, this function expands 
+    ///     pixels of the form (*b*, *g*, *r*) to RGBA quadruplets (*r*, *g*, *b*, [`T`max`]).
+    /// 
+    ///     For a BGRA color `format`, this function shuffles 
+    ///     pixels of the form (*b*, *g*, *r*, *a*) into RGBA quadruplets (*r*, *g*, *b*, *a*).
+    /// 
+    ///     This function will apply chroma keys if present. The unpacked components 
+    ///     are scaled to fill the range of [`T`], according to the color depth 
+    ///     computed from the color `format`.
+    /// - interleaved : [Swift.UInt8] 
+    ///     An image data buffer. It is expected to be obtained from the 
+    ///     [`(Data.Rectangular).storage`] property of a [`(Data).Rectangular`]
+    ///     image.
+    /// - format : Format 
+    ///     The color format associated with the given data buffer.
+    ///     It is expected to be obtained from the the [`(Layout).format`] property 
+    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     [`(Data).Rectangular`] image.
+    /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate 
+    ///     A function which uses the palette entries in the color `format` to 
+    ///     generate a dereferencing function. This function is only invoked 
+    ///     if the color `format` is an indexed format. Its palette aggregates 
+    ///     will be interpreted as (*red*, *green*, *blue*, *alpha*) quadruplets.
+    /// 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of this function.
+    /// - -> : [Self]
+    ///     An array of RGBA pixels. The pixels 
+    ///     appear in the same order as they do in the image data buffer.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)
@@ -1284,7 +833,51 @@ extension PNG.RGBA:PNG.Color
             }
         }
     }
-    
+    /// static func PNG.RGBA.pack(_:as:indexer:)
+    /// @   specialized where T == Swift.UInt8
+    /// @   specialized where T == Swift.UInt16
+    /// @   specialized where T == Swift.UInt32
+    /// @   specialized where T == Swift.UInt64
+    /// @   specialized where T == Swift.UInt
+    /// ?:  Color 
+    ///     Packs an array of RGBA pixels to an image data storage buffer.
+    /// 
+    ///     For a grayscale color `format`, this function selects the [`r`] 
+    ///     component of each RGBA pixel.
+    /// 
+    ///     For a grayscale-alpha color `format`, this function selects the [`r`] 
+    ///     and [`a`] components of each RGBA pixel.
+    ///
+    ///     For an RGB or BGR color `format`, this function selects the [`r`], [`g`], and 
+    ///     [`b`] components of each RGBA pixel.
+    ///
+    ///     The components in each RGBA pixel are assumed to fill the entire 
+    ///     range of [`T`]. 
+    /// - pixels : [Self] 
+    ///     An array of RGBA pixels.
+    /// - format : Format 
+    ///     The color format to pack the given pixels as in the returned data buffer. 
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this color format will be stored in 
+    ///     the [`(Layout).format`] property of its 
+    ///     [`(Data.Rectangular).layout`].
+    /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int 
+    ///     A function which uses the palette entries in the color `format` to 
+    ///     generate a referencing function. This function will only be invoked 
+    ///     if the color `format` is an indexed format. Its palette aggregates 
+    ///     will be interpreted as (*red*, *green*, *blue*, *alpha*) quadruplets.
+    /// 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of this function.
+    /// - -> : [Swift.UInt8]
+    ///     An image data buffer. The packed samples in this buffer appear 
+    ///     in the same order as the pixels in the `pixels` array. (But not 
+    ///     necessarily in the same order within each individual pixel.)
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this data buffer will be stored in 
+    ///     its [`(Data.Rectangular).storage`] property.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)
@@ -1364,9 +957,59 @@ extension PNG.RGBA:PNG.Color
 }
 extension PNG.VA:PNG.Color 
 {
+    /// typealias PNG.VA.Aggregate = (Swift.UInt8, Swift.UInt8)
+    /// ?:  Color
+    ///     Palette aggregates are (*gray*, *alpha*) pairs.
     public 
     typealias Aggregate = (UInt8, UInt8)
     
+    /// static func PNG.VA.unpack(_:of:deindexer:) 
+    /// @   specialized where T == Swift.UInt8
+    /// @   specialized where T == Swift.UInt16
+    /// @   specialized where T == Swift.UInt32
+    /// @   specialized where T == Swift.UInt64
+    /// @   specialized where T == Swift.UInt
+    /// ?:  Color 
+    ///     Unpacks an image data storage buffer to an array of grayscale-alpha pixels. 
+    /// 
+    ///     For a grayscale color `format`, this function expands 
+    ///     pixels of the form (*v*) to grayscale-alpha pairs (*v*, [`T`max`]).
+    /// 
+    ///     For an RGB color `format`, this function slices 
+    ///     pixels of the form (*r*, *g*, *b*) into grayscale-alpha pairs (*r*, [`T`max`]).
+    /// 
+    ///     For an RGBA color `format`, this function slices 
+    ///     pixels of the form (*r*, *g*, *b*, *a*) into grayscale-alpha pairs (*r*, *a*).
+    /// 
+    ///     For a BGR color `format`, this function slices 
+    ///     pixels of the form (*b*, *g*, *r*) to grayscale-alpha pairs (*r*, [`T`max`]).
+    /// 
+    ///     For a BGRA color `format`, this function slices 
+    ///     pixels of the form (*b*, *g*, *r*, *a*) into grayscale-alpha pairs (*r*, *a*).
+    /// 
+    ///     This function will apply chroma keys if present. The unpacked components 
+    ///     are scaled to fill the range of [`T`], according to the color depth 
+    ///     computed from the color `format`.
+    /// - interleaved : [Swift.UInt8] 
+    ///     An image data buffer. It is expected to be obtained from the 
+    ///     [`(Data.Rectangular).storage`] property of a [`(Data).Rectangular`]
+    ///     image.
+    /// - format : Format 
+    ///     The color format associated with the given data buffer.
+    ///     It is expected to be obtained from the the [`(Layout).format`] property 
+    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     [`(Data).Rectangular`] image.
+    /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate 
+    ///     A function which uses the palette entries in the color `format` to 
+    ///     generate a dereferencing function. This function is only invoked 
+    ///     if the color `format` is an indexed format. Its palette aggregates 
+    ///     will be interpreted as (*gray*, *alpha*) pairs.
+    /// 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of this function.
+    /// - -> : [Self]
+    ///     An array of RGBA pixels. The pixels 
+    ///     appear in the same order as they do in the image data buffer.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)
@@ -1480,7 +1123,51 @@ extension PNG.VA:PNG.Color
             }
         }
     }
-    
+    /// static func PNG.VA.pack(_:as:indexer:)
+    /// @   specialized where T == Swift.UInt8
+    /// @   specialized where T == Swift.UInt16
+    /// @   specialized where T == Swift.UInt32
+    /// @   specialized where T == Swift.UInt64
+    /// @   specialized where T == Swift.UInt
+    /// ?:  Color 
+    ///     Packs an array of grayscale-alpha pixels to an image data storage buffer.
+    /// 
+    ///     For a grayscale color `format`, this function selects the [`v`] 
+    ///     component of each grayscale-alpha pixel.
+    ///
+    ///     For an RGB or BGR color `format`, this function assigns all 
+    ///     channels to the [`v`] component of each grayscale-alpha pixel.
+    ///
+    ///     For an RGBA or BGRA color `format`, this function assigns all opaque 
+    ///     channels to the [`v`] component of each grayscale-alpha pixel, and 
+    ///     the alpha channel to the [`a`] component.
+    ///
+    ///     The components in each grayscale-alpha pixel are assumed to fill the entire 
+    ///     range of [`T`]. 
+    /// - pixels : [Self] 
+    ///     An array of grayscale-alpha pixels.
+    /// - format : Format 
+    ///     The color format to pack the given pixels as in the returned data buffer. 
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this color format will be stored in 
+    ///     the [`(Layout).format`] property of its 
+    ///     [`(Data.Rectangular).layout`].
+    /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int 
+    ///     A function which uses the palette entries in the color `format` to 
+    ///     generate a referencing function. This function will only be invoked 
+    ///     if the color `format` is an indexed format. Its palette aggregates 
+    ///     will be interpreted as (*gray*, *alpha*) quadruplets.
+    /// 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     for more about the semantics of this function.
+    /// - -> : [Swift.UInt8]
+    ///     An image data buffer. The packed samples in this buffer appear 
+    ///     in the same order as the pixels in the `pixels` array. 
+    ///
+    ///     When the library uses an implementation of this function to construct 
+    ///     a [`(Data).Rectangular`] image, this data buffer will be stored in 
+    ///     its [`(Data.Rectangular).storage`] property.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)
