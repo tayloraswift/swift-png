@@ -262,13 +262,6 @@ extension PNG
         case invalidTransparencySample(UInt16, max:UInt16)
         case invalidTransparencyCount(Int, max:Int)
         
-        /// case PNG.ParsingError.unexpectedBackground(pixel:)
-        ///     The parser encountered a [`(Chunk).bKGD`] chunk in an image 
-        ///     with a pixel format that forbids it. 
-        /// - pixel : Format.Pixel 
-        ///     The image pixel format.
-        /// ## (bKGD-parsing-errors)
-        
         /// case PNG.ParsingError.invalidBackgroundChunkLength(_:expected:)
         ///     A [`(Chunk).bKGD`] chunk had the wrong length. 
         /// - _ : Swift.Int 
@@ -294,17 +287,9 @@ extension PNG
         ///     The maximum allowed index value, which is equal to one less than 
         ///     the number of entries in the image palette.
         /// ## (bKGD-parsing-errors)
-        case unexpectedBackground(pixel:PNG.Format.Pixel)
         case invalidBackgroundChunkLength(Int, expected:Int)
         case invalidBackgroundSample(UInt16, max:UInt16)
         case invalidBackgroundIndex(Int, max:Int)
-        
-        /// case PNG.ParsingError.unexpectedHistogram(pixel:)
-        ///     The parser encountered a [`(Chunk).hIST`] chunk in an image 
-        ///     with a pixel format that forbids it. 
-        /// - pixel : Format.Pixel 
-        ///     The image pixel format.
-        /// ## (hIST-parsing-errors)
         
         /// case PNG.ParsingError.invalidHistogramChunkLength(_:expected:)
         ///     A [`(Chunk).hIST`] chunk had the wrong length. 
@@ -313,7 +298,6 @@ extension PNG
         /// - expected : Swift.Int 
         ///     The expected chunk length.
         /// ## (hIST-parsing-errors)
-        case unexpectedHistogram(pixel:PNG.Format.Pixel)
         case invalidHistogramChunkLength(Int, expected:Int)
         
         /// case PNG.ParsingError.invalidGammaChunkLength(_:)
@@ -394,14 +378,14 @@ extension PNG
         ///     The invalid compression method code.
         /// ## (iCCP-parsing-errors)
         
-        /// case PNG.ParsingError.incompleteColorProfileCompressedBytestream
-        ///     The compressed bytestream in an [`(Chunk).iCCP`] chunk was not 
+        /// case PNG.ParsingError.incompleteColorProfileCompressedDatastream
+        ///     The compressed data stream in an [`(Chunk).iCCP`] chunk was not 
         ///     properly terminated.
         /// ## (iCCP-parsing-errors)
         case invalidColorProfileChunkLength(Int, min:Int) 
         case invalidColorProfileName(String?) 
         case invalidColorProfileCompressionMethodCode(UInt8)
-        case incompleteColorProfileCompressedBytestream
+        case incompleteColorProfileCompressedDatastream
         
         /// case PNG.ParsingError.invalidPhysicalDimensionsChunkLength(_:)
         ///     A [`(Chunk).pHYs`] chunk had the wrong length. 
@@ -536,8 +520,8 @@ extension PNG
         ///     keyword string in an [`(Chunk).iTXt`] chunk.
         /// ## (text-chunk-parsing-errors)
         
-        /// case PNG.ParsingError.incompleteTextCompressedBytestream
-        ///     The compressed bytestream in a [`(Chunk).zTXt`] or [`(Chunk).iTXt`] 
+        /// case PNG.ParsingError.incompleteTextCompressedDatastream
+        ///     The compressed data stream in a [`(Chunk).zTXt`] or [`(Chunk).iTXt`] 
         ///     chunk was not properly terminated.
         /// ## (text-chunk-parsing-errors)
         case invalidTextEnglishKeyword(String?)
@@ -546,55 +530,198 @@ extension PNG
         case invalidTextCompressionMethodCode(UInt8)
         case invalidTextLanguageTag(String?)
         case invalidTextLocalizedKeyword
-        case incompleteTextCompressedBytestream
+        case incompleteTextCompressedDatastream
     }
     
+    /// enum PNG.DecodingError 
+    /// :   Error 
+    ///     A decoding error. 
+    /// # [See also](error-handling)
+    /// ## (error-handling)
     public 
     enum DecodingError
     {
-        case missingImageHeader
-        case missingPalette
-        case missingImageData
+        /// case PNG.DecodingError.required(chunk:before:) 
+        ///     The decoder encountered a chunk of a type that requires a 
+        ///     previously encountered chunk of a particular type.
+        /// - chunk : Chunk 
+        ///     The type of the preceeding chunk required by the encountered chunk.
+        /// - before : Chunk 
+        ///     The type of the encountered chunk. 
+        /// ## ()
         
-        case incompleteImageDataCompressedBytestream
-        case extraneousImageDataCompressedBytes
+        /// case PNG.DecodingError.duplicate(chunk:) 
+        ///     The decoder encountered multiple instances of a chunk type that 
+        ///     can only appear once in a PNG file.
+        /// - chunk : Chunk 
+        ///     The type of the duplicated chunk. 
+        /// ## ()
+        
+        /// case PNG.DecodingError.unexpected(chunk:after:) 
+        ///     The decoder encountered a chunk of a type that is not allowed 
+        ///     to appear after a previously encountered chunk of a particular type.
+        /// 
+        ///     If both fields are set to [`(Chunk).IDAT`], this indicates 
+        ///     a non-contiguous [`(Chunk).IDAT`] sequence.
+        /// - chunk : Chunk 
+        ///     The type of the encountered chunk. 
+        /// - after : Chunk 
+        ///     The type of the preceeding chunk that precludes the encountered chunk.
+        /// ## ()
+        case required(chunk:PNG.Chunk, before:PNG.Chunk)
+        case duplicate(chunk:PNG.Chunk)
+        case unexpected(chunk:PNG.Chunk, after:PNG.Chunk)
+        
+        /// case PNG.DecodingError.incompleteImageDataCompressedDatastream
+        ///     The decoder finished processing the last [`(Chunk).IDAT`] chunk 
+        ///     before the compressed image data stream was properly terminated.
+        case incompleteImageDataCompressedDatastream
+        /// case PNG.DecodingError.extraneousImageDataCompressedData
+        ///     The decoder encountered additional [`(Chunk).IDAT`] chunks 
+        ///     after the end of the compressed image data stream. 
+        /// 
+        ///     This error should not be confused with an [`unexpected(chunk:after:)`] 
+        ///     error with both fields set to [`(Chunk).IDAT`], which indicates a 
+        ///     non-contiguous [`(Chunk).IDAT`] sequence.
+        case extraneousImageDataCompressedData
+        /// case PNG.DecodingError.extraneousImageData
+        ///     The compressed image data stream produces more uncompressed image 
+        ///     data than expected. 
         case extraneousImageData
-        
-        case duplicateChunk(PNG.Chunk)
-        case invalidChunkOrder(PNG.Chunk, after:PNG.Chunk)
     }
 }
 extension LZ77 
 {
+    /// enum LZ77.DecompressionError 
+    /// :   PNG.Error 
+    ///     A decompression error. 
+    /// # [Stream errors](decompression-stream-errors)
+    /// # [INFLATE errors](inflate-errors)
+    /// # [See also](error-handling)
+    /// ## (error-handling)
     public 
     enum DecompressionError
     {
-        // stream errors
+        // stream errors 
+        
+        /// case LZ77.DecompressionError.invalidStreamCompressionMethodCode(_:)
+        ///     A compressed data stream had an invalid compression method code.
+        /// 
+        ///     The compression method code should always be `8`. 
+        /// - _ : Swift.UInt8
+        ///     The invalid compression method code.
+        /// ## (decompression-stream-errors)
+        
+        /// case LZ77.DecompressionError.invalidStreamWindowSize(exponent:)
+        ///     A compressed data stream specified an invalid window size.
+        /// 
+        ///     The window size exponent should be in the range `8 ... 15`. 
+        /// - exponent : Swift.Int
+        ///     The invalid window size exponent.
+        /// ## (decompression-stream-errors)
+        
+        /// case LZ77.DecompressionError.invalidStreamHeaderCheckBits 
+        ///     A compressed data stream had invalid header check bits.
+        /// 
+        ///     The header check bits should not be confused with the modular 
+        ///     redundancy checksum, which corresponds to the 
+        ///     [`invalidStreamChecksum(declared:computed:)`] error case.
+        /// ## (decompression-stream-errors)
+        
+        /// case LZ77.DecompressionError.unexpectedStreamDictionary 
+        ///     A compressed data stream contains a stream dictionary, which 
+        ///     is not allowed in a PNG compressed data stream.
+        /// ## (decompression-stream-errors)
+        
+        /// case LZ77.DecompressionError.invalidStreamChecksum(declared:computed:) 
+        ///     The modular redundancy checksum computed on 
+        ///     the uncompressed data did not match the checksum declared in the 
+        ///     compressed data stream footer. 
+        /// 
+        ///     This error should not be confused with [`invalidStreamHeaderCheckBits`]. 
+        ///     Nor should it be confused with [`PNG.LexingError.invalidChunkChecksum(declared:computed:)`], 
+        ///     which refers to the cyclic redundancy checksum in every PNG chunk.
+        /// - declared : Swift.UInt32 
+        ///     The checksum declared in the compressed data stream footer.
+        /// - computed : Swift.UInt32 
+        ///     The checksum computed on the uncompressed data.
+        /// ## (decompression-stream-errors)
         case invalidStreamCompressionMethodCode(UInt8)
         case invalidStreamWindowSize(exponent:Int)
         case invalidStreamHeaderCheckBits
         case unexpectedStreamDictionary
         case invalidStreamChecksum(declared:UInt32, computed:UInt32)
         // block errors 
+        
+        /// case LZ77.DecompressionError.invalidBlockTypeCode(_:) 
+        ///     A compressed block had an invalid block type code.
+        /// 
+        ///     The block type code should be one of `0`, `1`, or `2`. 
+        /// - _ : Swift.UInt8
+        ///     The invalid block type code.
+        /// ## (inflate-errors)
+        
+        /// case LZ77.DecompressionError.invalidBlockElementCountParity(_:_:) 
+        ///     A compressed block of stored type had inconsistent element count fields.
+        /// 
+        ///     A valid element count field is the bitwise negation of the other 
+        ///     element count field.
+        /// - _ : Swift.UInt16
+        ///     The value of the first element count field.
+        /// - _ : Swift.UInt16
+        ///     The value of the second element count field.
+        /// ## (inflate-errors)
+        
+        /// case LZ77.DecompressionError.invalidHuffmanRunLiteralSymbolCount(_:) 
+        ///     A compressed block of dynamic type declared an invalid number of 
+        ///     run-literal symbols.
+        /// 
+        ///     The number of run-literal symbols must be in the range `257 ... 286`.
+        /// - _ : Swift.Int
+        ///     The number of run-literal symbols declared in the compressed block.
+        /// ## (inflate-errors)
+        
+        /// case LZ77.DecompressionError.invalidHuffmanCodelengthHuffmanTable() 
+        ///     A compressed block of dynamic type declared an invalid 
+        ///     codelength huffman table.
+        /// ## (inflate-errors)
+        
+        /// case LZ77.DecompressionError.invalidHuffmanCodelengthSequence
+        ///     A compressed block of dynamic type declared an invalid sequence of 
+        ///     symbol codelengths.
+        /// ## (inflate-errors)
+        
+        /// case LZ77.DecompressionError.invalidHuffmanTable
+        ///     A compressed block of dynamic type declared an invalid 
+        ///     distance or run-literal huffman table.
+        /// ## (inflate-errors)
         case invalidBlockTypeCode(UInt8)
         case invalidBlockElementCountParity(UInt16, UInt16)
         case invalidHuffmanRunLiteralSymbolCount(Int)
         case invalidHuffmanCodelengthHuffmanTable
         case invalidHuffmanCodelengthSequence
         case invalidHuffmanTable
-        
+        /// case LZ77.DecompressionError.invalidStringReference
+        ///     A compressed block contains an invalid run-length string reference.
+        /// ## (inflate-errors)
         case invalidStringReference
     }
 }
 
 extension PNG.LexingError:PNG.Error 
 {
+    /// static var PNG.LexingError.namespace : Swift.String { get }
+    /// ?:  Error 
+    ///     The string `"lexing error"`.
     public static 
     var namespace:String 
     {
         "lexing error"
     }
-    
+    /// var PNG.LexingError.message : Swift.String { get }
+    /// ?:  Error 
+    ///     A human-readable summary of this error.
+    /// ## ()
     public 
     var message:String 
     {
@@ -614,7 +741,11 @@ extension PNG.LexingError:PNG.Error
             return "invalid chunk checksum"
         }
     }
-    
+    /// var PNG.LexingError.details : Swift.String? { get }
+    /// ?:  Error 
+    ///     An optional human-readable string providing additional details 
+    ///     about this error.
+    /// ## ()
     public 
     var details:String?
     {
@@ -637,12 +768,18 @@ extension PNG.LexingError:PNG.Error
 }
 extension PNG.FormattingError:PNG.Error 
 {
+    /// static var PNG.FormattingError.namespace : Swift.String { get }
+    /// ?:  Error 
+    ///     The string `"formatting error"`.
     public static 
     var namespace:String 
     {
         "formatting error"
     }
-    
+    /// var PNG.FormattingError.message : Swift.String { get }
+    /// ?:  Error 
+    ///     A human-readable summary of this error.
+    /// ## ()
     public 
     var message:String 
     {
@@ -652,7 +789,11 @@ extension PNG.FormattingError:PNG.Error
             return "failed to write to destination bytestream"
         }
     }
-    
+    /// var PNG.FormattingError.details : Swift.String? { get }
+    /// ?:  Error 
+    ///     An optional human-readable string providing additional details 
+    ///     about this error.
+    /// ## ()
     public 
     var details:String?
     {
@@ -665,6 +806,9 @@ extension PNG.FormattingError:PNG.Error
 }
 extension PNG.ParsingError:PNG.Error 
 {
+    /// static var PNG.ParsingError.namespace : Swift.String { get }
+    /// ?:  Error 
+    ///     The string `"parsing error"`.
     public static 
     var namespace:String 
     {
@@ -693,13 +837,11 @@ extension PNG.ParsingError:PNG.Error
                 .invalidTransparencySample,
                 .invalidTransparencyCount:
             return PNG.Transparency.self 
-        case    .unexpectedBackground,
-                .invalidBackgroundChunkLength,
+        case    .invalidBackgroundChunkLength,
                 .invalidBackgroundSample,
                 .invalidBackgroundIndex:
             return PNG.Background.self 
-        case    .unexpectedHistogram,
-                .invalidHistogramChunkLength:
+        case    .invalidHistogramChunkLength:
             return PNG.Histogram.self 
         case    .invalidGammaChunkLength:
             return PNG.Gamma.self 
@@ -714,7 +856,7 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidColorProfileChunkLength,
                 .invalidColorProfileName,
                 .invalidColorProfileCompressionMethodCode,
-                .incompleteColorProfileCompressedBytestream:
+                .incompleteColorProfileCompressedDatastream:
             return PNG.ColorProfile.self 
         case    .invalidPhysicalDimensionsChunkLength,
                 .invalidPhysicalDimensionsDensityUnitCode:
@@ -734,10 +876,14 @@ extension PNG.ParsingError:PNG.Error
                 .invalidTextCompressionMethodCode,
                 .invalidTextLanguageTag,
                 .invalidTextLocalizedKeyword,
-                .incompleteTextCompressedBytestream:
+                .incompleteTextCompressedDatastream:
             return PNG.Text.self
         }
     }
+    /// var PNG.ParsingError.message : Swift.String { get }
+    /// ?:  Error 
+    ///     A human-readable summary of this error.
+    /// ## ()
     public 
     var message:String 
     {
@@ -779,9 +925,7 @@ extension PNG.ParsingError:PNG.Error
             text = "invalid image size"
         
         case    .unexpectedPalette,
-                .unexpectedTransparency,
-                .unexpectedBackground,
-                .unexpectedHistogram:
+                .unexpectedTransparency:
             text = "unexpected chunk"
         
         case    .invalidPaletteCount,
@@ -804,9 +948,9 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidSuggestedPaletteFrequency:
             text = "invalid frequency"
         
-        case    .incompleteColorProfileCompressedBytestream,
-                .incompleteTextCompressedBytestream:
-            text = "compressed bytestream is incomplete"
+        case    .incompleteColorProfileCompressedDatastream,
+                .incompleteTextCompressedDatastream:
+            text = "content field does not contain a full compressed data stream"
         case    .invalidTimeModifiedTime:
             text = "invalid time"
         case    .invalidTextEnglishKeyword, 
@@ -818,7 +962,11 @@ extension PNG.ParsingError:PNG.Error
         
         return "(\(self.scope)) \(text)"
     }
-    
+    /// var PNG.ParsingError.details : Swift.String? { get }
+    /// ?:  Error 
+    ///     An optional human-readable string providing additional details 
+    ///     about this error.
+    /// ## ()
     public 
     var details:String? 
     {
@@ -899,23 +1047,18 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidTransparencyCount(let count, max: let max):
             return "number of alpha samples (\(count)) exceeds number of palette entries (\(max))"
         
-        case    .unexpectedBackground(pixel: let pixel): 
-            return "background for pixel format `\(pixel)` requires a previously-defined image palette"
         case    .invalidBackgroundSample(let sample, max: let max):
             return "background sample (\(sample)) must be in the range 0 ... \(max)"
         case    .invalidBackgroundIndex(let index, max: let max):
             return "background index (\(index)) is out of range for palette of length \(max + 1)"
-        
-        case    .unexpectedHistogram(pixel: let pixel):
-            return "histogram not allowed for pixel format `\(pixel)`"
         
         case    .invalidSignificantBitsPrecision(let precision, max: let max):
             return "precision (\(precision)) must be in the range 1 ... \(max)"
         
 
         
-        case    .incompleteColorProfileCompressedBytestream, 
-                .incompleteTextCompressedBytestream:
+        case    .incompleteColorProfileCompressedDatastream, 
+                .incompleteTextCompressedDatastream:
             return nil
 
         case    .invalidSuggestedPaletteFrequency:
@@ -955,65 +1098,74 @@ extension PNG.ParsingError:PNG.Error
 }
 extension PNG.DecodingError:PNG.Error 
 {
+    /// static var PNG.DecodingError.namespace : Swift.String { get }
+    /// ?:  Error 
+    ///     The string `"decoding error"`.
     public static 
     var namespace:String 
     {
         "decoding error"
     }
-    
+    /// var PNG.DecodingError.message : Swift.String { get }
+    /// ?:  Error 
+    ///     A human-readable summary of this error.
+    /// ## ()
     public 
     var message:String 
     {
         switch self 
         {
-        case .missingImageHeader:
-            return "missing image header"
-        case .missingPalette:
-            return "missing image palette"
-        case .missingImageData:
-            return "missing image data"
-        case .incompleteImageDataCompressedBytestream:
-            return "compressed image data bytestream is incomplete"
-        case .extraneousImageDataCompressedBytes:
-            return "unexpected data after end of compressed image data bytestream"
+        case .incompleteImageDataCompressedDatastream:
+            return "image data chunks do not contain a full compressed data stream"
+        case .extraneousImageDataCompressedData:
+            return "image contains trailing image data chunks that are not part of the compressed data stream"
         case .extraneousImageData:
-            return "uncompressed image data bytestream contains more data than expected"
-        case .duplicateChunk:
+            return "compressed image data stream produces more uncompressed image data than expected"
+        case .duplicate:
             return "duplicate chunk"
-        case .invalidChunkOrder:
+        case .required, .unexpected:
             return "invalid chunk ordering"
         }
     }
-    
+    /// var PNG.DecodingError.details : Swift.String? { get }
+    /// ?:  Error 
+    ///     An optional human-readable string providing additional details 
+    ///     about this error.
+    /// ## ()
     public 
     var details:String? 
     {
         switch self 
         {
-        case    .missingImageHeader,
-                .missingPalette,
-                .missingImageData,
-                .incompleteImageDataCompressedBytestream,
-                .extraneousImageDataCompressedBytes,
+        case    .incompleteImageDataCompressedDatastream,
+                .extraneousImageDataCompressedData,
                 .extraneousImageData:
             return nil
-        case .duplicateChunk(let chunk):
+        case    .required(chunk: let previous, before: let chunk):
+            return "chunk of type '\(chunk)' requires a previously encountered chunk of type '\(previous)'"
+        case    .duplicate(chunk: let chunk):
             return "chunk of type '\(chunk)' can only appear once"
-        case .invalidChunkOrder(.IDAT, after: .IDAT):
+        case    .unexpected(chunk: .IDAT, after: .IDAT):
             return "chunks of type 'IDAT' must be contiguous"
-        case .invalidChunkOrder(let chunk, after: let previous):
+        case    .unexpected(chunk: let chunk, after: let previous):
             return "chunk of type '\(chunk)' cannot appear after chunk of type '\(previous)'"
         }
     }
 }
 extension LZ77.DecompressionError:PNG.Error 
 {
+    /// static var LZ77.DecompressionError.namespace : Swift.String { get }
+    /// ?:  PNG.Error 
+    ///     The string `"decompression error"`.
     public static 
     var namespace:String 
     {
-        "inflate error"
+        "decompression error"
     }
-    
+    /// var LZ77.DecompressionError.message : Swift.String { get }
+    /// ?:  PNG.Error 
+    ///     A human-readable summary of this error.
+    /// ## ()
     public 
     var message:String 
     {
@@ -1045,7 +1197,11 @@ extension LZ77.DecompressionError:PNG.Error
             return "invalid rfc-1951 string reference"
         }
     }
-    
+    /// var LZ77.DecompressionError.details : Swift.String? { get }
+    /// ?:  PNG.Error 
+    ///     An optional human-readable string providing additional details 
+    ///     about this error.
+    /// ## ()
     public 
     var details:String? 
     {

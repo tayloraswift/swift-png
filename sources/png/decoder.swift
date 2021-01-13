@@ -505,7 +505,7 @@ extension PNG.Metadata
         guard destination == nil 
         else 
         {
-            throw PNG.DecodingError.duplicateChunk(type)
+            throw PNG.DecodingError.duplicate(chunk: type)
         }
         destination = try parser()
     }
@@ -560,7 +560,7 @@ extension PNG.Metadata
             guard palette == nil 
             else 
             {
-                throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .PLTE)
+                throw PNG.DecodingError.unexpected(chunk: chunk.type, after: .PLTE)
             } 
         // check that chunk is not a critical chunk 
         case .CgBI, .IHDR, .PLTE, .IDAT, .IEND: 
@@ -586,7 +586,7 @@ extension PNG.Metadata
             guard let palette:PNG.Palette = palette 
             else 
             {
-                throw PNG.DecodingError.missingPalette
+                throw PNG.DecodingError.required(chunk: .PLTE, before: .hIST)
             }
             try Self.unique(assign: chunk.type, to: &self.histogram) 
             {
@@ -694,7 +694,7 @@ extension PNG.Decoder
         guard let _:Void = self.continue 
         else 
         {
-            throw PNG.DecodingError.extraneousImageDataCompressedBytes
+            throw PNG.DecodingError.extraneousImageDataCompressedData
         }
         
         self.continue = try self.inflator.push(data)
@@ -984,12 +984,12 @@ extension PNG.Context
             self.image.metadata.text.append(try .init(parsing: chunk.data, unicode: false))
         case .CgBI, .IHDR, .PLTE, .bKGD, .tRNS, .hIST, 
             .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT, .IDAT:
-            throw PNG.DecodingError.invalidChunkOrder(chunk.type, after: .IDAT) 
+            throw PNG.DecodingError.unexpected(chunk: chunk.type, after: .IDAT) 
         case .IEND: 
             guard self.decoder.continue == nil 
             else 
             {
-                throw PNG.DecodingError.incompleteImageDataCompressedBytestream
+                throw PNG.DecodingError.incompleteImageDataCompressedDatastream
             } 
         default:
             self.image.metadata.application.append(chunk)
@@ -1035,8 +1035,8 @@ extension PNG.Data.Rectangular
             {
             case .IHDR:
                 return (standard, try .init(parsing: chunk.data, standard: standard))
-            default:
-                throw PNG.DecodingError.missingImageHeader
+            case let type:
+                throw PNG.DecodingError.required(chunk: .IHDR, before: type)
             }
         }()
         
@@ -1053,23 +1053,23 @@ extension PNG.Data.Rectangular
                 switch chunk.type 
                 {
                 case .IHDR:
-                    throw PNG.DecodingError.duplicateChunk(.IHDR)
+                    throw PNG.DecodingError.duplicate(chunk: .IHDR)
                 
                 case .PLTE:
                     guard palette == nil 
                     else 
                     {
-                        throw PNG.DecodingError.duplicateChunk(.PLTE)
+                        throw PNG.DecodingError.duplicate(chunk: .PLTE)
                     }
                     guard background == nil
                     else 
                     {
-                        throw PNG.DecodingError.invalidChunkOrder(.PLTE, after: .bKGD)
+                        throw PNG.DecodingError.unexpected(chunk: .PLTE, after: .bKGD)
                     }
                     guard transparency == nil
                     else 
                     {
-                        throw PNG.DecodingError.invalidChunkOrder(.PLTE, after: .tRNS)
+                        throw PNG.DecodingError.unexpected(chunk: .PLTE, after: .tRNS)
                     }
                     
                     palette = try .init(parsing: chunk.data, pixel: header.pixel)
@@ -1084,12 +1084,12 @@ extension PNG.Data.Rectangular
                         metadata:       metadata)
                     else 
                     {
-                        throw PNG.DecodingError.missingPalette
+                        throw PNG.DecodingError.required(chunk: .PLTE, before: .IDAT)
                     }
                     return context
                     
                 case .IEND:
-                    throw PNG.DecodingError.missingImageData
+                    throw PNG.DecodingError.required(chunk: .IDAT, before: .IEND)
                 
                 default:
                     try metadata.push(ancillary: chunk, pixel: header.pixel, 

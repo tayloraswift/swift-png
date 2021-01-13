@@ -527,9 +527,9 @@ extension Test
                 return result 
             }
         }
-        catch PNG.DecodingError.missingImageData
+        catch PNG.DecodingError.required(chunk: .IDAT, before: .IEND)
         {
-            Self.printError(PNG.DecodingError.missingImageData)
+            Self.printError(PNG.DecodingError.required(chunk: .IDAT, before: .IEND))
         }
         catch let error 
         {

@@ -920,17 +920,17 @@ extension PNG.Format
             switch transparency?.case 
             {
             case nil:
-                palette =          solid.map        { (  $0.r,   $0.g,   $0.b, .max) }
+                palette =          solid.entries.map        { (  $0.r,   $0.g,   $0.b, .max) }
             case .palette(let alpha):
-                guard alpha.count <= solid.count 
+                guard alpha.count <= solid.entries.count 
                 else 
                 {
                     PNG.ParsingError.invalidTransparencyCount(alpha.count, 
-                        max: solid.count).fatal
+                        max: solid.entries.count).fatal
                 }
                 
-                palette =      zip(solid, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } + 
-                    solid.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
+                palette =      zip(solid.entries, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } + 
+                    solid.entries.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
             default: 
                 fatalError("expected transparency of case `palette` for pixel format `\(pixel)`")
             }
@@ -1040,8 +1040,11 @@ extension PNG
         ///     Indicates whether an image uses interlacing.
             interlaced:Bool
         
-        /// init PNG.Header.init(size:pixel:interlaced:)
+        /// init PNG.Header.init(size:pixel:interlaced:standard:)
         ///     Creates an image header. 
+        /// 
+        ///     This initializer validates the image `size`, and validates the 
+        ///     `pixel` format against the given PNG `standard`.
         /// - size      : (x:Swift.Int, y:Swift.Int) 
         ///     An image size, measured in pixels.
         /// 
@@ -1051,13 +1054,30 @@ extension PNG
         ///     A pixel format.
         /// - interlaced: Swift.Bool 
         ///     Indicates if interlacing is enabled.
+        /// - standard  : Standard 
+        ///     Specifies if the header is for a standard image, 
+        ///     or an iphone-optimized image. 
+        /// 
+        ///     If `standard` is [`(Standard).ios`], then the `pixel` format 
+        ///     must be either [`(Format.Pixel).rgb8`] or [`(Format.Pixel).rgba8`].
+        ///     Otherwise, this initializer will suffer a precondition failure.
         public 
-        init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool) 
+        init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool, 
+            standard:PNG.Standard) 
         {
             guard size.x > 0, size.y > 0 
             else 
             {
                 PNG.ParsingError.invalidHeaderSize(size).fatal
+            }
+            // iphone-optimized PNG can only have pixel type rgb8 or rgb16
+            switch (standard, pixel)
+            {
+            case    (.common, _):   break 
+            case    (.ios, .rgb8), 
+                    (.ios, .rgba8): break
+            default: 
+                PNG.ParsingError.invalidHeaderPixelFormat(pixel, standard: standard).fatal
             }
             self.size       = size 
             self.pixel      = pixel 
@@ -1070,16 +1090,12 @@ extension PNG.Header
     /// init PNG.Header.init(parsing:standard:) 
     /// throws 
     ///     Creates an image header by parsing the given chunk data, interpreting it 
-    ///     according to the given PNG standard.
+    ///     according to the given PNG `standard`.
     /// - data      : [Swift.UInt8]
     ///     The contents of an [`(Chunk).IHDR`] chunk to parse. 
     /// - standard  : Standard 
-    ///     Indicates if the header should be interpreted as a standard PNG header, 
+    ///     Specifies if the header should be interpreted as a standard PNG header, 
     ///     or an iphone-optimized PNG header. 
-    /// 
-    ///     If `standard` is [`(Standard).ios`], then the pixel format encoded 
-    ///     in the chunk data must be either [`(Format.Pixel).rgb8`] or 
-    ///     [`(Format.Pixel).rgba8`].
     /// ## (header-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], standard:PNG.Standard) throws 
@@ -1162,7 +1178,6 @@ extension PNG.Header
 extension PNG 
 {
     /// struct PNG.Palette 
-    /// :   Swift.RandomAccessCollection
     ///     An image palette.
     /// 
     ///     This type models the information stored in a [`(Chunk).PLTE`] chunk. 
@@ -1174,24 +1189,29 @@ extension PNG
     public 
     struct Palette 
     {
+        /// let PNG.Palette.entries : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+        ///     The entries in this palette.
+        public 
         let entries:[(r:UInt8, g:UInt8, b:UInt8)]
     }
 }
 extension PNG.Palette 
 {
-    /// init PNG.Palette.init(_:pixel:)
+    /// init PNG.Palette.init(entries:pixel:)
     ///     Creates an image palette.
     /// 
     ///     This initializer validates the palette information against the given 
-    ///     pixel format.
+    ///     `pixel` format.
     /// - entries   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
     ///     An array of palette entries. This array must be non-empty, and can 
     ///     contain at most `256`, or `1 << pixel.`[`(Format.Pixel).depth`] elements, 
     ///     whichever is lower.
     /// - pixel     : Format.Pixel 
-    ///     The pixel format of the image this palette is to be used for.
+    ///     The pixel format of the image this palette is to be used for. 
+    ///     If this parameter is a grayscale or grayscale-alpha format, this 
+    ///     initializer will suffer a precondition failure.
     public 
-    init(_ entries:[(r:UInt8, g:UInt8, b:UInt8)], pixel:PNG.Format.Pixel) 
+    init(entries:[(r:UInt8, g:UInt8, b:UInt8)], pixel:PNG.Format.Pixel) 
     {
         guard pixel.hasColor
         else
@@ -1210,7 +1230,7 @@ extension PNG.Palette
     /// init PNG.Palette.init(parsing:pixel:) 
     /// throws 
     ///     Creates an image palette by parsing the given chunk data, interpreting 
-    ///     and validating it according to the given pixel format.
+    ///     and validating it according to the given `pixel` format.
     /// - data      : [Swift.UInt8]
     ///     The contents of a [`(Chunk).PLTE`] chunk to parse. 
     /// - pixel     : Format.Pixel 
@@ -1262,38 +1282,6 @@ extension PNG.Palette
             }
             $1 = $0.count
         }
-    }
-}
-extension PNG.Palette:RandomAccessCollection 
-{
-    /// var PNG.Palette.startIndex : Swift.Int { get }
-    /// ?:  Swift.RandomAccessCollection 
-    ///     The index of the first entry in this palette.
-    public 
-    var startIndex:Int 
-    {
-        self.entries.startIndex
-    }
-    /// var PNG.Palette.endIndex : Swift.Int { get }
-    /// ?:  Swift.RandomAccessCollection 
-    ///     The index after the index of the last entry in this palette.
-    public 
-    var endIndex:Int 
-    {
-        self.entries.endIndex
-    }
-    /// subscript PNG.Palette[_:] { get }
-    /// ?:  Swift.RandomAccessCollection 
-    ///     Returns the palette entry at the given index.
-    /// - index : Swift.Int 
-    ///     The index of the palette entry to retrieve. This index must be in the 
-    ///     range [`startIndex`] `..<` [`endIndex`].
-    /// - ->    : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8) 
-    ///     The palette entry stored at `index`.
-    public 
-    subscript(index:Int) -> (r:UInt8, g:UInt8, b:UInt8) 
-    {
-        self.entries[index]
     }
 }
 
@@ -1364,34 +1352,43 @@ extension PNG.Transparency
     ///     Creates a transparency descriptor.
     /// 
     ///     This initializer validates the transparency information against the 
-    ///     given pixel format and image palette.
+    ///     given pixel format and image palette. Some `pixel` formats imply 
+    ///     that `palette` must be `nil`. This initializer does not check this 
+    ///     assumption, as it is expected to have been verified by 
+    ///     [`Palette.init(entries:pixel:)`].
     /// - case      : Case 
     ///     A transparency descriptor value.
+    /// 
+    ///     If this parameter is a [`(Case).v(key:)`] or [`(Case).rgb(key:)`] case, 
+    ///     the samples in its chroma key payload must fall within the 
+    ///     range determined by the image color depth. Passing an enumeration 
+    ///     case with an invalid chroma key sample will result in a precondition 
+    ///     failure.
     /// - pixel     : Format.Pixel 
     ///     The pixel format of the image this transparency descriptor is to be 
     ///     used for. Passing a mismatched enumeration `case` will result in a 
-    ///     precondition failure.
+    ///     precondition failure. 
+    /// 
+    ///     Transparency descriptors are not allowed for grayscale-alpha or RGBA 
+    ///     images, so setting `pixel` to one of those pixel formats will always 
+    ///     result in a precondition failure.
     /// - palette   : PNG.Palette? 
     ///     The palette of the image this transparency descriptor is to be 
     ///     used for. 
     /// 
-    ///     If `case` is not a [`(Case).palette(alpha:)`] case, `palette`
-    ///     must be `nil`, and the chroma key payload samples must fall within the 
-    ///     appropriate range, as determined by the image color depth. 
+    ///     If `case` is a [`(Case).palette(alpha:)`] case, this palette must 
+    ///     not be `nil`, and must contain at least as many entries as the  
+    ///     number of alpha samples in the [`(Case).palette(alpha:)`] payload. 
+    ///     Otherwise, this initializer will suffer a precondition failure. 
     /// 
-    ///     Otherwise, the array payload of the given `case` must have the same 
-    ///     number, or fewer, elements as entries in the given palette.
+    ///     If `case` is a [`(Case).v(key:)`] or [`(Case).rgb(key:)`] case, 
+    ///     this parameter is ignored.
     public 
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
     {
         switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16: 
-            guard palette == nil 
-            else 
-            {
-                PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
-            }
             guard case .v(key: let v) = `case` 
             else 
             {
@@ -1422,17 +1419,17 @@ extension PNG.Transparency
             guard let palette:PNG.Palette = palette 
             else 
             {
-                fallthrough 
+                PNG.DecodingError.required(chunk: .PLTE, before: .tRNS).fatal 
             }
             guard case .palette(alpha: let alpha) = `case` 
             else 
             {
                 fatalError("expected transparency of case `palette` for pixel format `\(pixel)`")
             }
-            guard alpha.count <= palette.count  
+            guard alpha.count <= palette.entries.count  
             else 
             {
-                PNG.ParsingError.invalidTransparencyCount(alpha.count, max: palette.count).fatal
+                PNG.ParsingError.invalidTransparencyCount(alpha.count, max: palette.entries.count).fatal
             }
             
         case .va8, .va16, .rgba8, .rgba16:
@@ -1444,8 +1441,12 @@ extension PNG.Transparency
     /// init PNG.Transparency.init(parsing:pixel:palette:) 
     /// throws 
     ///     Creates a transparency descriptor by parsing the given chunk data, 
-    ///     interpreting and validating it according to the given pixel format and 
-    ///     image palette.
+    ///     interpreting and validating it according to the given `pixel` format and 
+    ///     image `palette`. 
+    /// 
+    ///     Some `pixel` formats imply that `palette` must be `nil`. 
+    ///     This initializer does not check this assumption, as it is expected 
+    ///     to have been verified by [`Palette.init(parsing:pixel:)`].
     /// - data      : [Swift.UInt8]
     ///     The contents of a [`(Chunk).tRNS`] chunk to parse. 
     /// - pixel     : Format.Pixel 
@@ -1453,7 +1454,7 @@ extension PNG.Transparency
     ///     and validated against.
     /// - palette   : Palette?
     ///     The image palette the chunk data is to be validated against, if 
-    ///     applicable. Otherwise, this parameter must be set to `nil`.
+    ///     applicable. 
     /// ## (transparency-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws 
@@ -1461,11 +1462,6 @@ extension PNG.Transparency
         switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16:
-            guard palette == nil 
-            else 
-            {
-                throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
-            }
             guard data.count == 2 
             else 
             {
@@ -1503,12 +1499,12 @@ extension PNG.Transparency
             guard let palette:PNG.Palette = palette 
             else 
             {
-                fallthrough
+                throw PNG.DecodingError.required(chunk: .PLTE, before: .tRNS)
             }
-            guard data.count <= palette.count  
+            guard data.count <= palette.entries.count  
             else 
             {
-                throw PNG.ParsingError.invalidTransparencyCount(data.count, max: palette.count)
+                throw PNG.ParsingError.invalidTransparencyCount(data.count, max: palette.entries.count)
             }
             self.case =  .palette(alpha: data)
         
@@ -1609,9 +1605,18 @@ extension PNG.Background
     ///     Creates a background descriptor.
     /// 
     ///     This initializer validates the background information against the 
-    ///     given pixel format and image palette.
+    ///     given pixel format and image palette. Some `pixel` formats imply 
+    ///     that `palette` must be `nil`. This initializer does not check this 
+    ///     assumption, as it is expected to have been verified by 
+    ///     [`Palette.init(entries:pixel:)`].
     /// - case      : Case 
     ///     A background descriptor value.
+    /// 
+    ///     If this parameter is a [`(Case).v(_:)`] or [`(Case).rgb(_:)`] case, 
+    ///     the samples in its background color payload must fall within the 
+    ///     range determined by the image color depth. Passing an enumeration 
+    ///     case with an invalid background sample will result in a precondition 
+    ///     failure.
     /// - pixel     : Format.Pixel 
     ///     The pixel format of the image this background descriptor is to be 
     ///     used for. Passing a mismatched enumeration `case` will result in a 
@@ -1620,23 +1625,20 @@ extension PNG.Background
     ///     The palette of the image this background descriptor is to be 
     ///     used for. 
     /// 
-    ///     If `case` is not a [`(Case).palette(index:)`] case, `palette`
-    ///     must be `nil`, and the background samples must fall within the 
-    ///     appropriate range, as determined by the image color depth. 
+    ///     If `case` is a [`(Case).palette(index:)`] case, this palette must 
+    ///     not be `nil`, and the number of entries in it must be at least `1` 
+    ///     greater than the value of the [`(Case).palette(index:)`] payload. 
+    ///     If the index payload is out of range, this function will suffer a 
+    ///     precondition failure.
     /// 
-    ///     Otherwise, the index payload of the given `case` must be within the 
-    ///     index range of the given palette.
+    ///     If `case` is a [`(Case).v(_:)`] or [`(Case).rgb(_:)`] case, 
+    ///     this parameter is ignored. 
     public 
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?) 
     {
         switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-            guard palette == nil 
-            else 
-            {
-                PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
-            }
             guard case .v(let v) = `case` 
             else 
             {
@@ -1666,17 +1668,17 @@ extension PNG.Background
             guard let palette:PNG.Palette = palette 
             else 
             {
-                PNG.ParsingError.unexpectedBackground(pixel: pixel).fatal
+                PNG.DecodingError.required(chunk: .PLTE, before: .bKGD).fatal
             }
             guard case .palette(index: let index) = `case` 
             else 
             {
                 fatalError("expected background of case `palette` for pixel format `\(pixel)`")
             }
-            guard index < palette.count
+            guard index < palette.entries.count
             else 
             {
-                PNG.ParsingError.invalidBackgroundIndex(index, max: palette.count - 1).fatal
+                PNG.ParsingError.invalidBackgroundIndex(index, max: palette.entries.count - 1).fatal
             }
         }
         
@@ -1685,8 +1687,12 @@ extension PNG.Background
     /// init PNG.Background.init(parsing:pixel:palette:) 
     /// throws 
     ///     Creates a background descriptor by parsing the given chunk data, 
-    ///     interpreting and validating it according to the given pixel format and 
-    ///     image palette.
+    ///     interpreting and validating it according to the given `pixel` format and 
+    ///     image `palette`. 
+    /// 
+    ///     Some `pixel` formats imply that `palette` must be `nil`. This 
+    ///     initializer does not check this assumption, as it is expected to have 
+    ///     been verified by [`Palette.init(parsing:pixel:)`].
     /// - data      : [Swift.UInt8]
     ///     The contents of a [`(Chunk).bKGD`] chunk to parse. 
     /// - pixel     : Format.Pixel 
@@ -1694,7 +1700,7 @@ extension PNG.Background
     ///     and validated against.
     /// - palette   : Palette?
     ///     The image palette the chunk data is to be validated against, if 
-    ///     applicable. Otherwise, this parameter must be set to `nil`.
+    ///     applicable. 
     /// ## (background-parsing-and-serialization)
     public 
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
@@ -1702,11 +1708,6 @@ extension PNG.Background
         switch pixel 
         {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-            guard palette == nil 
-            else 
-            {
-                throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
-            }
             guard data.count == 2 
             else 
             {
@@ -1744,7 +1745,7 @@ extension PNG.Background
             guard let palette:PNG.Palette = palette 
             else 
             {
-                throw PNG.ParsingError.unexpectedBackground(pixel: pixel)
+                throw PNG.DecodingError.required(chunk: .PLTE, before: .bKGD)
             }
             guard data.count == 1
             else 
@@ -1752,10 +1753,10 @@ extension PNG.Background
                 throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 1)
             }
             let index:Int = .init(data[0])
-            guard index < palette.count
+            guard index < palette.entries.count
             else 
             {
-                throw PNG.ParsingError.invalidBackgroundIndex(index, max: palette.count - 1)
+                throw PNG.ParsingError.invalidBackgroundIndex(index, max: palette.entries.count - 1)
             }
             self.case = .palette(index: index)
         }
@@ -1828,10 +1829,10 @@ extension PNG.Histogram
     public 
     init(frequencies:[UInt16], palette:PNG.Palette)
     {
-        guard frequencies.count == palette.count
+        guard frequencies.count == palette.entries.count
         else 
         {
-            fatalError("number of histogram entries (\(frequencies.count)) must match number of palette entries (\(palette.count))")
+            fatalError("number of histogram entries (\(frequencies.count)) must match number of palette entries (\(palette.entries.count))")
         }
         
         self.frequencies = frequencies
@@ -1839,7 +1840,7 @@ extension PNG.Histogram
     /// init PNG.Histogram.init(parsing:palette:) 
     /// throws 
     ///     Creates a palette histogram by parsing the given chunk data, 
-    ///     validating it according to the given image palette.
+    ///     validating it according to the given image `palette`.
     /// - data      : [Swift.UInt8]
     ///     The contents of a [`(Chunk).hIST`] chunk to parse. 
     /// - palette   : Palette
@@ -1848,11 +1849,11 @@ extension PNG.Histogram
     public 
     init(parsing data:[UInt8], palette:PNG.Palette) throws
     {
-        guard data.count == 2 * palette.count
+        guard data.count == 2 * palette.entries.count
         else 
         {
             throw PNG.ParsingError.invalidHistogramChunkLength(data.count, 
-                expected: 2 * palette.count)
+                expected: 2 * palette.entries.count)
         }
         self.frequencies = (0 ..< data.count >> 1).map 
         {
@@ -2246,7 +2247,7 @@ extension PNG.SignificantBits
     /// init PNG.SignificantBits.init(parsing:pixel:) 
     /// throws 
     ///     Creates a color precision descriptor by parsing the given chunk data, 
-    ///     interpreting and validating it according to the given pixel format.
+    ///     interpreting and validating it according to the given `pixel` format.
     /// - data      : [Swift.UInt8]
     ///     The contents of an [`(Chunk).sBIT`] chunk to parse. 
     /// - pixel     : Format.Pixel 
@@ -2410,7 +2411,7 @@ extension PNG.ColorProfile
         guard try inflator.push(.init(data.dropFirst(k + 2))) == nil 
         else 
         {
-            throw PNG.ParsingError.incompleteColorProfileCompressedBytestream
+            throw PNG.ParsingError.incompleteColorProfileCompressedDatastream
         }
         
         self.profile = inflator.pull()
@@ -3124,7 +3125,7 @@ extension PNG.Text
                 guard try inflator.push(.init(data[(m + 1)...])) == nil 
                 else 
                 {
-                    throw PNG.ParsingError.incompleteTextCompressedBytestream
+                    throw PNG.ParsingError.incompleteTextCompressedDatastream
                 }
                 uncompressed    = inflator.pull()[...]
                 self.compressed = true
@@ -3147,7 +3148,7 @@ extension PNG.Text
                 guard try inflator.push(.init(data[(k + 2)...])) == nil 
                 else 
                 {
-                    throw PNG.ParsingError.incompleteTextCompressedBytestream
+                    throw PNG.ParsingError.incompleteTextCompressedDatastream
                 }
                 uncompressed    = inflator.pull()[...]
                 self.compressed = true
