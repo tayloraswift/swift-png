@@ -1112,7 +1112,7 @@ extension PNG.Header
         guard data[10] == 0
         else
         {
-            throw PNG.ParsingError.invalidHeaderCompressionCode(data[10])
+            throw PNG.ParsingError.invalidHeaderCompressionMethodCode(data[10])
         }
         guard data[11] == 0
         else
