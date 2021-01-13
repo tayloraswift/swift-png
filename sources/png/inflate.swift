@@ -2,6 +2,9 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
+/// enum LZ77 
+///     A namespace for LZ77-related functionality.
+/// ## (top-level-namespaces)
 public 
 enum LZ77 
 {

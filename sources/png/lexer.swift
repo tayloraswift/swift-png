@@ -83,6 +83,7 @@ protocol _PNGBytestreamDestination
 /// #  [Parsed chunks](parsed-chunk-types)
 /// #  [Contextual decoding](contextual-decoding)
 /// #  [Currency types](currency-types)
+/// #  [Error handling](error-handling)
 /// #  [See also](top-level-namespaces)
 /// ## (0:top-level-namespaces)
 public 
