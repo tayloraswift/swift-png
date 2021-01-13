@@ -135,8 +135,8 @@ extension PNG
     /// # [RGB formats](rgb-color-formats)
     /// # [RGBA formats](rgba-color-formats)
     /// # [iPhone-optimized color formats](ios-color-formats)
-    /// # [See also](color-spaces)
-    /// ## (0:color-spaces)
+    /// # [See also](color-formats)
+    /// ## (0:color-formats)
     public 
     enum Format 
     {
@@ -152,8 +152,8 @@ extension PNG
         ///     The pixel format associated with a color format can be accessed 
         ///     through the [`(Format).pixel`] instance property.
         /// # [Pixel formats](pixel-formats)
-        /// # [See also](color-spaces)
-        /// ## (0:color-spaces)
+        /// # [See also](color-formats)
+        /// ## (0:color-formats)
         public 
         enum Pixel 
         {

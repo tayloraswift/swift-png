@@ -215,6 +215,7 @@ extension PNG.Data
     /// struct PNG.Data.Rectangular 
     ///     A rectangular image.
     /// # [Decoding an image](decoding)
+    /// # [Encoding an image](encoding)
     /// # [Unpacking pixels](unpacking-pixels)
     /// # [Packing pixels](packing-pixels)
     /// ## (0:images)
@@ -1002,7 +1003,7 @@ extension PNG.Data.Rectangular
     /// static func PNG.Data.Rectangular.decompress<Source>(stream:)
     /// throws 
     /// where Source:Bytestream.Source 
-    ///     Decompresses and decodes a PNG file from the given bytestream. 
+    ///     Decompresses and decodes a PNG from the given bytestream. 
     /// 
     ///     On appropriate platforms, the [`decompress(path:)`] function provides 
     ///     a file system-aware interface to this function.

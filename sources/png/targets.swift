@@ -1,9 +1,14 @@
 /// protocol PNG.Color 
-///     A color target.
+///     A color target. 
+/// 
+///     The library provides two built-in color targets, [`VA`] and [`RGBA`]. 
+///     A worked example of how to implement a custom 
+///     color target can be found in the 
+///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
 /// # [Unpacking functions](unpacking-functions)
 /// # [Packing functions](packing-functions)
-/// # [Conforming types](builtin-color-targets)
-/// ## (1:color-spaces)
+/// # [See also](builtin-color-targets, custom-color-targets)
+/// ## (1:color-targets)
 public 
 protocol _PNGColor 
 {
@@ -18,15 +23,16 @@ protocol _PNGColor
     
     /// static func PNG.Color.unpack(_:of:deindexer:) 
     /// required
-    ///     Unpacks an image data storage buffer to an array of this color target. 
+    ///     Unpacks an image data storage buffer to an array of this color target, 
+    ///     using a custom deindexing function.
     /// - interleaved : [Swift.UInt8] 
     ///     An image data buffer. It is expected to be obtained from the 
     ///     [`(Data.Rectangular).storage`] property of a [`(Data).Rectangular`]
     ///     image.
     /// - format : Format 
     ///     The color format associated with the given data buffer.
-    ///     It is expected to be obtained from the the [`(Layout).format`] property 
-    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     It is expected to be obtained from the the 
+    ///     [`(Data.Rectangular).layout``(Layout).format`] property of a 
     ///     [`(Data).Rectangular`] image.
     /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate 
     ///     A function which uses the palette entries in the color `format` to 
@@ -46,7 +52,8 @@ protocol _PNGColor
         -> [Self]
     /// static func PNG.Color.pack(_:as:indexer:)
     /// required 
-    ///     Packs an array of this color target to an image data storage buffer.
+    ///     Packs an array of this color target to an image data storage buffer, 
+    ///     using a custom indexing function.
     /// - pixels : [Self] 
     ///     A pixel array containing instances of this color target.
     /// - format : Format 
@@ -54,8 +61,7 @@ protocol _PNGColor
     ///
     ///     When the library uses an implementation of this function to construct 
     ///     a [`(Data).Rectangular`] image, this color format will be stored in 
-    ///     the [`(Layout).format`] property of its 
-    ///     [`(Data.Rectangular).layout`].
+    ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int 
     ///     A function which uses the palette entries in the color `format` to 
     ///     generate a referencing function. This function should only be invoked 
@@ -103,8 +109,8 @@ protocol _PNGColor
     ///     image.
     /// - format : Format 
     ///     The color format associated with the given data buffer.
-    ///     It is expected to be obtained from the the [`(Layout).format`] property 
-    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     It is expected to be obtained from the the 
+    ///     [`(Data.Rectangular).layout``(Layout).format`] property of a 
     ///     [`(Data).Rectangular`] image.
     /// - -> : [Self]
     ///     A pixel array containing instances of this color target. The pixels 
@@ -147,8 +153,7 @@ protocol _PNGColor
     ///
     ///     When the library uses an implementation of this function to construct 
     ///     a [`(Data).Rectangular`] image, this color format will be stored in 
-    ///     the [`(Layout).format`] property of its 
-    ///     [`(Data.Rectangular).layout`].
+    ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
     /// - -> : [Swift.UInt8]
     ///     An image data buffer. The packed samples in this buffer should appear 
     ///     in the same order as the pixels in the `pixels` array. (But not 
@@ -199,7 +204,7 @@ extension PNG
     ///     The premultiplied color component, rounded to the nearest integer.
     /// # [See also](componentwise-premultiplication)
     /// ## (componentwise-premultiplication)
-    /// ## (color-spaces)
+    /// ## (color-targets)
     @inlinable
     public static
     func premultiply<T>(_ color:T, alpha:T) -> T 
@@ -247,7 +252,7 @@ extension PNG
     ///     `premultiplied` argument.
     /// # [See also](componentwise-premultiplication)
     /// ## (componentwise-premultiplication)
-    /// ## (color-spaces)
+    /// ## (color-targets)
     @inlinable
     public static
     func straighten<T>(_ premultiplied:T, alpha:T) -> T 
@@ -278,7 +283,7 @@ extension PNG
     ///     This type is a built-in color target.
     /// # [See also](builtin-color-targets)
     /// ## (builtin-color-targets)
-    /// ## (2:color-spaces)
+    /// ## (2:color-targets)
     @frozen
     public
     struct RGBA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
@@ -314,7 +319,7 @@ extension PNG
     ///     This type is a built-in color target.
     /// # [See also](builtin-color-targets)
     /// ## (builtin-color-targets)
-    /// ## (2:color-spaces)
+    /// ## (2:color-targets)
     @frozen
     public
     struct VA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
@@ -708,8 +713,8 @@ extension PNG.RGBA:PNG.Color
     ///     image.
     /// - format : Format 
     ///     The color format associated with the given data buffer.
-    ///     It is expected to be obtained from the the [`(Layout).format`] property 
-    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     It is expected to be obtained from the the 
+    ///     [`(Data.Rectangular).layout``(Layout).format`] property of a 
     ///     [`(Data).Rectangular`] image.
     /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate 
     ///     A function which uses the palette entries in the color `format` to 
@@ -862,8 +867,7 @@ extension PNG.RGBA:PNG.Color
     ///
     ///     When the library uses an implementation of this function to construct 
     ///     a [`(Data).Rectangular`] image, this color format will be stored in 
-    ///     the [`(Layout).format`] property of its 
-    ///     [`(Data.Rectangular).layout`].
+    ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int 
     ///     A function which uses the palette entries in the color `format` to 
     ///     generate a referencing function. This function will only be invoked 
@@ -998,8 +1002,8 @@ extension PNG.VA:PNG.Color
     ///     image.
     /// - format : Format 
     ///     The color format associated with the given data buffer.
-    ///     It is expected to be obtained from the the [`(Layout).format`] property 
-    ///     of the [`(Data.Rectangular).layout`] of a 
+    ///     It is expected to be obtained from the the 
+    ///     [`(Data.Rectangular).layout``(Layout).format`] property of a 
     ///     [`(Data).Rectangular`] image.
     /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate 
     ///     A function which uses the palette entries in the color `format` to 
@@ -1153,8 +1157,7 @@ extension PNG.VA:PNG.Color
     ///
     ///     When the library uses an implementation of this function to construct 
     ///     a [`(Data).Rectangular`] image, this color format will be stored in 
-    ///     the [`(Layout).format`] property of its 
-    ///     [`(Data.Rectangular).layout`].
+    ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int 
     ///     A function which uses the palette entries in the color `format` to 
     ///     generate a referencing function. This function will only be invoked 
