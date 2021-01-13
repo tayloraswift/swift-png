@@ -245,7 +245,7 @@ extension PNG.Data.Rectangular
 {
     /// static func PNG.Data.Rectangular.decompress(path:)
     /// throws 
-    ///     Decompresses and decodes a PNG file at the given file path. 
+    ///     Decompresses and decodes a PNG from a file at the given file path. 
     /// 
     ///     This interface is only available on MacOS and Linux. The 
     ///     [`decompress(stream:)`] function provides a platform-independent 
@@ -266,6 +266,45 @@ extension PNG.Data.Rectangular
             try .decompress(stream: &$0)
         }
     }
+    /// func PNG.Data.Rectangular.compress(path:level:hint:)
+    /// throws 
+    ///     Encodes and compresses a PNG to a file at the given file path. 
+    ///
+    ///     Compression `level` `9` is roughly equivalent to *libpng*’s maximum 
+    ///     compression setting in terms of compression ratio and encoding speed. 
+    ///     The higher levels (`10` through `13`) are very computationally expensive, 
+    ///     so they should only be used when optimizing for file size. 
+    /// 
+    ///     Experimental comparisons between *Swift PNG* and *libpng*’s 
+    ///     compression settings can be found on 
+    ///     [this page](https://github.com/kelvin13/png/blob/master/benchmarks).
+    /// 
+    ///     This interface is only available on MacOS and Linux. The 
+    ///     [`compress(stream:level:hint:)`] function provides a platform-independent 
+    ///     encoding interface.
+    /// - path : Swift.String
+    ///     A path to save the PNG file at.
+    /// - level : Swift.Int 
+    ///     The compression level to use. It should be in the range `0 ... 13`, 
+    ///     where `13` is the most aggressive setting. The default value is `9`. 
+    /// 
+    ///     Setting this parameter to a value less than `0` is the same as 
+    ///     setting it to `0`. Likewise, setting it to a value greater than `13` 
+    ///     is the same as setting it to `13`.
+    /// - hint : Swift.Int 
+    ///     A size hint for the emitted [`(Chunk).IDAT`] chunks. It should be in 
+    ///     the range `1 ... 2147483647`. Reasonable settings range from around 
+    ///     1\ K to 64\ K. The default value is `32768` (2^15^). 
+    /// 
+    ///     Setting this parameter to a value less than `1` is the same as setting 
+    ///     it to `1`. Likewise, setting it to a value greater than `2147483647` 
+    ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
+    /// - -> : Swift.Void?
+    ///     A [`Swift.Void`] tuple if the destination file could be opened
+    ///     successfully, or `nil` otherwise.
+    /// # [See also](encoding-and-decoding)
+    /// ## (3:encoding-and-decoding)
+    /// ## (1:encoding)
     public  
     func compress(path:String, level:Int = 9, hint:Int = 1 << 15) throws -> Void?
     {

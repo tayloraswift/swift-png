@@ -138,7 +138,6 @@ extension PNG.Layout
 }
 extension PNG.Data.Rectangular 
 {
-    public 
     func encode() -> 
     (
         header:PNG.Header, 
@@ -307,7 +306,8 @@ extension PNG.Encoder
         case .ios:      format = .ios
         }
         
-        self.deflator   = .init(format: format, level: level, hint: max(hint, 1))
+        self.deflator   = .init(format: format, level: level, 
+            hint: max(1, min(hint, 0x7f_ff_ff_ff)))
     }
     
     mutating 
@@ -517,6 +517,42 @@ extension PNG.Encoder
 
 extension PNG.Data.Rectangular 
 {
+    /// func PNG.Data.Rectangular.compress<Destination>(stream:level:hint:)
+    /// throws 
+    /// where Destination:Bytestream.Destination
+    ///     Encodes and compresses a PNG to the given bytestream. 
+    ///
+    ///     Compression `level` `9` is roughly equivalent to *libpng*’s maximum 
+    ///     compression setting in terms of compression ratio and encoding speed. 
+    ///     The higher levels (`10` through `13`) are very computationally expensive, 
+    ///     so they should only be used when optimizing for file size. 
+    /// 
+    ///     Experimental comparisons between *Swift PNG* and *libpng*’s 
+    ///     compression settings can be found on 
+    ///     [this page](https://github.com/kelvin13/png/blob/master/benchmarks).
+    /// 
+    ///     On appropriate platforms, the [`compress(path:level:hint:)`] function 
+    ///     provides a file system-aware interface to this function.
+    /// - stream : inout Destination 
+    ///     A bytestream receiving the contents of a PNG file.
+    /// - level : Swift.Int 
+    ///     The compression level to use. It should be in the range `0 ... 13`, 
+    ///     where `13` is the most aggressive setting. The default value is `9`. 
+    /// 
+    ///     Setting this parameter to a value less than `0` is the same as 
+    ///     setting it to `0`. Likewise, setting it to a value greater than `13` 
+    ///     is the same as setting it to `13`.
+    /// - hint : Swift.Int 
+    ///     A size hint for the emitted [`(Chunk).IDAT`] chunks. It should be in 
+    ///     the range `1 ... 2147483647`. Reasonable settings range from around 
+    ///     1\ K to 64\ K. The default value is `32768` (2^15^). 
+    /// 
+    ///     Setting this parameter to a value less than `1` is the same as setting 
+    ///     it to `1`. Likewise, setting it to a value greater than `2147483647` 
+    ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
+    /// # [See also](encoding-and-decoding)
+    /// ## (2:encoding-and-decoding)
+    /// ## (0:encoding)
     public 
     func compress<Destination>(stream:inout Destination, level:Int = 9, hint:Int = 1 << 15) 
         throws
