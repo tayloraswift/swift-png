@@ -147,15 +147,18 @@ extension PNG.Data.Rectangular
         cgbi:[UInt8]?
     ) 
     {
-        let header:PNG.Header = .init(size: self.size, 
-            pixel: self.layout.format.pixel, interlaced: self.layout.interlaced)
-        let cgbi:[UInt8]? 
+        let cgbi:[UInt8]?, 
+            standard:PNG.Standard 
         switch self.layout.format 
         {
-        case .bgr8:     cgbi = [48, 0, 32, 6]
-        case .bgra8:    cgbi = [48, 0, 32, 2]
-        default:        cgbi = nil 
+        case .bgr8:     cgbi = [48, 0, 32, 6]   ; standard = .ios 
+        case .bgra8:    cgbi = [48, 0, 32, 2]   ; standard = .ios 
+        default:        cgbi = nil              ; standard = .common 
         }
+        let header:PNG.Header = .init(size: self.size, 
+            pixel:      self.layout.format.pixel, 
+            interlaced: self.layout.interlaced, 
+            standard:   standard)
         return (header, self.layout.palette, self.layout.background, self.layout.transparency, cgbi)
     }
     

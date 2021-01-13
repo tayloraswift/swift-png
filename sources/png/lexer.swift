@@ -423,10 +423,9 @@ extension PNG.Bytestream.Source
     ///     Lexes the eight PNG signature bytes from this bytestream. 
     /// 
     ///     This function expects to read the byte sequence 
-    ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It will throw a 
-    ///     [`LexingError.truncatedSignature`] if it fails to obtain eight bytes 
-    ///     from this bytestream, or a [`LexingError.invalidSignature(_:)`] if 
-    ///     the bytes do not match the expected signature.
+    ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It reports end-of-stream by throwing 
+    ///     [`LexingError.truncatedSignature`]. To recover on end-of-stream, 
+    ///     catch this error case.
     /// 
     ///     This function is the inverse of [`Destination.signature()`].
     public mutating 
@@ -449,8 +448,10 @@ extension PNG.Bytestream.Source
     ///     Lexes a chunk from this bytestream. 
     /// 
     ///     This function reads a chunk, validating its stored checksum for 
-    ///     data integrity. It will throw a [`LexingError`] if the chunk is 
-    ///     unreadable, malformed, or corrupted.
+    ///     data integrity. It reports end-of-stream by throwing 
+    ///     [`LexingError.truncatedChunkHeader`] or 
+    ///     [`LexingError.truncatedChunkBody(expected:)`]. To recover on end-of-stream, 
+    ///     catch these two error cases.
     /// 
     ///     This function is the inverse of [`Destination.format(type:data:)`].
     /// - -> : (type:PNG.Chunk, data:[Swift.UInt8])
