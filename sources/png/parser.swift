@@ -3014,7 +3014,7 @@ extension PNG
         ///     An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt) 
         ///     language tag, where each element is a language subtag. 
         /// 
-        ///     Each subtag must be a 1-8 character string containing alphabetical 
+        ///     Each subtag must be a 1–8 character string containing alphabetical 
         ///     ASCII characters only. Passing an invalid language tag array 
         ///     will result in a precondition failure.
         /// 
