@@ -35,6 +35,7 @@ enum System
         /// :   PNG.Bytestream.Source 
         ///     A type for reading data from files on disk.
         /// ## (system-file-io)
+        /// ## (system-file-source)
         public
         struct Source
         {
@@ -46,6 +47,7 @@ enum System
         /// :   PNG.Bytestream.Destination
         ///     A type for writing data to files on disk.
         /// ## (system-file-io)
+        /// ## (system-file-destination)
         public 
         struct Destination 
         {
