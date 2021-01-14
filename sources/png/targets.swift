@@ -193,6 +193,10 @@ extension PNG
     ///
     ///     [`premultiply(_:alpha:)`] ∘ [`straighten(_:alpha:)`] ∘ [`premultiply(_:alpha:)`]
     /// 
+    ///     The computed properties [`RGBA.premultiplied`] and [`VA.premultiplied`] 
+    ///     can be used to premultiply an entire instance of one of the built-in 
+    ///     color targets.
+    ///     
     ///     Premultiplication is a destructive operation. In the most extreme case, 
     ///     if `alpha` is `T.min`, this function will return `T.min` for any 
     ///     value of `color`.
@@ -237,6 +241,10 @@ extension PNG
     ///     is equivalent to  
     ///
     ///     [`premultiply(_:alpha:)`] ∘ [`straighten(_:alpha:)`] ∘ [`premultiply(_:alpha:)`]
+    /// 
+    ///     The computed properties [`RGBA.straightened`] and [`VA.straightened`] 
+    ///     can be used to straighten an entire instance of one of the built-in 
+    ///     color targets.
     /// 
     ///     Premultiplication is a destructive operation. This function cannot 
     ///     recover the original color unless `alpha` is `T.max`, in which case 
