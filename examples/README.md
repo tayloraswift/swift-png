@@ -58,7 +58,7 @@ let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
 
 The [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
 
-The `unpack(as:)` method also has an overload which allows you to unpack an image into scalar grayscale samples.
+The [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-unpack(as:)/) method also has an overload which allows you to unpack an image into scalar grayscale samples.
 
 ```swift 
 let v:[UInt8] = image.unpack(as: UInt8.self)
@@ -93,7 +93,7 @@ If you unpack an image to an integer type `T` with a bit width different from th
 > - **chroma key**
 > - **compression level**
 
-This tutorial will assume you have the image you want to encode stored as an array of pixels. In the [example code](encode-basic/main.swift) for this tutorial, we have loaded it from a raw `.rgba` data file using the library’s file system APIs. (As previously mentioned, these APIs are only available on MacOS and Linux.)
+This tutorial will assume you have the image you want to encode stored as an array of pixels. In the [example code](encode-basic/main.swift) for this tutorial, we have loaded it from a raw `.rgba` data file using the library’s [file system APIs](https://kelvin13.github.io/png/System/File/). (As previously mentioned, these APIs are only available on MacOS and Linux.)
 
 ```swift 
 import PNG
@@ -130,13 +130,13 @@ let layout:(rgb:PNG.Layout, v:PNG.Layout) =
 )
 ```
 
-The signature of the `PNG.Layout` initializer is given below: 
+The signature of the [`PNG.Layout`](https://kelvin13.github.io/png/PNG/Layout/) initializer is given below: 
 
 ```swift 
 init(format:PNG.Format, interlaced:Bool = false) 
 ```
 
-The `format` parameter specifies the **color format** of the layout. A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of the `PNG.RGBA<UInt8>` pixel array will be lost when encoding in the 8-bit RGB format.
+The `format` parameter specifies the **color format** of the layout. A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of the [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA/) pixel array will be lost when encoding in the 8-bit RGB format. 
 
 We can enable **interlacing** by setting the `interlaced` parameter to `true`. [Interlacing](https://en.wikipedia.org/wiki/Adam7_algorithm) is an alternative way of storing the image data within the PNG file’s internal representation. This parameter is `false` by default. There is rarely a good reason to enable it, and it usually hurts the compression ratio, so we have omitted it in this example. We will explore a possible use case for it in the [online decoding tutorial](#online-decoding).
 
@@ -166,19 +166,19 @@ We can enable **interlacing** by setting the `interlaced` parameter to `true`. [
 | `PNG.Format.rgba8(palette:fill:)`     | RGBA              | 8         | 8           | core      |
 | `PNG.Format.rgba16(palette:fill:)`    | RGBA              | 16        | 16          | core      |
 
-The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a **chroma key**. Most PNG viewers use this chroma key to display transparency for such images. Such viewers will display pixels as transparent if they match the chroma key. The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the `rgb8(palette:fill:key:)` format, and [`Int`](https://developer.apple.com/documentation/swift/int) indices in the `indexed8(palette:fill:)` format. (Indexed images do not support chroma keys, because they contain a full alpha channel.)
+The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a **chroma key**. Most PNG viewers use this chroma key to display transparency for such images. Such viewers will display pixels as transparent if they match the chroma key. The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the [`rgb8(palette:fill:key:)`](https://kelvin13.github.io/png/PNG/Format/rgb8(palette:fill:key:)/) format, and [`Int`](https://developer.apple.com/documentation/swift/int) indices in the [`indexed8(palette:fill:)`](https://kelvin13.github.io/png/PNG/Format/indexed8(palette:fill:)/) format. (Indexed images do not support chroma keys, because they contain a full alpha channel.)
 
 Most PNG viewers ignore the `fill` field, and a few ignore the `key` field as well. It is common to leave both fields as `nil` to disable this functionality.
 
 The non-grayscale color formats include a `palette` field. Setting it to the empty array `[]` is analogous to setting `fill` or `key` to `nil`. For the indexed color formats, a non-empty `palette` is mandatory. For the other formats, it is optional (meaning it can be set to `[]`), and furthermore, ignored by almost all PNG clients, since it only specifies a suggested [posterization](https://en.wikipedia.org/wiki/Posterization) for the image.
 
-To create a rectangular image data instance, use the `init(packing:size:layout:metadata:)` initializer. This initializer is the inverse of the `unpack(as:)` method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
+To create a rectangular image data instance, use the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer. This initializer is the inverse of the [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
 
 ```swift 
 let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.rgb)
 ```
 
-On platforms with built-in file system support, we can compress it to a file using the `compress(path:level:hint:)` method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
+On platforms with built-in file system support, we can compress it to a file using the [`compress(path:level:hint:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
 
 The `level` argument specifies the **compression level**. It should be in the range `0 ... 13`, where `13` is the most aggressive setting. Its default value is `9`. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
 
@@ -220,13 +220,13 @@ let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layou
 try image.compress(path: "\(path)-color-v.png", level: 9)
 ```
 
-The built-in `PNG.RGBA` color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
+The built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA/) color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
 
 <img src="encode-basic/example-color-v.png" alt="output png" width=300/>
 
 > the example image, encoded by *swift png* in the 8-bit grayscale color format.
 
-Like the `unpack(as:)` method, the `init(packing:size:layout:metadata:)` initializer is generic and can take an array of any color target. It also has an overload which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array. 
+Like the [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method, the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer is generic and can take an array of any color target. It also has an [overload](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array. 
 
 ```swift 
 let luminance:[UInt8] = rgba.map 
@@ -239,7 +239,7 @@ let luminance:[UInt8] = rgba.map
 }
 ```
 
-We can encode it to a file just as we did with the array of `PNG.RGBA<UInt8>` colors:
+We can encode it to a file just as we did with the array of [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA/) colors:
 
 ```swift 
 let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: layout.v)
