@@ -1578,7 +1578,7 @@ extension PNG.Data.Rectangular
     ///     A metadata structure. The default value is an empty metadata structure.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.UInt8) -> Swift.Int 
     ///     A function which uses the palette entries in the color [`(Layout).format`] to 
-    ///     generate a referencing function. This function is only expected to 
+    ///     generate a referencing function. This function will only  
     ///     be invoked if the image color [`(Layout).format`] is an indexed format. 
     /// 
     ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
