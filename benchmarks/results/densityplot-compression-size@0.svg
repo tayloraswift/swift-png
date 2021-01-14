@@ -246,15 +246,15 @@
     <text x="249.53983175387816" y="440.0" class="label-percent better">-45.59 %</text>
     <text x="260.450626427187" y="460.0" class="label-percent better">-42.70 %</text>
     <text x="264.62326560375016" y="480.0" class="label-percent better">-41.60 %</text>
-    <text x="265.09799943214625" y="500.0" class="label-percent better">-41.47 %</text>
-    <text x="266.1360895779501" y="520.0" class="label-percent better">-41.20 %</text>
+    <text x="265.0871527877471" y="500.0" class="label-percent better">-41.48 %</text>
+    <text x="266.12532299741605" y="520.0" class="label-percent better">-41.20 %</text>
     <text x="275.16566178581684" y="540.0" class="label-percent better">-38.81 %</text>
     <text x="293.8025307412827" y="560.0" class="label-percent better">-33.88 %</text>
     <text x="296.9173180019545" y="580.0" class="label-percent better">-33.05 %</text>
-    <text x="302.5126690168511" y="600.0" class="label-percent better">-31.57 %</text>
-    <text x="348.8024420883552" y="620.0" class="label-percent better">-19.32 %</text>
+    <text x="302.5087462741155" y="600.0" class="label-percent better">-31.57 %</text>
+    <text x="348.79760908462555" y="620.0" class="label-percent better">-19.32 %</text>
     <text x="349.5056441310099" y="640.0" class="label-percent better">-19.13 %</text>
-    <text x="374.19209530534283" y="660.0" class="label-percent better">-12.60 %</text>
+    <text x="374.1033802255898" y="660.0" class="label-percent better">-12.62 %</text>
     <path class="stem better" d="M 437.77777777777777,120.0 L 174.9714554584201,120.0"/>
     <path class="stem better" d="M 437.77777777777777,140.0 L 180.16384086879432,140.0"/>
     <path class="stem better" d="M 437.77777777777777,160.0 L 189.54813727653232,160.0"/>
@@ -274,15 +274,15 @@
     <path class="stem better" d="M 437.77777777777777,440.0 L 269.53983175387816,440.0"/>
     <path class="stem better" d="M 437.77777777777777,460.0 L 280.450626427187,460.0"/>
     <path class="stem better" d="M 437.77777777777777,480.0 L 284.62326560375016,480.0"/>
-    <path class="stem better" d="M 437.77777777777777,500.0 L 285.09799943214625,500.0"/>
-    <path class="stem better" d="M 437.77777777777777,520.0 L 286.1360895779501,520.0"/>
+    <path class="stem better" d="M 437.77777777777777,500.0 L 285.0871527877471,500.0"/>
+    <path class="stem better" d="M 437.77777777777777,520.0 L 286.12532299741605,520.0"/>
     <path class="stem better" d="M 437.77777777777777,540.0 L 295.16566178581684,540.0"/>
     <path class="stem better" d="M 437.77777777777777,560.0 L 313.8025307412827,560.0"/>
     <path class="stem better" d="M 437.77777777777777,580.0 L 316.9173180019545,580.0"/>
-    <path class="stem better" d="M 437.77777777777777,600.0 L 322.5126690168511,600.0"/>
-    <path class="stem better" d="M 437.77777777777777,620.0 L 368.8024420883552,620.0"/>
+    <path class="stem better" d="M 437.77777777777777,600.0 L 322.5087462741155,600.0"/>
+    <path class="stem better" d="M 437.77777777777777,620.0 L 368.79760908462555,620.0"/>
     <path class="stem better" d="M 437.77777777777777,640.0 L 369.5056441310099,640.0"/>
-    <path class="stem better" d="M 437.77777777777777,660.0 L 394.19209530534283,660.0"/>
+    <path class="stem better" d="M 437.77777777777777,660.0 L 394.1033802255898,660.0"/>
     <circle class="dot better" cx="170.9714554584201" cy="120.0" r="4"/>
     <circle class="dot better" cx="176.16384086879432" cy="140.0" r="4"/>
     <circle class="dot better" cx="185.54813727653232" cy="160.0" r="4"/>
@@ -302,14 +302,14 @@
     <circle class="dot better" cx="265.53983175387816" cy="440.0" r="4"/>
     <circle class="dot better" cx="276.450626427187" cy="460.0" r="4"/>
     <circle class="dot better" cx="280.62326560375016" cy="480.0" r="4"/>
-    <circle class="dot better" cx="281.09799943214625" cy="500.0" r="4"/>
-    <circle class="dot better" cx="282.1360895779501" cy="520.0" r="4"/>
+    <circle class="dot better" cx="281.0871527877471" cy="500.0" r="4"/>
+    <circle class="dot better" cx="282.12532299741605" cy="520.0" r="4"/>
     <circle class="dot better" cx="291.16566178581684" cy="540.0" r="4"/>
     <circle class="dot better" cx="309.8025307412827" cy="560.0" r="4"/>
     <circle class="dot better" cx="312.9173180019545" cy="580.0" r="4"/>
-    <circle class="dot better" cx="318.5126690168511" cy="600.0" r="4"/>
-    <circle class="dot better" cx="364.8024420883552" cy="620.0" r="4"/>
+    <circle class="dot better" cx="318.5087462741155" cy="600.0" r="4"/>
+    <circle class="dot better" cx="364.79760908462555" cy="620.0" r="4"/>
     <circle class="dot better" cx="365.5056441310099" cy="640.0" r="4"/>
-    <circle class="dot better" cx="390.19209530534283" cy="660.0" r="4"/>
+    <circle class="dot better" cx="390.1033802255898" cy="660.0" r="4"/>
 </svg>
     

@@ -246,8 +246,8 @@
     <text x="461.91952907838976" y="440.0" class="label-percent worse">+2.16 %</text>
     <text x="462.1861180063638" y="460.0" class="label-percent worse">+2.23 %</text>
     <text x="463.59990645591733" y="480.0" class="label-percent worse">+2.60 %</text>
-    <text x="465.95828085344584" y="500.0" class="label-percent worse">+3.22 %</text>
-    <text x="466.3988042735256" y="520.0" class="label-percent worse">+3.34 %</text>
+    <text x="465.89612449427034" y="500.0" class="label-percent worse">+3.21 %</text>
+    <text x="466.39407404934093" y="520.0" class="label-percent worse">+3.34 %</text>
     <text x="466.8183803929048" y="540.0" class="label-percent worse">+3.45 %</text>
     <text x="466.9714776087449" y="560.0" class="label-percent worse">+3.49 %</text>
     <text x="467.248762731531" y="580.0" class="label-percent worse">+3.57 %</text>
@@ -271,8 +271,8 @@
     <path class="stem worse" d="M 437.77777777777777,440.0 L 441.91952907838976,440.0"/>
     <path class="stem worse" d="M 437.77777777777777,460.0 L 442.1861180063638,460.0"/>
     <path class="stem worse" d="M 437.77777777777777,480.0 L 443.59990645591733,480.0"/>
-    <path class="stem worse" d="M 437.77777777777777,500.0 L 445.95828085344584,500.0"/>
-    <path class="stem worse" d="M 437.77777777777777,520.0 L 446.3988042735256,520.0"/>
+    <path class="stem worse" d="M 437.77777777777777,500.0 L 445.89612449427034,500.0"/>
+    <path class="stem worse" d="M 437.77777777777777,520.0 L 446.39407404934093,520.0"/>
     <path class="stem worse" d="M 437.77777777777777,540.0 L 446.8183803929048,540.0"/>
     <path class="stem worse" d="M 437.77777777777777,560.0 L 446.9714776087449,560.0"/>
     <path class="stem worse" d="M 437.77777777777777,580.0 L 447.248762731531,580.0"/>
@@ -299,8 +299,8 @@
     <circle class="dot worse" cx="445.91952907838976" cy="440.0" r="4"/>
     <circle class="dot worse" cx="446.1861180063638" cy="460.0" r="4"/>
     <circle class="dot worse" cx="447.59990645591733" cy="480.0" r="4"/>
-    <circle class="dot worse" cx="449.95828085344584" cy="500.0" r="4"/>
-    <circle class="dot worse" cx="450.3988042735256" cy="520.0" r="4"/>
+    <circle class="dot worse" cx="449.89612449427034" cy="500.0" r="4"/>
+    <circle class="dot worse" cx="450.39407404934093" cy="520.0" r="4"/>
     <circle class="dot worse" cx="450.8183803929048" cy="540.0" r="4"/>
     <circle class="dot worse" cx="450.9714776087449" cy="560.0" r="4"/>
     <circle class="dot worse" cx="451.248762731531" cy="580.0" r="4"/>

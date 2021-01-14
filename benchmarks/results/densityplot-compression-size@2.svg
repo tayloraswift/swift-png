@@ -244,12 +244,12 @@
     <text x="416.28278246802057" y="400.0" class="label-percent better">-1.45 %</text>
     <text x="418.043401946705" y="420.0" class="label-percent better">-0.99 %</text>
     <text x="420.9611726567177" y="440.0" class="label-percent better">-0.22 %</text>
-    <text x="455.5408978964897" y="460.0" class="label-percent worse">+0.47 %</text>
+    <text x="455.54020045973385" y="460.0" class="label-percent worse">+0.47 %</text>
     <text x="460.97538235910326" y="480.0" class="label-percent worse">+1.91 %</text>
-    <text x="461.2976604184919" y="500.0" class="label-percent worse">+1.99 %</text>
-    <text x="461.8862802019113" y="520.0" class="label-percent worse">+2.15 %</text>
+    <text x="461.29665441412527" y="500.0" class="label-percent worse">+1.99 %</text>
+    <text x="461.8057251451487" y="520.0" class="label-percent worse">+2.13 %</text>
     <text x="470.1880120555591" y="540.0" class="label-percent worse">+4.34 %</text>
-    <text x="471.0524434558471" y="560.0" class="label-percent worse">+4.57 %</text>
+    <text x="471.04689425389466" y="560.0" class="label-percent worse">+4.57 %</text>
     <text x="535.1108990477344" y="580.0" class="label-percent worse">+21.53 %</text>
     <text x="551.1222987716051" y="600.0" class="label-percent worse">+25.77 %</text>
     <text x="571.4335727303909" y="620.0" class="label-percent worse">+31.14 %</text>
@@ -271,10 +271,10 @@
     <path class="stem better" d="M 437.77777777777777,380.0 L 435.2985649282464,380.0"/>
     <path class="stem better" d="M 437.77777777777777,400.0 L 436.28278246802057,400.0"/>
     <path class="stem worse" d="M 437.77777777777777,480.0 L 440.97538235910326,480.0"/>
-    <path class="stem worse" d="M 437.77777777777777,500.0 L 441.2976604184919,500.0"/>
-    <path class="stem worse" d="M 437.77777777777777,520.0 L 441.8862802019113,520.0"/>
+    <path class="stem worse" d="M 437.77777777777777,500.0 L 441.29665441412527,500.0"/>
+    <path class="stem worse" d="M 437.77777777777777,520.0 L 441.8057251451487,520.0"/>
     <path class="stem worse" d="M 437.77777777777777,540.0 L 450.1880120555591,540.0"/>
-    <path class="stem worse" d="M 437.77777777777777,560.0 L 451.0524434558471,560.0"/>
+    <path class="stem worse" d="M 437.77777777777777,560.0 L 451.04689425389466,560.0"/>
     <path class="stem worse" d="M 437.77777777777777,580.0 L 515.1108990477344,580.0"/>
     <path class="stem worse" d="M 437.77777777777777,600.0 L 531.1222987716051,600.0"/>
     <path class="stem worse" d="M 437.77777777777777,620.0 L 551.4335727303909,620.0"/>
@@ -297,12 +297,12 @@
     <circle class="dot better" cx="432.28278246802057" cy="400.0" r="4"/>
     <circle class="dot better" cx="434.043401946705" cy="420.0" r="4"/>
     <circle class="dot better" cx="436.9611726567177" cy="440.0" r="4"/>
-    <circle class="dot worse" cx="439.5408978964897" cy="460.0" r="4"/>
+    <circle class="dot worse" cx="439.54020045973385" cy="460.0" r="4"/>
     <circle class="dot worse" cx="444.97538235910326" cy="480.0" r="4"/>
-    <circle class="dot worse" cx="445.2976604184919" cy="500.0" r="4"/>
-    <circle class="dot worse" cx="445.8862802019113" cy="520.0" r="4"/>
+    <circle class="dot worse" cx="445.29665441412527" cy="500.0" r="4"/>
+    <circle class="dot worse" cx="445.8057251451487" cy="520.0" r="4"/>
     <circle class="dot worse" cx="454.1880120555591" cy="540.0" r="4"/>
-    <circle class="dot worse" cx="455.0524434558471" cy="560.0" r="4"/>
+    <circle class="dot worse" cx="455.04689425389466" cy="560.0" r="4"/>
     <circle class="dot worse" cx="519.1108990477344" cy="580.0" r="4"/>
     <circle class="dot worse" cx="535.1222987716051" cy="600.0" r="4"/>
     <circle class="dot worse" cx="555.4335727303909" cy="620.0" r="4"/>
