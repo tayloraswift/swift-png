@@ -1615,13 +1615,13 @@ Overdrawing has no effect if the image is not interlaced.
 > - **atom type** 
 > - **intensity type**
 
-As we have already seen, *Swift PNG*’s pixel packing and unpacking interfaces are generic over the library protocol `PNG.Color`. The built-in color targets `PNG.VA<T>` and `PNG.RGBA<T>` both conform to it. In this tutorial, we will implement a custom color target, `HSVA`, which uses the [hue-saturation-value color model](https://en.wikipedia.org/wiki/HSL_and_HSV).
+As we have already seen, *Swift PNG*’s pixel packing and unpacking interfaces are generic over the library protocol [`PNG.Color`](https://kelvin13.github.io/png/PNG/Color). The built-in color targets [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) and [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) both conform to it. In this tutorial, we will implement a custom color target, `HSVA`, which uses the [hue-saturation-value color model](https://en.wikipedia.org/wiki/HSL_and_HSV).
 
 At this point, it is important to reiterate the difference between color formats and color targets. A color format is the internal representation that pixels are stored as in a PNG file. A color target is an interpretation of those pixels that we obtain by unpacking pixels from an image data instance. 
 
 If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library has the concept of a *color format type*, which can also be customized. This is because JPEG is an *open standard*, meaning that users can encode images with a user-defined internal representation. Thus, JPEG is actually a family of file formats, rather than a single standard. PNG is a *closed standard*, so *Swift PNG* does not allow you to customize the color format. 
 
-> **note:** strictly speaking, png is also a family of file formats, with two color format types — the standard set of color formats, and the iphone-optimized color formats. however, the png specification provides no means of defining custom color formats within its headers (thus, the need for the `CgBI` chunk), so for ease-of-use, *swift png* merges both png color format types into a single library-defined color format type.
+> **note:** strictly speaking, png is also a family of file formats, with two color format types — the standard set of color formats, and the iphone-optimized color formats. however, the png specification provides no means of defining custom color formats within its headers (thus, the need for the [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) chunk), so for ease-of-use, *swift png* merges both png color format types into a single library-defined color format type.
 
 <img src="custom-color/example.png" alt="input png" width=500/>
 
@@ -1629,7 +1629,7 @@ If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library 
 >
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Madrid_%2836178965285%29.jpg)*
 
-We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like `PNG.VA<T>` or `PNG.RGBA<T>`. It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will be inhabited.)
+We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) or [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA). It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will be inhabited.)
 
 ```swift 
 import PNG 
@@ -1686,7 +1686,7 @@ We define the following conversion function, which initializes an HSVA color fro
     }
 ```
 
-We also define the HSVA-to-RGBA conversion, using `PNG.RGBA<UInt8>` as the return type. Again, the details of the conversion formula are unimportant. 
+We also define the HSVA-to-RGBA conversion, using [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA) as the return type. Again, the details of the conversion formula are unimportant. 
 
 ```swift 
     var rgba:PNG.RGBA<UInt8> 
@@ -1720,7 +1720,7 @@ We also define the HSVA-to-RGBA conversion, using `PNG.RGBA<UInt8>` as the retur
 }
 ```
 
-Now that we have a working HSVA implementation, we need to conform it to the `PNG.Color` protocol so we can use it as a color target. To do this, we need to fulfill the following requirements: 
+Now that we have a working HSVA implementation, we need to conform it to the [`PNG.Color`](https://kelvin13.github.io/png/PNG/Color) protocol so we can use it as a color target. To do this, we need to fulfill the following requirements: 
 
 ```swift 
 protocol PNG.Color 
@@ -1743,12 +1743,12 @@ protocol PNG.Color
 }
 ```
 
-For certain associated `Aggregate` types, the library provides default implementations for `unpack(_:of:)` and `pack(_:as:)`, which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement `unpack(_:of:deindexer:)` and `pack(_:as:indexer:)`. The specific `Aggregate` types are 
+For certain associated [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) types, the library provides default implementations for [`unpack(_:of:)`](https://kelvin13.github.io/png/PNG/Color/unpack(_:of:)/) and [`pack(_:as:)`](https://kelvin13.github.io/png/PNG/Color/pack(_:as:)/), which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement [`unpack(_:of:deindexer:)`](https://kelvin13.github.io/png/PNG/Color/unpack(_:of:deindexer:)/) and [`pack(_:as:indexer:)`](https://kelvin13.github.io/png/PNG/Color/pack(_:as:indexer:)/). The specific [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) types are 
 
 - `(UInt8, UInt8)`, and 
 - `(UInt8, UInt8, UInt8, UInt8)`.
 
-In the [indexed color tutorial](#using-indexed-images), we saw how they were used by the `PNG.VA<T>` and `PNG.RGBA<T>` color targets. (The scalar color targets also use their own `Aggregate` type, `UInt8`, though this does not go through the `PNG.Color` protocol.)
+In the [indexed color tutorial](#using-indexed-images), we saw how they were used by the [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) and [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color targets. (The scalar color targets also use their own [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) type, [`UInt8`](https://developer.apple.com/documentation/swift/uint8), though this does not go through the [`PNG.Color`](https://kelvin13.github.io/png/PNG/Color) protocol.)
 
 The core idea of a color target is the **pixel kernel**. Pixel kernels convert groups of image data samples into instances of a color target, and vice-versa. In *Swift PNG*, the application of a pixel kernel to an image data buffer is called a **convolution**, and the inverse operation is called a **deconvolution**. The simplest deconvolution is to flatten an array of RGBA pixels to an array of [*r*, *g*, *b*, *a*, *r*, *g*, *b*, *a*, …] samples, and the simplest convolution is to group the elements of such an array into an array of RGBA pixels. Conceptually, this is a Swift [`flatMap(_:)`](https://developer.apple.com/documentation/swift/sequence/2905332-flatmap), and whatever you would call the opposite of a flatmap, respectively. We are allowed to do arbitrary computations in the pixel kernels, which is why we call it a (de)convolution, and not just a flatmap.
 
@@ -1811,15 +1811,15 @@ The first four convolution functions are meant to be used with indexed color for
 
 - The `A` type is the **atom type**. (The `A` stands for ***a***tom.) Atom types are closely related to color formats. For images with a color depth of 16, the appropriate atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16). Otherwise, it is [`UInt8`](https://developer.apple.com/documentation/swift/uint8). In the image data storage buffer, which has a type of `[UInt8]`, `UInt16` atoms are stored in big-endian order. 
  
-    Atoms are unscaled samples. For example, in a `v4(fill:key:)` image, which has a color depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
+    Atoms are unscaled samples. For example, in a [`v4(fill:key:)`](https://kelvin13.github.io/png/PNG/Format/v4(fill:key:)/) image, which has a color depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
 
-- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) Intensity types are closely related to color targets. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in `PNG.RGBA<T>` color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
+- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) Intensity types are closely related to color targets. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
 
-    As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a `v4(fill:key:)` image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
+    As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a [`v4(fill:key:)`](https://kelvin13.github.io/png/PNG/Format/v4(fill:key:)/) image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
  
     The use of intensity types in *Swift PNG* means that you don’t have to worry about normalizing samples when implementing custom color targets.
  
-- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack a `va16(fill:)` image to an array of `PNG.RGBA<UInt8>` pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be `PNG.RGBA<UInt8>`. Indeed, this is exactly what the built-in `PNG.RGBA<T>` color target does.
+- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack a [`va16(fill:)`](https://kelvin13.github.io/png/PNG/Format/va16(fill:)/) image to an array of [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA) pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA). Indeed, this is exactly what the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color target does.
 
 The four non-indexed convolution functions perform the following operations: 
 
@@ -1829,11 +1829,11 @@ The four non-indexed convolution functions perform the following operations:
 
 The reason why some of the pixel kernels receive the original atoms in addition to the intensity values is because their associated color formats (namely, the grayscale, RGB, and BGR formats) require us to do chroma key comparisons, which must be performed in the original atom type.
 
-The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the `Aggregate` types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
+The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
 
 Now, let’s write the implementation for the unpacking function. 
 
-First, we set the associated `Aggregate` type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
+First, we set the associated [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
 
 ```swift 
 extension HSVA:PNG.Color 
@@ -1864,7 +1864,7 @@ We can handle all of the indexed color formats in one `switch` case. We assume t
             }
 ```
 
-For grayscale color formats without a chroma key, we assign the grayscale sample to the value channel of the HSVA output, set the hue and saturation to zero, and the alpha to full opacity. We need a separate case for the `v16(fill:key:)` color format, since its atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16) and not [`UInt8`](https://developer.apple.com/documentation/swift/uint8).
+For grayscale color formats without a chroma key, we assign the grayscale sample to the value channel of the HSVA output, set the hue and saturation to zero, and the alpha to full opacity. We need a separate case for the [`v16(fill:key:)`](https://kelvin13.github.io/png/PNG/Format/v16(fill:key:)/) color format, since its atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16) and not [`UInt8`](https://developer.apple.com/documentation/swift/uint8).
 
 ```swift 
         case    .v1(fill: _, key: nil),
