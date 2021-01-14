@@ -14,8 +14,8 @@
 ///     To implement a custom data source type, conform it to this protocol by 
 ///     implementing [`(Source).read(count:)`]. It can 
 ///     then be used with the library’s core decompression interfaces.
-/// #  [See also](file-io-protocols)
 /// #  [Stream interface](file-io-source-interface)
+/// #  [See also](file-io-protocols, system-file-source)
 /// ## (1:file-io-protocols)
 /// ## (1:lexing-and-formatting)
 public
@@ -47,7 +47,7 @@ protocol _PNGBytestreamSource
 ///     implementing [`(Destination).write(_:)`]. It can 
 ///     then be used with the library’s core compression interfaces.
 /// #  [Stream interface](file-io-destination-interface)
-/// #  [See also](file-io-protocols)
+/// #  [See also](file-io-protocols, system-file-destination)
 /// ## (2:file-io-protocols)
 /// ## (2:lexing-and-formatting)
 public
