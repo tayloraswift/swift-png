@@ -44,9 +44,9 @@ let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)*
 
-The element type of the output array, `PNG.RGBA<UInt8>`, is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
+The element type of the output array, [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA/), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
 
-We could also have unpacked the image pixels to the `PNG.VA<UInt8>` built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
+We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](https://kelvin13.github.io/png/PNG/VA/) built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
 
 ```swift 
 let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
@@ -56,7 +56,7 @@ let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
 
 > the example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 
-The `unpack(as:)` method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
+The [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
 
 The `unpack(as:)` method also has an overload which allows you to unpack an image into scalar grayscale samples.
 
