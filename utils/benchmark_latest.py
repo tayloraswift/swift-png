@@ -1,4 +1,4 @@
-import sys, os, subprocess, glob
+import sys, os, subprocess
 
 import densityplot, differentialplot
 
@@ -23,13 +23,12 @@ def build_benchmarks(prefix, suffix):
     
     return baseline, swift 
 
-def generate_test_image_table(prefix, files):
+def generate_test_image_table(images, paths):
     header      =  '| Test image | Size |'
     separator   =  '| ---------- | ---- |'
     rows        = ('| `{0}` <br/> <img src="{1}"/> | {2:,} B |'.format(
-            name, '{0}/{1}'.format(prefix, path), size) 
-        for name, path, size in sorted((os.path.basename(path), path, os.path.getsize(path)) 
-        for path in files))
+            image, '../{0}'.format(path), os.path.getsize(path)) 
+        for image, path in zip(images, paths))
     
     return '\n'.join((header, separator, * rows ))
 
@@ -49,12 +48,10 @@ def ordinal(i):
     else:
         return '{0}th'.format(i)
 
-def assign_colors(files):
+def assign_colors(images):
     solid   = [('swift', '#ff694eff'), ('baseline', '#888888ff')]
     dashed  = []
-    for file in files:
-        name, * _ = os.path.splitext(os.path.basename(file))
-        
+    for name in images:
         name_baseline           = 'baseline-{0}'.format(name)
         name_swift              = 'swift-{0}'.format(name)
         
@@ -66,22 +63,20 @@ def assign_colors(files):
     
     return tuple((name, color, 'dashed') for name, color in dashed) + tuple((name, color, 'solid') for name, color in solid)
     
-def compression_collect_data_for_level(level, files, baseline, swift, trials):
+def compression_collect_data_for_level(level, images, paths, baseline, swift, trials):
     series  = {'baseline': [], 'swift': []}
     sizes   = {}
-    for file in files:
-        name, * _ = os.path.splitext(os.path.basename(file))
-        
-        name_baseline           = 'baseline-{0}'.format(name)
-        name_swift              = 'swift-{0}'.format(name)
+    for image, path in zip(images, paths):
+        name_baseline           = 'baseline-{0}'.format(image)
+        name_swift              = 'swift-{0}'.format(image)
         
         remaining       = trials 
         series_baseline = []
         series_swift    = []
         while remaining > 0:
             count               = min(remaining, 10)
-            baseline_invocation = baseline, str(level), file, str(count)
-            swift_invocation    = swift,    str(level), file, str(count)
+            baseline_invocation = baseline, str(level), path, str(count)
+            swift_invocation    = swift,    str(level), path, str(count)
             
             print(' '.join(baseline_invocation))
             baseline_result     = subprocess.run(baseline_invocation, capture_output = True)
@@ -122,8 +117,8 @@ def compression_collect_data_for_level(level, files, baseline, swift, trials):
     return {key: (series, sizes[key] if key in sizes else None) 
         for key, series in series.items()}
 
-def compression_collect_data(files, baseline, swift, trials):
-    return tuple(compression_collect_data_for_level(level, files, baseline, swift, trials) 
+def compression_collect_data(images, paths, baseline, swift, trials):
+    return tuple(compression_collect_data_for_level(level, images, paths, baseline, swift, trials) 
         for level in range(10))
 
 def compression_save_data(series):
@@ -143,15 +138,15 @@ def compression_load_data(string):
     return tuple({name: series for (level, name), series in combined.items() if level == i} 
         for i in range(10))
 
-def compression_benchmark(trials, files, cache_destination, cache_source):
+def compression_benchmark(trials, images, paths, cache_destination, cache_source):
     prefix      = 'benchmarks/compression' 
     suffix      = 'compression-benchmark'
     
     baseline, swift = build_benchmarks(prefix, suffix)
-    colors          = assign_colors(files)
+    colors          = assign_colors(images)
     
     if cache_source is None:
-        series      = compression_collect_data(files, baseline, swift, trials)
+        series      = compression_collect_data(images, paths, baseline, swift, trials)
         if cache_destination is not None:
             with open(cache_destination, 'w') as file:
                 file.write(compression_save_data(series))
@@ -207,21 +202,19 @@ def compression_benchmark(trials, files, cache_destination, cache_source):
         for level, series in enumerate(series)))
     
 
-def decompression_collect_data(files, baseline, swift, trials):
+def decompression_collect_data(images, paths, baseline, swift, trials):
     series = {'baseline': [], 'swift': []}
-    for file in files:
-        name, * _ = os.path.splitext(os.path.basename(file))
-        
-        name_baseline           = 'baseline-{0}'.format(name)
-        name_swift              = 'swift-{0}'.format(name)
+    for image, path in zip(images, paths):
+        name_baseline           = 'baseline-{0}'.format(image)
+        name_swift              = 'swift-{0}'.format(image)
         
         remaining       = trials 
         series_baseline = []
         series_swift    = []
         while remaining > 0:
             count               = min(remaining, 10)
-            baseline_invocation = baseline, file, str(count)
-            swift_invocation    = swift,    file, str(count)
+            baseline_invocation = baseline, path, str(count)
+            swift_invocation    = swift,    path, str(count)
             
             print(' '.join(baseline_invocation))
             baseline_result     = subprocess.run(baseline_invocation, capture_output = True)
@@ -264,15 +257,15 @@ def decompression_load_data(string):
         for name, series in (tuple(line.split(':')) 
         for line in string.split('\n') if line)} 
 
-def decompression_benchmark(trials, files, cache_destination, cache_source):
+def decompression_benchmark(trials, images, paths, cache_destination, cache_source):
     prefix      = 'benchmarks/decompression' 
     suffix      = 'decompression-benchmark'
     
     baseline, swift = build_benchmarks(prefix, suffix)
-    colors          = assign_colors(files)
+    colors          = assign_colors(images)
     
     if cache_source is None:
-        series      = decompression_collect_data(files, baseline, swift, trials)
+        series      = decompression_collect_data(images, paths, baseline, swift, trials)
         if cache_destination is not None:
             with open(cache_destination, 'w') as file:
                 file.write(decompression_save_data(series))
@@ -304,44 +297,35 @@ def decompression_benchmark(trials, files, cache_destination, cache_source):
     
     return plot, median_ratio, rgb8_ratio
             
-def benchmark(trials, image, save, load, prefix):
-    files = glob.glob('tests/compression/baseline/{0}.png'.format(image))
+def benchmark(trials, images, save, load, prefix):
+    paths = tuple('tests/compression/baseline/{0}.png'.format(image) for image in images)
     
-    plot, median_ratio, rgb8_ratio  = decompression_benchmark(trials[0], files, 
+    plot, median_ratio, rgb8_ratio  = decompression_benchmark(trials[0], images, paths, 
         cache_destination   = '{0}/decompression.data'.format(prefix) if save else None,
         cache_source        = '{0}/decompression.data'.format(prefix) if load else None)
-    levels                          =   compression_benchmark(trials[1], files, 
+    levels                          =   compression_benchmark(trials[1], images, paths, 
         cache_destination   = '{0}/compression.data'.format(prefix) if save else None,
         cache_source        = '{0}/compression.data'.format(prefix) if load else None)
     
-    if load:
-        with open('{0}/commit'.format(prefix), 'r') as file:
-            commit = file.read().rstrip()
-    else: 
-        commit = subprocess.run(('git', 'rev-parse', 'HEAD'), capture_output = True).stdout.decode('utf-8').rstrip()
-        with open('{0}/commit'.format(prefix), 'w') as file:
-            file.write('{0}\n'.format(commit))
-    
     fields = {
-        'images'        : len(files), 
-        'image_table'   : generate_test_image_table('..', files), 
+        'images'        : len(images), 
+        'image_table'   : generate_test_image_table(images, paths), 
     }
     
-    plot_decompression = '{0}/densityplot-decompression-speed.svg'.format(prefix)
-    fields['median_ratio_decompression']    = percent(median_ratio)
-    fields['rgb8_ratio_decompression']      = percent(rgb8_ratio)
-    fields['densityplot_decompression']     = plot_decompression
-    with open(plot_decompression, 'w') as file:
+    fields['median_decompression_speed']    = percent(median_ratio)
+    fields['rgb8_decompression_speed']      = percent(rgb8_ratio)
+    fields['plot_decompression_speed']      = '{0}/decompression-speed.svg'.format(prefix)
+    with open(fields['plot_decompression_speed'], 'w') as file:
         file.write(plot)
     
     for i, (plot_speed, plot_size, median_ratio, rgb8_ratio_speed, rgb8_ratio_size) in enumerate(levels):
-        plot_compression_speed  = '{0}/densityplot-compression-speed@{1}.svg'.format(prefix, i)
-        plot_compression_size   = '{0}/densityplot-compression-size@{1}.svg'.format(prefix, i)
-        fields['median_ratio_compression@{0}'.format(i)]        = percent(median_ratio)
-        fields['rgb8_ratio_compression_speed@{0}'.format(i)]    = percent(rgb8_ratio_speed)
-        fields['rgb8_ratio_compression_size@{0}'.format(i)]     = percent(rgb8_ratio_size)
-        fields['densityplot_compression_speed@{0}'.format(i)]   = plot_compression_speed 
-        fields['densityplot_compression_size@{0}'.format(i)]    = plot_compression_size
+        plot_compression_speed  = '{0}/compression-speed@{1}.svg'.format(prefix, i)
+        plot_compression_size   = '{0}/compression-size@{1}.svg'.format(prefix, i)
+        fields['median_compression_speed@{0}'.format(i)]    = percent(median_ratio)
+        fields['rgb8_compression_speed@{0}'.format(i)]      = percent(rgb8_ratio_speed)
+        fields['rgb8_compression_ratio@{0}'.format(i)]      = percent(rgb8_ratio_size)
+        fields['plot_compression_speed@{0}'.format(i)]      = plot_compression_speed 
+        fields['plot_compression_ratio@{0}'.format(i)]      = plot_compression_size
         with open(plot_compression_speed, 'w') as file:
             file.write(plot_speed)
         with open(plot_compression_size, 'w') as file:
