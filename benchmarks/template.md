@@ -29,7 +29,7 @@ As of commit **{commit}**, *Swift PNG*’s median decoding time was **{median_de
 
 ### encoding (levels `0 ... 9`)
 
-The compression benchmarks are similar to the decompression benchmarks except we measure ten of the library’s fourteen compression levels separately. The four highest *Swift PNG* compression levels have no *libpng* equivalent; size comparisons between their output and *libpng*’s output at its highest compression level can be found in the [next section](#encoding-levels-10-13).
+The compression benchmarks are similar to the decompression benchmarks except we measure ten of the library’s fourteen compression levels separately. The four highest *Swift PNG* compression levels have no *libpng* equivalent; size comparisons between their output and *libpng*’s output at its highest compression level can be found in the [next section](#encoding-levels-10--13).
 
 Note that *Swift PNG* and *libpng* compression levels generally don’t correspond to one another. In particular, *Swift PNG*’s speed-vs-compression curve is “flatter” than *libpng*’s. This means *Swift PNG* performs more compression (using more resources) than *libpng* for the first few compression levels, and some of the higher compression levels as well. This is by design, because *libpng* has the undesirable property in that for many input images, its speed does not decrease monotonically as the compression parameter increases.
 
