@@ -1,109 +1,5 @@
-#!/usr/bin/python3
-
-import sys, os, subprocess, glob
-
-import densityplot, differentialplot
-
-class toolchain:
-    def __init__(self, version):
-        self.version = version 
-    
-    def __enter__(self):
-        try:
-            os.mkdir('.build-historical')
-        except FileExistsError:
-            pass 
-        
-        swiftenv_result  = subprocess.run(('swiftenv', 'local'), capture_output = True)
-        if swiftenv_result.returncode != 0:
-            print('failed to query current swift toolchain')
-            sys.exit(-1)
-        self.original = swiftenv_result.stdout.decode('utf-8').split()[0]
-        print('current toolchain is \'{0}\''.format(self.original))
-        
-        swiftenv_result  = subprocess.run(('swiftenv', 'install', self.version))
-        # will fail if snapshot is already installed, which is fine
-        
-        swiftenv_result  = subprocess.run(('swiftenv', 'local', self.version))
-        if swiftenv_result.returncode != 0:
-            print('failed to set swift toolchain \'{0}\''.format(self.version))
-            sys.exit(-1)
-        
-        print('swift toolchain set to \'{0}\''.format(self.version))
-        
-        return compression_benchmark('swift', '.build-historical/{0}'.format(self.version)) 
-    
-    def __exit__(self, type, value, traceback):
-        swiftenv_result  = subprocess.run(('swiftenv', 'local', self.original))
-        if swiftenv_result.returncode != 0:
-            print('failed to restore original swift toolchain')
-            sys.exit(-1)
-
-class compression_benchmark:
-    def __init__(self, benchmark, build_directory):
-        if benchmark == 'swift':
-            self.executable     = "{0}/release/compression-benchmark".format(build_directory)
-            
-            build_invocation    = 'swift', 'build', '-c', 'release', '--product', 'compression-benchmark', '--build-path', build_directory
-            print(' '.join(build_invocation))
-            build               = subprocess.run(build_invocation)
-            if build.returncode != 0:
-                sys.exit(-1)
-        
-        elif benchmark == 'c':
-            try:
-                os.mkdir('.build-historical')
-            except FileExistsError:
-                pass 
-            try:
-                os.mkdir('.build-historical/clang')
-            except FileExistsError:
-                pass 
-            
-            self.executable = "{0}/main".format(build_directory)
-            
-            build_invocation    = ('clang', '-Wall', '-Wpedantic', '-lpng', 
-                'benchmarks/compression/baseline/main.c', '-o', self.executable)
-            print(' '.join(build_invocation))
-            build               = subprocess.run(build_invocation)
-
-            if build.returncode != 0:
-                sys.exit(-1)
-    
-    def collect_data(self, file, level, trials):
-        name, * _ = os.path.splitext(os.path.basename(file))
-        
-        remaining   = trials 
-        series      = []
-        while remaining > 0:
-            invocation  = self.executable, str(level), file, str(min(remaining, 10))
-            
-            print(' '.join(invocation))
-            
-            result      = subprocess.run(invocation, capture_output = True)
-            
-            if result.returncode == 0:
-                string = result.stdout.decode('utf-8')
-                print(string, end = '')
-                
-                times, _ = string.split(',')
-                series.extend(map(float, times.split()))
-            else:
-                print(result.stderr.decode('utf-8'), end = '')
-                
-            remaining -= 10
-        return series 
-
-
-def generate_test_image_table(prefix, files):
-    header      =  '| Test image | Size |'
-    separator   =  '| ---------- | ---- |'
-    rows        = ('| `{0}` <br/> <img src="{1}"/> | {2:,} B |'.format(
-            name, '{0}/{1}'.format(prefix, path), size) 
-        for name, path, size in sorted((os.path.basename(path), path, os.path.getsize(path)) 
-        for path in files))
-    
-    return '\n'.join((header, separator, * rows ))
+from densityplot    import plot as densityplot
+from toolchain      import toolchain, compression_benchmark
 
 def median(series):
     return sorted(series)[len(series) // 2]
@@ -170,11 +66,11 @@ def benchmark(trials, image, save, load, prefix):
             print('file \'{0}\' has {1} measurements per test case, (expected {2})'.format(cache, shortest, trials))
     else:
         baseline    = compression_benchmark('c', '.build-historical/clang')
-        series      = {'baseline': baseline.collect_data(test_image, level = level, trials = trials)}
+        series      = {'baseline': baseline.collect_data(test_image, level = level, trials = trials)['series']}
         for nightly in nightlies:
             with toolchain('DEVELOPMENT-SNAPSHOT-{0}'.format(nightly)) as swift:
                 series['nightly-{0}'.format(nightly)] = swift.collect_data(
-                    test_image, level = level, trials = trials)
+                    test_image, level = level, trials = trials)['series']
         
         if save:
             with open(cache, 'w') as file:
@@ -183,7 +79,7 @@ def benchmark(trials, image, save, load, prefix):
     unity       = median(series['baseline'])
     legend      = (('baseline', 'libpng'),) + tuple(('nightly-{0}'.format(nightly), nightly) for nightly in nightlies)
     colors      = assign_colors(nightlies)
-    plot        = densityplot.plot({name: tuple(x / unity for x in series) 
+    plot        = densityplot({name: tuple(x / unity for x in series) 
         for name, series in series.items()}, 
         range_x     = (0, 2.5),
         range_y     = (0, 1.0),
@@ -196,7 +92,7 @@ def benchmark(trials, image, save, load, prefix):
         smoothing   = 0.25, 
         legend      = legend,
         colors      = colors)
-    plot_detail     = densityplot.plot({name: tuple(x / unity for x in series) 
+    plot_detail     = densityplot({name: tuple(x / unity for x in series) 
         for name, series in series.items()}, 
         range_x     = (1.5, 2.0),
         range_y     = (0, 0.25),
@@ -211,13 +107,13 @@ def benchmark(trials, image, save, load, prefix):
         colors      = colors)
     
     fields = {
-        'densityplot_historical': '{0}/densityplot-historical.svg'.format(prefix),
-        'densityplot_historical_detail': '{0}/densityplot-historical-detail.svg'.format(prefix),
+        'plot_historical': '{0}/plot-historical.svg'.format(prefix),
+        'plot_historical_detail': '{0}/plot-historical-detail.svg'.format(prefix),
         'historical_toolchains': '\n'.join('- `DEVELOPMENT-SNAPSHOT-{0}`'.format(nightly) for nightly in nightlies)
     }
-    with open(fields['densityplot_historical'], 'w') as file:
+    with open(fields['plot_historical'], 'w') as file:
         file.write(plot)
-    with open(fields['densityplot_historical_detail'], 'w') as file:
+    with open(fields['plot_historical_detail'], 'w') as file:
         file.write(plot_detail)
 
     return fields

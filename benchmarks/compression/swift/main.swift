@@ -99,10 +99,10 @@ func main() throws
     
     let path:String = CommandLine.arguments[2]
     
-    guard 0 ... 9 ~= level
+    guard 0 ... 13 ~= level
     else 
     {
-        fatalError("compression level must be an integer from 0 to 9")
+        fatalError("compression level must be an integer from 0 to 13")
     }
     
     #if INTERNAL_BENCHMARKS 

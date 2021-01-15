@@ -23,13 +23,13 @@ The decompression benchmarks compare the performance of *Swift PNG* to that of *
 
 In the density plot below, the labeled curves represent the *aggregate distribution* of run times across all **{images}** test images. The unlabeled curves are the distributions for each individual test image. The dashed curve indicates the distribution for one of the 8-bit RGB test images (`rgb8-color-photographic`), one of the most common PNG image types.
 
-![decompression performance](../{densityplot_decompression})
+![decompression performance](../{plot_decompression_speed})
 
-As of commit **{commit}**, *Swift PNG*’s median decoding time was **{median_ratio_decompression}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median decoding time was **{median_decompression_speed}** that of *libpng*. *Swift PNG*’s median decoding time for the `rgb8-color-photographic` test image was **{rgb8_decompression_speed}** that of *libpng*.
 
-### encoding 
+### encoding (levels `0 ... 9`)
 
-The compression benchmarks are similar to the decompression benchmarks except we measure ten of the library’s thirteen compression levels separately. (The three highest compression levels have no *libpng* equivalent.)
+The compression benchmarks are similar to the decompression benchmarks except we measure ten of the library’s fourteen compression levels separately. The four highest *Swift PNG* compression levels have no *libpng* equivalent; size comparisons between their output and *libpng*’s output at its highest compression level can be found in the [next section](#encoding-levels-10-13).
 
 Note that *Swift PNG* and *libpng* compression levels generally don’t correspond to one another. In particular, *Swift PNG*’s speed-vs-compression curve is “flatter” than *libpng*’s. This means *Swift PNG* performs more compression (using more resources) than *libpng* for the first few compression levels, and some of the higher compression levels as well. This is by design, because *libpng* has the undesirable property in that for many input images, its speed does not decrease monotonically as the compression parameter increases.
 
@@ -38,112 +38,144 @@ In the density plots below, the labeled curves represent the *aggregate distribu
 
 #### compression level 0
 
-![compression performance](../{densityplot_compression_speed@0})
+![compression performance](../{plot_compression_speed@0})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 0th compression level was **{median_ratio_compression@0}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@0}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 0th compression level was **{median_compression_speed@0}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@0}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@0})
+![compression ratios](../{plot_compression_ratio@0})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@0}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@0}** that of *libpng*.
 
 
 #### compression level 1
 
-![compression performance](../{densityplot_compression_speed@1})
+![compression performance](../{plot_compression_speed@1})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 1st compression level was **{median_ratio_compression@1}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@1}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 1st compression level was **{median_compression_speed@1}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@1}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@1})
+![compression ratios](../{plot_compression_ratio@1})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@1}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@1}** that of *libpng*.
 
 
 #### compression level 2
 
-![compression performance](../{densityplot_compression_speed@2})
+![compression performance](../{plot_compression_speed@2})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 2nd compression level was **{median_ratio_compression@2}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@2}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 2nd compression level was **{median_compression_speed@2}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@2}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@2})
+![compression ratios](../{plot_compression_ratio@2})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@2}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@2}** that of *libpng*.
 
 
 #### compression level 3
 
-![compression performance](../{densityplot_compression_speed@3})
+![compression performance](../{plot_compression_speed@3})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 3rd compression level was **{median_ratio_compression@3}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@3}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 3rd compression level was **{median_compression_speed@3}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@3}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@3})
+![compression ratios](../{plot_compression_ratio@3})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@3}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@3}** that of *libpng*.
 
 
 #### compression level 4
 
-![compression performance](../{densityplot_compression_speed@4})
+![compression performance](../{plot_compression_speed@4})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 4th compression level was **{median_ratio_compression@4}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@4}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 4th compression level was **{median_compression_speed@4}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@4}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@4})
+![compression ratios](../{plot_compression_ratio@4})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@4}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@4}** that of *libpng*.
 
 
 #### compression level 5
 
-![compression performance](../{densityplot_compression_speed@5})
+![compression performance](../{plot_compression_speed@5})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 5th compression level was **{median_ratio_compression@5}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@5}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 5th compression level was **{median_compression_speed@5}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@5}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@5})
+![compression ratios](../{plot_compression_ratio@5})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@5}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@5}** that of *libpng*.
 
 
 #### compression level 6
 
-![compression performance](../{densityplot_compression_speed@6})
+![compression performance](../{plot_compression_speed@6})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 6th compression level was **{median_ratio_compression@6}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@6}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 6th compression level was **{median_compression_speed@6}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@6}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@6})
+![compression ratios](../{plot_compression_ratio@6})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@6}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@6}** that of *libpng*.
 
 
 #### compression level 7
 
-![compression performance](../{densityplot_compression_speed@7})
+![compression performance](../{plot_compression_speed@7})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 7th compression level was **{median_ratio_compression@7}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@7}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 7th compression level was **{median_compression_speed@7}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@7}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@7})
+![compression ratios](../{plot_compression_ratio@7})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@7}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@7}** that of *libpng*.
 
 
 #### compression level 8
 
-![compression performance](../{densityplot_compression_speed@8})
+![compression performance](../{plot_compression_speed@8})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 8th compression level was **{median_ratio_compression@8}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@8}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 8th compression level was **{median_compression_speed@8}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@8}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@8})
+![compression ratios](../{plot_compression_ratio@8})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@8}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@8}** that of *libpng*.
 
 
 #### compression level 9
 
-![compression performance](../{densityplot_compression_speed@9})
+![compression performance](../{plot_compression_speed@9})
 
-As of commit **{commit}**, *Swift PNG*’s median encoding time at its 9th compression level was **{median_ratio_compression@9}** that of *libpng*. *Swift PNG*’s encoding time for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_speed@9}** that of *libpng*.
+As of commit **{commit}**, *Swift PNG*’s median encoding time at its 9th compression level was **{median_compression_speed@9}** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **{rgb8_compression_speed@9}** that of *libpng*.
 
-![compression performance](../{densityplot_compression_size@9})
+![compression ratios](../{plot_compression_ratio@9})
 
-*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_ratio_compression_size@9}** that of *libpng*.
+*Swift PNG*’s generated file size for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@9}** that of *libpng*.
+
+### encoding (levels `10 ... 13`)
+
+The following file size plots compare the output of *Swift PNG* at its four highest compression levels with the output of *libpng* at its highest compression level (level `9`).
+
+#### compression level 10
+
+![compression ratios](../{plot_compression_ratio@10})
+
+As of commit **{commit}**, *Swift PNG*’s generated file size its 10th compression level for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@10}** that of *libpng* at its highest compression level.
+
+
+#### compression level 11
+
+![compression ratios](../{plot_compression_ratio@11})
+
+As of commit **{commit}**, *Swift PNG*’s generated file size its 11th compression level for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@11}** that of *libpng* at its highest compression level.
+
+
+#### compression level 12
+
+![compression ratios](../{plot_compression_ratio@12})
+
+As of commit **{commit}**, *Swift PNG*’s generated file size its 12th compression level for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@12}** that of *libpng* at its highest compression level.
+
+
+#### compression level 13
+
+![compression ratios](../{plot_compression_ratio@13})
+
+As of commit **{commit}**, *Swift PNG*’s generated file size its 13th compression level for the `rgb8-color-photographic` test image was **{rgb8_compression_ratio@13}** that of *libpng* at its highest compression level.
+
 
 ### performance by toolchain 
 
@@ -151,6 +183,6 @@ As of commit **{commit}**, *Swift PNG*’s median encoding time at its 9th compr
 
 {historical_toolchains}
 
-![historical encoder performance](../{densityplot_historical})
+![historical encoder performance](../{plot_historical})
 
-![historical encoder performance, detail](../{densityplot_historical_detail})
+![historical encoder performance, detail](../{plot_historical_detail})
