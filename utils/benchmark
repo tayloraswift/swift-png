@@ -38,14 +38,14 @@ fields.update(benchmark_latest.benchmark(arguments.trials[:2],
     save    = arguments.save, 
     load    = arguments.load, 
     prefix  = prefix))
-# fields.update(benchmark_toolchains.benchmark(arguments.trials[2], 
-#     image   = 'rgb8-color-photographic', 
-#     save    = arguments.save, 
-#     load    = arguments.load, 
-#     prefix  = prefix))
-# 
-# with open('benchmarks/template.md', 'r') as file:
-#     template = file.read() 
-# 
-# with open('benchmarks/README.md', 'w') as file:
-#     file.write(template.format( ** fields ))
+fields.update(benchmark_toolchains.benchmark(arguments.trials[2], 
+    image   = 'rgb8-color-photographic', 
+    save    = arguments.save, 
+    load    = arguments.load, 
+    prefix  = prefix))
+
+with open('benchmarks/template.md', 'r') as file:
+    template = file.read() 
+
+with open('benchmarks/README.md', 'w') as file:
+    file.write(template.format( ** fields ))
