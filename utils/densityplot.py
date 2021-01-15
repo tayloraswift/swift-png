@@ -41,7 +41,7 @@ def plot(series, bins = 40, smoothing = 1,
     labels      = []
     for i in range(cells[0] + 1):
         x      = i * major[0] / (minor[0] * (end - start))
-        v      = i * major[0] /  minor[0]
+        v      = i * major[0] /  minor[0] + start
         m      = i % minor[0] == 0
         
         screen = tuple(tuple(map(round, transform(x, area, offset))) for x in ((x, 0), (x, 1)))
@@ -62,7 +62,7 @@ def plot(series, bins = 40, smoothing = 1,
     
     for i in range(cells[1] + 1):
         y = i * major[1] / (minor[1] * (high - low))
-        v = i * major[1] /  minor[1]
+        v = i * major[1] /  minor[1] + low 
         m = i % minor[1] == 0
         
         screen = tuple(tuple(map(round, transform(y, area, offset))) for y in ((0, y), (1, y)))
