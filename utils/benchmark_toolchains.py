@@ -7,16 +7,6 @@ def median(series):
 def percent(x):
     return '{0} percent'.format(round(x * 100, 2))
 
-def ordinal(i):
-    if   i == 1:
-        return '1st'
-    elif i == 2:
-        return '2nd'
-    elif i == 3:
-        return '3rd'
-    else:
-        return '{0}th'.format(i)
-
 def assign_colors(nightlies):
     gradient = (
         '#b2a77fff',

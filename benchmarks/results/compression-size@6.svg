@@ -208,8 +208,8 @@
     <text x="421.77777777777777" y="240.0" class="label-legend worse">rgb16-monochrome-nonphotographic</text>
     <text x="421.77777777777777" y="260.0" class="label-legend worse">rgb16-monochrome-photographic</text>
     <text x="421.77777777777777" y="280.0" class="label-legend worse">va16-monochrome-photographic</text>
-    <text x="421.77777777777777" y="300.0" class="label-legend worse">va16-monochrome-nonphotographic</text>
-    <text x="421.77777777777777" y="320.0" class="label-legend worse">rgba16-monochrome-nonphotographic</text>
+    <text x="421.77777777777777" y="300.0" class="label-legend worse">rgba16-monochrome-nonphotographic</text>
+    <text x="421.77777777777777" y="320.0" class="label-legend worse">va16-monochrome-nonphotographic</text>
     <text x="421.77777777777777" y="340.0" class="label-legend worse">va8-monochrome-photographic</text>
     <text x="421.77777777777777" y="360.0" class="label-legend worse">v8-monochrome-photographic</text>
     <text x="421.77777777777777" y="380.0" class="label-legend worse">va8-monochrome-nonphotographic</text>
