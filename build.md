@@ -73,7 +73,7 @@ swift build -Xswiftc -DDUMP_LZ77_SYMBOL_HISTOGRAM
 
 The same as `DUMP_LZ77_BLOCKS`, except it only prints out the two-dimensional symbol histogram. The histograms look like this:
 
-![example histogram](../notes/sample-histogram.png)
+![example histogram](notes/sample-histogram.png)
 
 The *x*-axis is binned by **run-length decade**. Decade zero corresponds to a match length of 3 bytes. Decade 28 corresponds to a match length of 258 bytes. 
 
