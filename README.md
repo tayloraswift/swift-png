@@ -1,114 +1,77 @@
-# png
+<p align="center">
+  <img alt="platforms: all" src="https://img.shields.io/badge/platforms-all-lightgrey.svg" href="https://swift.org"/>
+  <img alt="releases" src="https://img.shields.io/github/v/release/kelvin13/png" href="https://github.com/kelvin13/png/releases"/>
+  <img alt="build status" src="https://img.shields.io/github/workflow/status/kelvin13/png/documentation/master?label=build" href="https://github.com/kelvin13/png/actions?query=workflow%3Abuild"/>
+  <img alt="documentation status" src="https://img.shields.io/github/workflow/status/kelvin13/png/documentation/master?label=build%20docs" href="https://github.com/kelvin13/png/actions?query=workflow%3Adocumentation"/>
+  <img alt="issues" src="https://img.shields.io/github/issues/kelvin13/png" href="https://github.com/kelvin13/png/issues?state=open"/>
+  <img alt="language" src="https://img.shields.io/badge/version-swift_5.2-ffa020.svg" href="https://swift.org"/>
+  <img alt="license: mpl2" src="https://img.shields.io/badge/license-MPL2-ff3079.svg" href="https://github.com/kelvin13/png/blob/master/LICENSE"/>
+</p>
 
-[![platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos-lightgrey.svg)](https://swift.org)
-[![releases](https://img.shields.io/github/v/release/kelvin13/png)](https://github.com/kelvin13/png/releases)
-[![build](https://img.shields.io/github/workflow/status/kelvin13/png/build/master)](https://github.com/kelvin13/png/actions?query=workflow%3Abuild)
-[![issues](https://img.shields.io/github/issues/kelvin13/png)](https://github.com/kelvin13/png/issues?state=open)
-[![language](https://img.shields.io/badge/version-swift_5-ffa020.svg)](https://swift.org)
-[![license](https://img.shields.io/badge/license-MPL2-ff3079.svg)](https://github.com/kelvin13/png/blob/master/LICENSE)
+<p align="center">
+  <img align="center" width="256px" src="logo.svg.png">
+</p>
 
-<img align="right" width="256px" src="logo.svg.png">
-
-A pure Swift PNG library. Enjoy fast PNG encoding and decoding with strong data types, strict validation, and a safe, expressive, and Swifty API.
-
+*Swift PNG* is a pure, cross-platform Swift framework for decoding, inspecting, editing, and encoding PNG images. The framework does not depend on *Foundation* or any other packages, and will compile and provide consistent behavior on all Swift platforms. *Swift PNG* supports additional features, such as file system support, on Linux and MacOS.
 
 Swift *PNG* is available under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/). The [example programs](examples/) are public domain and can be adapted freely.
 
----
+## [tutorials and example programs](examples/)
 
-### getting started
+1. [basic decoding](examples/#basic-decoding) ([sources](examples/decode-basic/))
+2. [basic encoding](examples/#basic-encoding) ([sources](examples/encode-basic/))
+3. [using indexed images](examples/#using-indexed-images) ([sources](examples/indexed/))
+4. [using iphone-optimized images](examples/#using-iphone-optimized-images) ([sources](examples/iphone-optimized/))
+5. [working with metadata](examples/#working-with-metadata) ([sources](examples/metadata/))
+6. [using in-memory images](examples/#using-in-memory-images) ([sources](examples/in-memory/))
+7. [online decoding](examples/#online-decoding) ([sources](examples/decode-online/))
+8. [custom color targets](examples/#custom-color-targets) ([sources](examples/custom-color/))
 
-Decode a PNG file to a type of your choice in just one function call.
-````swift
-import PNG
+## [api reference](https://kelvin13.github.io/png)
 
-let (pixels, (x: width, y: height)) = try PNG.rgba(path: "example.png", of: UInt8.self)
-// pixels: [PNG.RGBA<UInt8>]
-// width:  Int
-// height: Int
-````
+* [**`PNG.PNG`**](https://kelvin13.github.io/png/PNG)
+* [**`PNG.LZ77`**](https://kelvin13.github.io/png/LZ77)
+* [**`PNG.System`**](https://kelvin13.github.io/png/System)
 
-Use a component type of `UInt16` to capture the full color depth of a 16-bit PNG.
-````swift
-let (pixels, (x: width, y: height)) = try PNG.rgba(path: "example.png", of: UInt16.self)
-// pixels: [PNG.RGBA<UInt16>]
-// width:  Int
-// height: Int
-````
+## getting started 
 
-Return only the components you need with the grayscale and grayscale-alpha APIs.
-````swift
-let (pixels, (x: width, y: height)) = try PNG.va(path: "example.png", of: UInt8.self)
-// pixels: [PNG.VA<UInt8>]
-// width:  Int
-// height: Int
-````
-````swift
-let (pixels, (x: width, y: height)) = try PNG.v(path: "example.png", of: UInt8.self)
-// pixels: [UInt8]
-// width:  Int
-// height: Int
-````
+To use *Swift PNG* in a project, add this descriptor to the `dependencies` list in your `Package.swift` file:
 
-### documentation
+```swift
+.package(url: "https://github.com/kelvin13/png", .exact("4.0.0")) 
+```
 
-* [**Tutorials**](doc/3.0.0/tutorials.md)
-* [**Example code**](examples)
-* [**API reference**](doc/3.0.0/api.swift)
+## basic usage 
 
-### features 
+Decode an image:
 
-* Supports all standard PNG formats, including indexed and interlaced formats 
-* Supports common graphics API interchange formats such as ARGB32 
-* Supports ancillary chunks, including private ancillary chunks
-* Supports chroma key transparency
-* Multi-level APIs, including raw chunk-level APIs
-* Strong typing and expressive enumerations to catch invalid states at compile time
-* Fixed-layout currency types for efficient C interop
-* No Foundation imports and one system dependency, zlib
-* Tested on MacOS and Linux
-* Thorough API documentation
+```swift 
+import PNG 
+func decode(png path:String) throws 
+{
+    guard let image:PNG.Data.Rectangular = try .decompress(path: path)
+    else 
+    {
+        // failed to access file from file system
+    }
 
-### versions 
+    let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self), 
+        size:(x:Int, y:Int)    = image.size
+    // ...
+}
+```
 
-| release | xcode | swift |
-| --- | --- | --- |
-| `master` | `11.5` | `5.2` |
-| [`3.0.1`](https://github.com/kelvin13/png/releases/tag/v3.0.1) | `11.5` | `5.2` |
-| [`3.0.0`](https://github.com/kelvin13/png/releases/tag/v3.0.0) | `10.1` | `4.2.1` |
-| [`2.0.1`](https://github.com/kelvin13/png/releases/tag/v2.0.1) | — | `3.1.1` |
+Encode an image:
 
-### faq
+```swift 
+func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) throws
+{
+    let image:PNG.Data.Rectangular = .init(packing: pixels, size: size, 
+        layout: .init(format: .rgba8(palette: [], fill: nil)))
+    try image.compress(path: path, level: 9)
+}
+```
 
-> What’s the difference between bit depth and color type?
-
-Color type refers to the channels present in a PNG. A grayscale PNG has only one color channel, while an RGB PNG has three (red, green, and blue). An RGBA PNG has four — three color channels, plus one alpha channel. Similarly, a grayscale–alpha PNG has two — one grayscale “color” channel and one alpha channel. An indexed-color PNG has one encoded channel in the image data, but the colors the indices represent are always RGBA quadruples. The vast majority of PNGs in the world are either of color type RGB or RGBA.
-
-Bit depth goes one level lower; it represents the size of each *channel*. A PNG with a bit depth of `8` has `8` bits per channel. Hence, one pixel of an RGBA PNG is `4 * 8 = 32` bits long, or `4` bytes.
-
-> What is interlacing?
-
-[Interlacing](https://en.wikipedia.org/wiki/Interlacing_(bitmaps)) is a way of progressively ordering the image data in a PNG so it can be displayed at lower resolution even when partially downloaded. Interlacing is sometimes used in images on social media such as Instagram or Twitter, but rare elsewhere. Interlacing hurts compression, and so it usually significantly increases the size of a PNG file, sometimes as much as thirty percent.
-
-> Why does this package depend on `zlib`?
-
-ZLib is a standard compression/decompression library that is installed by default on MacOS and most Linux systems. Although it is written in C, it is wrapped by almost every major programming language including Java and Python. The only other Swift PNG decoder library in existence at the time of writing, [SwiftGL Image](https://github.com/SwiftGL/Image), actually implements its own, pure Swift, `INFLATE` algorithm. (Note that it doesn’t compile on Swift ≥3.1.)
-
-> Does this package work on MacOS?
-
-Yes.
-
-> How do I access/encode custom PNG metadata chunks?
-
-Use the ancillary chunk API on the `Data.Uncompressed` or `Data.Rectangular` types, which expose ancillary chunk types and data through the `ancillaries` instance property. See [this tutorial](doc/3.0.0/tutorials.md#apply-a-color-ramp-to-a-grayscale-image) for more details. Note that, except for `tRNS`, *PNG* does not parse ancillary chunks, it only provides their data as a `[UInt8]` buffer. Consult the [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html) to interpret the ancillary chunks.
-
-> Does this package do gamma correction?
-
-No. Gamma is meant to be applied at the image *display* stage. *PNG* only gives you the base pixel values in the image (with indexed pixel dereferencing and chroma key substitution). Gamma is also easy to apply to raw color data but computationally expensive to remove. Some PNGs include gamma data in a chunk called `gAMA`, but most don’t, and viewers will just apply a `γ = 2.2` regardless.
-
-### building
-Build *PNG* with the swift package manager, `swift build` (`-c release`). Make sure you have the `zlib` headers on your computer (`sudo apt-get install libz-dev`).
-
-### see also 
+## see also 
 
 * [Swift *JPEG*](https://github.com/kelvin13/jpeg)
