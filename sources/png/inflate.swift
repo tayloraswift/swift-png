@@ -18,8 +18,6 @@ enum LZ77
 // modular redundancy check (similar to PNG.CRC32)
 extension LZ77 
 {
-    // no more algorithms named after white man the world has 
-    // progressed past the need for white men <3
     enum MRC32 
     {
         // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
@@ -65,7 +63,6 @@ extension LZ77
         fileprivate
         let size:(n:Int, z:Int)
         
-        // restrict access to this init 
         private 
         init(symbols:[Symbol], levels:[Range<Int>], size:(n:Int, z:Int))
         {
