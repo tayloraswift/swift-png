@@ -48,6 +48,9 @@ fi
 
 cd entrapta/ 
 
+# lock to version 0.1.0
+git checkout tags/0.1.0
+
 check   "failed to build entrapta" \
         swift build -c release
 
