@@ -43,6 +43,9 @@ extension General
         }
     }
 }
+extension General.Storage:Sendable where I:Sendable
+{
+}
 
 extension General 
 {    

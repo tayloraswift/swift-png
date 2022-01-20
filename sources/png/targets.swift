@@ -344,6 +344,12 @@ extension PNG
         var a:T
     }
 }
+extension PNG.RGBA:Sendable where T:Sendable 
+{
+}
+extension PNG.VA:Sendable where T:Sendable 
+{
+}
 extension PNG.RGBA 
 {
     /// init PNG.RGBA.init(_:) 
