@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     # reads .swift-version
-    - uses: YOCKOW/Action-setup-swift@master
+    - uses: YOCKOW/Action-setup-swift@v1.1.14
     - run:  | 
         swift run            unit-test 
         swift run -c release integration-test --compact

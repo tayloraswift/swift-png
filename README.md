@@ -4,7 +4,7 @@
   <a href="https://github.com/kelvin13/png/actions?query=workflow%3Abuild"><img alt="build status" src="https://img.shields.io/github/workflow/status/kelvin13/png/documentation/master?label=build"/></a>
   <a href="https://github.com/kelvin13/png/actions?query=workflow%3Adocumentation"><img alt="documentation status" src="https://img.shields.io/github/workflow/status/kelvin13/png/documentation/master?label=build%20docs"/></a>
   <a href="https://github.com/kelvin13/png/issues?state=open"><img alt="issues" src="https://img.shields.io/github/issues/kelvin13/png"/></a>
-  <a href="https://swift.org"><img alt="language" src="https://img.shields.io/badge/version-swift_5.2-ffa020.svg"/></a>
+  <a href="https://swift.org"><img alt="language" src="https://img.shields.io/badge/version-swift_5.5-ffa020.svg"/></a>
   <a href="https://github.com/kelvin13/png/blob/master/LICENSE"><img alt="license: mpl2" src="https://img.shields.io/badge/license-MPL2-ff3079.svg"/></a>
 </p>
 
