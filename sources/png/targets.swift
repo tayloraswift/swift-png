@@ -4,7 +4,7 @@
 ///     The library provides two built-in color targets, [`VA`] and [`RGBA`]. 
 ///     A worked example of how to implement a custom 
 ///     color target can be found in the 
-///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
 /// # [Unpacking functions](unpacking-functions)
 /// # [Packing functions](packing-functions)
 /// # [See also](builtin-color-targets, custom-color-targets)
@@ -39,7 +39,7 @@ protocol _PNGColor
     ///     generate a dereferencing function. This function should only be invoked 
     ///     if the color `format` is an indexed format.
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Self]
     ///     A pixel array containing instances of this color target. The pixels 
@@ -67,7 +67,7 @@ protocol _PNGColor
     ///     generate a referencing function. This function should only be invoked 
     ///     if the color `format` is an indexed format.
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Swift.UInt8]
     ///     An image data buffer. The packed samples in this buffer should appear 
@@ -101,7 +101,7 @@ protocol _PNGColor
     ///     blue, and alpha components of the *i*th palette entry, in that order, 
     ///     as the palette aggregate, given an index *i*.
     ///  
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of the default implementations.
     /// - interleaved : [Swift.UInt8] 
     ///     An image data buffer. It is expected to be obtained from the 
@@ -144,7 +144,7 @@ protocol _PNGColor
     ///     palette entry matches, the matching entry is chosen arbitrarily. 
     ///     If there is no matching palette entry, it chooses the first palette entry.
     ///  
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of the default implementations.
     /// - pixels : [Self] 
     ///     A pixel array containing instances of this color target.
@@ -736,7 +736,7 @@ extension PNG.RGBA:PNG.Color
     ///     if the color `format` is an indexed format. Its palette aggregates 
     ///     will be interpreted as (*red*, *green*, *blue*, *alpha*) quadruplets.
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Self]
     ///     An array of RGBA pixels. The pixels 
@@ -888,7 +888,7 @@ extension PNG.RGBA:PNG.Color
     ///     if the color `format` is an indexed format. Its palette aggregates 
     ///     will be interpreted as (*red*, *green*, *blue*, *alpha*) quadruplets.
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Swift.UInt8]
     ///     An image data buffer. The packed samples in this buffer appear 
@@ -1025,7 +1025,7 @@ extension PNG.VA:PNG.Color
     ///     if the color `format` is an indexed format. Its palette aggregates 
     ///     will be interpreted as (*gray*, *alpha*) pairs.
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Self]
     ///     An array of RGBA pixels. The pixels 
@@ -1178,7 +1178,7 @@ extension PNG.VA:PNG.Color
     ///     if the color `format` is an indexed format. Its palette aggregates 
     ///     will be interpreted as (*gray*, *alpha*) quadruplets.
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Swift.UInt8]
     ///     An image data buffer. The packed samples in this buffer appear 
@@ -1441,7 +1441,7 @@ extension PNG.Data.Rectangular
     ///     generate a dereferencing function. This function is only expected to 
     ///     be invoked if [`layout``(Layout).format`] is an indexed format. 
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [Color]
     ///     A pixel array. Its elements are arranged in row-major order. The 
@@ -1490,7 +1490,7 @@ extension PNG.Data.Rectangular
     ///     generate a dereferencing function. This function will only 
     ///     be invoked if [`layout``(Layout).format`] is an indexed format. 
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// - -> : [T]
     ///     A scalar pixel array. Its elements are arranged in row-major order. The 
@@ -1531,7 +1531,7 @@ extension PNG.Data.Rectangular
     ///     generate a referencing function. This function is only expected to 
     ///     be invoked if the image color [`(Layout).format`] is an indexed format. 
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// # [See also](packing-pixels)
     /// ## (1:packing-pixels)
@@ -1587,7 +1587,7 @@ extension PNG.Data.Rectangular
     ///     generate a referencing function. This function will only  
     ///     be invoked if the image color [`(Layout).format`] is an indexed format. 
     /// 
-    ///     See the [indexed color tutorial](https://github.com/kelvin13/png/tree/master/examples#using-indexed-images) 
+    ///     See the [indexed color tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#using-indexed-images) 
     ///     for more about the semantics of this function.
     /// # [See also](packing-pixels)
     /// ## (3:packing-pixels)

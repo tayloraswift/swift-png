@@ -47,7 +47,7 @@ All baseline images were saved in [GIMP 2.10](https://www.gimp.org/) at the maxi
 
 ### i.ii. benchmarks
 
-The compression benchmarks come in their own package target, `compression-test`. The repository’s [CI](https://github.com/kelvin13/png/actions?query=workflow%3Abuild) builds and runs them, though it doesn’t really care about the output. The test binary can run all of the test cases, a subset of the test cases, or a single test case.
+The compression benchmarks come in their own package target, `compression-test`. The repository’s [CI](https://github.com/kelvin13/swift-png/actions?query=workflow%3Abuild) builds and runs them, though it doesn’t really care about the output. The test binary can run all of the test cases, a subset of the test cases, or a single test case.
 
 ```bash
 # run all test cases 

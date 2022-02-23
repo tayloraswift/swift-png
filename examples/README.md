@@ -44,9 +44,9 @@ let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)*
 
-The element type of the output array, [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA/), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
+The element type of the output array, [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/RGBA/), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
 
-We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](https://kelvin13.github.io/png/PNG/VA/) built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
+We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/VA/) built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
 
 ```swift 
 let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
@@ -56,9 +56,9 @@ let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
 
 > the example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 
-The [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
+The [`unpack(as:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
 
-The [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method also has an [overload](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-unpack(as:)/) which allows you to unpack an image into scalar grayscale samples.
+The [`unpack(as:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method also has an [overload](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-unpack(as:)/) which allows you to unpack an image into scalar grayscale samples.
 
 ```swift 
 let v:[UInt8] = image.unpack(as: UInt8.self)
@@ -93,7 +93,7 @@ If you unpack an image to an integer type `T` with a bit width different from th
 > - **chroma key**
 > - **compression level**
 
-This tutorial will assume you have the image you want to encode stored as an array of pixels. In the [example code](encode-basic/main.swift) for this tutorial, we have loaded it from a raw `.rgba` data file using the library’s [file system APIs](https://kelvin13.github.io/png/System/File/). (As previously mentioned, these APIs are only available on MacOS and Linux.)
+This tutorial will assume you have the image you want to encode stored as an array of pixels. In the [example code](encode-basic/main.swift) for this tutorial, we have loaded it from a raw `.rgba` data file using the library’s [file system APIs](https://kelvin13.github.io/swift-png/System/File/). (As previously mentioned, these APIs are only available on MacOS and Linux.)
 
 ```swift 
 import PNG
@@ -130,13 +130,13 @@ let layout:(rgb:PNG.Layout, v:PNG.Layout) =
 )
 ```
 
-The signature of the [`PNG.Layout`](https://kelvin13.github.io/png/PNG/Layout/) initializer is given below: 
+The signature of the [`PNG.Layout`](https://kelvin13.github.io/swift-png/PNG/Layout/) initializer is given below: 
 
 ```swift 
 init(format:PNG.Format, interlaced:Bool = false) 
 ```
 
-The `format` parameter specifies the **color format** of the layout. A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of the [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA/) pixel array will be lost when encoding in the 8-bit RGB format. 
+The `format` parameter specifies the **color format** of the layout. A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of the [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/RGBA/) pixel array will be lost when encoding in the 8-bit RGB format. 
 
 We can enable **interlacing** by setting the `interlaced` parameter to `true`. [Interlacing](https://en.wikipedia.org/wiki/Adam7_algorithm) is an alternative way of storing the image data within the PNG file’s internal representation. This parameter is `false` by default. There is rarely a good reason to enable it, and it usually hurts the compression ratio, so we have omitted it in this example. We will explore a possible use case for it in the [online decoding tutorial](#online-decoding).
 
@@ -166,19 +166,19 @@ We can enable **interlacing** by setting the `interlaced` parameter to `true`. [
 | `PNG.Format.rgba8(palette:fill:)`     | RGBA              | 8         | 8           | core      |
 | `PNG.Format.rgba16(palette:fill:)`    | RGBA              | 16        | 16          | core      |
 
-The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a **chroma key**. Most PNG viewers use this chroma key to display transparency for such images. Such viewers will display pixels as transparent if they match the chroma key. The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the [`rgb8(palette:fill:key:)`](https://kelvin13.github.io/png/PNG/Format/rgb8(palette:fill:key:)/) format, and [`Int`](https://developer.apple.com/documentation/swift/int) indices in the [`indexed8(palette:fill:)`](https://kelvin13.github.io/png/PNG/Format/indexed8(palette:fill:)/) format. (Indexed images do not support chroma keys, because they contain a full alpha channel.)
+The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a **chroma key**. Most PNG viewers use this chroma key to display transparency for such images. Such viewers will display pixels as transparent if they match the chroma key. The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the [`rgb8(palette:fill:key:)`](https://kelvin13.github.io/swift-png/PNG/Format/rgb8(palette:fill:key:)/) format, and [`Int`](https://developer.apple.com/documentation/swift/int) indices in the [`indexed8(palette:fill:)`](https://kelvin13.github.io/swift-png/PNG/Format/indexed8(palette:fill:)/) format. (Indexed images do not support chroma keys, because they contain a full alpha channel.)
 
 Most PNG viewers ignore the `fill` field, and a few ignore the `key` field as well. It is common to leave both fields as `nil` to disable this functionality.
 
 The non-grayscale color formats include a `palette` field. Setting it to the empty array `[]` is analogous to setting `fill` or `key` to `nil`. For the indexed color formats, a non-empty `palette` is mandatory. For the other formats, it is optional (meaning it can be set to `[]`), and furthermore, ignored by almost all PNG clients, since it only specifies a suggested [posterization](https://en.wikipedia.org/wiki/Posterization) for the image.
 
-To create a rectangular image data instance, use the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer. This initializer is the inverse of the [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
+To create a rectangular image data instance, use the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer. This initializer is the inverse of the [`unpack(as:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
 
 ```swift 
 let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.rgb)
 ```
 
-On platforms with built-in file system support, we can compress it to a file using the [`compress(path:level:hint:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
+On platforms with built-in file system support, we can compress it to a file using the [`compress(path:level:hint:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
 
 The `level` argument specifies the **compression level**. It should be in the range `0 ... 13`, where `13` is the most aggressive setting. Its default value is `9`. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
 
@@ -220,13 +220,13 @@ let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layou
 try image.compress(path: "\(path)-color-v.png", level: 9)
 ```
 
-The built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA/) color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
+The built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA/) color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
 
 <img src="encode-basic/example-color-v.png" alt="output png" width=300/>
 
 > the example image, encoded by *swift png* in the 8-bit grayscale color format.
 
-Like the [`unpack(as:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/unpack(as:)/) method, the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer is generic and can take an array of any color target. It also has an [overload](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array. 
+Like the [`unpack(as:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method, the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer is generic and can take an array of any color target. It also has an [overload](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array. 
 
 ```swift 
 let luminance:[UInt8] = rgba.map 
@@ -239,7 +239,7 @@ let luminance:[UInt8] = rgba.map
 }
 ```
 
-We can encode it to a file just as we did with the array of [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA/) colors:
+We can encode it to a file just as we did with the array of [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/RGBA/) colors:
 
 ```swift 
 let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: layout.v)
@@ -659,7 +659,7 @@ try visualization.compress(path: "examples/indexing/gradient-visualization.png")
 
 > a visualization of the generated gradient.
 
-We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, [`init(packing:size:layout:metadata:indexer:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/), and pass it a custom **indexing function**.
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, [`init(packing:size:layout:metadata:indexer:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/), and pass it a custom **indexing function**.
 
 ```swift 
 let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size, 
@@ -670,7 +670,7 @@ let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size,
 }
 ```
 
-The best way to understand the indexing function is to compare it with the behavior of the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer. Calling that initializer is equivalent to calling [`init(packing:size:layout:metadata:indexer:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/) with the following indexing function.
+The best way to understand the indexing function is to compare it with the behavior of the [`init(packing:size:layout:metadata:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer. Calling that initializer is equivalent to calling [`init(packing:size:layout:metadata:indexer:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/) with the following indexing function.
 
 ```swift 
 {
@@ -694,7 +694,7 @@ The return value of the outer function is an *inner function* of type `(UInt8) -
 
 Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to manipulate indices without re-indexing the entire image.
 
-Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) color target, the inner function recieves `(UInt8, UInt8)` tuples. For the [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always [`Int`](https://developer.apple.com/documentation/swift/int).) In *Swift PNG*, the inner function argument is called a **palette aggregate**.
+Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the [`PNG.VA<T>`](https://kelvin13.github.io/swift-png/PNG/VA) color target, the inner function recieves `(UInt8, UInt8)` tuples. For the [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA) color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always [`Int`](https://developer.apple.com/documentation/swift/int).) In *Swift PNG*, the inner function argument is called a **palette aggregate**.
 
 Let’s go back to the custom indexing function: 
 
@@ -706,7 +706,7 @@ Let’s go back to the custom indexing function:
 
 Since we just want to cast the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
 
-On appropriate platforms, we can encode the image to a file with the [`compress(path:level:hint:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. 
+On appropriate platforms, we can encode the image to a file with the [`compress(path:level:hint:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. 
 
 ```swift 
 try indexed.compress(path: "\(path)-indexed.png")
@@ -716,7 +716,7 @@ try indexed.compress(path: "\(path)-indexed.png")
 
 > the example image, colorized as an indexed png.
 
-To read back the index values from the indexed image, we can use a custom **deindexing function**, which we pass to [`unpack(as:deindexer:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/1-unpack(as:deindexer:)/). 
+To read back the index values from the indexed image, we can use a custom **deindexing function**, which we pass to [`unpack(as:deindexer:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/1-unpack(as:deindexer:)/). 
 
 ```swift 
 let indices:[UInt8] = indexed.unpack(as: UInt8.self) 
@@ -763,7 +763,7 @@ true
 > - **premultiplied alpha**
 > - **straight alpha**
 
-As of version 4.0, *Swift PNG* has first-class support for **iphone-optimized images**. iPhone-optimized images are an Apple extension to the PNG standard. Sometimes people refer to them as *CgBI images*. This name comes from the [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI/) application chunk present at the beginning of such files, whose name in turn comes from the [`CGBitmapInfo`](https://developer.apple.com/documentation/coregraphics/cgbitmapinfo) option set in the Apple Core Graphics framework. 
+As of version 4.0, *Swift PNG* has first-class support for **iphone-optimized images**. iPhone-optimized images are an Apple extension to the PNG standard. Sometimes people refer to them as *CgBI images*. This name comes from the [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI/) application chunk present at the beginning of such files, whose name in turn comes from the [`CGBitmapInfo`](https://developer.apple.com/documentation/coregraphics/cgbitmapinfo) option set in the Apple Core Graphics framework. 
 
 iPhone-optimized images are occasionally more space-efficient than standard PNG images, because the color model they use (discussed shortly) quantizes away color information that the user will never see. It is a common misconception that iphone-optimized images are optimized for file size. They are mainly optimized for computational efficiency, by omitting the [**modular redundancy check**](https://en.wikipedia.org/wiki/Adler-32) from the compressed image data stream. ([Some authors](https://iphonedevwiki.net/index.php/CgBI_file_format) erroneously refer to it as the *cyclic redundancy check*, which is a distinct concept, and completely unaffected by iphone optimizations.) iPhone-optimized images also use the **BGR/BGRA color formats**, the latter of which is the native color format of an iphone. This makes it possible to blit image data to an idevice’s graphics hardware without having to do as much post-processing on it.
 
@@ -801,9 +801,9 @@ print(image.layout.format)
 bgra8(palette: [], fill: nil)
 ```
 
-The [`bgra8(palette:fill:)`](https://kelvin13.github.io/png/PNG/Format/bgra8(palette:fill:)/) format is one of two iphone-optimized color formats. It is analogous to the [`rgba8(palette:fill:)`](https://kelvin13.github.io/png/PNG/Format/rgba8(palette:fill:)/) format. Another possibility is [`bgr8(palette:fill:key:)`](https://kelvin13.github.io/png/PNG/Format/bgr8(palette:fill:key:)/), which lacks an alpha channel, and is analogous to [`rgb8(palette:fill:key:)`](https://kelvin13.github.io/png/PNG/Format/rgb8(palette:fill:key:)/).
+The [`bgra8(palette:fill:)`](https://kelvin13.github.io/swift-png/PNG/Format/bgra8(palette:fill:)/) format is one of two iphone-optimized color formats. It is analogous to the [`rgba8(palette:fill:)`](https://kelvin13.github.io/swift-png/PNG/Format/rgba8(palette:fill:)/) format. Another possibility is [`bgr8(palette:fill:key:)`](https://kelvin13.github.io/swift-png/PNG/Format/bgr8(palette:fill:key:)/), which lacks an alpha channel, and is analogous to [`rgb8(palette:fill:key:)`](https://kelvin13.github.io/swift-png/PNG/Format/rgb8(palette:fill:key:)/).
 
-We can unpack iphone-optimized images to any color target. iPhone-optimized images use **premultiplied alpha**, which means the color samples (the blue, green, and red channels in a BGRA image) are scaled by the alpha sample. Occasionally, this facilitates compression by zeroing-out all color channels in fully-transparent pixels. We can convert the pixels back to **straight alpha**, the normal PNG color space, by using the [`straightened`](https://kelvin13.github.io/png/PNG/RGBA/straightened/) property on the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA/) and [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA/straightened/) color targets.
+We can unpack iphone-optimized images to any color target. iPhone-optimized images use **premultiplied alpha**, which means the color samples (the blue, green, and red channels in a BGRA image) are scaled by the alpha sample. Occasionally, this facilitates compression by zeroing-out all color channels in fully-transparent pixels. We can convert the pixels back to **straight alpha**, the normal PNG color space, by using the [`straightened`](https://kelvin13.github.io/swift-png/PNG/RGBA/straightened/) property on the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA/) and [`PNG.VA<T>`](https://kelvin13.github.io/swift-png/PNG/VA/straightened/) color targets.
 
 ```swift 
 let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straightened)
@@ -811,9 +811,9 @@ let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straig
 
 It is often convenient to work in the premultiplied color space, so the library does not straighten the alpha automatically. Of course, it’s also unnecessary to straighten the alpha if you know the image has no transparency.
 
-> **note:** unpacking bgra images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. if you trying to unpack grayscale values from an iphone-optimized image with transparency, unpack it to the [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA/) color target, and take the gray channel *after* straightening the grayscale-alpha pixels. 
+> **note:** unpacking bgra images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. if you trying to unpack grayscale values from an iphone-optimized image with transparency, unpack it to the [`PNG.VA<T>`](https://kelvin13.github.io/swift-png/PNG/VA/) color target, and take the gray channel *after* straightening the grayscale-alpha pixels. 
 
-Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the [`storage`](https://kelvin13.github.io/png/PNG/Data/Rectangular/storage) property on [`PNG.Data.Rectangular`](https://kelvin13.github.io/png/PNG/Data/Rectangular/).
+Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the [`storage`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/storage) property on [`PNG.Data.Rectangular`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/).
 
 ```swift 
 print(image.storage[..<16])
@@ -838,7 +838,7 @@ try standard.compress(path: "\(path)-rgb8.png")
 
 > the iphone-optimized example image, re-encoded as a standard png file.
 
-We can convert it back into an iphone-optimized image by specifying one of the iphone-optimized color formats. The [`premultiplied`](https://kelvin13.github.io/png/PNG/RGBA/premultiplied/) property on the [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA/) color target converts the pixels to the premultiplied color space. Again, this step is unnecessary if you know the image contains no transparency.
+We can convert it back into an iphone-optimized image by specifying one of the iphone-optimized color formats. The [`premultiplied`](https://kelvin13.github.io/swift-png/PNG/RGBA/premultiplied/) property on the [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA/) color target converts the pixels to the premultiplied color space. Again, this step is unnecessary if you know the image contains no transparency.
 
 ```swift 
 let apple:PNG.Data.Rectangular = .init(
@@ -853,7 +853,7 @@ try apple.compress(path: "\(path)-bgr8.png")
 
 > the previous output, re-encoded as an iphone-optimized file. unless you are using safari, your browser most likely cannot display this image. some versions of safari have a bug which reverses the color channels. if you are on an apple platform, you can download this file and view it normally.
 
-The [`premultiplied`](https://kelvin13.github.io/png/PNG/RGBA/premultiplied) and [`straightened`](https://kelvin13.github.io/png/PNG/RGBA/straightened) properties satisfy the condition that `x.premultiplied == x.premultiplied.straightened.premultiplied` for all `x`.
+The [`premultiplied`](https://kelvin13.github.io/swift-png/PNG/RGBA/premultiplied) and [`straightened`](https://kelvin13.github.io/swift-png/PNG/RGBA/straightened) properties satisfy the condition that `x.premultiplied == x.premultiplied.straightened.premultiplied` for all `x`.
 
 > **warning:** alpha premultiplication is a destructive operation. it is not the case that `x == x.premultiplied.straightened` for all `x`!
 
@@ -873,7 +873,7 @@ In this tutorial, we will inspect and edit metadata in the following example ima
 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:RIAN_archive_348_During_the_siege.jpg)*
 
-On appropriate platforms, we can decompress the image using the [`decompress(path:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/decompress(path:)/) static method. 
+On appropriate platforms, we can decompress the image using the [`decompress(path:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) static method. 
 
 ```swift 
 import PNG 
@@ -887,7 +887,7 @@ else
 }
 ```
 
-The image metadata lives in a [`PNG.Metadata`](https://kelvin13.github.io/png/PNG/Metadata/) structure, which is stored in the [`metadata`](https://kelvin13.github.io/png/PNG/Data/Rectangular/metadata) property of the image data structure. The metadata structure has the following properties: 
+The image metadata lives in a [`PNG.Metadata`](https://kelvin13.github.io/swift-png/PNG/Metadata/) structure, which is stored in the [`metadata`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/metadata) property of the image data structure. The metadata structure has the following properties: 
 
 ```swift 
 var time:PNG.TimeModified? 
@@ -906,7 +906,7 @@ var application:[(type:PNG.Chunk, data:[UInt8])]
 
 The individual metadata elements are called **metadata chunks**. Each field of the metadata struct is `nil` or empty (`[]`) if the corresponding metadata chunk is not present in the PNG file. Some metadata chunks — suggested palette chunks, text chunks, and private application data chunks — can appear more than once, which is why those properties are [`Array`](https://developer.apple.com/documentation/swift/array)s instead of [`Optional`](https://developer.apple.com/documentation/swift/optional)s.
 
-The example image has a [`tIME`](https://kelvin13.github.io/png/PNG/Chunk/tIME) chunk, a [`gAMA`](https://kelvin13.github.io/png/PNG/Chunk/gAMA) chunk, and a [`pHYs`](https://kelvin13.github.io/png/PNG/Chunk/pHYs) chunk, and we can pretty-print them using the Swift [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. 
+The example image has a [`tIME`](https://kelvin13.github.io/swift-png/PNG/Chunk/tIME) chunk, a [`gAMA`](https://kelvin13.github.io/swift-png/PNG/Chunk/gAMA) chunk, and a [`pHYs`](https://kelvin13.github.io/swift-png/PNG/Chunk/pHYs) chunk, and we can pretty-print them using the Swift [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. 
 
 ```swift 
 if let time:PNG.TimeModified = image.metadata.time 
@@ -945,19 +945,19 @@ PNG.PhysicalDimensions (pHYs)
 
 Accordingly, we can see that the example image was last saved on December 24th, 2020, at 11:09:19 PM, that it has a gamma of 0.45455, and a physical resolution of 11,811 pixels per meter (300 dpi).
 
-The example image also has several text chunks which contain machine-readable data that [GIMP](https://www.gimp.org/) added to the image when it was first saved. We can pretty-print *all* of the metadata in the image by passing the entire [`PNG.Metadata`](https://kelvin13.github.io/png/PNG/Metadata) structure to the [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. For the sake of brevity, we won’t show the output here.
+The example image also has several text chunks which contain machine-readable data that [GIMP](https://www.gimp.org/) added to the image when it was first saved. We can pretty-print *all* of the metadata in the image by passing the entire [`PNG.Metadata`](https://kelvin13.github.io/swift-png/PNG/Metadata) structure to the [`print(...:separator:terminator:)`](https://developer.apple.com/documentation/swift/1541053-print) function. For the sake of brevity, we won’t show the output here.
 
 ```swift 
 print(image.metadata)
 ```
 
-The [`metadata`](https://kelvin13.github.io/png/PNG/Data/Rectangular/metadata) property is mutable, so we can overwrite metadata fields without having to repack the image pixels. 
+The [`metadata`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/metadata) property is mutable, so we can overwrite metadata fields without having to repack the image pixels. 
 
 ```swift 
 image.metadata.time = .init(year: 1992, month: 8, day: 3, hour: 0, minute: 0, second: 0)
 ```
 
-We can save it and read it back to show that the new image now has a different value for its [`tIME`](https://kelvin13.github.io/png/PNG/Chunk/tIME) chunk. 
+We can save it and read it back to show that the new image now has a different value for its [`tIME`](https://kelvin13.github.io/swift-png/PNG/Chunk/tIME) chunk. 
 
 ```swift 
 try image.compress(path: "\(path)-newtime.png")
@@ -981,7 +981,7 @@ PNG.TimeModified (tIME)
 }
 ```
 
-> **note:** many png viewers ignore the [`tIME`](https://kelvin13.github.io/png/PNG/Chunk/tIME) chunk and display the image modification time stored in the image’s [exif data](https://en.wikipedia.org/wiki/Exif), which we did not modify. the png file format does not have a metadata chunk for exif data, so this information is usually encoded as a base-64 string in a png text chunk. parsing and editing this string is beyond the scope of this tutorial, so we won’t go over it.
+> **note:** many png viewers ignore the [`tIME`](https://kelvin13.github.io/swift-png/PNG/Chunk/tIME) chunk and display the image modification time stored in the image’s [exif data](https://en.wikipedia.org/wiki/Exif), which we did not modify. the png file format does not have a metadata chunk for exif data, so this information is usually encoded as a base-64 string in a png text chunk. parsing and editing this string is beyond the scope of this tutorial, so we won’t go over it.
 
 ## using in-memory images 
 
@@ -999,7 +999,7 @@ Up to this point we have been using the built-in file system API that the librar
 
 If you have used *Swift PNG*’s companion library [*Swift JPEG*](https://github.com/kelvin13/jpeg), the interface here is exactly the same. In fact, you can copy-and-paste large swaths of the code from the corresponding [JPEG tutorial](https://github.com/kelvin13/jpeg/tree/master/examples#using-in-memory-images), and it will just work.
 
-Our basic data type modeling a memory blob is incredibly simple; it consists of a Swift array containing the data buffer, and a file position pointer in the form of an integer. Here, we have namespaced it under the libary’s [`System`](https://kelvin13.github.io/png/System/) namespace to parallel the built-in file system APIs.
+Our basic data type modeling a memory blob is incredibly simple; it consists of a Swift array containing the data buffer, and a file position pointer in the form of an integer. Here, we have namespaced it under the libary’s [`System`](https://kelvin13.github.io/swift-png/System/) namespace to parallel the built-in file system APIs.
 
 ```swift 
 import PNG 
@@ -1015,7 +1015,7 @@ extension System
 }
 ```
 
-There are two **bytestream protocols** a custom data stream type can support: [`PNG.Bytestream.Source`](https://kelvin13.github.io/png/PNG/Bytestream/Source), and [`PNG.Bytestream.Destination`](https://kelvin13.github.io/png/PNG/Bytestream/Destination). The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
+There are two **bytestream protocols** a custom data stream type can support: [`PNG.Bytestream.Source`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Source), and [`PNG.Bytestream.Destination`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Destination). The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
 
 ```swift 
 extension System.Blob:PNG.Bytestream.Source, PNG.Bytestream.Destination 
@@ -1081,14 +1081,14 @@ var blob:System.Blob = .init(data)
 > 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Agence_Rol,_24.4.21,_concours_de_machines_-_BnF.jpg)*
 
-To decode from our `System.Blob` type, we use the [`decompress(stream:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/decompress(stream:)/) function, which is part of the core library, and does essentially the same thing as the file system-aware [`decompress(path:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/decompress(path:)/) function. We can then unpack pixels from the returned image data structure as we would in any other situation. 
+To decode from our `System.Blob` type, we use the [`decompress(stream:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/decompress(stream:)/) function, which is part of the core library, and does essentially the same thing as the file system-aware [`decompress(path:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) function. We can then unpack pixels from the returned image data structure as we would in any other situation. 
 
 ```swift 
 let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
 let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
 ```
 
-Just as with the decompression interfaces, the [`compress(path:level:hint:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/compress(path:level:hint:)/) function has a generic [`compress(stream:level:hint:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/compress(stream:level:hint:)/) counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
+Just as with the decompression interfaces, the [`compress(path:level:hint:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) function has a generic [`compress(stream:level:hint:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/compress(stream:level:hint:)/) counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
 
 ```swift 
 blob = .init([])
@@ -1158,7 +1158,7 @@ struct Stream
 }
 ```
 
-Each time we try to [`read`](https://kelvin13.github.io/png/PNG/Bytestream/Source/read(count:)/) from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
+Each time we try to [`read`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Source/read(count:)/) from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
 
 ```swift 
 extension Stream:PNG.Bytestream.Source
@@ -1236,13 +1236,13 @@ let path:String     = "examples/decode-online/example"
 var stream:Stream   = .init(path: "\(path).png")
 ```
 
-The key to making this work is understanding that if the [`read(count:)`](https://kelvin13.github.io/png/PNG/Bytestream/Source/read(count:)/) call on the stream instance returns `nil`, then one of three library errors will get thrown:
+The key to making this work is understanding that if the [`read(count:)`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Source/read(count:)/) call on the stream instance returns `nil`, then one of three library errors will get thrown:
 
-- [`PNG.LexingError.truncatedSignature`](https://kelvin13.github.io/png/PNG/LexingError/truncatedSignature/)
-- [`PNG.LexingError.truncatedChunkHeader`](https://kelvin13.github.io/png/PNG/LexingError/truncatedChunkHeader/)
-- [`PNG.LexingError.truncatedChunkBody(expected:)`](https://kelvin13.github.io/png/PNG/LexingError/truncatedChunkBody(expected:)/)
+- [`PNG.LexingError.truncatedSignature`](https://kelvin13.github.io/swift-png/PNG/LexingError/truncatedSignature/)
+- [`PNG.LexingError.truncatedChunkHeader`](https://kelvin13.github.io/swift-png/PNG/LexingError/truncatedChunkHeader/)
+- [`PNG.LexingError.truncatedChunkBody(expected:)`](https://kelvin13.github.io/swift-png/PNG/LexingError/truncatedChunkBody(expected:)/)
 
-These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The [`signature()`](https://kelvin13.github.io/png/PNG/Bytestream/Source/signature()/) method lexes the PNG signature bytes from the beginning of a PNG file, and it can `throw` a [`truncatedSignature`](https://kelvin13.github.io/png/PNG/LexingError/truncatedSignature/) error. The [`chunk()`](https://kelvin13.github.io/png/PNG/Bytestream/Source/chunk()/) method lexes a PNG chunk, and it can `throw` a [`truncatedChunkHeader`](https://kelvin13.github.io/png/PNG/LexingError/truncatedChunkHeader) or [`truncatedChunkBody(expected:)`](https://kelvin13.github.io/png/PNG/LexingError/truncatedChunkBody(expected:)/) error. 
+These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The [`signature()`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Source/signature()/) method lexes the PNG signature bytes from the beginning of a PNG file, and it can `throw` a [`truncatedSignature`](https://kelvin13.github.io/swift-png/PNG/LexingError/truncatedSignature/) error. The [`chunk()`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Source/chunk()/) method lexes a PNG chunk, and it can `throw` a [`truncatedChunkHeader`](https://kelvin13.github.io/swift-png/PNG/LexingError/truncatedChunkHeader) or [`truncatedChunkBody(expected:)`](https://kelvin13.github.io/swift-png/PNG/LexingError/truncatedChunkBody(expected:)/) error. 
 
 ```swift 
 mutating 
@@ -1254,7 +1254,7 @@ func chunk() throws -> (type:PNG.Chunk, data:[UInt8])
 
 A valid PNG file consists of a signature, followed by a sequence of chunks.
 
-The lexer functions are provided as extensions on the [`PNG.Bytestream.Source`](https://kelvin13.github.io/png/PNG/Bytestream/Source/) protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
+The lexer functions are provided as extensions on the [`PNG.Bytestream.Source`](https://kelvin13.github.io/swift-png/PNG/Bytestream/Source/) protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
 
 Normally, the three aforementioned errors would indicate an unexpected end-of-stream. In this case, they just mean that there is not enough data available yet, so the client needs to wait for more of the file to arrive before decoding can proceed. To allow the lexing functions to recover on end-of-stream instead of crashing the application, we wrap them in the following `waitSignature(stream:)` and `waitChunk(stream:)` functions, making sure to reset the file position if end-of-stream is encountered.
 
@@ -1293,51 +1293,51 @@ func waitChunk(stream:inout Stream) throws -> (type:PNG.Chunk, data:[UInt8])
 }
 ```
 
-There are other possible [`LexingError`](https://kelvin13.github.io/png/PNG/LexingError/)s that report problems such as invalid signatures or corrupted chunk data, so we only sequester the three end-of-stream errors.
+There are other possible [`LexingError`](https://kelvin13.github.io/swift-png/PNG/LexingError/)s that report problems such as invalid signatures or corrupted chunk data, so we only sequester the three end-of-stream errors.
 
 Because we are trying to interact with a decoded image while it is in an incomplete state, we have to take on the responsibility of managing decoder state ourselves. The basic rules that apply here are:
 
-1. The first chunk in a PNG file is an [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR) ([`PNG.Header`](https://kelvin13.github.io/png/PNG/Header)) chunk, unless it is an [iphone-optimized image](#using-iphone-optimized-images), in which case the first chunk is a [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) chunk, immediately followed by the [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR) chunk.
+1. The first chunk in a PNG file is an [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR) ([`PNG.Header`](https://kelvin13.github.io/swift-png/PNG/Header)) chunk, unless it is an [iphone-optimized image](#using-iphone-optimized-images), in which case the first chunk is a [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI) chunk, immediately followed by the [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR) chunk.
 
-2. A PNG file can contain, at most, one [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE) ([`PNG.Palette`](https://kelvin13.github.io/png/PNG/Palette)), one [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS) ([`PNG.Transparency`](https://kelvin13.github.io/png/PNG/Transparency)), and one [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD) ([`PNG.Background`](https://kelvin13.github.io/png/PNG/Background)) chunk. If it contains a [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE) chunk, it must come before the [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS) and [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD) chunks, if applicable. 
+2. A PNG file can contain, at most, one [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE) ([`PNG.Palette`](https://kelvin13.github.io/swift-png/PNG/Palette)), one [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS) ([`PNG.Transparency`](https://kelvin13.github.io/swift-png/PNG/Transparency)), and one [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD) ([`PNG.Background`](https://kelvin13.github.io/swift-png/PNG/Background)) chunk. If it contains a [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE) chunk, it must come before the [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS) and [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD) chunks, if applicable. 
 
-3. The image data in a PNG file is stored in a series of [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunks, which must occur in a single, contiguous sequence, and after any [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS), or [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD) chunks.
+3. The image data in a PNG file is stored in a series of [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunks, which must occur in a single, contiguous sequence, and after any [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS), or [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD) chunks.
 
-4. The last chunk in a PNG file is an [`IEND`](https://kelvin13.github.io/png/PNG/Chunk/IEND) chunk.
+4. The last chunk in a PNG file is an [`IEND`](https://kelvin13.github.io/swift-png/PNG/Chunk/IEND) chunk.
 
-The [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI), [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT), and [`IEND`](https://kelvin13.github.io/png/PNG/Chunk/IEND) chunks are known as **critical chunks**. The rest of the chunk types are known as **ancillary chunks**. The ancillary chunks can be thought of as “metadata chunks”, though the line between data and metadata isn’t always clear. Notably, *Swift PNG* treats the [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS) and [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD) chunks as part of the image color format, so our custom decoder implementation should handle them explicitly, along with all of the critical chunks. 
+The [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI), [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT), and [`IEND`](https://kelvin13.github.io/swift-png/PNG/Chunk/IEND) chunks are known as **critical chunks**. The rest of the chunk types are known as **ancillary chunks**. The ancillary chunks can be thought of as “metadata chunks”, though the line between data and metadata isn’t always clear. Notably, *Swift PNG* treats the [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS) and [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD) chunks as part of the image color format, so our custom decoder implementation should handle them explicitly, along with all of the critical chunks. 
 
 A full list of critical and ancillary chunk types is given below.
 
 | type code     | *Swift PNG* type  | unique | ordering                           | dependencies    |
 | ------------- | ----------------- | ------ | ---------------------------------- | --------------- |
-| **[`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI)**    | `Void?`           | yes    | first                              |                 |
-| **[`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR)**    | [`PNG.Header`](https://kelvin13.github.io/png/PNG/Header)      | yes    | first, or immediately after [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) | [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI)          |
-| **[`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)**    | [`PNG.Palette`](https://kelvin13.github.io/png/PNG/Palette)`?`    | yes    | after [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR), and before [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR)          |
-| **[`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)**    | `[UInt8]`         | no     |                                    | [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS), [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD) |
-| **[`IEND`](https://kelvin13.github.io/png/PNG/Chunk/IEND)**    | `Void`            | yes    | last                               |                 |
+| **[`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI)**    | `Void?`           | yes    | first                              |                 |
+| **[`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR)**    | [`PNG.Header`](https://kelvin13.github.io/swift-png/PNG/Header)      | yes    | first, or immediately after [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI) | [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI)          |
+| **[`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)**    | [`PNG.Palette`](https://kelvin13.github.io/swift-png/PNG/Palette)`?`    | yes    | after [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR), and before [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR)          |
+| **[`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)**    | `[UInt8]`         | no     |                                    | [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS), [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD) |
+| **[`IEND`](https://kelvin13.github.io/swift-png/PNG/Chunk/IEND)**    | `Void`            | yes    | last                               |                 |
 ||||||
-|   [`cHRM`](https://kelvin13.github.io/png/PNG/Chunk/cHRM)      | [`PNG.Chromaticity`](https://kelvin13.github.io/png/PNG/Chromaticity)`?`       | yes    | before [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)                      |                 |
-|   [`gAMA`](https://kelvin13.github.io/png/PNG/Chunk/gAMA)      | [`PNG.Gamma`](https://kelvin13.github.io/png/PNG/Gamma)`?`              | yes    | before [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)                      |                 |
-|   [`iCCP`](https://kelvin13.github.io/png/PNG/Chunk/iCCP)      | [`PNG.ColorProfile`](https://kelvin13.github.io/png/PNG/ColorProfile)`?`       | yes    | before [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)                      |                 |
-|   [`sRGB`](https://kelvin13.github.io/png/PNG/Chunk/sRGB)      | [`PNG.ColorRendering`](https://kelvin13.github.io/png/PNG/ColorRendering)`?`     | yes    | before [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)                      |                 |
-|   [`sBIT`](https://kelvin13.github.io/png/PNG/Chunk/sBIT)      | [`PNG.SignificantBits`](https://kelvin13.github.io/png/PNG/SignificantBits)`?`    | yes    | before [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)                      | [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR)          |
+|   [`cHRM`](https://kelvin13.github.io/swift-png/PNG/Chunk/cHRM)      | [`PNG.Chromaticity`](https://kelvin13.github.io/swift-png/PNG/Chromaticity)`?`       | yes    | before [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)                      |                 |
+|   [`gAMA`](https://kelvin13.github.io/swift-png/PNG/Chunk/gAMA)      | [`PNG.Gamma`](https://kelvin13.github.io/swift-png/PNG/Gamma)`?`              | yes    | before [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)                      |                 |
+|   [`iCCP`](https://kelvin13.github.io/swift-png/PNG/Chunk/iCCP)      | [`PNG.ColorProfile`](https://kelvin13.github.io/swift-png/PNG/ColorProfile)`?`       | yes    | before [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)                      |                 |
+|   [`sRGB`](https://kelvin13.github.io/swift-png/PNG/Chunk/sRGB)      | [`PNG.ColorRendering`](https://kelvin13.github.io/swift-png/PNG/ColorRendering)`?`     | yes    | before [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)                      |                 |
+|   [`sBIT`](https://kelvin13.github.io/swift-png/PNG/Chunk/sBIT)      | [`PNG.SignificantBits`](https://kelvin13.github.io/swift-png/PNG/SignificantBits)`?`    | yes    | before [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)                      | [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR)          |
 ||||||
-|   [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS)      | [`PNG.Transparency`](https://kelvin13.github.io/png/PNG/Transparency)`?`       | yes    | after [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), and before [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)  |
-|   [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD)      | [`PNG.Background`](https://kelvin13.github.io/png/PNG/Background)`?`         | yes    | after [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), and before [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)  |
-|   [`hIST`](https://kelvin13.github.io/png/PNG/Chunk/hIST)      | [`PNG.Histogram`](https://kelvin13.github.io/png/PNG/Histogram)`?`          | yes    | after [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), and before [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE)  |
+|   [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS)      | [`PNG.Transparency`](https://kelvin13.github.io/swift-png/PNG/Transparency)`?`       | yes    | after [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), and before [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)  |
+|   [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD)      | [`PNG.Background`](https://kelvin13.github.io/swift-png/PNG/Background)`?`         | yes    | after [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), and before [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)  |
+|   [`hIST`](https://kelvin13.github.io/swift-png/PNG/Chunk/hIST)      | [`PNG.Histogram`](https://kelvin13.github.io/swift-png/PNG/Histogram)`?`          | yes    | after [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), and before [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)    | [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR), [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE)  |
 ||||||
-|   [`pHYs`](https://kelvin13.github.io/png/PNG/Chunk/pHYs)      | [`PNG.PhysicalDimensions`](https://kelvin13.github.io/png/PNG/PhysicalDimensions)`?` | yes    | before [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)                      |                 |
-|   [`sPLT`](https://kelvin13.github.io/png/PNG/Chunk/sPLT)      | [`PNG.SuggestedPalette`](https://kelvin13.github.io/png/PNG/SuggestedPalette)`?`   | no     | before [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT)                      |                 |
+|   [`pHYs`](https://kelvin13.github.io/swift-png/PNG/Chunk/pHYs)      | [`PNG.PhysicalDimensions`](https://kelvin13.github.io/swift-png/PNG/PhysicalDimensions)`?` | yes    | before [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)                      |                 |
+|   [`sPLT`](https://kelvin13.github.io/swift-png/PNG/Chunk/sPLT)      | [`PNG.SuggestedPalette`](https://kelvin13.github.io/swift-png/PNG/SuggestedPalette)`?`   | no     | before [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT)                      |                 |
 ||||||
-|   [`tIME`](https://kelvin13.github.io/png/PNG/Chunk/tIME)      | [`PNG.TimeModified`](https://kelvin13.github.io/png/PNG/TimeModified)`?`       | yes    |                                    |                 |
-|   [`iTXt`](https://kelvin13.github.io/png/PNG/Chunk/iTXt)      | [`PNG.Text`](https://kelvin13.github.io/png/PNG/Text)`?`               | no     |                                    |                 |
-|   [`tEXt`](https://kelvin13.github.io/png/PNG/Chunk/tEXt)      | [`PNG.Text`](https://kelvin13.github.io/png/PNG/Text)`?`               | no     |                                    |                 |
-|   [`zTXt`](https://kelvin13.github.io/png/PNG/Chunk/zTXt)      | [`PNG.Text`](https://kelvin13.github.io/png/PNG/Text)`?`               | no     |                                    |                 |
+|   [`tIME`](https://kelvin13.github.io/swift-png/PNG/Chunk/tIME)      | [`PNG.TimeModified`](https://kelvin13.github.io/swift-png/PNG/TimeModified)`?`       | yes    |                                    |                 |
+|   [`iTXt`](https://kelvin13.github.io/swift-png/PNG/Chunk/iTXt)      | [`PNG.Text`](https://kelvin13.github.io/swift-png/PNG/Text)`?`               | no     |                                    |                 |
+|   [`tEXt`](https://kelvin13.github.io/swift-png/PNG/Chunk/tEXt)      | [`PNG.Text`](https://kelvin13.github.io/swift-png/PNG/Text)`?`               | no     |                                    |                 |
+|   [`zTXt`](https://kelvin13.github.io/swift-png/PNG/Chunk/zTXt)      | [`PNG.Text`](https://kelvin13.github.io/swift-png/PNG/Text)`?`               | no     |                                    |                 |
 
 If a chunk has dependencies, that means it gets parsed differently depending on the contents of the upstream chunks. It does not mean that the upstream chunks must appear — indeed, in some situations, the upstream chunks must *not* appear. It *does* mean that none of the upstream chunks may appear after the dependent chunk.
 
-> **note:** the full lexing space of a png file can be expressed as a directed graph. if you ignore text chunks and [`sPLT`](https://kelvin13.github.io/png/PNG/Chunk/sPLT) chunks, and collapse sequences of [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunks into a single vertex, this graph is also acyclic.
+> **note:** the full lexing space of a png file can be expressed as a directed graph. if you ignore text chunks and [`sPLT`](https://kelvin13.github.io/swift-png/PNG/Chunk/sPLT) chunks, and collapse sequences of [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunks into a single vertex, this graph is also acyclic.
 
 The ordering constraints and chunk dependencies might seem like a lot to keep track of, but they come out naturally in the type signatures of *Swift PNG*’s contextual decoding interfaces, so everything should just click together. The amount of code we have to write is actually quite small.
 
@@ -1358,7 +1358,7 @@ The first thing we do is lex the PNG signature bytes from the beginning of the f
     try waitSignature(stream: &stream)
 ```
 
-The next step is to parse the PNG header, and the preceeding [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) chunk, if present. The following code reads at least one chunk (and at most two chunks) from the beginning of the PNG file using the `waitChunk(stream:)` function. If the first chunk is a [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) chunk, the image is an iphone-optimized image, and we move on to the next chunk. Otherwise we mark the image as non-iphone-optimized, and do not advance the chunk position. We then check that the current chunk is an [`IHDR`](https://kelvin13.github.io/png/PNG/Chunk/IHDR) chunk, and use the [`PNG.Header.init(parsing:standard:)`](https://kelvin13.github.io/png/PNG/Header/init(parsing:standard:)/) initializer to parse the chunk data. ([`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) chunks also contain data, but it isn’t relevant for us, so we do not parse them.)
+The next step is to parse the PNG header, and the preceeding [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI) chunk, if present. The following code reads at least one chunk (and at most two chunks) from the beginning of the PNG file using the `waitChunk(stream:)` function. If the first chunk is a [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI) chunk, the image is an iphone-optimized image, and we move on to the next chunk. Otherwise we mark the image as non-iphone-optimized, and do not advance the chunk position. We then check that the current chunk is an [`IHDR`](https://kelvin13.github.io/swift-png/PNG/Chunk/IHDR) chunk, and use the [`PNG.Header.init(parsing:standard:)`](https://kelvin13.github.io/swift-png/PNG/Header/init(parsing:standard:)/) initializer to parse the chunk data. ([`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI) chunks also contain data, but it isn’t relevant for us, so we do not parse them.)
 
 ```swift 
     let (standard, header):(PNG.Standard, PNG.Header) = try
@@ -1385,11 +1385,11 @@ The next step is to parse the PNG header, and the preceeding [`CgBI`](https://ke
 
 > **note:** the parsing interfaces in [*swift jpeg*](https://github.com/kelvin13/jpeg) are spelled as static `parse(_:...)` constructors. in *swift png*, these have been provided as `init(parsing:...)` initializers to better conform to swift api conventions.
 
-The next step is to process all the chunks up to, but not including, the first [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunk. The goal is to be able to construct a **decoder context** ([`PNG.Context`](https://kelvin13.github.io/png/PNG/Context)) by the time we reach the image data, using any [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE), [`bKGD`](https://kelvin13.github.io/png/PNG/Chunk/bKGD), or [`tRNS`](https://kelvin13.github.io/png/PNG/Chunk/tRNS) chunks we have encountered in the meantime.
+The next step is to process all the chunks up to, but not including, the first [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunk. The goal is to be able to construct a **decoder context** ([`PNG.Context`](https://kelvin13.github.io/swift-png/PNG/Context)) by the time we reach the image data, using any [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE), [`bKGD`](https://kelvin13.github.io/swift-png/PNG/Chunk/bKGD), or [`tRNS`](https://kelvin13.github.io/swift-png/PNG/Chunk/tRNS) chunks we have encountered in the meantime.
 
-There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a [`Context`](https://kelvin13.github.io/png/PNG/Context) structure upon encountering the first [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunk. This reduces the amount of [`Optional<T>`](https://developer.apple.com/documentation/swift/optional)s we have to deal with. A competent Swift developer should be able to translate it into their preferred pattern.
+There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a [`Context`](https://kelvin13.github.io/swift-png/PNG/Context) structure upon encountering the first [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunk. This reduces the amount of [`Optional<T>`](https://developer.apple.com/documentation/swift/optional)s we have to deal with. A competent Swift developer should be able to translate it into their preferred pattern.
 
-We declare variables to hold a palette ([`PNG.Palette`](https://kelvin13.github.io/png/PNG/Palette)`?`), background ([`PNG.Background`](https://kelvin13.github.io/png/PNG/Background)`?`), and transparency ([`PNG.Transparency`](https://kelvin13.github.io/png/PNG/Transparency)`?`) structure. A [`PNG.Metadata`](https://kelvin13.github.io/png/PNG/Metadata) structure tracks all other chunk types.
+We declare variables to hold a palette ([`PNG.Palette`](https://kelvin13.github.io/swift-png/PNG/Palette)`?`), background ([`PNG.Background`](https://kelvin13.github.io/swift-png/PNG/Background)`?`), and transparency ([`PNG.Transparency`](https://kelvin13.github.io/swift-png/PNG/Transparency)`?`) structure. A [`PNG.Metadata`](https://kelvin13.github.io/swift-png/PNG/Metadata) structure tracks all other chunk types.
 
 ```swift 
     var chunk:(type:PNG.Chunk, data:[UInt8]) = try waitChunk(stream: &stream)
@@ -1406,13 +1406,13 @@ We declare variables to hold a palette ([`PNG.Palette`](https://kelvin13.github.
             {
 ```
 
-If we encounter a [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE) chunk, we parse it with the [`PNG.Palette.init(parsing:pixel:)`](https://kelvin13.github.io/png/PNG/Palette/init(parsing:pixel:)/) initializer. Since palette chunks have a dependency on the header chunk, this initializer takes a [`PNG.Format.Pixel`](https://kelvin13.github.io/png/PNG/Format/Pixel) parameter.
+If we encounter a [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE) chunk, we parse it with the [`PNG.Palette.init(parsing:pixel:)`](https://kelvin13.github.io/swift-png/PNG/Palette/init(parsing:pixel:)/) initializer. Since palette chunks have a dependency on the header chunk, this initializer takes a [`PNG.Format.Pixel`](https://kelvin13.github.io/swift-png/PNG/Format/Pixel) parameter.
 
-For any other (allowed) chunk type besides [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) we delegate it to the metadata structure through its [`push(ancillary:pixel:palette:background:transparency:)`](https://kelvin13.github.io/png/PNG/Metadata/push(ancillary:pixel:palette:background:transparency:)/) method. This method parses the chunk using the appropriate parsing function, and stores it internally, or in its two `inout` parameters, if applicable. It also enforces all relevant chunk ordering constraints.
+For any other (allowed) chunk type besides [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) we delegate it to the metadata structure through its [`push(ancillary:pixel:palette:background:transparency:)`](https://kelvin13.github.io/swift-png/PNG/Metadata/push(ancillary:pixel:palette:background:transparency:)/) method. This method parses the chunk using the appropriate parsing function, and stores it internally, or in its two `inout` parameters, if applicable. It also enforces all relevant chunk ordering constraints.
 
-> **note:** the [`Metadata`](https://kelvin13.github.io/png/PNG/Metadata/) type does not handle palette chunks, because [`PLTE`](https://kelvin13.github.io/png/PNG/Chunk/PLTE) is a critical chunk type. it also does not track background or transparency chunks internally, since this information will ultimately live in the image color format, so storing it in the image metadata would be redundant.
+> **note:** the [`Metadata`](https://kelvin13.github.io/swift-png/PNG/Metadata/) type does not handle palette chunks, because [`PLTE`](https://kelvin13.github.io/swift-png/PNG/Chunk/PLTE) is a critical chunk type. it also does not track background or transparency chunks internally, since this information will ultimately live in the image color format, so storing it in the image metadata would be redundant.
 
-Finally, once we encounter an [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunk, we construct the decoder context using everything we have parsed so far. The [`PNG.Context.init(standard:header:palette:background:transparency:metadata:uninitialized:)`](https://kelvin13.github.io/png/PNG/Context/init(standard:header:palette:background:transparency:metadata:uninitialized:)/) initializer is failable. It returns `nil` if an image with an indexed color format is missing a palette. (The opposite problem — an image with a grayscale or grayscale-alpha color format containing a palette that shouldn’t be there — would have gotten caught by the [`PNG.Palette.init(parsing:pixel:)`](https://kelvin13.github.io/png/PNG/Palette/init(parsing:pixel:)/) initializer.) 
+Finally, once we encounter an [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunk, we construct the decoder context using everything we have parsed so far. The [`PNG.Context.init(standard:header:palette:background:transparency:metadata:uninitialized:)`](https://kelvin13.github.io/swift-png/PNG/Context/init(standard:header:palette:background:transparency:metadata:uninitialized:)/) initializer is failable. It returns `nil` if an image with an indexed color format is missing a palette. (The opposite problem — an image with a grayscale or grayscale-alpha color format containing a palette that shouldn’t be there — would have gotten caught by the [`PNG.Palette.init(parsing:pixel:)`](https://kelvin13.github.io/swift-png/PNG/Palette/init(parsing:pixel:)/) initializer.) 
 
 The `uninitialized` parameter specifies whether the image buffer in the decoder context gets cleared or not. It’s not uncommon for Swift to allocate new image buffers right on top of recently-deallocated image buffers, so a partially-decoded image might contain pieces of a previously decoded image. When doing non-progressive decoding, this doesn’t matter, but it can look weird for the progressive use case, so we have set this parameter to `false`.
 
@@ -1459,9 +1459,9 @@ We return from the closure before advancing to the next chunk.
     }()
 ```
 
-The image decoding takes place in the next phase of the loop. The [`push(data:overdraw:)`](https://kelvin13.github.io/png/PNG/Context/push(data:overdraw:)/) method on the decoder context does this for each [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunk. This is also the usage point of the `overdraw` parameter provided to the `decodeOnline(stream:overdraw:capture:)` function. We’ll see later what it does. For now, assume it has been set to `false`. 
+The image decoding takes place in the next phase of the loop. The [`push(data:overdraw:)`](https://kelvin13.github.io/swift-png/PNG/Context/push(data:overdraw:)/) method on the decoder context does this for each [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunk. This is also the usage point of the `overdraw` parameter provided to the `decodeOnline(stream:overdraw:capture:)` function. We’ll see later what it does. For now, assume it has been set to `false`. 
 
-After decompressing an image data chunk, we feed the image state, which is available through the [`image`](https://kelvin13.github.io/png/PNG/Context/image/) property on the decoder context, to the `capture` delegate.
+After decompressing an image data chunk, we feed the image state, which is available through the [`image`](https://kelvin13.github.io/swift-png/PNG/Context/image/) property on the decoder context, to the `capture` delegate.
 
 ```swift 
     while chunk.type == .IDAT  
@@ -1474,7 +1474,7 @@ After decompressing an image data chunk, we feed the image state, which is avail
     }
 ```
 
-In the last phase of the loop, we process all the trailing metadata chunks by passing them to the [`push(ancillary:)`](https://kelvin13.github.io/png/PNG/Context/push(ancillary:)/) method on the decoder context. This method is a lot like the [`push(ancillary:pixel:palette:background:transparency:)`](https://kelvin13.github.io/png/PNG/Metadata/push(ancillary:pixel:palette:background:transparency:)/) method on a [`PNG.Metadata`](https://kelvin13.github.io/png/PNG/Metadata/) structure, except it only accepts chunk types that are allowed to appear after the image data. We halt upon encountering the [`IEND`](https://kelvin13.github.io/png/PNG/Chunk/IEND) chunk.
+In the last phase of the loop, we process all the trailing metadata chunks by passing them to the [`push(ancillary:)`](https://kelvin13.github.io/swift-png/PNG/Context/push(ancillary:)/) method on the decoder context. This method is a lot like the [`push(ancillary:pixel:palette:background:transparency:)`](https://kelvin13.github.io/swift-png/PNG/Metadata/push(ancillary:pixel:palette:background:transparency:)/) method on a [`PNG.Metadata`](https://kelvin13.github.io/swift-png/PNG/Metadata/) structure, except it only accepts chunk types that are allowed to appear after the image data. We halt upon encountering the [`IEND`](https://kelvin13.github.io/swift-png/PNG/Chunk/IEND) chunk.
 
 ```swift 
     while true 
@@ -1490,9 +1490,9 @@ In the last phase of the loop, we process all the trailing metadata chunks by pa
 } 
 ```
 
-> **note:** you can pass an [`IEND`](https://kelvin13.github.io/png/PNG/Chunk/IEND) chunk to the [`push(ancillary:)`](https://kelvin13.github.io/png/PNG/Context/push(ancillary:)/) method, as we have done above, even though [`IEND`](https://kelvin13.github.io/png/PNG/Chunk/IEND) is a critical chunk type. this makes the decoder context check that the compressed image data stream has been properly terminated.
+> **note:** you can pass an [`IEND`](https://kelvin13.github.io/swift-png/PNG/Chunk/IEND) chunk to the [`push(ancillary:)`](https://kelvin13.github.io/swift-png/PNG/Context/push(ancillary:)/) method, as we have done above, even though [`IEND`](https://kelvin13.github.io/swift-png/PNG/Chunk/IEND) is a critical chunk type. this makes the decoder context check that the compressed image data stream has been properly terminated.
 
-We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal [`PNG.Data.Rectangular`](https://kelvin13.github.io/png/PNG/Data/Rectangular) instances that we can treat like any other image data instance.
+We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal [`PNG.Data.Rectangular`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular) instances that we can treat like any other image data instance.
 
 ```swift 
 var counter:Int                 = 0
@@ -1507,7 +1507,7 @@ let image:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: fa
 }
 ```
 
-| [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunks | image snapshot |
+| [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunks | image snapshot |
 | ---:| ---------------------------------------------------:|
 |   1 | <img width=500 src="decode-online/example-0.png"/>  |
 |   2 | <img width=500 src="decode-online/example-1.png"/>  |
@@ -1523,9 +1523,9 @@ let image:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: fa
 
 Our example image was a non-interlaced image, so it gets decoded as a sequence of scanlines from top-to-bottom.
 
-We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the [`bindStorage(to:)`](https://kelvin13.github.io/png/PNG/Data/Rectangular/bindStorage(to:)/) method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format enumeration case, though not necessarily the same values for `fill` or `key`. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
+We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the [`bindStorage(to:)`](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/bindStorage(to:)/) method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format enumeration case, though not necessarily the same values for `fill` or `key`. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
 
-When emitting the preprocessed file, we have manually set the **chunk granularity** to 2<sup>12</sup> bytes, which is much smaller than the default of 2<sup>15</sup> bytes. The purpose of this is to make the encoder emit smaller [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunks, so that we can observe a larger number of intermediate snapshots.
+When emitting the preprocessed file, we have manually set the **chunk granularity** to 2<sup>12</sup> bytes, which is much smaller than the default of 2<sup>15</sup> bytes. The purpose of this is to make the encoder emit smaller [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunks, so that we can observe a larger number of intermediate snapshots.
 
 ```swift 
 let layout:PNG.Layout = .init(format: image.layout.format, interlaced: true)
@@ -1548,7 +1548,7 @@ let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
 }
 ```
 
-| [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunks | image snapshot |
+| [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunks | image snapshot |
 | ---:| ---------------------------------------------------:|
 |   1 | <img width=500 src="decode-online/example-progressive-0.png"/>  |
 |   2 | <img width=500 src="decode-online/example-progressive-1.png"/>  |
@@ -1578,11 +1578,11 @@ let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: true)
 }
 ```
 
-> **warning:** overdrawing does not eliminate the need to initialize the image buffer. however, every pixel in the image buffer will be written to by the end of the first [adam7 scan](https://en.wikipedia.org/wiki/Adam7_algorithm), which often fits easily into the first [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunk. this makes it significantly less likely that you will observe uninitialized pixels.
+> **warning:** overdrawing does not eliminate the need to initialize the image buffer. however, every pixel in the image buffer will be written to by the end of the first [adam7 scan](https://en.wikipedia.org/wiki/Adam7_algorithm), which often fits easily into the first [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunk. this makes it significantly less likely that you will observe uninitialized pixels.
 
 When overdrawing is enabled, the intermediate snapshots look somewhat more user-friendly than they do without it.
 
-| [`IDAT`](https://kelvin13.github.io/png/PNG/Chunk/IDAT) chunks | image snapshot |
+| [`IDAT`](https://kelvin13.github.io/swift-png/PNG/Chunk/IDAT) chunks | image snapshot |
 | ---:| ---------------------------------------------------:|
 |   1 | <img width=500 src="decode-online/example-progressive-overdrawn-0.png"/>  |
 |   2 | <img width=500 src="decode-online/example-progressive-overdrawn-1.png"/>  |
@@ -1615,13 +1615,13 @@ Overdrawing has no effect if the image is not interlaced.
 > - **atom type** 
 > - **intensity type**
 
-As we have already seen, *Swift PNG*’s pixel packing and unpacking interfaces are generic over the library protocol [`PNG.Color`](https://kelvin13.github.io/png/PNG/Color). The built-in color targets [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) and [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) both conform to it. In this tutorial, we will implement a custom color target, `HSVA`, which uses the [hue-saturation-value color model](https://en.wikipedia.org/wiki/HSL_and_HSV).
+As we have already seen, *Swift PNG*’s pixel packing and unpacking interfaces are generic over the library protocol [`PNG.Color`](https://kelvin13.github.io/swift-png/PNG/Color). The built-in color targets [`PNG.VA<T>`](https://kelvin13.github.io/swift-png/PNG/VA) and [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA) both conform to it. In this tutorial, we will implement a custom color target, `HSVA`, which uses the [hue-saturation-value color model](https://en.wikipedia.org/wiki/HSL_and_HSV).
 
 At this point, it is important to reiterate the difference between color formats and color targets. A color format is the internal representation that pixels are stored as in a PNG file. A color target is an interpretation of those pixels that we obtain by unpacking pixels from an image data instance. 
 
 If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library has the concept of a *color format type*, which can also be customized. This is because JPEG is an *open standard*, meaning that users can encode images with a user-defined internal representation. Thus, JPEG is actually a family of file formats, rather than a single standard. PNG is a *closed standard*, so *Swift PNG* does not allow you to customize the color format. 
 
-> **note:** strictly speaking, png is also a family of file formats, with two color format types — the standard set of color formats, and the iphone-optimized color formats. however, the png specification provides no means of defining custom color formats within its headers (thus, the need for the [`CgBI`](https://kelvin13.github.io/png/PNG/Chunk/CgBI) chunk), so for ease-of-use, *swift png* merges both png color format types into a single library-defined color format type.
+> **note:** strictly speaking, png is also a family of file formats, with two color format types — the standard set of color formats, and the iphone-optimized color formats. however, the png specification provides no means of defining custom color formats within its headers (thus, the need for the [`CgBI`](https://kelvin13.github.io/swift-png/PNG/Chunk/CgBI) chunk), so for ease-of-use, *swift png* merges both png color format types into a single library-defined color format type.
 
 <img src="custom-color/example.png" alt="input png" width=500/>
 
@@ -1629,7 +1629,7 @@ If you have used [*Swift JPEG*](https://github.com/kelvin13/jpeg), that library 
 >
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Madrid_%2836178965285%29.jpg)*
 
-We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) or [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA). It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will be inhabited.)
+We begin by defining the `HSVA` type. For simplicity, we won’t make it generic like [`PNG.VA<T>`](https://kelvin13.github.io/swift-png/PNG/VA) or [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA). It will have a fixed width of 64 bits, with 32 bits for the hue component, 16 bits for the saturation component, and 8 bits each for the value and alpha components. We define the range of the hue component to be `0 ... 393222`, and the range of the other components to be the entire range of their integer storage types. (This means only nineteen of the 32 hue bits will be inhabited.)
 
 ```swift 
 import PNG 
@@ -1686,7 +1686,7 @@ We define the following conversion function, which initializes an HSVA color fro
     }
 ```
 
-We also define the HSVA-to-RGBA conversion, using [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA) as the return type. Again, the details of the conversion formula are unimportant. 
+We also define the HSVA-to-RGBA conversion, using [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/RGBA) as the return type. Again, the details of the conversion formula are unimportant. 
 
 ```swift 
     var rgba:PNG.RGBA<UInt8> 
@@ -1720,7 +1720,7 @@ We also define the HSVA-to-RGBA conversion, using [`PNG.RGBA<UInt8>`](https://ke
 }
 ```
 
-Now that we have a working HSVA implementation, we need to conform it to the [`PNG.Color`](https://kelvin13.github.io/png/PNG/Color) protocol so we can use it as a color target. To do this, we need to fulfill the following requirements: 
+Now that we have a working HSVA implementation, we need to conform it to the [`PNG.Color`](https://kelvin13.github.io/swift-png/PNG/Color) protocol so we can use it as a color target. To do this, we need to fulfill the following requirements: 
 
 ```swift 
 protocol PNG.Color 
@@ -1743,12 +1743,12 @@ protocol PNG.Color
 }
 ```
 
-For certain associated [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) types, the library provides default implementations for [`unpack(_:of:)`](https://kelvin13.github.io/png/PNG/Color/unpack(_:of:)/) and [`pack(_:as:)`](https://kelvin13.github.io/png/PNG/Color/pack(_:as:)/), which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement [`unpack(_:of:deindexer:)`](https://kelvin13.github.io/png/PNG/Color/unpack(_:of:deindexer:)/) and [`pack(_:as:indexer:)`](https://kelvin13.github.io/png/PNG/Color/pack(_:as:indexer:)/). The specific [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) types are 
+For certain associated [`Aggregate`](https://kelvin13.github.io/swift-png/PNG/Color/Aggregate) types, the library provides default implementations for [`unpack(_:of:)`](https://kelvin13.github.io/swift-png/PNG/Color/unpack(_:of:)/) and [`pack(_:as:)`](https://kelvin13.github.io/swift-png/PNG/Color/pack(_:as:)/), which have behaviors detailed in the [indexed color tutorial](#using-indexed-images). In such cases, we only need to implement [`unpack(_:of:deindexer:)`](https://kelvin13.github.io/swift-png/PNG/Color/unpack(_:of:deindexer:)/) and [`pack(_:as:indexer:)`](https://kelvin13.github.io/swift-png/PNG/Color/pack(_:as:indexer:)/). The specific [`Aggregate`](https://kelvin13.github.io/swift-png/PNG/Color/Aggregate) types are 
 
 - `(UInt8, UInt8)`, and 
 - `(UInt8, UInt8, UInt8, UInt8)`.
 
-In the [indexed color tutorial](#using-indexed-images), we saw how they were used by the [`PNG.VA<T>`](https://kelvin13.github.io/png/PNG/VA) and [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color targets. (The scalar color targets also use their own [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) type, [`UInt8`](https://developer.apple.com/documentation/swift/uint8), though this does not go through the [`PNG.Color`](https://kelvin13.github.io/png/PNG/Color) protocol.)
+In the [indexed color tutorial](#using-indexed-images), we saw how they were used by the [`PNG.VA<T>`](https://kelvin13.github.io/swift-png/PNG/VA) and [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA) color targets. (The scalar color targets also use their own [`Aggregate`](https://kelvin13.github.io/swift-png/PNG/Color/Aggregate) type, [`UInt8`](https://developer.apple.com/documentation/swift/uint8), though this does not go through the [`PNG.Color`](https://kelvin13.github.io/swift-png/PNG/Color) protocol.)
 
 The core idea of a color target is the **pixel kernel**. Pixel kernels convert groups of image data samples into instances of a color target, and vice-versa. In *Swift PNG*, the application of a pixel kernel to an image data buffer is called a **convolution**, and the inverse operation is called a **deconvolution**. The simplest deconvolution is to flatten an array of RGBA pixels to an array of [*r*, *g*, *b*, *a*, *r*, *g*, *b*, *a*, …] samples, and the simplest convolution is to group the elements of such an array into an array of RGBA pixels. Conceptually, this is a Swift [`flatMap(_:)`](https://developer.apple.com/documentation/swift/sequence/2905332-flatmap), and whatever you would call the opposite of a flatmap, respectively. We are allowed to do arbitrary computations in the pixel kernels, which is why we call it a (de)convolution, and not just a flatmap.
 
@@ -1811,15 +1811,15 @@ The first four convolution functions are meant to be used with indexed color for
 
 - The `A` type is the **atom type**. (The `A` stands for ***a***tom.) Atom types are closely related to color formats. For images with a color depth of 16, the appropriate atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16). Otherwise, it is [`UInt8`](https://developer.apple.com/documentation/swift/uint8). In the image data storage buffer, which has a type of `[UInt8]`, `UInt16` atoms are stored in big-endian order. 
  
-    Atoms are unscaled samples. For example, in a [`v4(fill:key:)`](https://kelvin13.github.io/png/PNG/Format/v4(fill:key:)/) image, which has a color depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
+    Atoms are unscaled samples. For example, in a [`v4(fill:key:)`](https://kelvin13.github.io/swift-png/PNG/Format/v4(fill:key:)/) image, which has a color depth of 4, the [`UInt8`](https://developer.apple.com/documentation/swift/uint8) atoms can take on values in the range `0 ... 15`, with the remaining states unused.
 
-- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) Intensity types are closely related to color targets. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
+- The `T` type is the **intensity type**. (The `T` stands for in***t***ensity, or ***t***arget, whatever floats your boat.) Intensity types are closely related to color targets. Oftentimes, the intensity type is simply the component type of the color target. For example, for the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA) color target, its generic parameter and the intensity type are the same `T`. Of course, this isn’t always the case, notably, with our custom `HSVA` type, which has heterogenous components.
 
-    As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a [`v4(fill:key:)`](https://kelvin13.github.io/png/PNG/Format/v4(fill:key:)/) image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
+    As the name suggests, intensity values are scaled samples. The entire range of an intensity type is always inhabited. For example, in a [`v4(fill:key:)`](https://kelvin13.github.io/swift-png/PNG/Format/v4(fill:key:)/) image, an atom with the value `15` would become a [`UInt8`](https://developer.apple.com/documentation/swift/uint8) intensity with the value `255`. If the intensity type was [`UInt32`](https://developer.apple.com/documentation/swift/uint32) instead, the same atom would generate an intensity value of `4294967295` ([`UInt32.max`](https://developer.apple.com/documentation/swift/uint32/1540555-max)). 
  
     The use of intensity types in *Swift PNG* means that you don’t have to worry about normalizing samples when implementing custom color targets.
  
-- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack a [`va16(fill:)`](https://kelvin13.github.io/png/PNG/Format/va16(fill:)/) image to an array of [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA) pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/png/PNG/RGBA). Indeed, this is exactly what the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/png/PNG/RGBA) color target does.
+- Finally, the `C` type is the color target type. (Guess what the `C` stands for.) If you want to unpack a [`va16(fill:)`](https://kelvin13.github.io/swift-png/PNG/Format/va16(fill:)/) image to an array of [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/RGBA) pixels, the atom type would be [`UInt16`](https://developer.apple.com/documentation/swift/uint16), the intensity type would be [`UInt8`](https://developer.apple.com/documentation/swift/uint8), and the color target type would of course be [`PNG.RGBA<UInt8>`](https://kelvin13.github.io/swift-png/PNG/RGBA). Indeed, this is exactly what the built-in [`PNG.RGBA<T>`](https://kelvin13.github.io/swift-png/PNG/RGBA) color target does.
 
 The four non-indexed convolution functions perform the following operations: 
 
@@ -1829,11 +1829,11 @@ The four non-indexed convolution functions perform the following operations:
 
 The reason why some of the pixel kernels receive the original atoms in addition to the intensity values is because their associated color formats (namely, the grayscale, RGB, and BGR formats) require us to do chroma key comparisons, which must be performed in the original atom type.
 
-The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
+The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its [`Int`](https://developer.apple.com/documentation/swift/int) index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the [`Aggregate`](https://kelvin13.github.io/swift-png/PNG/Color/Aggregate) types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
 
 Now, let’s write the implementation for the unpacking function. 
 
-First, we set the associated [`Aggregate`](https://kelvin13.github.io/png/PNG/Color/Aggregate) type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
+First, we set the associated [`Aggregate`](https://kelvin13.github.io/swift-png/PNG/Color/Aggregate) type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
 
 ```swift 
 extension HSVA:PNG.Color 
@@ -1864,7 +1864,7 @@ We can handle all of the indexed color formats in one `switch` case. We assume t
             }
 ```
 
-For grayscale color formats without a chroma key, we assign the grayscale sample to the value channel of the HSVA output, set the hue and saturation to zero, and the alpha to full opacity. We need a separate case for the [`v16(fill:key:)`](https://kelvin13.github.io/png/PNG/Format/v16(fill:key:)/) color format, since its atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16) and not [`UInt8`](https://developer.apple.com/documentation/swift/uint8).
+For grayscale color formats without a chroma key, we assign the grayscale sample to the value channel of the HSVA output, set the hue and saturation to zero, and the alpha to full opacity. We need a separate case for the [`v16(fill:key:)`](https://kelvin13.github.io/swift-png/PNG/Format/v16(fill:key:)/) color format, since its atom type is [`UInt16`](https://developer.apple.com/documentation/swift/uint16) and not [`UInt8`](https://developer.apple.com/documentation/swift/uint8).
 
 ```swift 
         case    .v1(fill: _, key: nil),

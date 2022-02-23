@@ -5,7 +5,7 @@
 /// module PNG 
 ///     Decode, inspect, edit, and encode PNG images.
 /// 
-///     See example programs and library tutorials [here](https://github.com/kelvin13/png/tree/master/examples).
+///     See example programs and library tutorials [here](https://github.com/kelvin13/swift-png/tree/master/examples).
 /// #  [Top level namespaces](top-level-namespaces)
 
 /// protocol PNG.Bytestream.Source 

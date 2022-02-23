@@ -25,7 +25,7 @@ func clock() -> Int
 }
 
 #else
-    #warning("clock() function not imported for this platform, internal benchmarks not built (please open an issue at https://github.com/kelvin13/png/issues)")
+    #warning("clock() function not imported for this platform, internal benchmarks not built (please open an issue at https://github.com/kelvin13/swift-png/issues)")
 #endif
 
 public 

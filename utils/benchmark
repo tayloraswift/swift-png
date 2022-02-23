@@ -29,7 +29,7 @@ else:
 
 fields = {
     'date'          : datetime.date.today().strftime('%B %d, %Y'),
-    'commit'        : '[`{0}`](https://github.com/kelvin13/png/commit/{1})'.format(commit[:7], commit), 
+    'commit'        : '[`{0}`](https://github.com/kelvin13/swift-png/commit/{1})'.format(commit[:7], commit), 
     'tool'          : '[`{0}`](../{0})'.format(sys.argv[0]),
 }
 

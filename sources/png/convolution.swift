@@ -125,7 +125,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. 
     /// - dereference : (Swift.Int) -> A 
@@ -181,7 +181,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. 
     /// - dereference : (Swift.Int) -> (A, A) 
@@ -237,7 +237,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. 
     /// - dereference : (Swift.Int) -> (A, A, A) 
@@ -293,7 +293,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. 
     /// - dereference : (Swift.Int) -> (A, A, A, A) 
@@ -352,7 +352,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. Its length must be divisible by the stride of `A`.
     /// - _ : A.Type 
@@ -411,7 +411,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. Its length must be divisible by twice the 
     ///     stride of `A`.
@@ -473,7 +473,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. Its length must be divisible by three times the 
     ///     stride of `A`.
@@ -534,7 +534,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - buffer : [Swift.UInt8]
     ///     An image data buffer. Its length must be divisible by four times the 
     ///     stride of `A`.
@@ -697,7 +697,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - reference : (A) -> Swift.Int 
@@ -763,7 +763,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - reference : ((A, A)) -> Swift.Int 
@@ -829,7 +829,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - reference : ((A, A, A)) -> Swift.Int 
@@ -895,7 +895,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - reference : ((A, A, A, A)) -> Swift.Int 
@@ -960,7 +960,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - _ : A.Type 
@@ -1027,7 +1027,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - _ : A.Type 
@@ -1094,7 +1094,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - _ : A.Type 
@@ -1161,7 +1161,7 @@ extension PNG
     /// 
     ///     A worked example of how to use this function to implement a custom 
     ///     color target can be found in the 
-    ///     [custom color targets tutorial](https://github.com/kelvin13/png/tree/master/examples#custom-color-targets).
+    ///     [custom color targets tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#custom-color-targets).
     /// - pixels : [C]
     ///     A pixel array. 
     /// - _ : A.Type 
