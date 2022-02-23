@@ -2,10 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "PNG",
+    name: "swift-png",
     products:
     [
-        .library(   name: "png",                        targets: ["PNG"]),
+        .library(   name: "PNG",                        targets: ["PNG"]),
+        
         .executable(name: "unit-test",                  targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",           targets: ["PNGIntegrationTests"]),
         .executable(name: "compression-test",           targets: ["PNGCompressionTests"]),

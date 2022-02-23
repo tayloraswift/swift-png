@@ -7,7 +7,7 @@
 #elseif os(Linux)
     import Glibc
 #else
-    #warning("unsupported or untested platform (please open an issue at https://github.com/kelvin13/png/issues)")
+    #warning("unsupported or untested platform (please open an issue at https://github.com/kelvin13/swift-png/issues)")
 #endif
 
 #if os(macOS) || os(Linux)
@@ -279,7 +279,7 @@ extension PNG.Data.Rectangular
     /// 
     ///     Experimental comparisons between *Swift PNG* and *libpng*’s 
     ///     compression settings can be found on 
-    ///     [this page](https://github.com/kelvin13/png/blob/master/benchmarks).
+    ///     [this page](https://github.com/kelvin13/swift-png/blob/master/benchmarks).
     /// 
     ///     This interface is only available on MacOS and Linux. The 
     ///     [`compress(stream:level:hint:)`] function provides a platform-independent 

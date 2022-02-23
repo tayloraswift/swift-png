@@ -532,7 +532,7 @@ extension PNG.Data.Rectangular
     /// 
     ///     Experimental comparisons between *Swift PNG* and *libpng*’s 
     ///     compression settings can be found on 
-    ///     [this page](https://github.com/kelvin13/png/blob/master/benchmarks).
+    ///     [this page](https://github.com/kelvin13/swift-png/blob/master/benchmarks).
     /// 
     ///     On appropriate platforms, the [`compress(path:level:hint:)`] function 
     ///     provides a file system-aware interface to this function.

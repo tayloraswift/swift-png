@@ -846,7 +846,7 @@ extension PNG
     /// 
     ///     This type provides support for custom decoding schemes. You can 
     ///     work through an example of its usage in the 
-    ///     [online decoding tutorial](https://github.com/kelvin13/png/tree/master/examples#online-decoding).
+    ///     [online decoding tutorial](https://github.com/kelvin13/swift-png/tree/master/examples#online-decoding).
     /// ## (contextual-decoding)
     public 
     struct Context 

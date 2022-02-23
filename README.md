@@ -1,15 +1,15 @@
 <p align="center">
   <a href="https://swift.org"><img alt="platforms: all" src="https://img.shields.io/badge/platforms-all-lightgrey.svg"/></a>
-  <a href="https://github.com/kelvin13/png/releases"><img alt="releases" src="https://img.shields.io/github/v/release/kelvin13/png"/></a>
-  <a href="https://github.com/kelvin13/png/actions?query=workflow%3Abuild"><img alt="build status" src="https://img.shields.io/github/workflow/status/kelvin13/png/documentation/master?label=build"/></a>
-  <a href="https://github.com/kelvin13/png/actions?query=workflow%3Adocumentation"><img alt="documentation status" src="https://img.shields.io/github/workflow/status/kelvin13/png/documentation/master?label=build%20docs"/></a>
-  <a href="https://github.com/kelvin13/png/issues?state=open"><img alt="issues" src="https://img.shields.io/github/issues/kelvin13/png"/></a>
+  <a href="https://github.com/kelvin13/swift-png/releases"><img alt="releases" src="https://img.shields.io/github/v/release/kelvin13/swift-png"/></a>
+  <a href="https://github.com/kelvin13/swift-png/actions?query=workflow%3Abuild"><img alt="build status" src="https://img.shields.io/github/workflow/status/kelvin13/swift-png/documentation/master?label=build"/></a>
+  <a href="https://github.com/kelvin13/swift-png/actions?query=workflow%3Adocumentation"><img alt="documentation status" src="https://img.shields.io/github/workflow/status/kelvin13/swift-png/documentation/master?label=build%20docs"/></a>
+  <a href="https://github.com/kelvin13/swift-png/issues?state=open"><img alt="issues" src="https://img.shields.io/github/issues/kelvin13/swift-png"/></a>
   <a href="https://swift.org"><img alt="language" src="https://img.shields.io/badge/version-swift_5.5-ffa020.svg"/></a>
-  <a href="https://github.com/kelvin13/png/blob/master/LICENSE"><img alt="license: mpl2" src="https://img.shields.io/badge/license-MPL2-ff3079.svg"/></a>
+  <a href="https://github.com/kelvin13/swift-png/blob/master/LICENSE"><img alt="license: mpl2" src="https://img.shields.io/badge/license-MPL2-ff3079.svg"/></a>
 </p>
 
 <p align="center">
-  <strong><em>Swift PNG</em></strong> <br/> 4.0.0
+  <em><code>png</code></em><br/><code>4.0.2</code>
 </p>
 
 *Swift PNG* is a pure, cross-platform Swift framework for decoding, inspecting, editing, and encoding PNG images. The framework does not depend on *Foundation* or any other packages, and will compile and provide consistent behavior on all Swift platforms. *Swift PNG* also comes with built-in file system support on Linux and MacOS.
@@ -27,18 +27,18 @@ Swift *PNG* is [available](LICENSE) under the [Mozilla Public License 2.0](https
 7. [online decoding](examples/#online-decoding) ([sources](examples/decode-online/))
 8. [custom color targets](examples/#custom-color-targets) ([sources](examples/custom-color/))
 
-## [api reference](https://kelvin13.github.io/png)
+## [api reference](https://kelvin13.github.io/swift-png)
 
-* [**`PNG.PNG`**](https://kelvin13.github.io/png/PNG)
-* [**`PNG.LZ77`**](https://kelvin13.github.io/png/LZ77)
-* [**`PNG.System`**](https://kelvin13.github.io/png/System)
+* [**`PNG.PNG`**](https://kelvin13.github.io/swift-png/PNG)
+* [**`PNG.LZ77`**](https://kelvin13.github.io/swift-png/LZ77)
+* [**`PNG.System`**](https://kelvin13.github.io/swift-png/System)
 
 ## getting started 
 
 To use *Swift PNG* in a project, add this descriptor to the `dependencies` list in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/kelvin13/png", .exact("4.0.0")) 
+.package(url: "https://github.com/kelvin13/swift-png", .exact("4.0.2")) 
 ```
 
 ## basic usage 
@@ -82,15 +82,15 @@ func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) thro
 
 - ***Pure Swift, all the way down.*** Aside from having no external dependencies, *Swift PNG* is powered by its own, native Swift *DEFLATE* implementation. This means *Swift PNG* works on any platform that Swift itself works on. It also means that *Swift PNG*’s performance [improves as the Swift compiler matures](benchmarks#performance-by-toolchain).
 
-- ***Batteries included.*** *Swift PNG* comes with [built-in color targets](https://kelvin13.github.io/png/PNG/Color/) with support for [premultiplied alpha](https://kelvin13.github.io/png/PNG/RGBA/premultiplied/). [Convolution](https://kelvin13.github.io/png/PNG/convolve(_:dereference:kernel:)/) and [deconvolution](https://kelvin13.github.io/png/PNG/deconvolve(_:reference:kernel:)/) helper functions make [implementing custom color targets](examples/#custom-color-targets) a breeze.
+- ***Batteries included.*** *Swift PNG* comes with [built-in color targets](https://kelvin13.github.io/swift-png/PNG/Color/) with support for [premultiplied alpha](https://kelvin13.github.io/swift-png/PNG/RGBA/premultiplied/). [Convolution](https://kelvin13.github.io/swift-png/PNG/convolve(_:dereference:kernel:)/) and [deconvolution](https://kelvin13.github.io/swift-png/PNG/deconvolve(_:reference:kernel:)/) helper functions make [implementing custom color targets](examples/#custom-color-targets) a breeze.
   
-    On MacOS and Linux, *Swift PNG* has built-in file system support, allowing you to [compress](https://kelvin13.github.io/png/PNG/Data/Rectangular/compress(path:level:hint:)/) or [decompress](https://kelvin13.github.io/png/PNG/Data/Rectangular/decompress(path:)/) an image, given a filepath, in a single function call. Other platforms can take advantage of *Swift PNG*’s [protocol-oriented IO](https://kelvin13.github.io/png/PNG/Bytestream/) to implement their own data loading.
+    On MacOS and Linux, *Swift PNG* has built-in file system support, allowing you to [compress](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) or [decompress](https://kelvin13.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) an image, given a filepath, in a single function call. Other platforms can take advantage of *Swift PNG*’s [protocol-oriented IO](https://kelvin13.github.io/swift-png/PNG/Bytestream/) to implement their own data loading.
 
-- ***First-class iPhone optimization support.*** *Swift PNG* requires no custom setup or third-party plugins to handle [iPhone-optimized](examples/#using-iphone-optimized-images) PNG images. iPhone-optimized images just work, on all platforms. Reproduce [`pngcrush`](https://developer.apple.com/library/archive/qa/qa1681/_index.html)’s output with [bit width-aware alpha premultiplication](https://kelvin13.github.io/png/PNG/RGBA/premultiplied(as:)/), for seamless integration anywhere in your application stack.
+- ***First-class iPhone optimization support.*** *Swift PNG* requires no custom setup or third-party plugins to handle [iPhone-optimized](examples/#using-iphone-optimized-images) PNG images. iPhone-optimized images just work, on all platforms. Reproduce [`pngcrush`](https://developer.apple.com/library/archive/qa/qa1681/_index.html)’s output with [bit width-aware alpha premultiplication](https://kelvin13.github.io/swift-png/PNG/RGBA/premultiplied(as:)/), for seamless integration anywhere in your application stack.
 
-- ***Comprehensive metadata support.*** *Swift PNG* can parse and validate all public PNG chunks, which are accessible as [strongly-typed metadata records](https://kelvin13.github.io/png/PNG/Metadata/).
+- ***Comprehensive metadata support.*** *Swift PNG* can parse and validate all public PNG chunks, which are accessible as [strongly-typed metadata records](https://kelvin13.github.io/swift-png/PNG/Metadata/).
 
-- ***Modern error handling.*** *Swift PNG* has a fully stateless and Swift-native [error-handling system](https://kelvin13.github.io/png/PNG/Error/).
+- ***Modern error handling.*** *Swift PNG* has a fully stateless and Swift-native [error-handling system](https://kelvin13.github.io/swift-png/PNG/Error/).
 
 ## infrastructure 
 
@@ -108,7 +108,7 @@ A list of build flags can be found [here](build.md). Project automation scripts 
 
 - [**`utils/generate-documentation`**](utils/generate-documentation) `[-l/--local]`
 
-    Generates documentation pages for the library using [*Entrapta*](https://github.com/kelvin13/entrapta). A [Github action](.github/workflows/docs.yml) invokes this script and deploys the output to the [*Swift PNG* API reference website](https://kelvin13.github.io/png) on every commit.
+    Generates documentation pages for the library using [*Entrapta*](https://github.com/kelvin13/entrapta). A [Github action](.github/workflows/docs.yml) invokes this script and deploys the output to the [*Swift PNG* API reference website](https://kelvin13.github.io/swift-png) on every commit.
 
 The CI [runs](.github/workflows/ci.yml) *Swift PNG*’s test suites with the following invocations:
 
