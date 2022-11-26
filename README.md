@@ -120,6 +120,10 @@ swift run -c release compression-test
 
 The `integration-test` product accepts a `-c/--compact` option, which specifies the output verbosity, and an `-e/--print-expected-failures` option, which makes it print the error messages for expected failures.
 
+## Using on Windows
+
+Set `git config --global core.symlinks true` before cloning this repository on Windows.
+
 ## see also 
 
 * [Swift *JPEG*](https://github.com/kelvin13/jpeg)
