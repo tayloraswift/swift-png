@@ -1,21 +1,26 @@
 extension String 
 {
-    static 
+    public
+    static
     var bold:Self   = "\u{1B}[1m"
-    static 
+    public
+    static
     var reset:Self  = "\u{1B}[0m"
     
-    static 
+    public
+    static
     func pad(_ string:Self, left count:Int, with fill:Character = " ") -> Self 
     {
         .init(repeating: fill, count: Swift.max(0, count - string.count)) + string
     }
+    public
     static 
     func pad(_ string:String, right count:Int, with fill:Character = " ") -> Self 
     {
         string + .init(repeating: fill, count: Swift.max(0, count - string.count))
     }
-    
+
+    public
     init<F>(_ x:F, places:Int) where F:BinaryFloatingPoint
     {
         let p:Int = (0 ..< places).reduce(1){ (a, _) in a * 10 }
@@ -26,7 +31,8 @@ extension String
         self = "\(a).\(String.init(repeating: "0", count: places - tail.count) + tail)"
     }
     
-    static 
+    public
+    static
     func swatch<T>(_ color:(r:T, g:T, b:T, a:T)) -> Self
         where T:FixedWidthInteger & UnsignedInteger
     {
@@ -39,7 +45,8 @@ extension String
     {
         .swatch(" #\(Self.hex(color.r, color.g, color.b)) ", color: color)
     }
-    
+
+    public
     static 
     func highlight<F>(_ string:Self, bg:(r:F, g:F, b:F), fg:(r:F, g:F, b:F)? = nil) 
         -> Self where F:BinaryFloatingPoint 
@@ -49,19 +56,22 @@ extension String
         let fg:(r:F, g:F, b:F) = fg ?? ((bg.r + bg.g + bg.b) / 3 < 0.5 ? (1, 1, 1) : (0, 0, 0))
         return "\(Self.bg(bg))\(Self.fg(fg))\(string)\(Self.fg(nil))\(Self.bg(nil))"
     }
+    public
     static 
     func highlight<T>(_ string:Self, bg:(r:T, g:T, b:T), fg:(r:T, g:T, b:T)? = nil) 
         -> Self where T:FixedWidthInteger & UnsignedInteger
     {
         .highlight(string, bg: Self.normalize(color: bg), fg: fg.map(Self.normalize(color:)))
     }
-    
+
+    public
     static 
     func color<F>(_ string:Self, fg:(r:F, g:F, b:F)) 
         -> Self where F:BinaryFloatingPoint 
     {
         "\(Self.fg(fg))\(string)\(Self.fg(nil))"
     }
+    public
     static 
     func color<T>(_ string:Self, fg:(r:T, g:T, b:T)) 
         -> Self where T:FixedWidthInteger & UnsignedInteger

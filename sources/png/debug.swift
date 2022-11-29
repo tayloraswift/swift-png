@@ -1,4 +1,6 @@
-extension PNG.Percentmille:CustomStringConvertible 
+import _PNGString
+
+extension PNG.Percentmille:CustomStringConvertible
 {
     public 
     var description:String 
