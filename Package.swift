@@ -7,7 +7,6 @@ let package = Package(
     [
         .library(   name: "PNG",                        targets: ["PNG"]),
         
-        .executable(name: "unit-test",                  targets: ["PNGUnitTests"]),
         .executable(name: "integration-test",           targets: ["PNGIntegrationTests"]),
         .executable(name: "compression-test",           targets: ["PNGCompressionTests"]),
         .executable(name: "compression-benchmark",      targets: ["PNGCompressionBenchmarks"]), 
@@ -29,7 +28,8 @@ let package = Package(
         .target(name: "_PNGString",                           dependencies: [],                    path: "sources/string"),
 
 
-        .executableTarget(name: "PNGUnitTests",               dependencies: ["PNG", "_PNGString"], path: "tests/unit"),
+        .testTarget(name: "PNGUnitTests", dependencies: ["PNG", "_PNGString"], path: "tests/unit"),
+
         .executableTarget(name: "PNGIntegrationTests",        dependencies: ["PNG", "_PNGString"], path: "tests/integration",
             exclude: 
             [

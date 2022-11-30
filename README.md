@@ -113,7 +113,7 @@ A list of build flags can be found [here](build.md). Project automation scripts 
 The CI [runs](.github/workflows/ci.yml) *Swift PNG*’s test suites with the following invocations:
 
 ```bash 
-swift run            unit-test 
+swift test 
 swift run -c release integration-test --compact
 swift run -c release compression-test 
 ```
