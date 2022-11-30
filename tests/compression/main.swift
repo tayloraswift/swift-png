@@ -1,4 +1,5 @@
 import func Foundation.exit
+import _PNGTestsCommon
 
 enum Global 
 {

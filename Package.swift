@@ -27,10 +27,11 @@ let package = Package(
 
         .target(name: "_PNGString",                           dependencies: [],                    path: "sources/string"),
 
+        .target(name: "_PNGTestsCommon",                      dependencies: ["PNG"],               path: "tests/common"),
 
-        .testTarget(name: "PNGUnitTests", dependencies: ["PNG", "_PNGString"], path: "tests/unit"),
+        .testTarget(name: "PNGUnitTests",                     dependencies: ["PNG", "_PNGString"], path: "tests/unit"),
 
-        .executableTarget(name: "PNGIntegrationTests",        dependencies: ["PNG", "_PNGString"], path: "tests/integration",
+        .executableTarget(name: "PNGIntegrationTests",        dependencies: ["PNG", "_PNGString", "_PNGTestsCommon"], path: "tests/integration",
             exclude: 
             [
                 "PngSuite.LICENSE",
@@ -39,7 +40,7 @@ let package = Package(
                 "out/",
                 "rgba/",
             ]),
-        .executableTarget(name: "PNGCompressionTests",        dependencies: ["PNG", "_PNGString"], path: "tests/compression",
+        .executableTarget(name: "PNGCompressionTests",        dependencies: ["PNG", "_PNGString", "_PNGTestsCommon"], path: "tests/compression",
             exclude: 
             [
                 "baseline/", 

@@ -1,13 +1,17 @@
 import PNG
 
-enum Test 
+public enum Test
 {
-    struct Failure:Swift.Error 
+    public struct Failure:Swift.Error
     {
-        let message:String 
+        public let message:String
+
+        public init(message: String) {
+            self.message = message
+        }
     }
     
-    enum Function 
+    public enum Function
     {
         case void(       ()                       -> Result<Void, Failure>)
         // case string_int2((String, (x:Int, y:Int)) -> Result<Void, Failure>, [(String, (x:Int, y:Int))])
@@ -16,7 +20,8 @@ enum Test
     }
     
     // prints an image using terminal colors 
-    static 
+    public
+    static
     func terminal<T>(image rgb:[PNG.RGBA<T>], size:(x:Int, y:Int)) -> String
         where T:FixedWidthInteger & UnsignedInteger
     {
@@ -58,6 +63,7 @@ enum Test
     }
 }
 
+public
 func test(_ function:Test.Function, cases filter:Set<String>, name:String) -> Void?
 {
     var successes:Int                               = 0

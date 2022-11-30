@@ -1,4 +1,5 @@
 import PNG
+import _PNGTestsCommon
 
 extension Test 
 {
