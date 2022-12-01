@@ -8,11 +8,16 @@ enum Global
         options:Set<Option>             = []
 }
 
+do {
+    (Global.options, Global.filters) = try parseArguments(Array(CommandLine.arguments.dropFirst()))
+} catch {
+    Foundation.exit(-2)
+}
+
 Foundation.exit(
     commonMain(
-        commandLineArguments: CommandLine.arguments,
-        options: &Global.options,
-        filters: &Global.filters,
+        options: Global.options,
+        filters: Global.filters,
         testCases: Test.cases
     )
 )

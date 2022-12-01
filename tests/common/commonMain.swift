@@ -1,22 +1,15 @@
 import Foundation
 
 public func commonMain(
-    commandLineArguments:[String],
-    options:UnsafeMutablePointer<Set<Option>>,
-    filters:UnsafeMutablePointer<[String: Set<String>]>,
+    options:Set<Option>,
+    filters:[String: Set<String>],
     testCases:[(name:String, function:Test.Function)]) -> Int32
 {
-    do {
-        (options.pointee, filters.pointee) = try parseArguments(Array(commandLineArguments.dropFirst()))
-    } catch {
-        Foundation.exit(-2)
-    }
-
     var failed = false
     for (name, function):(String, Test.Function) in testCases
     {
         guard let cases:Set<String> =
-                filters.pointee[name] ?? (filters.pointee.isEmpty ? [] : nil)
+                filters[name] ?? (filters.isEmpty ? [] : nil)
         else
         {
             continue
