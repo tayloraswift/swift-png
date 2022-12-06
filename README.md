@@ -1,16 +1,16 @@
-<p align="center">
-  <a href="https://swift.org"><img alt="platforms: all" src="https://img.shields.io/badge/platforms-all-lightgrey.svg"/></a>
-  <a href="https://github.com/kelvin13/swift-png/releases"><img alt="releases" src="https://img.shields.io/github/v/release/kelvin13/swift-png"/></a>
-  <a href="https://github.com/kelvin13/swift-png/actions?query=workflow%3Abuild"><img alt="build status" src="https://img.shields.io/github/workflow/status/kelvin13/swift-png/documentation/master?label=build"/></a>
-  <a href="https://github.com/kelvin13/swift-png/actions?query=workflow%3Adocumentation"><img alt="documentation status" src="https://img.shields.io/github/workflow/status/kelvin13/swift-png/documentation/master?label=build%20docs"/></a>
-  <a href="https://github.com/kelvin13/swift-png/issues?state=open"><img alt="issues" src="https://img.shields.io/github/issues/kelvin13/swift-png"/></a>
-  <a href="https://swift.org"><img alt="language" src="https://img.shields.io/badge/version-swift_5.5-ffa020.svg"/></a>
-  <a href="https://github.com/kelvin13/swift-png/blob/master/LICENSE"><img alt="license: mpl2" src="https://img.shields.io/badge/license-MPL2-ff3079.svg"/></a>
-</p>
+<div align="center">
+  
+***`png`***<br>`4.1.0`
+  
+[![ci status](https://github.com/kelvin13/swift-png/actions/workflows/build.yml/badge.svg)](https://github.com/kelvin13/swift-png/actions/workflows/build.yml)
+[![ci status](https://github.com/kelvin13/swift-png/actions/workflows/build-devices.yml/badge.svg)](https://github.com/kelvin13/swift-png/actions/workflows/build-devices.yml)
+[![ci status](https://github.com/kelvin13/swift-png/actions/workflows/build-windows.yml/badge.svg)](https://github.com/kelvin13/swift-png/actions/workflows/build-windows.yml)
 
-<p align="center">
-  <em><code>png</code></em><br/><code>4.0.2</code>
-</p>
+
+[![swift package index versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fkelvin13%2Fswift-hash%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/kelvin13/swift-png)
+[![swift package index platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fkelvin13%2Fswift-hash%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/kelvin13/swift-png)
+
+</div>
 
 *Swift PNG* is a pure, cross-platform Swift framework for decoding, inspecting, editing, and encoding PNG images. The framework does not depend on *Foundation* or any other packages, and will compile and provide consistent behavior on all Swift platforms. *Swift PNG* also comes with built-in file system support on Linux and MacOS.
 

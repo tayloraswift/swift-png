@@ -6,11 +6,14 @@
     import Darwin
 #elseif os(Linux)
     import Glibc
+#elseif os(Windows)
+    #warning("Windows in not oficially supported and is untested platform (please open an issue at https://github.com/kelvin13/swift-png/issues)")
+    import ucrt
 #else
     #warning("unsupported or untested platform (please open an issue at https://github.com/kelvin13/swift-png/issues)")
 #endif
 
-#if os(macOS) || os(Linux)
+#if os(macOS) || os(Linux) || os(Windows)
 
 /// enum System 
 ///     A namespace for platform-dependent functionality.
@@ -155,6 +158,15 @@ extension System.File.Source
             return nil 
         }
         
+        #if os(Windows)
+        switch Int32.init(status.st_mode) & S_IFMT 
+        {
+        case S_IFREG:
+            break 
+        default:
+            return nil 
+        }
+        #else
         switch status.st_mode & S_IFMT 
         {
         case S_IFREG, S_IFLNK:
@@ -162,6 +174,7 @@ extension System.File.Source
         default:
             return nil 
         }
+        #endif
         
         return Int.init(status.st_size)
     } 
