@@ -1,15 +1,15 @@
 // swift-tools-version:5.5
 import PackageDescription
 
-let package = Package(
-    name: "swift-png",
+let package:Package = .init(name: "swift-png",
     products:
     [
         .library(   name: "PNG",                        targets: ["PNG"]),
         
-        .executable(name: "unit-test",                  targets: ["PNGUnitTests"]),
-        .executable(name: "integration-test",           targets: ["PNGIntegrationTests"]),
-        .executable(name: "compression-test",           targets: ["PNGCompressionTests"]),
+        .executable(name: "PNGTests",                   targets: ["PNGTests"]),
+        .executable(name: "PNGIntegrationTests",        targets: ["PNGIntegrationTests"]),
+        .executable(name: "PNGCompressionTests",        targets: ["PNGCompressionTests"]),
+        
         .executable(name: "compression-benchmark",      targets: ["PNGCompressionBenchmarks"]), 
         .executable(name: "decompression-benchmark",    targets: ["PNGDecompressionBenchmarks"]), 
         
@@ -22,30 +22,78 @@ let package = Package(
         .executable(name: "decode-online",              targets: ["PNGDecodeOnline"]),
         .executable(name: "custom-color",               targets: ["PNGCustomColor"]),
     ],
+    dependencies:
+    [
+        .package(url: "https://github.com/kelvin13/swift-hash", .upToNextMinor(from: "0.4.3")),
+    ],
     targets: 
     [
-        .target(name: "PNG",                                  dependencies: [],       path: "sources/png"),
+        .target(name: "TerminalColors"),
+
+        .target(name: "PNG",
+            dependencies:
+            [
+                .target(name: "TerminalColors"),
+            ]),
         
-        .executableTarget(name: "PNGUnitTests",               dependencies: ["PNG"],  path: "tests/unit"),
-        .executableTarget(name: "PNGIntegrationTests",        dependencies: ["PNG"],  path: "tests/integration", 
+
+        .executableTarget(name: "PNGTests",
+            dependencies:
+            [
+                .target(name: "PNG"),
+                .product(name: "Testing", package: "swift-hash"),
+            ],
+            path: "Tests/PNG"),
+        
+        .executableTarget(name: "PNGIntegrationTests",
+            dependencies:
+            [
+                .target(name: "PNG"),
+                .product(name: "Testing", package: "swift-hash"),
+            ],
+            path: "Tests/PNGIntegration", 
             exclude: 
             [
                 "PngSuite.LICENSE",
                 "PngSuite.README",
-                "in/", 
-                "out/",
-                "rgba/",
+                "Inputs/", 
+                "Outputs/",
+                "RGBA/",
             ]),
-        .executableTarget(name: "PNGCompressionTests",        dependencies: ["PNG"],  path: "tests/compression", 
+        
+        .executableTarget(name: "PNGCompressionTests",
+            dependencies:
+            [
+                .target(name: "PNG"),
+                .product(name: "Testing", package: "swift-hash"),
+            ],
+            path: "Tests/PNGCompression", 
             exclude: 
             [
-                "baseline/", 
-                "out/",
+                "Baselines/", 
+                "Outputs/",
             ]),
-        .executableTarget(name: "PNGCompressionBenchmarks",   dependencies: ["PNG"],  path: "benchmarks/compression/swift"), 
-        .executableTarget(name: "PNGDecompressionBenchmarks", dependencies: ["PNG"],  path: "benchmarks/decompression/swift"), 
         
-        .executableTarget(name: "PNGDecodeBasic",             dependencies: ["PNG"],  path: "examples/decode-basic", 
+        .executableTarget(name: "PNGCompressionBenchmarks",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Benchmarks/compression/swift"), 
+        
+        .executableTarget(name: "PNGDecompressionBenchmarks",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Benchmarks/decompression/swift"), 
+        
+        .executableTarget(name: "PNGDecodeBasic",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/decode-basic", 
             exclude: 
             [
                 "example.png.rgba", 
@@ -56,7 +104,12 @@ let package = Package(
                 "example.png.va.png", 
                 "example.png.va", 
             ]),
-        .executableTarget(name: "PNGEncodeBasic",             dependencies: ["PNG"],  path: "examples/encode-basic", 
+        .executableTarget(name: "PNGEncodeBasic",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/encode-basic", 
             exclude: 
             [
                 "example-color-rgb@0.png",
@@ -69,27 +122,47 @@ let package = Package(
                 "example-color-rgb@13.png",
                 "example-luminance-v.png",
             ]),
-        .executableTarget(name: "PNGIndexing",                dependencies: ["PNG"],  path: "examples/indexing", 
+        .executableTarget(name: "PNGIndexing",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/indexing", 
             exclude: 
             [
                 "example.png", 
                 "example-indexed.png", 
                 "gradient-visualization.png", 
             ]),
-        .executableTarget(name: "PNGiPhoneOptimized",         dependencies: ["PNG"],  path: "examples/iphone-optimized", 
+        .executableTarget(name: "PNGiPhoneOptimized",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/iphone-optimized", 
             exclude: 
             [
                 "example-bgr8.png", 
                 "example-rgb8.png", 
                 "example.png", 
             ]),
-        .executableTarget(name: "PNGMetadata",                dependencies: ["PNG"],  path: "examples/metadata", 
+        .executableTarget(name: "PNGMetadata",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/metadata", 
             exclude: 
             [
                 "example-newtime.png", 
                 "example.png", 
             ]),
-        .executableTarget(name: "PNGInMemory",                dependencies: ["PNG"],  path: "examples/in-memory", 
+        .executableTarget(name: "PNGInMemory",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/in-memory", 
             exclude: 
             [
                 "example.png.rgba.png", 
@@ -97,7 +170,12 @@ let package = Package(
                 "example.png.rgba", 
                 "example.png", 
             ]),
-        .executableTarget(name: "PNGDecodeOnline",            dependencies: ["PNG"],  path: "examples/decode-online", 
+        .executableTarget(name: "PNGDecodeOnline",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/decode-online", 
             exclude: 
             [
                 "example-progressive-9.png", 
@@ -139,7 +217,12 @@ let package = Package(
                 "example-progressive-overdrawn-7.png", 
 
             ]),
-        .executableTarget(name: "PNGCustomColor",             dependencies: ["PNG"],  path: "examples/custom-color", 
+        .executableTarget(name: "PNGCustomColor",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ],
+            path: "Examples/custom-color", 
             exclude: 
             [
                 "example.png", 
