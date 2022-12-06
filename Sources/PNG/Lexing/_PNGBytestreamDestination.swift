@@ -1,3 +1,5 @@
+import CRC
+
 /// protocol PNG.Bytestream.Destination 
 ///     A destination bytestream.
 /// 
@@ -77,8 +79,8 @@ extension _PNGBytestreamDestination
         }
         let footer:[UInt8] = .init(unsafeUninitializedCapacity: 4) 
         {
-            let crc:UInt32 = PNG.CRC32.update(PNG.CRC32.compute(header.suffix(4)), with: data)
-            $0.store(crc, asBigEndian: UInt32.self)
+            let crc:CRC32 = .init(hashing: header.suffix(4)).updated(with: data)
+            $0.store(crc.checksum, asBigEndian: UInt32.self)
             $1 = 4
         }
         

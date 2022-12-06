@@ -1,3 +1,5 @@
+import CRC
+
 /// protocol PNG.Bytestream.Source 
 ///     A source bytestream.
 /// 
@@ -95,14 +97,17 @@ extension _PNGBytestreamSource
             throw PNG.LexingError.truncatedChunkBody(expected: bytes)
         }
 
-        let declared:UInt32 = data.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self)
+        let declared:CRC32 = .init(
+            checksum: data.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self))
         data.removeLast(4)
-        let computed:UInt32 = PNG.CRC32.update(PNG.CRC32.compute(header.suffix(4)), with: data)
+        let computed:CRC32 = .init(hashing: header.suffix(4)).updated(with: data)
         
         guard declared == computed
         else
         {
-            throw PNG.LexingError.invalidChunkChecksum(declared: declared, computed: computed)
+            throw PNG.LexingError.invalidChunkChecksum(
+                declared: declared.checksum,
+                computed: computed.checksum)
         }
         
         return (type, data)

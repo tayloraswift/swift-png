@@ -43,39 +43,6 @@ enum PNG
     }
 }
 
-// http://www.libpng.org/pub/png/spec/1.2/PNG-CRCAppendix.html
-// TODO: replace with `swift-hash` implementation
-extension PNG 
-{
-    enum CRC32 
-    {
-        private static 
-        let table:[UInt32] = (0 ..< 256).map 
-        {
-            (i:UInt32) in 
-            (0 ..< 8).reduce(i){ (c, _) in (c & 1 * 0xed_b8_83_20) ^ c >> 1 }
-        }
-        
-        static 
-        func update<S>(_ crc:UInt32, with input:S) -> UInt32 
-            where S:Sequence, S.Element == UInt8 
-        {
-            ~input.reduce(~crc) 
-            {
-                (c:UInt32, byte:UInt8) in 
-                Self.table[.init((.init(truncatingIfNeeded: c) ^ byte))] ^ c >> 8
-            }
-        }
-        
-        static 
-        func compute<S>(_ input:S) -> UInt32 
-            where S:Sequence, S.Element == UInt8 
-        {
-            Self.update(0, with: input)
-        }
-    }
-}
-
 extension PNG
 {
     private static 
