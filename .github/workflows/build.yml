@@ -1,0 +1,152 @@
+name: build
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
+
+jobs:
+    macos-nightly:
+        runs-on: ${{ matrix.os }}
+        name: ${{ matrix.os }} (${{ matrix.swift }})
+        env: 
+            SWIFT_TOOLCHAIN_DIRECTORY: /Library/Developer/Toolchains/swift-${{ matrix.swift }}.xctoolchain
+        strategy:
+            matrix:
+                os: 
+                    -   macos-12
+                swift: 
+                    -   DEVELOPMENT-SNAPSHOT-2022-11-11-a
+        steps:
+            -   uses: actions/checkout@v2
+
+            -   name: cache swift toolchains
+                uses: actions/cache@v2
+                with:
+                    path: swift-${{ matrix.swift }}.pkg
+                    key: ${{ matrix.os }}:swift:${{ matrix.swift }}
+            
+            -   name: cache status
+                id:   cache_status
+                uses: andstor/file-existence-action@v1
+                with:
+                    files: swift-${{ matrix.swift }}.pkg
+            
+            -   name: download swift toolchain 
+                if: steps.cache_status.outputs.files_exists == 'false'
+                run:   "curl https://download.swift.org/development/xcode/\
+                        swift-${{ matrix.swift }}/\
+                        swift-${{ matrix.swift }}-osx.pkg \
+                        --output swift-${{ matrix.swift }}.pkg"
+            
+            -   name: set up swift
+                run: |
+                    sudo installer -pkg swift-${{ matrix.swift }}.pkg -target /
+            
+            -   name: build 
+                run: |
+                    $SWIFT_TOOLCHAIN_DIRECTORY/usr/bin/swift --version
+                    $SWIFT_TOOLCHAIN_DIRECTORY/usr/bin/swift build
+            -   name: test
+                run: |
+                    $SWIFT_TOOLCHAIN_DIRECTORY/usr/bin/swift run -c debug PNGTests
+                    $SWIFT_TOOLCHAIN_DIRECTORY/usr/bin/swift run -c release PNGIntegrationTests
+                    $SWIFT_TOOLCHAIN_DIRECTORY/usr/bin/swift run -c release PNGCompressionTests
+    
+    macos:
+        runs-on: ${{ matrix.os }}
+        name: ${{ matrix.os }} 
+        strategy:
+            matrix:
+                os: 
+                    -   macos-12
+                    -   macos-11
+        steps:
+            -   uses: actions/checkout@v2
+
+            -   name: build 
+                run: |
+                    swift --version
+                    swift build
+            -   name: test
+                run: |
+                    swift run -c debug PNGTests
+                    swift run -c release PNGIntegrationTests
+                    swift run -c release PNGCompressionTests
+    
+    linux:
+        runs-on: ${{ matrix.os.runner }}
+        name: ${{ matrix.os.runner }} (${{ matrix.swift.toolchain }})
+        strategy:
+            matrix:
+                os: 
+                    -   runner: ubuntu-22.04
+                        prefix: ubuntu2204
+                        suffix: ubuntu22.04
+                    -   runner: ubuntu-20.04
+                        prefix: ubuntu2004
+                        suffix: ubuntu20.04
+                swift: 
+                    -   toolchain:  DEVELOPMENT-SNAPSHOT-2022-11-11-a
+                        branch:     development
+                include:
+                    -   os: 
+                            runner: ubuntu-20.04
+                            prefix: ubuntu2004
+                            suffix: ubuntu20.04
+                        swift: 
+                            toolchain:  5.7.1-RELEASE
+                            branch:     swift-5.7.1-release
+                    -   os: 
+                            runner: ubuntu-20.04
+                            prefix: ubuntu2004
+                            suffix: ubuntu20.04
+                        swift: 
+                            toolchain:  5.6.2-RELEASE
+                            branch:     swift-5.6.2-release
+                    -   os: 
+                            runner: ubuntu-20.04
+                            prefix: ubuntu2004
+                            suffix: ubuntu20.04
+                        swift: 
+                            toolchain:  5.5.3-RELEASE
+                            branch:     swift-5.5.3-release
+        steps:
+            -   uses: actions/checkout@v2
+            
+            -   name: cache swift toolchains
+                uses: actions/cache@v2
+                with:
+                    path: swift-${{ matrix.swift.toolchain }}.tar.gz
+                    key: ${{ matrix.os.runner }}:swift:${{ matrix.swift.toolchain }}
+                    
+            -   name: cache status
+                id:   cache_status
+                uses: andstor/file-existence-action@v1
+                with:
+                    files: swift-${{ matrix.swift.toolchain }}.tar.gz
+            
+            -   name: download swift toolchain 
+                if: steps.cache_status.outputs.files_exists == 'false'
+                run:   "curl https://download.swift.org/\
+                        ${{ matrix.swift.branch }}/\
+                        ${{ matrix.os.prefix }}/\
+                        swift-${{ matrix.swift.toolchain }}/\
+                        swift-${{ matrix.swift.toolchain }}-${{ matrix.os.suffix }}.tar.gz \
+                        --output swift-${{ matrix.swift.toolchain }}.tar.gz"
+            
+            -   name: set up swift
+                run: |
+                    mkdir -p $GITHUB_WORKSPACE/swift-${{ matrix.swift.toolchain }}
+                    tar -xzf swift-${{ matrix.swift.toolchain }}.tar.gz -C $GITHUB_WORKSPACE/swift-${{ matrix.swift.toolchain }} --strip 1
+                    echo "$GITHUB_WORKSPACE/swift-${{ matrix.swift.toolchain }}/usr/bin" >> $GITHUB_PATH
+            -   name: build
+                run: |
+                    swift --version
+                    swift build 
+            -   name: test
+                run: |
+                    swift run -c debug PNGTests
+                    swift run -c release PNGIntegrationTests
+                    swift run -c release PNGCompressionTests
