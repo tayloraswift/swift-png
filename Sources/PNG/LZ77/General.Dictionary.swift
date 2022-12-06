@@ -1,4 +1,6 @@
-#if arch(x86_64) && !NO_INTRINSICS
+// https://github.com/apple/swift/issues/60534
+// https://forums.swift.org/t/builtin-intrinsics-intel-module-is-not-available-on-windows-pc-with-intel-cpu/61862
+#if arch(x86_64) && !NO_INTRINSICS && !os(Windows)
 
 import _Builtin_intrinsics.intel
 
