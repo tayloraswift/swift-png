@@ -12,7 +12,7 @@
 
 </div>
 
-*Swift PNG* is a pure, cross-platform Swift framework for decoding, inspecting, editing, and encoding PNG images. The framework does not depend on *Foundation* or any other packages, and will compile and provide consistent behavior on all Swift platforms. *Swift PNG* also comes with built-in file system support on Linux and MacOS.
+*Swift PNG* is a Foundation-less, cross-platform framework for decoding, inspecting, editing, and encoding PNG images. The framework is written in pure Swift, and will compile and provide consistent behavior on all Swift platforms. The library also comes with built-in file system support on linux, macOS, and Windows.
 
 Swift *PNG* is [available](LICENSE) under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/). The [example programs](examples/) are public domain and can be adapted freely.
 
@@ -80,7 +80,7 @@ func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) thro
 
 - ***Competitive performance.*** *Swift PNG* offers [competitive performance](benchmarks/) compared to *libpng*. On appropriate CPU architectures, the *Swift PNG* encoder makes use of [hardware-accelerated hash tables](https://engineering.fb.com/2019/04/25/developer-tools/f14/) for even greater performance.
 
-- ***Pure Swift, all the way down.*** Aside from having no external dependencies, *Swift PNG* is powered by its own, native Swift *DEFLATE* implementation. This means *Swift PNG* works on any platform that Swift itself works on. It also means that *Swift PNG*’s performance [improves as the Swift compiler matures](benchmarks#performance-by-toolchain).
+- ***Pure Swift, all the way down.*** *Swift PNG* is powered by its own, native Swift *DEFLATE* implementation. It depends only on other Foundation-less, pure-Swift libraries, and therefore does not need to link Foundation. This also means the core components of *Swift PNG* work on any platform that Swift itself works on, and that *Swift PNG*’s performance [improves as the Swift compiler matures](benchmarks#performance-by-toolchain).
 
 - ***Batteries included.*** *Swift PNG* comes with [built-in color targets](https://kelvin13.github.io/swift-png/PNG/Color/) with support for [premultiplied alpha](https://kelvin13.github.io/swift-png/PNG/RGBA/premultiplied/). [Convolution](https://kelvin13.github.io/swift-png/PNG/convolve(_:dereference:kernel:)/) and [deconvolution](https://kelvin13.github.io/swift-png/PNG/deconvolve(_:reference:kernel:)/) helper functions make [implementing custom color targets](examples/#custom-color-targets) a breeze.
   
@@ -110,15 +110,13 @@ A list of build flags can be found [here](build.md). Project automation scripts 
 
     Generates documentation pages for the library using [*Entrapta*](https://github.com/kelvin13/entrapta). A [Github action](.github/workflows/docs.yml) invokes this script and deploys the output to the [*Swift PNG* API reference website](https://kelvin13.github.io/swift-png) on every commit.
 
-The CI [runs](.github/workflows/ci.yml) *Swift PNG*’s test suites with the following invocations:
+The CI [runs](.github/workflows/build.yml) *Swift PNG*’s test suites with the following invocations:
 
 ```bash 
-swift run            unit-test 
-swift run -c release integration-test --compact
-swift run -c release compression-test 
+swift run            PNGTests
+swift run -c release PNGIntegrationTests
+swift run -c release PNGCompressionTests
 ```
-
-The `integration-test` product accepts a `-c/--compact` option, which specifies the output verbosity, and an `-e/--print-expected-failures` option, which makes it print the error messages for expected failures.
 
 ## see also 
 
