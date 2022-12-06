@@ -34,6 +34,7 @@ let package:Package = .init(name: "swift-png",
             dependencies:
             [
                 .target(name: "TerminalColors"),
+                .product(name: "CRC", package: "swift-hash"),
             ]),
         
 
