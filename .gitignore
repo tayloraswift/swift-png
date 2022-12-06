@@ -6,9 +6,9 @@
 Package.resolved
 /*.xcodeproj
 .swiftpm
-/benchmarks/*.png.png
-/benchmarks/compression/out/*.png
-/benchmarks/compression/baseline/main
-/benchmarks/decompression/out/*.png
-/benchmarks/decompression/baseline/main
+/Benchmarks/*.png.png
+/Benchmarks/compression/out/*.png
+/Benchmarks/compression/baseline/main
+/Benchmarks/decompression/out/*.png
+/Benchmarks/decompression/baseline/main
 /utils/__pycache__/
