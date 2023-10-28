@@ -2,12 +2,30 @@
   "object": {
     "pins": [
       {
-        "package": "swift-hash",
-        "repositoryURL": "https://github.com/kelvin13/swift-hash",
+        "package": "swift-atomics",
+        "repositoryURL": "https://github.com/apple/swift-atomics.git",
         "state": {
           "branch": null,
-          "revision": "7475de0872c71f1b8dc69ac2e395f9ede42356b2",
-          "version": "0.4.6"
+          "revision": "cd142fd2f64be2100422d658e7411e39489da985",
+          "version": "1.2.0"
+        }
+      },
+      {
+        "package": "Swift Grammar",
+        "repositoryURL": "https://github.com/tayloraswift/swift-grammar",
+        "state": {
+          "branch": null,
+          "revision": "163ce5d4d88db7d94f2f4ca1cabcb2ae65af8af7",
+          "version": "0.3.3"
+        }
+      },
+      {
+        "package": "swift-hash",
+        "repositoryURL": "https://github.com/tayloraswift/swift-hash",
+        "state": {
+          "branch": null,
+          "revision": "c7ba0cde5eb63042c2196b02b65a770101c1ac11",
+          "version": "0.5.0"
         }
       }
     ]
