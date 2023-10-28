@@ -1,16 +1,16 @@
 import PNG
 import Testing
 
-struct _TestFailure:Error 
+struct _TestFailure:Error
 {
-    let message:String 
+    let message:String
 }
 
-@main 
-enum Main:SynchronousTests
+@main
+enum Main:SyncTests
 {
     static
-    func run(tests:inout Tests)
+    func run(tests:Tests)
     {
         let suite:[(name:String, members:[String])] =
         [
@@ -232,114 +232,154 @@ enum Main:SynchronousTests
                 ]
             ),
         ]
-        
-        let iOS:[String] = 
+
+        let iOS:[String] =
         [
-            "PngSuite", 
-            "basi2c08", 
-            "basi6a08", 
-            "basn2c08", 
-            "basn6a08", 
-            "bgan6a08", 
-            "bgwn6a08", 
-            "ccwn2c08", 
-            "cdfn2c08", 
-            "cdhn2c08", 
-            "cdsn2c08", 
-            "cdun2c08", 
-            "cs5n2c08", 
-            "cs8n2c08", 
-            "f00n2c08", 
-            "f01n2c08", 
-            "f02n2c08", 
-            "f03n2c08", 
-            "f04n2c08", 
-            "g03n2c08", 
-            "g04n2c08", 
-            "g05n2c08", 
-            "g07n2c08", 
-            "g10n2c08", 
-            "g25n2c08", 
-            "pp0n6a08", 
-            "tbrn2c08", 
-            "tp0n2c08", 
-            "z00n2c08", 
-            "z03n2c08", 
-            "z06n2c08", 
-            "z09n2c08", 
+            "PngSuite",
+            "basi2c08",
+            "basi6a08",
+            "basn2c08",
+            "basn6a08",
+            "bgan6a08",
+            "bgwn6a08",
+            "ccwn2c08",
+            "cdfn2c08",
+            "cdhn2c08",
+            "cdsn2c08",
+            "cdun2c08",
+            "cs5n2c08",
+            "cs8n2c08",
+            "f00n2c08",
+            "f01n2c08",
+            "f02n2c08",
+            "f03n2c08",
+            "f04n2c08",
+            "g03n2c08",
+            "g04n2c08",
+            "g05n2c08",
+            "g07n2c08",
+            "g10n2c08",
+            "g25n2c08",
+            "pp0n6a08",
+            "tbrn2c08",
+            "tp0n2c08",
+            "z00n2c08",
+            "z03n2c08",
+            "z06n2c08",
+            "z09n2c08",
         ]
-        
-        tests.do(name: "error-handling")
+
+        if  let tests:TestGroup = tests / "ErrorHandling"
         {
-            _ in try Self.errorHandling().get()
+            tests.do { try Self.errorHandling().get() }
         }
 
         for (name, members):(String, [String]) in suite
         {
-            tests.group("decode-\(name)")
+            guard
+            let tests:TestGroup = tests / "Decode-\(name)"
+            else
             {
-                for member:String in members
+                continue
+            }
+
+            for member:String in members
+            {
+                guard
+                let tests:TestGroup = tests / member
+                else
                 {
-                    $0.do(name: member)
+                    continue
+                }
+
+                tests.do
+                {
+                    try Self.decode(member, subdirectory: "Common").get()
+                }
+            }
+        }
+
+        if  let tests:TestGroup = tests / "Decode" / "iPhoneOptimized"
+        {
+            for member:String in iOS
+            {
+                guard
+                let tests:TestGroup = tests / member
+                else
+                {
+                    continue
+                }
+
+                tests.do
+                {
+                    try Self.decode(member, subdirectory: "iOS").get()
+                }
+            }
+        }
+
+        if  let tests:TestGroup = tests / "Encode"
+        {
+            if  let tests:TestGroup = tests / "iPhoneOptimized"
+            {
+                for member:String in iOS
+                {
+                    guard
+                    let tests:TestGroup = tests / member
+                    else
                     {
-                        _ in try Self.decode(member, subdirectory: "Common").get()
+                        continue
+                    }
+
+                    tests.do
+                    {
+                        try Self.encode(member, subdirectory: "iOS", level: 13).get()
                     }
                 }
             }
-        }
+            for level:Int in [4, 7, 10]
+            {
+                for (name, members):(String, [String]) in suite
+                {
+                    guard
+                    let tests:TestGroup = tests / "\(level)" / "\(name)"
+                    else
+                    {
+                        continue
+                    }
 
-        tests.group("decode-iphone-optimized")
-        {
-            for member:String in iOS
-            {
-                $0.do(name: member)
-                {
-                    _ in try Self.decode(member, subdirectory: "iOS").get()
-                }
-            }
-        }
-        tests.group("encode-iphone-optimized")
-        {
-            for member:String in iOS
-            {
-                $0.do(name: member)
-                {
-                    _ in try Self.encode(member, subdirectory: "iOS", level: 13).get()
-                }
-            }
-        }
-
-        for level:Int in [4, 7, 10]
-        {
-            for (name, members):(String, [String]) in suite
-            {
-                tests.group("encode-\(level)-\(name)")
-                {
                     for member:String in members
                     {
-                        $0.do(name: member)
+                        guard
+                        let tests:TestGroup = tests / member
+                        else
                         {
-                            _ in try Self.encode(member, subdirectory: "Common", level:level).get()
+                            continue
+                        }
+
+                        tests.do
+                        {
+                            try Self.encode(member, subdirectory: "Common", level: level).get()
                         }
                     }
                 }
             }
         }
+
     }
-    
-    static 
+
+    static
     func decode(_ name:String, subdirectory:String) -> Result<Void, _TestFailure>
     {
-        let path:(in:String, rgba:String) = 
+        let path:(in:String, rgba:String) =
         (
             "Tests/PNGIntegration/Inputs/\(subdirectory)/\(name).png",
             "Tests/PNGIntegration/RGBA/\(name).png.rgba"
         )
         return Self.decode(path: path, premultiplied: subdirectory == "iOS")
     }
-    
-    static 
-    func decode(path:(in:String, rgba:String), premultiplied:Bool) 
+
+    static
+    func decode(path:(in:String, rgba:String), premultiplied:Bool)
         -> Result<Void, _TestFailure>
     {
         do
@@ -351,8 +391,8 @@ enum Main:SynchronousTests
             }
 
             let image:[PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
-            
-            // if !Global.options.contains(.compact) 
+
+            // if !Global.options.contains(.compact)
             // {
             //     print(Self.terminal(image: image, size: rectangular.size))
             //     print(rectangular.metadata)
@@ -376,17 +416,17 @@ enum Main:SynchronousTests
                         g:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 2),
                         b:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 4),
                         a:UInt16 = data.load(littleEndian: UInt16.self, as: UInt16.self, at: $0 << 3 | 6)
-                    
+
                     let pixel:PNG.RGBA<UInt16> = .init(r, g, b, a)
-                    // have to manually premultiply since the CgBI formula does the 
-                    // multiplication in 8-bit precision 
-                    if premultiplied 
+                    // have to manually premultiply since the CgBI formula does the
+                    // multiplication in 8-bit precision
+                    if premultiplied
                     {
                         return pixel.premultiplied(as: UInt8.self)
                     }
-                    else 
+                    else
                     {
-                        return pixel 
+                        return pixel
                     }
                 }
             })
@@ -418,32 +458,32 @@ enum Main:SynchronousTests
             return .failure(.init(message: "\(error)"))
         }
     }
-    
+
     // TODO: make error types ``Equatable``, and use expected failure API from
     // the ``/Testing`` module.
-    static 
+    static
     func printError<E>(_ error:E) where E:PNG.Error
     {
         // guard Global.options.contains(.printExpectedFailures)
-        // else 
+        // else
         // {
         //     return
-        // } 
-        
-        // var width:Int 
+        // }
+
+        // var width:Int
         // {
         //     80
         // }
-        
+
         // let accent:(Double, Double, Double) = (1.0, 0.6, 0.3)
-        
+
         // let heading:String = .pad(.init("\(E.namespace): \(error.message)"), right: width)
         // print(String.highlight("\(String.bold)\(heading)\(String.reset)", bg: accent))
-        // if let details:String = error.details 
+        // if let details:String = error.details
         // {
-        //     // wrap text 
+        //     // wrap text
         //     let characters:[Character] = .init(details)
-        //     for start:Int in stride(from: 0, to: characters.count, by: width - 4) 
+        //     for start:Int in stride(from: 0, to: characters.count, by: width - 4)
         //     {
         //         let end:Int = min(start + width - 4, characters.count)
         //         print("    \(String.color(.init(characters[start ..< end]), fg: accent))")
@@ -451,8 +491,8 @@ enum Main:SynchronousTests
         // }
         // print()
     }
-    
-    static 
+
+    static
     func errorHandling() -> Result<Void, _TestFailure>
     {
         func decode(_ name:String) throws -> Result<Void, _TestFailure>?
@@ -462,42 +502,42 @@ enum Main:SynchronousTests
             {
                 return .failure(.init(message: "file '\(path)' is invalid, but decoded without errors"))
             }
-            else 
+            else
             {
                 return .failure(.init(message: "failed to read file '\(path)'"))
             }
         }
-        
-        // invalid signatures 
-        for name:String in 
+
+        // invalid signatures
+        for name:String in
         [
-            "xs1n0g01", "xs2n0g01", "xs4n0g01", "xs7n0g01", 
+            "xs1n0g01", "xs2n0g01", "xs4n0g01", "xs7n0g01",
             "xcrn0g04", "xlfn0g04"
-        ] 
+        ]
         {
-            do 
+            do
             {
                 if let result:Result<Void, _TestFailure> = try decode(name)
                 {
-                    return result 
+                    return result
                 }
             }
-            catch PNG.LexingError.invalidSignature(let signature) 
+            catch PNG.LexingError.invalidSignature(let signature)
             {
                 Self.printError(PNG.LexingError.invalidSignature(signature))
             }
-            catch let error 
+            catch let error
             {
                 return .failure(.init(message: "\(error)"))
             }
         }
-        
-        // invalid ihdr checksum 
-        do 
+
+        // invalid ihdr checksum
+        do
         {
             if let result:Result<Void, _TestFailure> = try decode("xhdn0g08")
             {
-                return result 
+                return result
             }
         }
         catch PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 1443964200)
@@ -505,65 +545,65 @@ enum Main:SynchronousTests
             Self.printError(
                 PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 1443964200))
         }
-        catch let error 
+        catch let error
         {
             return .failure(.init(message: "\(error)"))
         }
-        
-        // invalid color format 
-        for (name, code):(String, (UInt8, UInt8)) in 
+
+        // invalid color format
+        for (name, code):(String, (UInt8, UInt8)) in
         [
             ("xc1n0g08", ( 8, 1)),
             ("xc9n2c08", ( 8, 9)),
             ("xd0n2c08", ( 0, 2)),
             ("xd3n2c08", ( 3, 2)),
             ("xd9n2c08", (99, 2)),
-        ] 
+        ]
         {
-            do 
+            do
             {
                 if let result:Result<Void, _TestFailure> = try decode(name)
                 {
-                    return result 
+                    return result
                 }
             }
-            catch let error 
+            catch let error
             {
                 // need to work around compiler bug preventing tuple matching
-                guard case PNG.ParsingError.invalidHeaderPixelFormatCode(let expected) = error, 
-                    expected == code 
-                else 
+                guard case PNG.ParsingError.invalidHeaderPixelFormatCode(let expected) = error,
+                    expected == code
+                else
                 {
                     return .failure(.init(message: "\(error)"))
                 }
-                
+
                 Self.printError(PNG.ParsingError.invalidHeaderPixelFormatCode(expected))
             }
         }
-        
-        // missing idat 
-        do 
+
+        // missing idat
+        do
         {
             if let result:Result<Void, _TestFailure> = try decode("xdtn0g01")
             {
-                return result 
+                return result
             }
         }
         catch PNG.DecodingError.required(chunk: .IDAT, before: .IEND)
         {
             Self.printError(PNG.DecodingError.required(chunk: .IDAT, before: .IEND))
         }
-        catch let error 
+        catch let error
         {
             return .failure(.init(message: "\(error)"))
         }
-        
-        // invalid idat checksum 
-        do 
+
+        // invalid idat checksum
+        do
         {
             if let result:Result<Void, _TestFailure> = try decode("xcsn0g01")
             {
-                return result 
+                return result
             }
         }
         catch PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 3492746441)
@@ -571,18 +611,18 @@ enum Main:SynchronousTests
             Self.printError(
                 PNG.LexingError.invalidChunkChecksum(declared: 1129534797, computed: 3492746441))
         }
-        catch let error 
+        catch let error
         {
             return .failure(.init(message: "\(error)"))
         }
-        
+
         return .success(())
     }
 
-    static 
+    static
     func encode(_ name:String, subdirectory:String, level:Int) -> Result<Void, _TestFailure>
     {
-        let path:(in:String, rgba:String, out:String) = 
+        let path:(in:String, rgba:String, out:String) =
         (
             "Tests/PNGIntegration/Inputs/\(subdirectory)/\(name).png",
             "Tests/PNGIntegration/RGBA/\(name).png.rgba",
@@ -590,10 +630,10 @@ enum Main:SynchronousTests
         )
 
         return Self.encode(path: path, level: level, premultiplied: subdirectory == "iOS")
-    } 
-    
-    static 
-    func encode(path:(in:String, rgba:String, out:String), level:Int, premultiplied:Bool) 
+    }
+
+    static
+    func encode(path:(in:String, rgba:String, out:String), level:Int, premultiplied:Bool)
         -> Result<Void, _TestFailure>
     {
         do
@@ -603,15 +643,15 @@ enum Main:SynchronousTests
             {
                 return .failure(.init(message: "failed to open file '\(path.in)'"))
             }
-            
+
             try rectangular.compress(path: path.out, level: level)
         }
-        catch let error 
+        catch let error
         {
             return .failure(.init(message: "\(error)"))
         }
         return Self.decode(path: (in: path.out, rgba: path.rgba), premultiplied: premultiplied)
-    } 
+    }
 }
 
 fileprivate
