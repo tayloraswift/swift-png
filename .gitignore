@@ -1,9 +1,9 @@
 .DS_Store
+.vscode
 /.build
 /.build-historical
 /.entrapta
 /documentation
-Package.resolved
 /*.xcodeproj
 .swiftpm
 /Benchmarks/*.png.png

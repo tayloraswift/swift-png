@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "swift-hash",
+        "repositoryURL": "https://github.com/kelvin13/swift-hash",
+        "state": {
+          "branch": null,
+          "revision": "7475de0872c71f1b8dc69ac2e395f9ede42356b2",
+          "version": "0.4.6"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
