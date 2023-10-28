@@ -1,89 +1,108 @@
 @testable import PNG
 import Testing
 
-struct _TestFailure:Error 
+struct _TestFailure:Error
 {
-    let message:String 
+    let message:String
 }
 
-@main 
-enum Main:SynchronousTests
+@main
+enum Main:SyncTests
 {
     static
-    func run(tests:inout Tests)
+    func run(tests:Tests)
     {
-        tests.do(name: "decode-bitstream")
+        if  let tests:TestGroup = tests / "DecodeBitstream"
         {
-            _ in try Self.decodeBitstream().get()
+            tests.do { try Self.decodeBitstream().get() }
         }
-        tests.do(name: "encode-bitstream")
+        if  let tests:TestGroup = tests / "EncodeBitstream"
         {
-            _ in try Self.encodeBitstream().get()
+            tests.do { try Self.encodeBitstream().get() }
         }
-        tests.do(name: "match-lz77")
+        if  let tests:TestGroup = tests / "MatchLZ77"
         {
-            _ in try Self.matchLZ77().get()
+            tests.do { try Self.matchLZ77().get() }
         }
-        tests.group("compress-lz77-greedy")
-        {
-            for count:Int in [5, 15, 100, 200, 2000, 5000]
-            {
-                $0.do(name: count.description)
-                {
-                    _ in try Self.compressZGreedy(count: count).get()
-                }
-            }
-        }
-        tests.group("compress-lz77-lazy")
+        if  let tests:TestGroup = tests / "CompressLZ77Greedy"
         {
             for count:Int in [5, 15, 100, 200, 2000, 5000]
             {
-                $0.do(name: count.description)
+                guard
+                let tests:TestGroup = tests / "\(count)"
+                else
                 {
-                    _ in try Self.compressZLazy(count: count).get()
+                    continue
                 }
+
+                tests.do { try Self.compressZGreedy(count: count).get() }
             }
         }
-        tests.group("compress-lz77-full")
+        if  let tests:TestGroup = tests / "CompressLZ77Lazy"
         {
             for count:Int in [5, 15, 100, 200, 2000, 5000]
             {
-                $0.do(name: count.description)
+                guard
+                let tests:TestGroup = tests / "\(count)"
+                else
                 {
-                    _ in try Self.compressZFull(count: count).get()
+                    continue
                 }
+
+                tests.do { try Self.compressZLazy(count: count).get() }
             }
         }
-        tests.group("filtering")
+        if  let tests:TestGroup = tests / "CompressLZ77Full"
+        {
+            for count:Int in [5, 15, 100, 200, 2000, 5000]
+            {
+                guard
+                let tests:TestGroup = tests / "\(count)"
+                else
+                {
+                    continue
+                }
+
+                tests.do { try Self.compressZFull(count: count).get() }
+            }
+        }
+        if  let tests:TestGroup = tests / "Filtering"
         {
             for count:Int in [1, 2, 3, 4, 5, 6, 7, 8]
             {
-                $0.do(name: count.description)
+                guard
+                let tests:TestGroup = tests / "\(count)"
+                else
                 {
-                    _ in try Self.filtering(delay: count).get()
+                    continue
                 }
+
+                tests.do { try Self.filtering(delay: count).get() }
             }
         }
-        tests.do(name: "premultiplication-8-bit")
+        if  let tests:TestGroup = tests / "Premultiplication"
         {
-            _ in try Self.premultiplication8().get()
+            if  let tests:TestGroup = tests / "UInt8"
+            {
+                tests.do { try Self.premultiplication8().get() }
+            }
+            if  let tests:TestGroup = tests / "UInt16"
+            {
+                tests.do { try Self.premultiplication16().get() }
+            }
         }
-        tests.do(name: "premultiplication-16-bit")
+        if  let tests:TestGroup = tests / "DictionarySemantics"
         {
-            _ in try Self.premultiplication16().get()
-        }
-        tests.do(name: "dictionary-semantics")
-        {
-            _ in try Self.dictionary().get()
+            tests.do { try Self.dictionary().get() }
         }
     }
 }
 extension Main
 {
     static
-    func decodeBitstream() -> Result<Void, _TestFailure> 
+    func decodeBitstream() -> Result<Void, _TestFailure>
     {
-        var bits:LZ77.Inflator.In = 
+        var bits:LZ77.Inflator.In =
         [
             0b1001_1110,
             0b1111_0110,
@@ -100,7 +119,7 @@ extension Main
                 bits[ 8] == 0b0010_0011_1111_0110 ,
                 bits[ 9] == 0b0_0010_0011_1111_011,
                 bits[23] == 0b0000_0000_0000_0000
-        else 
+        else
         {
             return .failure(.init(message: "incorrect codeword read"))
         }
@@ -113,8 +132,8 @@ extension Main
         {
             return .failure(.init(message: "incorrect integer read"))
         }
-        
-        // test rebase 
+
+        // test rebase
         //                       { 0010_0011, 1111_0110, 1001_1110 }
         //                            ^
         //                          b = 20
@@ -122,78 +141,78 @@ extension Main
         // { 0001_1000, 1010_1101, 0010_0011 }
         //                            ^
         //                          b = 4
-        var b:Int = 20 
+        var b:Int = 20
         bits.rebase([0b1010_1101, 0b0001_1000], pointer: &b)
-        
-        guard   bits[b    ] == 0b1000_1010_1101_0010, 
+
+        guard   bits[b    ] == 0b1000_1010_1101_0010,
                 bits[b + 1] == 0b1_1000_1010_1101_001
-        else 
+        else
         {
             return .failure(.init(message: "incorrect rebased codeword read"))
         }
-        // test rebase 
+        // test rebase
         //                       { 0001_1000, 1010_1101, 0010_0011 }
         //                                                  ^
         //                                                b = 4
         // { 1111_1100, 0011_1111, 0001_1000, 1010_1101, 0010_0011 }
         bits.rebase([0b0011_1111, 0b1111_1100], pointer: &b)
-        
-        guard   bits[b    ] == 0b1000_1010_1101_0010, 
+
+        guard   bits[b    ] == 0b1000_1010_1101_0010,
                 bits[b + 8] == 0b1111_0001_1000_1010
-        else 
+        else
         {
             return .failure(.init(message: "incorrect rebased codeword read"))
         }
         return .success(())
     }
-    
-    static 
+
+    static
     func encodeBitstream() -> Result<Void, _TestFailure>
     {
-        var bits:LZ77.Deflator.Out = .init(hint: 4) 
-        
+        var bits:LZ77.Deflator.Out = .init(hint: 4)
+
         bits.append(0b11, count: 2)
         bits.append(0b01_10, count: 4)
-        
+
         bits.append(0b0110, count: 0)
-        
+
         bits.append(0b1_1111_11, count: 7)
         bits.append(0b1010_1010_1010_101, count: 15)
         bits.append(0b000, count: 3)
         bits.append(0b0_1101_1, count: 6)
         bits.append(0b1_0000_0000_111, count: 12)
-        
+
         var encoded:[UInt8] = []
-        while let chunk:[UInt8] = bits.pop() 
+        while let chunk:[UInt8] = bits.pop()
         {
             encoded.append(contentsOf: chunk)
         }
         encoded.append(contentsOf: bits.pull())
-        
-        guard encoded == 
+
+        guard encoded ==
         [
             0b1101_1011,
-            0b1011_1111, 
-            0b1010_1010, 
+            0b1011_1111,
+            0b1010_1010,
             0b1000_1010,
             0b1110_1101,
-            0b0000_0000, 
+            0b0000_0000,
             0b0000_0001
         ]
-        else 
+        else
         {
             return .failure(.init(message: "incorrect codeword write"))
         }
         return .success(())
     }
-    
-    static 
+
+    static
     func matchLZ77() -> Result<Void, _TestFailure>
     {
-        let segments:[[UInt8]] = 
+        let segments:[[UInt8]] =
         [
-            [1, 2, 3, 3, 1, 2, 3, 3, 1, 2, 3, 1, 2, 2, 2, 2, 2, 2, 0, 1, 2], 
-            [2, 2, 2, 2, 0, 1, 2, 2, 0, 0, 0, 0, 2, 3, 2, 1, 2, 3, 3, 1, 5], 
+            [1, 2, 3, 3, 1, 2, 3, 3, 1, 2, 3, 1, 2, 2, 2, 2, 2, 2, 0, 1, 2],
+            [2, 2, 2, 2, 0, 1, 2, 2, 0, 0, 0, 0, 2, 3, 2, 1, 2, 3, 3, 1, 5],
             [1, 1, 3, 3, 1, 2, 3, 1, 2, 4, 4, 2, 1]
         ]
         var input:LZ77.Deflator.In      = .init()
@@ -202,20 +221,20 @@ extension Main
         for (s, segment):(Int, [UInt8]) in segments.enumerated()
         {
             input.enqueue(contentsOf: segment)
-            
+
             let lookahead:Int = (s == segments.count - 1 ? 0 : 10)
-            while   window.endIndex < 0, 
+            while   window.endIndex < 0,
                     input.count > lookahead
             {
                 window.initialize(with: input.dequeue())
             }
             while   input.count > lookahead
             {
-                let head:(index:Int, next:UInt16?)      = 
+                let head:(index:Int, next:UInt16?)      =
                     window.update(with: input.dequeue())
-                if let match:(run:Int, distance:Int)    = 
-                    window.match(from: head, lookahead: input, 
-                        attempts: .max, goal: .max) 
+                if let match:(run:Int, distance:Int)    =
+                    window.match(from: head, lookahead: input,
+                        attempts: .max, goal: .max)
                 {
                     var run:[UInt8] = [window.literal]
                     for _:Int in 1 ..< match.run
@@ -225,19 +244,19 @@ extension Main
                     }
                     output.append(run)
                 }
-                else 
+                else
                 {
                     output.append([window.literal])
                 }
             }
-            
-            guard s == segments.count - 1 
-            else 
+
+            guard s == segments.count - 1
+            else
             {
-                continue 
+                continue
             }
-            
-            // epilogue: get the matches still sitting in the pipeline 
+
+            // epilogue: get the matches still sitting in the pipeline
             let epilogue:Int = -3 - min(0, window.endIndex)
             while   input.count > epilogue
             {
@@ -245,41 +264,41 @@ extension Main
                 output.append([window.literal])
             }
         }
-        guard output == 
+        guard output ==
         [
-            [1], 
-            [2], 
-            [3], 
-            [3], 
-            [1, 2, 3, 3, 1, 2, 3], 
-            [1], 
-            [2], [2], [2], [2], [2], [2], 
-            [0], 
-            [1, 2, 2, 2, 2, 2], 
-            [0], 
-            [1], 
-            [2], [2], 
-            [0], [0], [0], [0], 
-            [2], 
-            [3], 
-            [2], 
-            [1], 
-            [2], 
-            [3], [3], 
-            [1], 
-            [5], 
-            [1], [1], 
-            [3], [3], 
-            [1], 
-            [2], 
-            [3], 
-            [1], 
-            [2], 
-            [4], [4], 
-            [2], 
+            [1],
+            [2],
+            [3],
+            [3],
+            [1, 2, 3, 3, 1, 2, 3],
+            [1],
+            [2], [2], [2], [2], [2], [2],
+            [0],
+            [1, 2, 2, 2, 2, 2],
+            [0],
+            [1],
+            [2], [2],
+            [0], [0], [0], [0],
+            [2],
+            [3],
+            [2],
+            [1],
+            [2],
+            [3], [3],
+            [1],
+            [5],
+            [1], [1],
+            [3], [3],
+            [1],
+            [2],
+            [3],
+            [1],
+            [2],
+            [4], [4],
+            [2],
             [1]
-        ] 
-        else 
+        ]
+        else
         {
             print(output)
             return .failure(.init(message: "compressed lz77 tokens do not match expected output"))
@@ -287,141 +306,141 @@ extension Main
 
         return .success(())
     }
-    
-    static 
-    func compressZGreedy(count:Int) -> Result<Void, _TestFailure> 
+
+    static
+    func compressZGreedy(count:Int) -> Result<Void, _TestFailure>
     {
         Self.compressZ(count: count, level: 4)
     }
-    static 
-    func compressZLazy(count:Int) -> Result<Void, _TestFailure> 
+    static
+    func compressZLazy(count:Int) -> Result<Void, _TestFailure>
     {
         Self.compressZ(count: count, level: 7)
     }
-    static 
-    func compressZFull(count:Int) -> Result<Void, _TestFailure> 
+    static
+    func compressZFull(count:Int) -> Result<Void, _TestFailure>
     {
         Self.compressZ(count: count, level: 9)
     }
-    static 
-    func compressZ(count:Int, level:Int) -> Result<Void, _TestFailure> 
+    static
+    func compressZ(count:Int, level:Int) -> Result<Void, _TestFailure>
     {
         let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
         var deflator:LZ77.Deflator = .init(level: level, exponent: 8, hint: 16)
         deflator.push(input, last: true)
         var compressed:[UInt8] = []
-        while true 
+        while true
         {
-            let part:[UInt8] = deflator.pull() 
-            guard !part.isEmpty 
-            else 
+            let part:[UInt8] = deflator.pull()
+            guard !part.isEmpty
+            else
             {
                 break
             }
             compressed.append(contentsOf: part)
         }
-        
+
         var inflator:LZ77.Inflator = .init()
-        do 
+        do
         {
             try inflator.push(compressed)
         }
-        catch let error 
+        catch let error
         {
             return .failure(.init(message: "\(error)"))
         }
-        
+
         let output:[UInt8] = inflator.pull()
-        guard input == output 
-        else 
+        guard input == output
+        else
         {
             return .failure(.init(message: "decompressor output does not match compressor input"))
         }
         return .success(())
     }
-    
-    static 
-    func filtering(delay:Int) -> Result<Void, _TestFailure> 
+
+    static
+    func filtering(delay:Int) -> Result<Void, _TestFailure>
     {
         let size:(x:Int, y:Int) = (24, 16)
-        let original:[[UInt8]] = (0 ..< size.y).map 
+        let original:[[UInt8]] = (0 ..< size.y).map
         {
             _ in [0] + (0 ..< size.x).map{ _ in UInt8.random(in: .min ... .max) }
         }
-        
-        let filtered:[[UInt8]] = .init(unsafeUninitializedCapacity: size.y) 
+
+        let filtered:[[UInt8]] = .init(unsafeUninitializedCapacity: size.y)
         {
             $1 = $0.count
-            guard let base:UnsafeMutablePointer<[UInt8]> = $0.baseAddress 
-            else 
+            guard let base:UnsafeMutablePointer<[UInt8]> = $0.baseAddress
+            else
             {
-                return 
+                return
             }
-            
+
             var last:[UInt8] = .init(repeating: 0, count: size.x + 1)
             for (i, line):(Int, [UInt8]) in zip($0.indices, original)
             {
                 (base + i).initialize(to: PNG.Encoder.filter(line, last: last, delay: delay))
-                last = line 
+                last = line
             }
         }
-        
-        let unfiltered:[[UInt8]] = .init(unsafeUninitializedCapacity: size.y) 
+
+        let unfiltered:[[UInt8]] = .init(unsafeUninitializedCapacity: size.y)
         {
             $1 = $0.count
-            guard let base:UnsafeMutablePointer<[UInt8]> = $0.baseAddress 
-            else 
+            guard let base:UnsafeMutablePointer<[UInt8]> = $0.baseAddress
+            else
             {
-                return 
+                return
             }
-            
+
             var last:[UInt8] = .init(repeating: 0, count: size.x + 1)
             for (i, line):(Int, [UInt8]) in zip($0.indices, filtered)
             {
                 var line:[UInt8] = line
                 PNG.Decoder.defilter(&line, last: last, delay: delay)
-                last  = line 
-                
+                last  = line
+
                 line[line.startIndex] = 0
                 (base + i).initialize(to: line)
             }
         }
-        
-        for (a, b):([UInt8], [UInt8]) in zip(original, unfiltered) 
+
+        for (a, b):([UInt8], [UInt8]) in zip(original, unfiltered)
         {
-            guard a == b 
-            else 
+            guard a == b
+            else
             {
                 return .failure(.init(message: "original and filter-cycled scanlines do not match"))
             }
         }
         return .success(())
     }
-    
-    static 
+
+    static
     func premultiplication8() -> Result<Void, _TestFailure>
     {
         Self.premultiplication(for: UInt8.self, over: (.min ... .max, .min ... .max))
     }
     // exhaustive 16-bit premultiplication tests take way too long to run, so we
-    // sample a select subset of the input space 
-    static 
+    // sample a select subset of the input space
+    static
     func premultiplication16() -> Result<Void, _TestFailure>
     {
-        Self.premultiplication(for: UInt16.self, over: 
+        Self.premultiplication(for: UInt16.self, over:
         (
             (0 ..< 512).map{ _ in .random(in: .min ... .max) },
             (0 ..< 512).map{ _ in .random(in: .min ... .max) }
         ))
     }
-    static 
+    static
     func premultiplication<T, C>(for _:T.Type, over:(color:C, alpha:C)) -> Result<Void, _TestFailure>
-        where   T:FixedWidthInteger & UnsignedInteger, 
+        where   T:FixedWidthInteger & UnsignedInteger,
                 C:Collection, C.Element == T
     {
-        for color:T in over.color 
+        for color:T in over.color
         {
-            for alpha:T in over.alpha 
+            for alpha:T in over.alpha
             {
                 let direct:PNG.VA<T>        = .init(color, alpha),
                     premultiplied:PNG.VA<T> = direct.premultiplied
@@ -436,10 +455,10 @@ extension Main
                 {
                     return .failure(.init(message: "premultiplication of va\(T.bitWidth)(\(direct.v), \(direct.a)) returned (\(premultiplied.v), \(premultiplied.a)), expected (\(unquantized), \(alpha))"))
                 }
-                
+
                 let repremultiplied:PNG.VA<T> = premultiplied.straightened.premultiplied
-                guard premultiplied == repremultiplied 
-                else 
+                guard premultiplied == repremultiplied
+                else
                 {
                     return .failure(.init(message: "premultiplication of va\(T.bitWidth)(\(direct.v), \(direct.a)) failed to round-trip correctly"))
                 }
@@ -448,32 +467,32 @@ extension Main
 
         return .success(())
     }
-    
-    static 
+
+    static
     func dictionary() -> Result<Void, _TestFailure>
     {
         let dictionary:General.Dictionary = .init(exponent: 10)
-        
-        guard   dictionary.update(key: 0, value: 1) == nil, 
-                dictionary.update(key: 1, value: 2) == nil, 
-                dictionary.update(key: 0, value: 3) == 1, 
-                dictionary.update(key: 2, value: 4) == nil, 
-                dictionary.remove(key: 1, value: 5) == (), 
-                dictionary.update(key: 1, value: 6) == 2, 
-                dictionary.remove(key: 1, value: 6) == (), 
-                dictionary.update(key: 1, value: 7) == nil 
-        else 
+
+        guard   dictionary.update(key: 0, value: 1) == nil,
+                dictionary.update(key: 1, value: 2) == nil,
+                dictionary.update(key: 0, value: 3) == 1,
+                dictionary.update(key: 2, value: 4) == nil,
+                dictionary.remove(key: 1, value: 5) == (),
+                dictionary.update(key: 1, value: 6) == 2,
+                dictionary.remove(key: 1, value: 6) == (),
+                dictionary.update(key: 1, value: 7) == nil
+        else
         {
             return .failure(.init(message: "dictionary update/remove semantics are inconsistent"))
-        } 
-        
-        var a:General.Dictionary    = .init(exponent: 15), 
+        }
+
+        var a:General.Dictionary    = .init(exponent: 15),
             b:[UInt32: UInt16]      = [:]
         for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
         {
             let key:UInt32 = .random(in: 0 ... 1000)
             guard a.update(key: key, value: i) == b.updateValue(i, forKey: key)
-            else 
+            else
             {
                 return .failure(.init(message: "dictionary update semantics do not match Swift.Dictionary"))
             }
@@ -481,10 +500,10 @@ extension Main
         for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
         {
             let key:UInt32 = .random(in: 0 ... 1000)
-            
-            if b[key] == i 
+
+            if b[key] == i
             {
-                b[key] = nil 
+                b[key] = nil
             }
             a.remove(key: key, value: i)
         }
@@ -492,12 +511,12 @@ extension Main
         {
             let key:UInt32 = .random(in: 0 ... 1000)
             guard a.update(key: key, value: i) == b.updateValue(i, forKey: key)
-            else 
+            else
             {
                 return .failure(.init(message: "dictionary update/remove semantics do not match Swift.Dictionary"))
             }
         }
-        
+
         return .success(())
     }
 }
