@@ -46,8 +46,7 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
-            ],
-            path: "Tests/PNG"),
+            ]),
 
         .executableTarget(name: "PNGIntegrationTests",
             dependencies:
@@ -55,7 +54,6 @@ let package:Package = .init(name: "swift-png",
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
             ],
-            path: "Tests/PNGIntegration",
             exclude:
             [
                 "PngSuite.LICENSE",
@@ -71,7 +69,6 @@ let package:Package = .init(name: "swift-png",
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
             ],
-            path: "Tests/PNGCompression",
             exclude:
             [
                 "Baselines/",
