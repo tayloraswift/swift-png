@@ -11,22 +11,22 @@ jobs:
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
-                os: [windows-2022, windows-2019]
-                swift: [5.6.2]
+                os: [windows-2022]
+                swift: [5.9.1]
         steps:
-            -   name: checkout 
+            -   name: checkout
                 uses: actions/checkout@v2
-            
-            -   name: toolchain 
+
+            -   name: toolchain
                 uses: compnerd/gha-setup-swift@v0.0.1
                 with:
                     branch: swift-${{ matrix.swift }}-release
                     tag: ${{ matrix.swift }}-RELEASE
-            -   name: build 
+            -   name: build
                 run: |
                     swift --version
                     swift build
-            -   name: test 
+            -   name: test
                 run: |
                     swift --version
                     swift run -c debug PNGTests
