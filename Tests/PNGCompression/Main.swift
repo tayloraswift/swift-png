@@ -1,16 +1,16 @@
 import PNG
 import Testing
 
-struct _TestFailure:Error 
+struct _TestFailure:Error
 {
-    let message:String 
+    let message:String
 }
 
-@main 
-enum Main:SynchronousTests
+@main
+enum Main:SyncTests
 {
     static
-    func run(tests:inout Tests)
+    func run(tests:Tests)
     {
         let suite:[(name:String, members:[String])] =
         [
@@ -90,23 +90,34 @@ enum Main:SynchronousTests
         ]
         for (name, members):(String, [String]) in suite
         {
-            tests.group(name)
+            guard
+            let tests:TestGroup = tests / name
+            else
             {
-                for member:String in members
+                continue
+            }
+
+            for member:String in members
+            {
+                guard
+                let tests:TestGroup = tests / member
+                else
                 {
-                    $0.do(name: member)
-                    {
-                        _ in try Self.encode(member).get()
-                    }
+                    continue
+                }
+
+                tests.do
+                {
+                    try Self.encode(member).get()
                 }
             }
         }
     }
 
-    static 
+    static
     func encode(_ name:String) -> Result<Void, _TestFailure>
     {
-        let path:(png:String, out:String) = 
+        let path:(png:String, out:String) =
         (
             "Tests/PNGCompression/Baselines/\(name).png",
             "Tests/PNGCompression/Outputs/\(name).png"
@@ -114,8 +125,8 @@ enum Main:SynchronousTests
 
         do
         {
-            guard let baseline:(image:PNG.Data.Rectangular, size:Int) = 
-                (try System.File.Source.open(path: path.png) 
+            guard let baseline:(image:PNG.Data.Rectangular, size:Int) =
+                (try System.File.Source.open(path: path.png)
             {
                 (try .decompress(stream: &$0), $0.count!)
             })
@@ -123,11 +134,11 @@ enum Main:SynchronousTests
             {
                 return .failure(.init(message: "failed to open file '\(path.png)'"))
             }
-            
+
             try baseline.image.compress(path: path.out, level: 9)
-            
-            guard let output:(image:PNG.Data.Rectangular, size:Int) = 
-                (try System.File.Source.open(path: path.out) 
+
+            guard let output:(image:PNG.Data.Rectangular, size:Int) =
+                (try System.File.Source.open(path: path.out)
             {
                 (try .decompress(stream: &$0), $0.count!)
             })
@@ -135,7 +146,7 @@ enum Main:SynchronousTests
             {
                 return .failure(.init(message: "failed to open file '\(path.out)'"))
             }
-            
+
             let pixels:[PNG.RGBA<UInt16>] = baseline.image.unpack(as: PNG.RGBA<UInt16>.self)
             print()
             print(name)
@@ -157,5 +168,5 @@ enum Main:SynchronousTests
         {
             return .failure(.init(message: "\(error)"))
         }
-    } 
+    }
 }
