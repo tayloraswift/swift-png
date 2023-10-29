@@ -946,7 +946,7 @@ extension LZ77.Inflator.In
                 (old:UnsafeMutablePointer<UInt16>) in
                 new.withUnsafeMutablePointerToElements
                 {
-                    $0.assign(from: old + a, count: (rollover + 1) >> 1)
+                    $0.update(from: old + a, count: (rollover + 1) >> 1)
                 }
                 return new
             }
@@ -956,7 +956,7 @@ extension LZ77.Inflator.In
             // shift to beginning
             self.storage.withUnsafeMutablePointerToElements
             {
-                $0.assign(from: $0 + a, count: (rollover + 1) >> 1)
+                $0.update(from: $0 + a, count: (rollover + 1) >> 1)
             }
         }
 
@@ -1125,7 +1125,7 @@ extension LZ77.Inflator.Out
                 new.withUnsafeMutablePointerToElements
                 {
                     // cannot do shift here, since the checksum has to be updated
-                    $0.assign(from: body, count: self.endIndex)
+                    $0.update(from: body, count: self.endIndex)
                 }
                 return new
             }
@@ -1190,7 +1190,7 @@ extension LZ77.Inflator.Out
         self.storage.withUnsafeMutablePointerToElements
         {
             let start:UnsafeMutablePointer<UInt8>   = $0 + self.endIndex
-            // cannot use assign(from:count:) because the standard library implementation
+            // cannot use update(from:count:) because the standard library implementation
             // copies from the back to the front if the ranges overlap
             // https://github.com/apple/swift/blob/master/stdlib/public/core/UnsafePointer.swift#L745
             for current:UnsafeMutablePointer<UInt8> in start ..< start + count
@@ -1225,7 +1225,7 @@ extension LZ77.Inflator.Out
             {
                 self.integral   = LZ77.MRC32.update(self.integral,
                             from: $0,                   count: self.startIndex)
-                $0.assign(  from: $0 + self.startIndex, count: count)
+                $0.update(  from: $0 + self.startIndex, count: count)
                 self.currentIndex  -= self.startIndex
                 self.endIndex      -= self.startIndex
                 self.startIndex     = 0
@@ -1247,7 +1247,7 @@ extension LZ77.Inflator.Out
                 {
                     self.integral   = LZ77.MRC32.update(self.integral,
                                 from: body,                   count: self.startIndex)
-                    $0.assign(  from: body + self.startIndex, count: count)
+                    $0.update(  from: body + self.startIndex, count: count)
                 }
                 self.currentIndex  -= self.startIndex
                 self.endIndex      -= self.startIndex
