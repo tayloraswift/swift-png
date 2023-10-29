@@ -372,8 +372,8 @@ enum Main:SyncTests
     {
         let path:(in:String, rgba:String) =
         (
-            "Tests/PNGIntegration/Inputs/\(subdirectory)/\(name).png",
-            "Tests/PNGIntegration/RGBA/\(name).png.rgba"
+            "Sources/PNGIntegrationTests/Inputs/\(subdirectory)/\(name).png",
+            "Sources/PNGIntegrationTests/RGBA/\(name).png.rgba"
         )
         return Self.decode(path: path, premultiplied: subdirectory == "iOS")
     }
@@ -497,7 +497,7 @@ enum Main:SyncTests
     {
         func decode(_ name:String) throws -> Result<Void, _TestFailure>?
         {
-            let path:String = "Tests/PNGIntegration/Inputs/Invalid/\(name).png"
+            let path:String = "Sources/PNGIntegrationTests/Inputs/Invalid/\(name).png"
             if let _:PNG.Data.Rectangular = try .decompress(path: path)
             {
                 return .failure(.init(message: "file '\(path)' is invalid, but decoded without errors"))
@@ -624,9 +624,9 @@ enum Main:SyncTests
     {
         let path:(in:String, rgba:String, out:String) =
         (
-            "Tests/PNGIntegration/Inputs/\(subdirectory)/\(name).png",
-            "Tests/PNGIntegration/RGBA/\(name).png.rgba",
-            "Tests/PNGIntegration/Outputs/\(subdirectory)/\(name).png"
+            "Sources/PNGIntegrationTests/Inputs/\(subdirectory)/\(name).png",
+            "Sources/PNGIntegrationTests/RGBA/\(name).png.rgba",
+            "Sources/PNGIntegrationTests/Outputs/\(subdirectory)/\(name).png"
         )
 
         return Self.encode(path: path, level: level, premultiplied: subdirectory == "iOS")
