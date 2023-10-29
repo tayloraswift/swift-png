@@ -119,8 +119,8 @@ enum Main:SyncTests
     {
         let path:(png:String, out:String) =
         (
-            "Tests/PNGCompression/Baselines/\(name).png",
-            "Tests/PNGCompression/Outputs/\(name).png"
+            "Sources/PNGCompressionTests/Baselines/\(name).png",
+            "Sources/PNGCompressionTests/Outputs/\(name).png"
         )
 
         do
