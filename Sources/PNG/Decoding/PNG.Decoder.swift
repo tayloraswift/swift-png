@@ -1,7 +1,7 @@
-extension PNG 
+extension PNG
 {
-    static 
-    let adam7:[(base:(x:Int, y:Int), exponent:(x:Int, y:Int))] = 
+    static
+    let adam7:[(base:(x:Int, y:Int), exponent:(x:Int, y:Int))] =
     [
         (base: (0, 0), exponent: (3, 3)),
         (base: (4, 0), exponent: (3, 3)),
@@ -11,142 +11,142 @@ extension PNG
         (base: (1, 0), exponent: (1, 1)),
         (base: (0, 1), exponent: (0, 1)),
     ]
-    
-    struct Decoder 
+
+    struct Decoder
     {
-        private 
-        var row:(index:Int, reference:[UInt8])?, 
+        private
+        var row:(index:Int, reference:[UInt8])?,
             pass:Int?
         private(set)
-        var `continue`:Void? 
-        private 
-        var inflator:LZ77.Inflator 
+        var `continue`:Void?
+        private
+        var inflator:LZ77.Inflator
     }
 }
-extension PNG.Decoder 
+extension PNG.Decoder
 {
     init(standard:PNG.Standard, interlaced:Bool)
     {
         self.row        = nil
         self.pass       = interlaced ? 0 : nil
         self.continue   = ()
-        
-        let format:LZ77.Format 
-        switch standard 
+
+        let format:LZ77.Format
+        switch standard
         {
-        case .common:   format = .zlib 
+        case .common:   format = .zlib
         case .ios:      format = .ios
         }
-        
+
         self.inflator   = .init(format: format)
     }
-    
-    mutating 
-    func push(_ data:[UInt8], size:(x:Int, y:Int), pixel:PNG.Format.Pixel, 
+
+    mutating
+    func push(_ data:[UInt8], size:(x:Int, y:Int), pixel:PNG.Format.Pixel,
         delegate:(UnsafeBufferPointer<UInt8>, (x:Int, y:Int), (x:Int, y:Int)) throws -> ())
         throws -> Void?
     {
-        guard let _:Void = self.continue 
-        else 
+        guard let _:Void = self.continue
+        else
         {
             throw PNG.DecodingError.extraneousImageDataCompressedData
         }
-        
+
         self.continue = try self.inflator.push(data)
-        
+
         let delay:Int   = (pixel.volume + 7) >> 3
-        if let pass:Int = self.pass 
+        if let pass:Int = self.pass
         {
             for z:Int in pass ..< 7
             {
                 let (base, exponent):((x:Int, y:Int), (x:Int, y:Int)) = PNG.adam7[z]
-                let stride:(x:Int, y:Int)   = 
+                let stride:(x:Int, y:Int)   =
                 (
-                    x: 1                                 << exponent.x, 
+                    x: 1                                 << exponent.x,
                     y: 1                                 << exponent.y
                 )
-                let subimage:(x:Int, y:Int) = 
+                let subimage:(x:Int, y:Int) =
                 (
-                    x: (size.x + stride.x - base.x - 1 ) >> exponent.x, 
+                    x: (size.x + stride.x - base.x - 1 ) >> exponent.x,
                     y: (size.y + stride.y - base.y - 1 ) >> exponent.y
                 )
-                
-                guard subimage.x > 0, subimage.y > 0 
-                else 
+
+                guard subimage.x > 0, subimage.y > 0
+                else
                 {
-                    continue 
+                    continue
                 }
-                
+
                 let pitch:Int = (subimage.x * pixel.volume + 7) >> 3
-                var (start, last):(Int, [UInt8]) = self.row ?? 
+                var (start, last):(Int, [UInt8]) = self.row ??
                     (0, .init(repeating: 0, count: pitch + 1))
-                self.row = nil 
-                for y:Int in start ..< subimage.y 
+                self.row = nil
+                for y:Int in start ..< subimage.y
                 {
                     guard var scanline:[UInt8] = self.inflator.pull(last.count)
-                    else 
+                    else
                     {
-                        self.row  = (y, last) 
+                        self.row  = (y, last)
                         self.pass = z
                         return self.continue
                     }
-                    
+
                     #if DUMP_FILTERED_SCANLINES
                     print("< scanline(\(scanline[0]))[\(scanline.dropFirst().prefix(8).map(String.init(_:)).joined(separator: ", ")) ... ]")
-                    #endif 
-                    
+                    #endif
+
                     Self.defilter(&scanline, last: last, delay: delay)
-                    
+
                     let base:(x:Int, y:Int) = (base.x, base.y + y * stride.y)
-                    try scanline.dropFirst().withUnsafeBufferPointer 
+                    try scanline.dropFirst().withUnsafeBufferPointer
                     {
                         try delegate($0, base, stride)
                     }
-                    
-                    last = scanline 
+
+                    last = scanline
                 }
             }
         }
-        else 
+        else
         {
             let pitch:Int = (size.x * pixel.volume + 7) >> 3
-            
-            var (start, last):(Int, [UInt8]) = self.row ?? 
+
+            var (start, last):(Int, [UInt8]) = self.row ??
                 (0, .init(repeating: 0, count: pitch + 1))
-            self.row = nil 
-            for y:Int in start ..< size.y 
+            self.row = nil
+            for y:Int in start ..< size.y
             {
                 guard var scanline:[UInt8] = self.inflator.pull(last.count)
-                else 
+                else
                 {
-                    self.row  = (y, last) 
+                    self.row  = (y, last)
                     return self.continue
                 }
-                
+
                 #if DUMP_FILTERED_SCANLINES
                 print("< scanline(\(scanline[0]))[\(scanline.dropFirst().prefix(8).map(String.init(_:)).joined(separator: ", ")) ... ]")
-                #endif 
-                
+                #endif
+
                 Self.defilter(&scanline, last: last, delay: delay)
-                try scanline.dropFirst().withUnsafeBufferPointer 
+                try scanline.dropFirst().withUnsafeBufferPointer
                 {
                     try delegate($0, (0, y), (1, 1))
                 }
-                
-                last = scanline 
+
+                last = scanline
             }
         }
-        
+
         self.pass = 7
-        guard self.inflator.pull().isEmpty 
-        else 
+        guard self.inflator.pull().isEmpty
+        else
         {
             throw PNG.DecodingError.extraneousImageData
         }
         return self.continue
     }
-    
-    static 
+
+    static
     func defilter(_ line:inout [UInt8], last:[UInt8], delay:Int)
     {
         let indices:Range<Int> = line.indices.dropFirst()
