@@ -297,7 +297,7 @@ extension LZ77.Deflator.In
                 new.withUnsafeMutablePointerToElements
                 {
                     // cannot do shift here, since the checksum has to be updated
-                    $0.assign(from: body, count: self.endIndex)
+                    $0.update(from: body, count: self.endIndex)
                 }
                 return new
             }
@@ -328,7 +328,7 @@ extension LZ77.Deflator.In
         self.reserve(elements.count + 4)
         self.storage.withUnsafeMutablePointerToElements
         {
-            ($0 + self.endIndex).assign(from: elements, count: elements.count)
+            ($0 + self.endIndex).update(from: elements, count: elements.count)
         }
         self.endIndex += elements.count
     }
@@ -396,7 +396,7 @@ extension LZ77.Deflator.In
             {
                 self.integral   = LZ77.MRC32.update(self.integral,
                             from: $0 + 4,                   count: self.startIndex - 4)
-                $0.assign(  from: $0 - 4 + self.startIndex, count: self.count      + 4)
+                $0.update(  from: $0 - 4 + self.startIndex, count: self.count      + 4)
                 self.endIndex   = 4 + self.count
                 self.startIndex = 4
             }
@@ -417,7 +417,7 @@ extension LZ77.Deflator.In
                 {
                     self.integral   = LZ77.MRC32.update(self.integral,
                                 from: body + 4,                   count: self.startIndex - 4)
-                    $0.assign(  from: body - 4 + self.startIndex, count: self.count      + 4)
+                    $0.update(  from: body - 4 + self.startIndex, count: self.count      + 4)
                 }
                 self.endIndex   = 4 + self.count
                 self.startIndex = 4
@@ -1220,7 +1220,7 @@ extension LZ77.Deflator.Out
                 {
                     $0.withUnsafeMutablePointerToElements
                     {
-                        $0.assign(from: body, count: self.capacity)
+                        $0.update(from: body, count: self.capacity)
                     }
                     self.capacity = $0.capacity
                     return ()

@@ -237,7 +237,7 @@ extension PNG.Transparency
         case .palette(alpha: let alpha):
             return .init(unsafeUninitializedCapacity: alpha.count)
             {
-                $0.baseAddress?.assign(from: alpha, count: $0.count)
+                $0.baseAddress?.update(from: alpha, count: $0.count)
                 $1 = $0.count
             }
         case .rgb(key: let c):
