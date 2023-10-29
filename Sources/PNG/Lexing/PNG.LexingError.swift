@@ -1,72 +1,72 @@
-extension PNG 
+extension PNG
 {
-    /// enum PNG.LexingError 
-    /// :   Error 
+    /// enum PNG.LexingError
+    /// :   Error
     ///     A lexing error.
     /// # [See also](error-handling)
     /// ## (error-handling)
-    public 
+    public
     enum LexingError
     {
-        /// case PNG.LexingError.truncatedSignature 
-        ///     The lexer encountered end-of-stream while reading signature 
+        /// case PNG.LexingError.truncatedSignature
+        ///     The lexer encountered end-of-stream while reading signature
         ///     bytes from a bytestream.
         case truncatedSignature
         /// case PNG.LexingError.invalidSignature(_:)
-        ///     The signature bytes read by the lexer did not match the expected 
-        ///     sequence. 
-        /// 
+        ///     The signature bytes read by the lexer did not match the expected
+        ///     sequence.
+        ///
         ///     The expected byte sequence is `[137, 80, 78, 71, 13, 10, 26, 10]`.
         /// - _ : [Swift.UInt8]
-        ///     The invalid signature bytes. 
+        ///     The invalid signature bytes.
         case invalidSignature([UInt8])
         /// case PNG.LexingError.truncatedChunkHeader
-        ///     The lexer encountered end-of-stream while reading a chunk header 
+        ///     The lexer encountered end-of-stream while reading a chunk header
         ///     from a bytestream.
-        case truncatedChunkHeader 
+        case truncatedChunkHeader
         /// case PNG.LexingError.truncatedChunkBody(expected:)
-        ///     The lexer encountered end-of-stream while reading a chunk body 
+        ///     The lexer encountered end-of-stream while reading a chunk body
         ///     from a bytestream.
-        /// - expected : Swift.Int 
+        /// - expected : Swift.Int
         ///     The number of bytes the lexer expected to read.
         case truncatedChunkBody(expected:Int)
         /// case PNG.LexingError.invalidChunkTypeCode(_:)
-        ///     The lexer read a chunk with an invalid type identifier code. 
-        /// - _ : Swift.UInt32 
+        ///     The lexer read a chunk with an invalid type identifier code.
+        /// - _ : Swift.UInt32
         ///     The invalid type identifier code.
         case invalidChunkTypeCode(UInt32)
         /// case PNG.LexingError.invalidChunkChecksum(declared:computed:)
-        ///     The chunk checksum computed by the lexer did not match the 
-        ///     checksum declared in the chunk footer. 
-        /// - declared : Swift.UInt32 
+        ///     The chunk checksum computed by the lexer did not match the
+        ///     checksum declared in the chunk footer.
+        /// - declared : Swift.UInt32
         ///     The checksum declared in the chunk footer.
-        /// - computed : Swift.UInt32 
+        /// - computed : Swift.UInt32
         ///     The checksum computed by the lexer.
         case invalidChunkChecksum(declared:UInt32, computed:UInt32)
     }
 }
-extension PNG.LexingError:PNG.Error 
+extension PNG.LexingError:PNG.Error
 {
     /// static var PNG.LexingError.namespace : Swift.String { get }
-    /// ?:  Error 
+    /// ?:  Error
     ///     The string `"lexing error"`.
-    public static 
-    var namespace:String 
+    public static
+    var namespace:String
     {
         "lexing error"
     }
     /// var PNG.LexingError.message : Swift.String { get }
-    /// ?:  Error 
+    /// ?:  Error
     ///     A human-readable summary of this error.
     /// ## ()
-    public 
-    var message:String 
+    public
+    var message:String
     {
-        switch self 
+        switch self
         {
-        case .invalidSignature: 
+        case .invalidSignature:
             return "invalid png signature bytes"
-        case .truncatedSignature: 
+        case .truncatedSignature:
             return "failed to read png signature bytes from source bytestream"
         case .truncatedChunkHeader:
             return "failed to read chunk header from source bytestream"
@@ -79,21 +79,21 @@ extension PNG.LexingError:PNG.Error
         }
     }
     /// var PNG.LexingError.details : Swift.String? { get }
-    /// ?:  Error 
-    ///     An optional human-readable string providing additional details 
+    /// ?:  Error
+    ///     An optional human-readable string providing additional details
     ///     about this error.
     /// ## ()
-    public 
+    public
     var details:String?
     {
-        switch self 
+        switch self
         {
-        case .invalidSignature(let declared): 
+        case .invalidSignature(let declared):
             return "signature \(declared) does not match expected png signature \(PNG.signature)"
         case .truncatedSignature, .truncatedChunkHeader, .truncatedChunkBody:
             return nil
         case .invalidChunkTypeCode(let name):
-            let string:String = withUnsafeBytes(of: name.bigEndian) 
+            let string:String = withUnsafeBytes(of: name.bigEndian)
             {
                 .init(decoding: $0, as: Unicode.ASCII.self)
             }

@@ -1,15 +1,15 @@
-extension PNG 
+extension PNG
 {
-    /// enum PNG.Standard 
+    /// enum PNG.Standard
     ///     A PNG standard.
     /// ## (contextual-decoding)
-    public 
-    enum Standard 
+    public
+    enum Standard
     {
-        /// case PNG.Standard.common 
+        /// case PNG.Standard.common
         ///     The core PNG color formats.
         case common
-        /// case PNG.Standard.ios 
+        /// case PNG.Standard.ios
         ///     The iphone-optimized PNG color formats.
         case ios
     }
