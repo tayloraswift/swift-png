@@ -1,43 +1,43 @@
 //  This Source Code Form is subject to the terms of the Mozilla Public
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
-//  file, You can obtain one at https://mozilla.org/MPL/2.0/. 
+//  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//  enum General 
+//  enum General
 //      A namespace for general functionality.
 //  #  [Integer storage](general-storage-types)
 //  #  [See also](top-level-namespaces)
 //  ## (1:top-level-namespaces)
-public 
-enum General    
+public
+enum General
 {
 }
 
-extension General  
+extension General
 {
-    //  struct General.Storage<I> 
-    //  where I:Swift.FixedWidthInteger & Swift.BinaryInteger 
-    //  @propertyWrapper 
-    //      A property wrapper providing an immutable [`Swift.Int`] interface backed 
+    //  struct General.Storage<I>
+    //  where I:Swift.FixedWidthInteger & Swift.BinaryInteger
+    //  @propertyWrapper
+    //      A property wrapper providing an immutable [`Swift.Int`] interface backed
     //      by a different integer type.
     //  #  [See also](general-storage-types)
     //  ## (general-storage-types)
-    @propertyWrapper 
-    struct Storage<I>:Equatable where I:FixedWidthInteger & BinaryInteger 
+    @propertyWrapper
+    struct Storage<I>:Equatable where I:FixedWidthInteger & BinaryInteger
     {
-        private 
-        var storage:I 
+        private
+        var storage:I
         //  init General.Storage.init(wrappedValue:)
-        //      Creates an instance of this property wrapper, with the given value 
+        //      Creates an instance of this property wrapper, with the given value
         //      truncated to the width of the storage type [`I`].
-        //  - wrappedValue : Swift.Int 
+        //  - wrappedValue : Swift.Int
         //      The value to wrap.
-        init(wrappedValue:Int) 
+        init(wrappedValue:Int)
         {
             self.storage = .init(truncatingIfNeeded: wrappedValue)
         }
         //  var General.Storage.wrappedValue : Swift.Int { get }
         //      The value wrapped by this property wrapper, expanded to an [`Swift.Int`].
-        var wrappedValue:Int 
+        var wrappedValue:Int
         {
             .init(self.storage)
         }
@@ -47,13 +47,13 @@ extension General.Storage:Sendable where I:Sendable
 {
 }
 
-extension General 
-{    
-    struct Heap<Key, Value> where Key:Comparable 
+extension General
+{
+    struct Heap<Key, Value> where Key:Comparable
     {
-        private 
+        private
         var storage:[(Key, Value)]
-        
+
         // support 1-based indexing
         private
         subscript(index:Int) -> (key:Key, value:Value)
@@ -76,18 +76,18 @@ extension General
         {
             self.storage.first
         }
-        var isEmpty:Bool 
+        var isEmpty:Bool
         {
-            self.storage.isEmpty 
+            self.storage.isEmpty
         }
-        
-        private 
-        var startIndex:Int 
+
+        private
+        var startIndex:Int
         {
             1
         }
-        private 
-        var endIndex:Int 
+        private
+        var endIndex:Int
         {
             1 + self.count
         }
@@ -96,35 +96,35 @@ extension General
 extension General.Heap
 {
     @inline(__always)
-    private static 
+    private static
     func left(index:Int) -> Int
     {
         return index << 1
     }
     @inline(__always)
-    private static 
+    private static
     func right(index:Int) -> Int
     {
         return index << 1 + 1
     }
     @inline(__always)
-    private static 
+    private static
     func parent(index:Int) -> Int
     {
         return index >> 1
     }
-    
+
     private
     func highest(above child:Int) -> Int?
     {
         let p:Int = Self.parent(index: child)
         // make sure it’s not the root
-        guard p >= self.startIndex 
-        else 
+        guard p >= self.startIndex
+        else
         {
-            return nil 
+            return nil
         }
-                
+
         // and the element is higher than the parent
         return self[child].key < self[p].key ? p : nil
     }
@@ -143,13 +143,13 @@ extension General.Heap
         guard r < self.endIndex
         else
         {
-            return  self[l].key < self[parent].key ? l : nil 
+            return  self[l].key < self[parent].key ? l : nil
         }
-        
+
         let c:Int = self[r].key < self[l].key      ? r : l
-        return      self[c].key < self[parent].key ? c : nil 
+        return      self[c].key < self[parent].key ? c : nil
     }
-    
+
 
     @inline(__always)
     private mutating
@@ -177,7 +177,7 @@ extension General.Heap
         {
             return
         }
-        
+
         self.swapAt  (index, child)
         self.siftDown(index: child)
     }
@@ -188,30 +188,30 @@ extension General.Heap
         self.storage.append((key, value))
         self.siftUp(index: self.endIndex - 1)
     }
-    
+
     mutating
     func dequeue() -> (key:Key, value:Value)?
     {
-        switch self.count 
+        switch self.count
         {
         case 0:
-            return nil 
+            return nil
         case 1:
             return self.storage.removeLast()
         default:
             self.swapAt(self.startIndex, self.endIndex - 1)
-            defer 
+            defer
             {
                 self.siftDown(index: self.startIndex)
             }
             return self.storage.removeLast()
         }
     }
-    
-    init<S>(_ sequence:S) where S:Sequence, S.Element == (Key, Value) 
+
+    init<S>(_ sequence:S) where S:Sequence, S.Element == (Key, Value)
     {
         self.storage    = .init(sequence)
-        // heapify 
+        // heapify
         let halfway:Int = Self.parent(index: self.endIndex - 1) + 1
         for i:Int in (self.startIndex ..< halfway).reversed()
         {
@@ -219,9 +219,9 @@ extension General.Heap
         }
     }
 }
-extension General.Heap:ExpressibleByArrayLiteral 
+extension General.Heap:ExpressibleByArrayLiteral
 {
-    init(arrayLiteral:(key:Key, value:Value)...) 
+    init(arrayLiteral:(key:Key, value:Value)...)
     {
         self.init(arrayLiteral)
     }
@@ -235,22 +235,22 @@ extension Array where Element == UInt8
         return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
     }
 }
-extension UnsafeMutableBufferPointer where Element == UInt8 
+extension UnsafeMutableBufferPointer where Element == UInt8
 {
     func store<U, T>(_ value:U, asBigEndian type:T.Type, at byte:Int = 0)
         where U:BinaryInteger, T:FixedWidthInteger
     {
         let cast:T = .init(truncatingIfNeeded: value)
-        withUnsafeBytes(of: cast.bigEndian) 
+        withUnsafeBytes(of: cast.bigEndian)
         {
-            guard   let source:UnsafeRawPointer             = $0.baseAddress, 
-                    let destination:UnsafeMutableRawPointer = 
+            guard   let source:UnsafeRawPointer             = $0.baseAddress,
+                    let destination:UnsafeMutableRawPointer =
                 self.baseAddress.map(UnsafeMutableRawPointer.init(_:))
-            else 
+            else
             {
-                return 
+                return
             }
-            
+
             (destination + byte).copyMemory(from: source, byteCount: MemoryLayout<T>.size)
         }
     }
