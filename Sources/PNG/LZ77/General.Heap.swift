@@ -2,51 +2,6 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-//  enum General
-//      A namespace for general functionality.
-//  #  [Integer storage](general-storage-types)
-//  #  [See also](top-level-namespaces)
-//  ## (1:top-level-namespaces)
-public
-enum General
-{
-}
-
-extension General
-{
-    //  struct General.Storage<I>
-    //  where I:Swift.FixedWidthInteger & Swift.BinaryInteger
-    //  @propertyWrapper
-    //      A property wrapper providing an immutable [`Swift.Int`] interface backed
-    //      by a different integer type.
-    //  #  [See also](general-storage-types)
-    //  ## (general-storage-types)
-    @propertyWrapper
-    struct Storage<I>:Equatable where I:FixedWidthInteger & BinaryInteger
-    {
-        private
-        var storage:I
-        //  init General.Storage.init(wrappedValue:)
-        //      Creates an instance of this property wrapper, with the given value
-        //      truncated to the width of the storage type [`I`].
-        //  - wrappedValue : Swift.Int
-        //      The value to wrap.
-        init(wrappedValue:Int)
-        {
-            self.storage = .init(truncatingIfNeeded: wrappedValue)
-        }
-        //  var General.Storage.wrappedValue : Swift.Int { get }
-        //      The value wrapped by this property wrapper, expanded to an [`Swift.Int`].
-        var wrappedValue:Int
-        {
-            .init(self.storage)
-        }
-    }
-}
-extension General.Storage:Sendable where I:Sendable
-{
-}
-
 extension General
 {
     struct Heap<Key, Value> where Key:Comparable
@@ -224,64 +179,5 @@ extension General.Heap:ExpressibleByArrayLiteral
     init(arrayLiteral:(key:Key, value:Value)...)
     {
         self.init(arrayLiteral)
-    }
-}
-
-extension Array where Element == UInt8
-{
-    func load<T, U>(bigEndian:T.Type, as type:U.Type, at byte:Int) -> U
-        where T:FixedWidthInteger, U:BinaryInteger
-    {
-        return self[byte ..< byte + MemoryLayout<T>.size].load(bigEndian: T.self, as: U.self)
-    }
-}
-extension UnsafeMutableBufferPointer where Element == UInt8
-{
-    func store<U, T>(_ value:U, asBigEndian type:T.Type, at byte:Int = 0)
-        where U:BinaryInteger, T:FixedWidthInteger
-    {
-        let cast:T = .init(truncatingIfNeeded: value)
-        withUnsafeBytes(of: cast.bigEndian)
-        {
-            guard   let source:UnsafeRawPointer             = $0.baseAddress,
-                    let destination:UnsafeMutableRawPointer =
-                self.baseAddress.map(UnsafeMutableRawPointer.init(_:))
-            else
-            {
-                return
-            }
-
-            (destination + byte).copyMemory(from: source, byteCount: MemoryLayout<T>.size)
-        }
-    }
-}
-
-extension ArraySlice where Element == UInt8
-{
-    func load<T, U>(bigEndian:T.Type, as type:U.Type) -> U
-        where T:FixedWidthInteger, U:BinaryInteger
-    {
-        return self.withUnsafeBufferPointer
-        {
-            (buffer:UnsafeBufferPointer<UInt8>) in
-
-            assert(buffer.count >= MemoryLayout<T>.size,
-                "attempt to load \(T.self) from slice of size \(buffer.count)")
-
-            var storage:T = .init()
-            let value:T   = withUnsafeMutablePointer(to: &storage)
-            {
-                $0.deinitialize(count: 1)
-
-                let source:UnsafeRawPointer     = .init(buffer.baseAddress!),
-                    raw:UnsafeMutableRawPointer = .init($0)
-
-                raw.copyMemory(from: source, byteCount: MemoryLayout<T>.size)
-
-                return raw.load(as: T.self)
-            }
-
-            return U(T(bigEndian: value))
-        }
     }
 }
