@@ -426,7 +426,7 @@ extension LZ77.Deflator.Stream
     }
 
     private mutating
-    func blockStart(final:Bool, runliterals:Int, distances:Int, metatree:LZ77.Huffman<UInt8>)
+    func blockStart(final:Bool, runliterals:Int, distances:Int, metatree:LZ77.HuffmanTree<UInt8>)
     {
         let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19)
         {
@@ -562,9 +562,9 @@ extension LZ77.Deflator.Stream
     {
         let tree:
         (
-            runliteral:LZ77.Huffman<UInt16>,
-            distance:LZ77.Huffman<UInt8>,
-            meta:LZ77.Huffman<UInt8>
+            runliteral:LZ77.HuffmanTree<UInt16>,
+            distance:LZ77.HuffmanTree<UInt8>,
+            meta:LZ77.HuffmanTree<UInt8>
         )
 
         switch self.search

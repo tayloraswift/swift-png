@@ -49,7 +49,7 @@ extension LZ77.Deflator.Matches.Depths
     }
 
     mutating
-    func update(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+    func update(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)
     {
         for (length, level):(UInt8, Range<Int>) in zip(1 ... 15, runliteral.levels)
         {

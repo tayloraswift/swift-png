@@ -11,9 +11,9 @@ extension LZ77.Deflator.Dicing
             metaterms:[LZ77.Deflator.Term.Meta],
             tree:
             (
-                runliteral:LZ77.Huffman<UInt16>,
-                distance:LZ77.Huffman<UInt8>,
-                meta:LZ77.Huffman<UInt8>
+                runliteral:LZ77.HuffmanTree<UInt16>,
+                distance:LZ77.HuffmanTree<UInt8>,
+                meta:LZ77.HuffmanTree<UInt8>
             )
         )?)
     }

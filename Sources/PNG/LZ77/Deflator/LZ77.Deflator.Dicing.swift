@@ -173,7 +173,7 @@ extension LZ77.Deflator
         // print("\((a, b)) -> \(k)")
 
         let base:Int = 320 * k
-        let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) =
+        let tree:(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>) =
         (
             .init(frequencies: frequencies[base       ..< base + 286], limit: 15),
             .init(frequencies: frequencies[base + 288 ..< base + 318], limit: 15)
@@ -181,7 +181,7 @@ extension LZ77.Deflator
         // compute combined metatree
         let meta:
         (
-            tree:LZ77.Huffman<UInt8>,
+            tree:LZ77.HuffmanTree<UInt8>,
             mass:Int,
             runliterals:Int,
             distances:Int,
@@ -319,10 +319,10 @@ extension LZ77.Deflator
         }
     }
     private static
-    func metatree(for tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>))
+    func metatree(for tree:(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>))
         ->
     (
-        tree:LZ77.Huffman<UInt8>,
+        tree:LZ77.HuffmanTree<UInt8>,
         mass:Int,
         runliterals:Int,
         distances:Int,
@@ -424,7 +424,7 @@ extension LZ77.Deflator
             frequencies[.init(term.symbol)] += 1
         }
 
-        let metatree:LZ77.Huffman<UInt8>    = .init(frequencies: frequencies, limit: 7),
+        let metatree:LZ77.HuffmanTree<UInt8>    = .init(frequencies: frequencies, limit: 7),
             mass:Int                        = metatree.mass(frequencies: frequencies)
         return (metatree, mass: mass, runliterals: r, distances: d, terms)
     }

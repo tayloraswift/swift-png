@@ -23,8 +23,8 @@ extension LZ77.Deflator
 }
 extension LZ77.Deflator.Semistatic
 {
-    init(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>,
-        meta:LZ77.Huffman<UInt8>? = nil)
+    init(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>,
+        meta:LZ77.HuffmanTree<UInt8>? = nil)
     {
         self.storage = .create(minimumCapacity: 339){ _ in () }
         self.storage.withUnsafeMutablePointerToElements
@@ -74,7 +74,5 @@ extension LZ77.Deflator.Semistatic
     }
 
     static
-    let fixed:Self = .init(
-        runliteral: LZ77.FixedHuffman.runliteral,
-        distance:   LZ77.FixedHuffman.distance)
+    let fixed:Self = .init(runliteral: .runliteral, distance: .distance)
 }
