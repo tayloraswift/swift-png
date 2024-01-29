@@ -134,7 +134,7 @@ extension LZ77.Deflator.Matches
     }
 
     mutating
-    func trees() -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+    func trees() -> (runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)
     {
         var frequencies:[Int] = .init(repeating: 0, count: 320)
         for index:Int in self.indices
@@ -149,7 +149,7 @@ extension LZ77.Deflator.Matches
         }
         frequencies[256] = 1
 
-        let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) =
+        let tree:(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>) =
         (
             .init(frequencies: frequencies[0   ..< 286], limit: 15),
             .init(frequencies: frequencies[288 ..< 318], limit: 15)
@@ -222,7 +222,7 @@ extension LZ77.Deflator.Matches
 
     mutating
     func trees(iterations:Int)
-        -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+        -> (runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)
     {
         // increase the graph size limit
         self.limit = min(2 * self.limit, self.capacity)
@@ -235,7 +235,7 @@ extension LZ77.Deflator.Matches
         while true
         {
             let frequencies:[Int] = self.minimize()
-            let tree:(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>) =
+            let tree:(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>) =
             (
                 .init(frequencies: frequencies[0   ..< 286], limit: 15),
                 .init(frequencies: frequencies[288 ..< 318], limit: 15)

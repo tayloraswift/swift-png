@@ -163,7 +163,7 @@ extension LZ77.Inflator.Stream
             {
                 lengths[d] = self.input[self.b + 17 + 3 * i, count: 3, as: Int.self]
             }
-            guard let tree:LZ77.Huffman<UInt8> = .validate(symbols: 0 ... 18, lengths: lengths)
+            guard let tree:LZ77.HuffmanTree<UInt8> = .validate(symbols: 0 ... 18, lengths: lengths)
             else
             {
                 throw LZ77.DecompressionError.invalidHuffmanCodelengthHuffmanTable
@@ -182,7 +182,7 @@ extension LZ77.Inflator.Stream
     }
     mutating
     func blockTables(runliterals:Int, distances:Int)
-        throws -> (runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)?
+        throws -> (runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)?
     {
         // code lengths form an unbroken sequence
         codelengths:
@@ -194,8 +194,7 @@ extension LZ77.Inflator.Stream
                 return nil
             }
 
-            let meta:LZ77.Symbol.Meta =
-                self.meta[.init(truncatingIfNeeded: self.input[self.b])]
+            let meta:LZ77.Metaword = self.meta[.init(truncatingIfNeeded: self.input[self.b])]
             // if the codeword length is longer than the available input
             // then we know the match is invalid (due to padding 0-bits)
             guard self.b + meta.length <= self.input.count
@@ -287,10 +286,10 @@ extension LZ77.Inflator.Stream
         }
         #endif
 
-        guard   let runliteral:LZ77.Huffman<UInt16> = .validate(
+        guard   let runliteral:LZ77.HuffmanTree<UInt16> = .validate(
                     symbols:        0 ... 287,
                     lengths:        self.lengths.prefix(runliterals)),
-                let distance:LZ77.Huffman<UInt8> = .validate(
+                let distance:LZ77.HuffmanTree<UInt8> = .validate(
                     symbols:        0 ... 31,
                     normalizing:    self.lengths.dropFirst(runliterals))
         else
@@ -314,8 +313,7 @@ extension LZ77.Inflator.Stream
             //  -------------------------
             //  total           : 48 bits
             let first:UInt16 = self.input[self.b]
-            let runliteral:LZ77.Symbol.RunLiteral =
-                semistatic[first, as: LZ77.Symbol.RunLiteral.self]
+            let runliteral:LZ77.RunLiteral = semistatic[first, as: LZ77.RunLiteral.self]
 
             if      runliteral.symbol <  256
             {
@@ -376,8 +374,8 @@ extension LZ77.Inflator.Stream
 
                 slug &>>= composite.count.extra
 
-                let distance:LZ77.Symbol.Distance =
-                    semistatic[.init(truncatingIfNeeded: slug), as: LZ77.Symbol.Distance.self]
+                let distance:LZ77.Distance =
+                    semistatic[.init(truncatingIfNeeded: slug), as: LZ77.Distance.self]
                 slug &>>= distance.length
 
                 composite.offset    = semistatic.composite(decade: distance)

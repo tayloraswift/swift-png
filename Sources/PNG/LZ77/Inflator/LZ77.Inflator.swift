@@ -4,94 +4,6 @@
 
 extension LZ77
 {
-    enum Symbol
-    {
-    }
-}
-extension LZ77.Symbol
-{
-    struct Meta:Pattern
-    {
-        //  8               0
-        //  [c:c:c:s:s:s:s:s]
-        //   ~~~~~^~~~~~~~~~^
-        //   length    symbol
-        private
-        let storage:UInt8
-
-        var symbol:UInt8
-        {
-            self.storage & 0b0001_1111
-        }
-        var length:Int
-        {
-            .init(self.storage >> 5)
-        }
-
-        init(_ symbol:UInt8, length:Int)
-        {
-            self.storage = .init(length) << 5 | symbol
-        }
-    }
-
-    struct RunLiteral:Pattern
-    {
-        // 16               8               0
-        //  [c:c:c:c: : : :s|s:s:s:s:s:s:s:s]
-        //   ~~~~~~~^      ~~~~~~~~~~~~~~~~~^
-        //     length                  symbol
-        private
-        let storage:UInt16
-
-        var symbol:UInt16
-        {
-            self.storage & 0b0000_0001_1111_1111
-        }
-        var literal:UInt8
-        {
-            .init(truncatingIfNeeded: self.storage)
-        }
-        var decade:Int
-        {
-            .init(self.storage & 0b0000_0000_1111_1111)
-        }
-        var length:Int
-        {
-            .init(self.storage >> 12)
-        }
-        init(_ symbol:UInt16, length:Int)
-        {
-            self.storage = .init(length) << 12 | symbol
-        }
-    }
-    struct Distance:Pattern
-    {
-        // 16               8               0
-        //  [ : : : :c:c:c:c| : : :s:s:s:s:s]
-        //           ~~~~~~~^      ~~~~~~~~~^
-        //             length          symbol
-        // length goes here because it is probably slightly faster to
-        // address the high byte than do a UInt16 bit shift
-        private
-        let storage:UInt16
-
-        var decade:Int
-        {
-            .init(self.storage & 0x00ff)
-        }
-        var length:Int
-        {
-            .init(self.storage >> 8)
-        }
-        init(_ symbol:UInt8, length:Int)
-        {
-            self.storage = .init(length) << 8 | .init(symbol)
-        }
-    }
-}
-
-extension LZ77
-{
     struct Inflator
     {
         private
@@ -185,7 +97,7 @@ extension LZ77.Inflator
             #endif
 
         case .blockTables(final: let final, runliterals: let runliterals, distances: let distances):
-            guard let (runliteral, distance):(LZ77.Huffman<UInt16>, LZ77.Huffman<UInt8>) =
+            guard let (runliteral, distance):(LZ77.HuffmanTree<UInt16>, LZ77.HuffmanTree<UInt8>) =
                 try self.stream.blockTables(runliterals: runliterals, distances: distances)
             else
             {

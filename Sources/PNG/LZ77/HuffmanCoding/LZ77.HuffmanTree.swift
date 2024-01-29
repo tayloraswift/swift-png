@@ -1,6 +1,9 @@
 extension LZ77
 {
-    struct Huffman<Symbol> where Symbol:Comparable
+    @available(*, deprecated)
+    typealias Huffman = HuffmanTree
+
+    struct HuffmanTree<Symbol> where Symbol:Comparable
     {
         let symbols:[Symbol]
         let levels:[Range<Int>]
@@ -18,8 +21,32 @@ extension LZ77
         }
     }
 }
+extension LZ77.HuffmanTree<UInt16>
+{
+    static
+    var runliteral:Self
+    {
+        .init(symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
+            levels:
+                .init(repeating:   0 ..<   0, count: 6) + // L1 ... L6
+                [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
+                .init(repeating: 288 ..< 288, count: 6))  // L10 ... L15
+    }
+}
+extension LZ77.HuffmanTree<UInt8>
+{
+    static
+    var distance:Self
+    {
+        .init(symbols: .init(0 ... 31),
+            levels:
+                .init(repeating:  0 ..<  0, count:  4)  +
+                [0 ..< 32]                              +
+                .init(repeating: 32 ..< 32, count: 10))
+    }
+}
 //  Inflator.
-extension LZ77.Huffman where Symbol:BinaryInteger
+extension LZ77.HuffmanTree where Symbol:BinaryInteger
 {
     // empty or single-element tree
     init(stub:Symbol?)
@@ -147,7 +174,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
     }
 
     func table<Pattern>(initializing destination:UnsafeMutablePointer<Pattern>)
-        where Pattern:LZ77.Symbol.Pattern, Pattern.Symbol == Symbol
+        where Pattern:LZ77.HuffmanPattern<Symbol>
     {
         var current:UnsafeMutablePointer<Pattern> = destination
         for (l, level):(Int, Range<Int>) in zip(1 ... 8, self.levels.prefix(8))
@@ -174,7 +201,7 @@ extension LZ77.Huffman where Symbol:BinaryInteger
     }
 }
 // Deflator.
-extension LZ77.Huffman where Symbol:BinaryInteger
+extension LZ77.HuffmanTree where Symbol:BinaryInteger
 {
     func codewords(initializing destination:UnsafeMutablePointer<LZ77.Codeword>,
         count:Int, extra:(Symbol) -> Int)

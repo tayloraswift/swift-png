@@ -63,11 +63,11 @@ extension LZ77.Inflator
 }
 extension LZ77.Inflator.Semistatic
 {
-    init(runliteral:LZ77.Huffman<UInt16>, distance:LZ77.Huffman<UInt8>)
+    init(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)
     {
         let start:Int   = 256    + MemoryLayout<Composite>.stride * 64
-        let offset:Int  = start  + MemoryLayout<LZ77.Symbol.RunLiteral>.stride * runliteral.size.z
-        let size:Int    = offset + MemoryLayout<LZ77.Symbol.Distance  >.stride *   distance.size.z
+        let offset:Int  = start  + MemoryLayout<LZ77.RunLiteral>.stride * runliteral.size.z
+        let size:Int    = offset + MemoryLayout<LZ77.Distance  >.stride *   distance.size.z
         self.storage = .create(minimumCapacity: size){ _ in () }
         self.storage.withUnsafeMutablePointerToElements
         {
@@ -81,12 +81,12 @@ extension LZ77.Inflator.Semistatic
                 $0.initialize(from: LZ77.Composites.table, count: 64)
             }
             // write huffman tables
-            (base +  start).withMemoryRebound(to: LZ77.Symbol.RunLiteral.self,
+            (base +  start).withMemoryRebound(to: LZ77.RunLiteral.self,
                 capacity: runliteral.size.z)
             {
                 runliteral.table(initializing: $0)
             }
-            (base + offset).withMemoryRebound(to: LZ77.Symbol.Distance.self,
+            (base + offset).withMemoryRebound(to: LZ77.Distance.self,
                 capacity: distance.size.z)
             {
                 distance.table(initializing: $0)
@@ -117,30 +117,30 @@ extension LZ77.Inflator.Semistatic
             (( first &- fence &+ 2 ) << 8 | self.reverse(codeword >> 8)) >> 1
     }
 
-    subscript(codeword:UInt16, as _:LZ77.Symbol.RunLiteral.Type) -> LZ77.Symbol.RunLiteral
+    subscript(codeword:UInt16, as _:LZ77.RunLiteral.Type) -> LZ77.RunLiteral
     {
         self.storage.withUnsafeMutablePointerToElements
         {
             let raw:UnsafeRawPointer = .init($0)
             // should get constant-folded
             let start:Int  = 256    + 64 * MemoryLayout<Composite>.stride
-            let offset:Int = start &+ MemoryLayout<LZ77.Symbol.RunLiteral>.stride &*
+            let offset:Int = start &+ MemoryLayout<LZ77.RunLiteral>.stride &*
                 self.index(codeword, fence: self.fence.runliteral)
-            return raw.load(fromByteOffset: offset, as: LZ77.Symbol.RunLiteral.self)
+            return raw.load(fromByteOffset: offset, as: LZ77.RunLiteral.self)
         }
     }
-    subscript(codeword:UInt16, as _:LZ77.Symbol.Distance.Type) -> LZ77.Symbol.Distance
+    subscript(codeword:UInt16, as _:LZ77.Distance.Type) -> LZ77.Distance
     {
         self.storage.withUnsafeMutablePointerToElements
         {
             let raw:UnsafeRawPointer = .init($0)
-            let offset:Int = self.offset &+ MemoryLayout<LZ77.Symbol.Distance>.stride &*
+            let offset:Int = self.offset &+ MemoryLayout<LZ77.Distance>.stride &*
                 self.index(codeword, fence: self.fence.distance)
-            return raw.load(fromByteOffset: offset, as: LZ77.Symbol.Distance.self)
+            return raw.load(fromByteOffset: offset, as: LZ77.Distance.self)
         }
     }
 
-    func composite(decade runliteral:LZ77.Symbol.RunLiteral) -> (extra:Int, base:Int)
+    func composite(decade runliteral:LZ77.RunLiteral) -> (extra:Int, base:Int)
     {
         self.storage.withUnsafeMutablePointerToElements
         {
@@ -151,7 +151,7 @@ extension LZ77.Inflator.Semistatic
             return (extra: .init(composite.extra), base: .init(composite.base))
         }
     }
-    func composite(decade distance:LZ77.Symbol.Distance) -> (extra:Int, base:Int)
+    func composite(decade distance:LZ77.Distance) -> (extra:Int, base:Int)
     {
         self.storage.withUnsafeMutablePointerToElements
         {
@@ -165,81 +165,5 @@ extension LZ77.Inflator.Semistatic
     }
 
     static
-    let fixed:Self = .init(
-        runliteral: LZ77.FixedHuffman.runliteral,
-        distance:   LZ77.FixedHuffman.distance)
-}
-extension LZ77.Inflator.Semistatic
-{
-    struct Meta
-    {
-        private
-        var storage:ManagedBuffer<Void, UInt8>
-    }
-}
-extension LZ77.Inflator.Semistatic.Meta
-{
-    private static
-    var size:Int
-    {
-        256 + 256 * MemoryLayout<LZ77.Symbol.Meta>.stride
-    }
-
-    init()
-    {
-        self.storage = .create(minimumCapacity: Self.size){ _ in () }
-        self.storage.withUnsafeMutablePointerToElements
-        {
-            $0.initialize(from: LZ77.Reversed.table, count: 256)
-        }
-    }
-
-    mutating
-    func exclude()
-    {
-        if !isKnownUniquelyReferenced(&self.storage)
-        {
-            #if WARN_COPY_ON_WRITE
-            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
-            #endif
-
-            self.storage = self.storage.withUnsafeMutablePointerToElements
-            {
-                (body:UnsafeMutablePointer<UInt8>) in
-
-                let new:ManagedBuffer<Void, UInt8> =
-                    .create(minimumCapacity: Self.size){ _ in () }
-                new.withUnsafeMutablePointerToElements
-                {
-                    $0.initialize(from: body, count: Self.size)
-                }
-                return new
-            }
-        }
-    }
-
-    func replace(tree:LZ77.Huffman<UInt8>)
-    {
-        assert(tree.size.z <= 256)
-        self.storage.withUnsafeMutablePointerToElements
-        {
-            // write huffman tables
-            ($0 + 256).withMemoryRebound(to: LZ77.Symbol.Meta.self, capacity: 256)
-            {
-                tree.table(initializing: $0)
-            }
-        }
-    }
-
-    subscript(codeword:UInt8) -> LZ77.Symbol.Meta
-    {
-        self.storage.withUnsafeMutablePointerToElements
-        {
-            let raw:UnsafeRawPointer    = .init($0)
-            let index:Int               = .init($0[.init(codeword)])
-            let offset:Int              = 256 &+
-                MemoryLayout<LZ77.Symbol.Meta>.stride &* index
-            return raw.load(fromByteOffset: offset, as: LZ77.Symbol.Meta.self)
-        }
-    }
+    let fixed:Self = .init(runliteral: .runliteral, distance: .distance)
 }
