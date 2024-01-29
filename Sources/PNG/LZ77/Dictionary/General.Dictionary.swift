@@ -1,161 +1,16 @@
-// https://github.com/apple/swift/issues/60534
-// https://forums.swift.org/t/builtin-intrinsics-intel-module-is-not-available-on-windows-pc-with-intel-cpu/61862
-#if arch(x86_64) && !NO_INTRINSICS && canImport(_Builtin_intrinsics)
-
-import _Builtin_intrinsics.intel
-
-extension SIMD16 where Scalar == UInt8
-{
-    func find(_ key:UInt8) -> UInt16
-    {
-        let repeated:Self       = .init(repeating: key)
-        let mask:SIMD2<Int64>   = _mm_cmpeq_epi8(
-            unsafeBitCast(self,     to: SIMD2<Int64>.self),
-            unsafeBitCast(repeated, to: SIMD2<Int64>.self))
-        return .init(truncatingIfNeeded: _mm_movemask_epi8(mask))
-    }
-}
-
-#else
-
-extension SIMD16 where Scalar == UInt8
-{
-    func find(_ key:UInt8) -> UInt16
-    {
-        // (key: 5, vector: (1, 5, 1, 1, 5, 5, 1, 1, 1, 1, 1, 1, 5, 1, 1, 5))
-        let places:SIMD16<UInt8>    =
-            .init(128, 64, 32, 16, 8, 4, 2, 1, 128, 64, 32, 16, 8, 4, 2, 1),
-            match:SIMD16<UInt8>     = places.replacing(with: 0, where: self .!= key)
-        // match: ( 0, 64,  0,  0,  8,  4,  0,  0,  0,  0,  0,  0,  8,  0,  0,  1)
-        let r8:SIMD8<UInt8> =    match.evenHalf |    match.oddHalf,
-            r4:SIMD4<UInt8> =       r8.evenHalf |       r8.oddHalf,
-            r2:SIMD2<UInt8> =       r4.evenHalf |       r4.oddHalf
-        return .init(r2.x) << 8  | .init(r2.y)
-    }
-}
-
-#endif
-
 extension General
 {
-    // simple (UInt32) -> UInt16 hashmap based on F14
+    /// A simple `(UInt32) -> UInt16` hashmap based on F14.
     struct Dictionary
     {
-        struct Hash
-        {
-            private
-            let value:Int
-        }
-
-        struct District
-        {
-            typealias Row = (key:UInt32, value:UInt16, displaced:UInt16)
-            struct Index:Equatable
-            {
-                let offset:Int
-            }
-
-            let base:UnsafeMutableRawPointer
-        }
-
         private
-        var storage:ManagedBuffer<Void, UInt8>,
-            mask:Int
-    }
-}
-extension General.Dictionary.Hash
-{
-    // stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
-    init(_ x:UInt32)
-    {
-        let a:UInt32 = ((x >> 16) ^ x) &* 0x04_5d_9f_3b,
-            b:UInt32 = ((a >> 16) ^ a) &* 0x04_5d_9f_3b,
-            c:UInt32 =  (b >> 16) ^ b
-        self.value = .init(c)
-    }
-
-    //  we use the following bits in the hash:
-    //
-    // 64        32    28            19                 7         0
-    //  ┌─ ╶ ╶ ╶ ╶┬─────┬─────┬─────┬─┬───┬─────┬─────┬─┬───┬─────┐
-    //  │         ╎     ╎   probe   ╎1╎    district     ╎   tag   │
-    //  └─ ╶ ╶ ╶ ╶┴─────┴─────┴─────┴─┴───┴─────┴─────┴─┴───┴─────┘
-    //                                |<-<- self.mask ->|
-    var tag:UInt8
-    {
-        .init(self.value & 0x7f | 0x80)
-    }
-
-    func startIndex(mask:Int)
-        -> General.Dictionary.District.Index
-    {
-        .init(offset: self.value & mask)
-    }
-    func index(before current:General.Dictionary.District.Index, mask:Int)
-        -> General.Dictionary.District.Index
-    {
-        .init(offset: (current.offset &- self.probe) & mask)
-    }
-    func index(after current:General.Dictionary.District.Index, mask:Int)
-        -> General.Dictionary.District.Index
-    {
-        .init(offset: (current.offset &+ self.probe) & mask)
-    }
-
-    private
-    var probe:Int
-    {
-        (self.value >> 12 | 0x00_80) & 0xff_80
-    }
-}
-extension General.Dictionary.District.Index
-{
-    static
-    func + (rhs:UnsafeMutableRawPointer, lhs:Self) -> General.Dictionary.District
-    {
-        .init(base: rhs + lhs.offset)
-    }
-}
-extension General.Dictionary.District
-{
-    var header:SIMD16<UInt8>
-    {
-        self.base.load(as: SIMD16<UInt8>.self)
-    }
-    var tags:UnsafeMutablePointer<UInt8>
-    {
-        self.base.bindMemory(to: UInt8.self, capacity: 14)
-    }
-    subscript(index:Int) -> Row
-    {
-        _read
-        {
-            yield ((self.base + (16 + 8 * index)).bindMemory(to: Row.self, capacity: 1).pointee)
-        }
-        nonmutating
-        _modify
-        {
-            yield &(self.base + (16 + 8 * index)).bindMemory(to: Row.self, capacity: 1).pointee
-        }
-    }
-
-    var displaced:UInt16
-    {
-        _read
-        {
-            yield  self[0].displaced
-        }
-
-        nonmutating
-        _modify
-        {
-            yield &self[0].displaced
-        }
+        var storage:ManagedBuffer<Void, UInt8>
+        private
+        var mask:Int
     }
 }
 extension General.Dictionary
 {
-
     //  memory layout:
     //
     //   +0 ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┐
@@ -434,7 +289,8 @@ extension General.Dictionary
     }
 
     private
-    func withUnsafeMutableAlignedBytes<R>(_ body:(UnsafeMutableRawPointer) throws -> R) rethrows -> R
+    func withUnsafeMutableAlignedBytes<R>(
+        _ body:(UnsafeMutableRawPointer) throws -> R) rethrows -> R
     {
         try self.storage.withUnsafeMutablePointerToElements
         {
