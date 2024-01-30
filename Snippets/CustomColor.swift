@@ -1,5 +1,6 @@
 import PNG
 
+/// https://commons.wikimedia.org/wiki/File:Alice-in-Wonderland_by-David-Revoy_2010-07-21.jpg
 let path:String = "Snippets/CustomColor/example"
 
 struct HSVA
