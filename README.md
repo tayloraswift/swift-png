@@ -21,7 +21,7 @@ Swift *PNG* is [available](LICENSE) under the [Mozilla Public License 2.0](https
 2. [basic encoding](Snippets/BasicEncoding.swift) ([sources](Snippets/BasicEncoding.swift))
 3. [using indexed images](Snippets/Indexing.swift) ([sources](Snippets/Indexing.swift))
 4. [using iphone-optimized images](Snippets/iPhoneOptimized.swift) ([sources](Snippets/iPhoneOptimized.swift))
-5. [working with metadata](Snippets/ImageMetadata.swift) ([sourcesSnippets/ImageMetadata.swift))
+5. [working with metadata](Snippets/ImageMetadata.swift) ([sources](Snippets/ImageMetadata.swift))
 6. [using in-memory images](Snippets/ImagesInMemory.swift) ([sources](Snippets/ImagesInMemory.swift))
 7. [online decoding](Snippets/OnlineDecoding.swift) ([sources](Snippets/OnlineDecoding.swift))
 8. [custom color targets](Snippets/CustomColor.swift) ([sources](Snippets/CustomColor.swift))
