@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.SignificantBits
     ///     A color precision descriptor.
     ///
-    ///     This type models the information stored in an [`(Chunk).sBIT`] chunk.
+    ///     This type models the information stored in an ``Chunk/sBIT`` chunk.
     /// # [Parsing and serialization](significantbits-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -40,7 +40,7 @@ extension PNG
             ///     The number of significant bits in each red, green, and blue
             ///     sample, respectively. If the image uses an indexed color format,
             ///     the precision values refer to the precision of the palette
-            ///     entries, not the indices. The [`(Chunk).sBIT`] chunk type is
+            ///     entries, not the indices. The ``Chunk/sBIT`` chunk type is
             ///     not capable of specifying the precision of the alpha component
             ///     of the palette entries. If the image palette was augmented with
             ///     alpha samples from a [`Transparency`] descriptor, the precision
@@ -121,7 +121,7 @@ extension PNG.SignificantBits
     ///     Creates a color precision descriptor by parsing the given chunk data,
     ///     interpreting and validating it according to the given `pixel` format.
     /// - data      : [Swift.UInt8]
-    ///     The contents of an [`(Chunk).sBIT`] chunk to parse.
+    ///     The contents of an ``Chunk/sBIT`` chunk to parse.
     /// - pixel     : Format.Pixel
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
@@ -180,7 +180,7 @@ extension PNG.SignificantBits
     }
     /// var PNG.SignificantBits.serialized : [Swift.UInt8] { get }
     ///     Encodes this color precision descriptor as the contents of an
-    ///     [`(Chunk).sBIT`] chunk.
+    ///     ``Chunk/sBIT`` chunk.
     /// ## (significantbits-parsing-and-serialization)
     public
     var serialized:[UInt8]

@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Gamma
     ///     A gamma descriptor.
     ///
-    ///     This type models the information stored in a [`(Chunk).gAMA`] chunk.
+    ///     This type models the information stored in a ``Chunk/gAMA`` chunk.
     /// # [Parsing and serialization](gamma-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -31,7 +31,7 @@ extension PNG.Gamma
     /// throws
     ///     Creates a gamma descriptor by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).gAMA`] chunk to parse.
+    ///     The contents of a ``Chunk/gAMA`` chunk to parse.
     /// ## (gamma-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -46,7 +46,7 @@ extension PNG.Gamma
     }
     /// var PNG.Gamma.serialized : [Swift.UInt8] { get }
     ///     Encodes this gamma descriptor as the contents of a
-    ///     [`(Chunk).gAMA`] chunk.
+    ///     ``Chunk/gAMA`` chunk.
     /// ## (gamma-parsing-and-serialization)
     public
     var serialized:[UInt8]

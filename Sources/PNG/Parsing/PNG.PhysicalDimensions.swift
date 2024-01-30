@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.PhysicalDimensions
     ///     A physical dimensions descriptor.
     ///
-    ///     This type models the information stored in a [`(Chunk).pHYs`] chunk.
+    ///     This type models the information stored in a ``Chunk/pHYs`` chunk.
     /// # [Parsing and serialization](physicaldimensions-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -53,7 +53,7 @@ extension PNG.PhysicalDimensions
     /// throws
     ///     Creates a physical dimensions descriptor by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).pHYs`] chunk to parse.
+    ///     The contents of a ``Chunk/pHYs`` chunk to parse.
     /// ## (physicaldimensions-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -77,7 +77,7 @@ extension PNG.PhysicalDimensions
     }
     /// var PNG.PhysicalDimensions.serialized : [Swift.UInt8] { get }
     ///     Encodes this physical dimensions descriptor as the contents of a
-    ///     [`(Chunk).pHYs`] chunk.
+    ///     ``Chunk/pHYs`` chunk.
     /// ## (physicaldimensions-parsing-and-serialization)
     public
     var serialized:[UInt8]
