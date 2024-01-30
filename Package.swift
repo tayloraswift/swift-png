@@ -39,11 +39,14 @@ let package:Package = .init(name: "swift-png",
             dependencies:
             [
                 .target(name: "LZ77"),
-                .target(name: "TerminalColors"),
                 .product(name: "CRC", package: "swift-hash"),
             ]),
 
-        .target(name: "TerminalColors"),
+        .target(name: "PNGInspection",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ]),
 
         .executableTarget(name: "LZ77Tests",
             dependencies:
