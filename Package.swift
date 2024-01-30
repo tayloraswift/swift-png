@@ -87,11 +87,6 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
-            ],
-            exclude:
-            [
-                "Baselines/",
-                "Outputs/",
             ]),
 
         .executableTarget(name: "PNGCompressionBenchmarks",
@@ -99,14 +94,14 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "PNG"),
             ],
-            path: "Benchmarks/compression/swift"),
+            path: "Benchmarks/Compression/Swift"),
 
         .executableTarget(name: "PNGDecompressionBenchmarks",
             dependencies:
             [
                 .target(name: "PNG"),
             ],
-            path: "Benchmarks/decompression/swift"),
+            path: "Benchmarks/Decompression/Swift"),
 
         .executableTarget(name: "PNGDecodeBasic",
             dependencies:
