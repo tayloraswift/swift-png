@@ -5,7 +5,7 @@ extension PNG
     /// struct PNG.ColorProfile
     ///     An embedded color profile.
     ///
-    ///     This type models the information stored in an [`(Chunk).iCCP`] chunk.
+    ///     This type models the information stored in an ``Chunk/iCCP`` chunk.
     /// # [Parsing and serialization](colorprofile-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -34,7 +34,7 @@ extension PNG
         /// - profile : [Swift.UInt8]
         ///     The uncompressed [ICC](http://www.color.org/index.xalter) color
         ///     profile data. The data will be compressed when this color profile
-        ///     is [`serialized`] into an [`(Chunk).iCCP`] chunk.
+        ///     is [`serialized`] into an ``Chunk/iCCP`` chunk.
         public
         init(name:String, profile:[UInt8])
         {
@@ -55,7 +55,7 @@ extension PNG.ColorProfile
     /// throws
     ///     Creates a color profile by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of an [`(Chunk).iCCP`] chunk to parse.
+    ///     The contents of an ``Chunk/iCCP`` chunk to parse.
     /// ## (colorprofile-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -95,7 +95,7 @@ extension PNG.ColorProfile
     }
     /// var PNG.ColorProfile.serialized : [Swift.UInt8] { get }
     ///     Encodes this color profile as the contents of an
-    ///     [`(Chunk).iCCP`] chunk.
+    ///     ``Chunk/iCCP`` chunk.
     /// ## (colorprofile-parsing-and-serialization)
     public
     var serialized:[UInt8]

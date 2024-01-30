@@ -3,7 +3,7 @@ extension PNG
     /// enum PNG.ColorRendering
     ///     A color rendering mode.
     ///
-    ///     This type models the information stored in an [`(Chunk).sRGB`] chunk.
+    ///     This type models the information stored in an ``Chunk/sRGB`` chunk.
     ///     It is not recommended for the same image to include both a `ColorRendering`
     ///     mode and a [`ColorProfile`].
     /// # [Parsing and serialization](colorrendering-parsing-and-serialization)
@@ -36,7 +36,7 @@ extension PNG.ColorRendering
     /// throws
     ///     Creates a color rendering mode by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of an [`(Chunk).sRGB`] chunk to parse.
+    ///     The contents of an ``Chunk/sRGB`` chunk to parse.
     /// ## (colorrendering-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -59,7 +59,7 @@ extension PNG.ColorRendering
     }
     /// var PNG.ColorRendering.serialized : [Swift.UInt8] { get }
     ///     Encodes this color rendering mode as the contents of an
-    ///     [`(Chunk).sRGB`] chunk.
+    ///     ``Chunk/sRGB`` chunk.
     /// ## (colorrendering-parsing-and-serialization)
     public
     var serialized:[UInt8]

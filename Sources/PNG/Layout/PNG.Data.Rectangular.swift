@@ -614,7 +614,7 @@ extension PNG.Data.Rectangular
     ///     setting it to `0`. Likewise, setting it to a value greater than `13`
     ///     is the same as setting it to `13`.
     /// - hint : Swift.Int
-    ///     A size hint for the emitted [`(Chunk).IDAT`] chunks. It should be in
+    ///     A size hint for the emitted ``Chunk/IDAT`` chunks. It should be in
     ///     the range `1 ... 2147483647`. Reasonable settings range from around
     ///     1\ K to 64\ K. The default value is `32768` (2^15^).
     ///
