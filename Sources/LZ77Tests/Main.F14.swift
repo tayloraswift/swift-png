@@ -1,3 +1,4 @@
+#if DEBUG
 @testable
 import LZ77
 import Testing
@@ -51,3 +52,4 @@ extension Main.F14:TestBattery
         }
     }
 }
+#endif
