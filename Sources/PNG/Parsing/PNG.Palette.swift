@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Palette
     ///     An image palette.
     ///
-    ///     This type models the information stored in a [`(Chunk).PLTE`] chunk.
+    ///     This type models the information stored in a ``Chunk/PLTE`` chunk.
     ///     This information is used to populate the non-alpha components of the
     ///     `palette` field in an image color [`Format`], when appropriate.
     /// # [Parsing and serialization](palette-parsing-and-serialization)
@@ -55,7 +55,7 @@ extension PNG.Palette
     ///     Creates an image palette by parsing the given chunk data, interpreting
     ///     and validating it according to the given `pixel` format.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).PLTE`] chunk to parse.
+    ///     The contents of a ``Chunk/PLTE`` chunk to parse.
     /// - pixel     : Format.Pixel
     ///     The pixel format specifying how the chunk data is to be interpreted.
     /// ## (palette-parsing-and-serialization)
@@ -89,7 +89,7 @@ extension PNG.Palette
         }
     }
     /// var PNG.Palette.serialized   : [Swift.UInt8] { get }
-    ///     Encodes this image palette as the contents of a [`(Chunk).PLTE`] chunk.
+    ///     Encodes this image palette as the contents of a ``Chunk/PLTE`` chunk.
     /// ## (palette-parsing-and-serialization)
     public
     var serialized:[UInt8]

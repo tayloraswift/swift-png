@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Histogram
     ///     A palette frequency histogram.
     ///
-    ///     This type models the information stored in a [`(Chunk).hIST`] chunk.
+    ///     This type models the information stored in a ``Chunk/hIST`` chunk.
     /// # [Parsing and serialization](histogram-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -50,7 +50,7 @@ extension PNG.Histogram
     ///     Creates a palette histogram by parsing the given chunk data,
     ///     validating it according to the given image `palette`.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).hIST`] chunk to parse.
+    ///     The contents of a ``Chunk/hIST`` chunk to parse.
     /// - palette   : Palette
     ///     The image palette the chunk data is to be validated against.
     /// ## (histogram-parsing-and-serialization)
@@ -70,7 +70,7 @@ extension PNG.Histogram
     }
     /// var PNG.Histogram.serialized : [Swift.UInt8] { get }
     ///     Encodes this histogram as the contents of a
-    ///     [`(Chunk).hIST`] chunk.
+    ///     ``Chunk/hIST`` chunk.
     /// ## (histogram-parsing-and-serialization)
     public
     var serialized:[UInt8]

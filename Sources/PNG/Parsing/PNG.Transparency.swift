@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Transparency
     ///     A transparency descriptor.
     ///
-    ///     This type models the information stored in a [`(Chunk).tRNS`] chunk.
+    ///     This type models the information stored in a ``Chunk/tRNS`` chunk.
     ///     This information either used to populate the `key` field in
     ///     an image color [`Format`], or augment its `palette` field, when appropriate.
     ///
@@ -161,7 +161,7 @@ extension PNG.Transparency
     ///     This initializer does not check this assumption, as it is expected
     ///     to have been verified by [`Palette.init(parsing:pixel:)`].
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).tRNS`] chunk to parse.
+    ///     The contents of a ``Chunk/tRNS`` chunk to parse.
     /// - pixel     : Format.Pixel
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
@@ -227,7 +227,7 @@ extension PNG.Transparency
     }
     /// var PNG.Transparency.serialized : [Swift.UInt8] { get }
     ///     Encodes this transparency descriptor as the contents of a
-    ///     [`(Chunk).tRNS`] chunk.
+    ///     ``Chunk/tRNS`` chunk.
     /// ## (transparency-parsing-and-serialization)
     public
     var serialized:[UInt8]

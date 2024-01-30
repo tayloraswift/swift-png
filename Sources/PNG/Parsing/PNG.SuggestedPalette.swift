@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.SuggestedPalette
     ///     A suggested image palette.
     ///
-    ///     This type models the information stored in an [`(Chunk).sPLT`] chunk.
+    ///     This type models the information stored in an ``Chunk/sPLT`` chunk.
     ///     It should not be confused with the suggested palette stored in the
     ///     color [`Format`] of an RGB, BGR, RGBA, or BGRA image.
     /// # [Parsing and serialization](suggestedpalette-parsing-and-serialization)
@@ -76,7 +76,7 @@ extension PNG.SuggestedPalette
     /// throws
     ///     Creates a suggested palette by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of an [`(Chunk).sPLT`] chunk to parse.
+    ///     The contents of an ``Chunk/sPLT`` chunk to parse.
     /// ## (suggestedpalette-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -184,7 +184,7 @@ extension PNG.SuggestedPalette
     }
     /// var PNG.SuggestedPalette.serialized : [Swift.UInt8] { get }
     ///     Encodes this suggested palette as the contents of an
-    ///     [`(Chunk).sPLT`] chunk.
+    ///     ``Chunk/sPLT`` chunk.
     /// ## (suggestedpalette-parsing-and-serialization)
     public
     var serialized:[UInt8]

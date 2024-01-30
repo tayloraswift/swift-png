@@ -28,8 +28,8 @@ extension PNG
         ///     The decoder encountered a chunk of a type that is not allowed
         ///     to appear after a previously encountered chunk of a particular type.
         ///
-        ///     If both fields are set to [`(Chunk).IDAT`], this indicates
-        ///     a non-contiguous [`(Chunk).IDAT`] sequence.
+        ///     If both fields are set to ``Chunk/IDAT``, this indicates
+        ///     a non-contiguous ``Chunk/IDAT`` sequence.
         /// - chunk : Chunk
         ///     The type of the encountered chunk.
         /// - after : Chunk
@@ -40,16 +40,16 @@ extension PNG
         case unexpected(chunk:PNG.Chunk, after:PNG.Chunk)
 
         /// case PNG.DecodingError.incompleteImageDataCompressedDatastream
-        ///     The decoder finished processing the last [`(Chunk).IDAT`] chunk
+        ///     The decoder finished processing the last ``Chunk/IDAT`` chunk
         ///     before the compressed image data stream was properly terminated.
         case incompleteImageDataCompressedDatastream
         /// case PNG.DecodingError.extraneousImageDataCompressedData
-        ///     The decoder encountered additional [`(Chunk).IDAT`] chunks
+        ///     The decoder encountered additional ``Chunk/IDAT`` chunks
         ///     after the end of the compressed image data stream.
         ///
         ///     This error should not be confused with an [`unexpected(chunk:after:)`]
-        ///     error with both fields set to [`(Chunk).IDAT`], which indicates a
-        ///     non-contiguous [`(Chunk).IDAT`] sequence.
+        ///     error with both fields set to ``Chunk/IDAT``, which indicates a
+        ///     non-contiguous ``Chunk/IDAT`` sequence.
         case extraneousImageDataCompressedData
         /// case PNG.DecodingError.extraneousImageData
         ///     The compressed image data stream produces more uncompressed image
