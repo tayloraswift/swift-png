@@ -7,10 +7,10 @@ struct _TestFailure:Error
 }
 
 @main
-enum Main:SyncTests
+enum Main:TestMain, TestBattery
 {
     static
-    func run(tests:Tests)
+    func run(tests:TestGroup)
     {
         let suite:[(name:String, members:[String])] =
         [
@@ -119,8 +119,8 @@ enum Main:SyncTests
     {
         let path:(png:String, out:String) =
         (
-            "Sources/PNGCompressionTests/Baselines/\(name).png",
-            "Sources/PNGCompressionTests/Outputs/\(name).png"
+            "Tests/Baselines/\(name).png",
+            "Tests/Outputs/\(name).png"
         )
 
         do

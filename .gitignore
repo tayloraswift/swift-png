@@ -11,4 +11,4 @@
 /Benchmarks/compression/baseline/main
 /Benchmarks/decompression/out/*.png
 /Benchmarks/decompression/baseline/main
-/utils/__pycache__/
+/Tools/__pycache__/

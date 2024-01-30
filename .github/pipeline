@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+swift --version
+swift build
+swift build -c release
+#  Debug-only tests
+swift run -c debug LZ77Tests
+swift run -c debug PNGTests
+#  All tests
+for f in .build/release/*Tests; do
+  $f
+done

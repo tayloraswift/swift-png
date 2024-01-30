@@ -17,15 +17,7 @@ jobs:
         steps:
             -   uses: actions/checkout@v2
 
-            -   name: build
-                run: |
-                    swift --version
-                    swift build
-            -   name: test
-                run: |
-                    swift run -c debug PNGTests
-                    swift run -c release PNGIntegrationTests
-                    swift run -c release PNGCompressionTests
+            -   run: .github/pipeline
 
     linux:
         runs-on: ${{ matrix.os.runner }}
@@ -69,12 +61,5 @@ jobs:
                     mkdir -p $GITHUB_WORKSPACE/swift-${{ matrix.swift.toolchain }}
                     tar -xzf swift-${{ matrix.swift.toolchain }}.tar.gz -C $GITHUB_WORKSPACE/swift-${{ matrix.swift.toolchain }} --strip 1
                     echo "$GITHUB_WORKSPACE/swift-${{ matrix.swift.toolchain }}/usr/bin" >> $GITHUB_PATH
-            -   name: build
-                run: |
-                    swift --version
-                    swift build
-            -   name: test
-                run: |
-                    swift run -c debug PNGTests
-                    swift run -c release PNGIntegrationTests
-                    swift run -c release PNGCompressionTests
+
+            -   run: .github/pipeline
