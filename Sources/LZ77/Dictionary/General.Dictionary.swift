@@ -1,6 +1,7 @@
 extension General
 {
     /// A simple `(UInt32) -> UInt16` hashmap based on F14.
+    @frozen @usableFromInline
     struct Dictionary
     {
         private

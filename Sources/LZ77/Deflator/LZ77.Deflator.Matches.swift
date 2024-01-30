@@ -1,5 +1,6 @@
 extension LZ77.Deflator
 {
+    @frozen @usableFromInline
     struct Matches
     {
         private

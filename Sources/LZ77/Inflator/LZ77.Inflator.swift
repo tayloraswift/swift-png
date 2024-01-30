@@ -4,6 +4,7 @@
 
 extension LZ77
 {
+    @frozen public
     struct Inflator
     {
         private
@@ -14,6 +15,7 @@ extension LZ77
 }
 extension LZ77.Inflator
 {
+    public
     init(format:LZ77.Format = .zlib)
     {
         self.state  = .streamStart
@@ -21,7 +23,7 @@ extension LZ77.Inflator
     }
 
     // returns `nil` if the stream is finished
-    mutating
+    public mutating
     func push(_ data:[UInt8]) throws -> Void?
     {
         self.stream.input.rebase(data, pointer: &self.stream.b)
@@ -37,13 +39,13 @@ extension LZ77.Inflator
             return ()
         }
     }
-    mutating
+    public mutating
     func pull(_ count:Int) -> [UInt8]?
     {
         self.stream.output.exclude()
         return self.stream.output.release(bytes: count)
     }
-    mutating
+    public mutating
     func pull() -> [UInt8]
     {
         self.stream.output.exclude()

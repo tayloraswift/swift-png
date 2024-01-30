@@ -1,5 +1,6 @@
 extension LZ77.Inflator
 {
+    @frozen @usableFromInline
     struct Out
     {
         var window:Int

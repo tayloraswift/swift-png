@@ -1,11 +1,12 @@
 extension LZ77.Deflator
 {
+    @frozen @usableFromInline
     struct Window
     {
-
         private
-        var storage:ManagedBuffer<Void, Element>,
-            head:General.Dictionary
+        var storage:ManagedBuffer<Void, Element>
+        private
+        var head:General.Dictionary
 
         private(set)
         var endIndex:Int // absolute index
@@ -111,8 +112,10 @@ extension LZ77.Deflator.Window
         return (a, next)
     }
 
-    func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In, attempts:Int, goal:Int)
-        -> (run:Int, distance:Int)?
+    func match(from head:(index:Int, next:UInt16?),
+        lookahead:LZ77.Deflator.In,
+        attempts:Int,
+        goal:Int) -> (run:Int, distance:Int)?
     {
         var best:(run:Int, distance:Int) = (run: 5, distance: 1)
         self.match(from: head, lookahead: lookahead, attempts: attempts, goal: goal)
@@ -126,8 +129,11 @@ extension LZ77.Deflator.Window
         return best.run > 5 ? best : nil
     }
 
-    func match(from head:(index:Int, next:UInt16?), lookahead:LZ77.Deflator.In,
-        attempts:Int, goal:Int, delegate:(_ run:Int, _ distance:Int) -> ())
+    func match(from head:(index:Int, next:UInt16?),
+        lookahead:LZ77.Deflator.In,
+        attempts:Int,
+        goal:Int,
+        delegate:(_ run:Int, _ distance:Int) -> ())
     {
         lookahead.withUnsafePointer
         {

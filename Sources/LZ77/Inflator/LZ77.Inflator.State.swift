@@ -1,5 +1,6 @@
 extension LZ77.Inflator
 {
+    @frozen @usableFromInline
     enum State
     {
         case streamStart

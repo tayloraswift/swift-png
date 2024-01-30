@@ -1,12 +1,12 @@
 extension LZ77.Inflator
 {
+    @frozen @usableFromInline
     struct Stream
     {
-
         let format:LZ77.Format
         // Stream.In manages its own COW in rebase(_:pointer:)
-        var input:In,
-            b:Int
+        var input:In
+        var b:Int
         var lengths:[Int]
         // Meta and Stream.Out need to have COW manually implemented with
         // exclude() on each, to avoid redundant exclusions inside loops,,

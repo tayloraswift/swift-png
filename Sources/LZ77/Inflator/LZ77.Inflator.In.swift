@@ -1,5 +1,6 @@
 extension LZ77.Inflator
 {
+    @frozen @usableFromInline
     struct In
     {
         private
@@ -7,6 +8,22 @@ extension LZ77.Inflator
             bytes:Int
         private
         var storage:ManagedBuffer<Void, UInt16>
+
+        // Bitstreams are indexed from LSB to MSB within each atom
+        //
+        // atom 0   16 [ ← ← ← ← ← ← ← ← ]  0
+        // atom 1   32 [ ← ← ← ← ← ← ← ← ] 16
+        // atom 2   48 [ ← ← ← ← ← ← ← ← ] 32
+        // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
+        init(_ data:[UInt8])
+        {
+            self.capacity   = 0
+            self.bytes      = 0
+            self.storage    = .create(minimumCapacity: 0){ _ in () }
+
+            var b:Int  = 0
+            self.rebase(data, pointer: &b)
+        }
     }
 }
 extension LZ77.Inflator.In
@@ -24,23 +41,8 @@ extension LZ77.Inflator.In
         (bytes + 1) >> 1 + 3 // 3 padding shorts
     }
 
-    // Bitstreams are indexed from LSB to MSB within each atom
-    //
-    // atom 0   16 [ ← ← ← ← ← ← ← ← ]  0
-    // atom 1   32 [ ← ← ← ← ← ← ← ← ] 16
-    // atom 2   48 [ ← ← ← ← ← ← ← ← ] 32
-    // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
-    init(_ data:[UInt8])
-    {
-        self.capacity   = 0
-        self.bytes      = 0
-        self.storage    = .create(minimumCapacity: 0){ _ in () }
 
-        var b:Int  = 0
-        self.rebase(data, pointer: &b)
-    }
-
-    // discards all bits before the pointer `b`
+    /// Discards all bits before the pointer `b`
     mutating
     func rebase(_ data:[UInt8], pointer b:inout Int)
     {
@@ -136,14 +138,16 @@ extension LZ77.Inflator.In
         }
     }
 
-    // puts bits in low end of outputted integer
-    //
-    //  { b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
-    //                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                                                                   ^
-    //                                       [4, count: 6, as: UInt16.self]
-    //      produces
-    //  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b.10, b.9, b.8, b.7, b.6, b.5, b.4}
+    /// Returns bits in the low end of the returned integer.
+    ///
+    /// ```text
+    /// { b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
+    ///                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ///                                                                  ^
+    ///                                      [4, count: 6, as: UInt16.self]
+    ///     produces
+    /// { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b.10, b.9, b.8, b.7, b.6, b.5, b.4}
+    /// ```
     subscript<I>(i:Int, count count:Int, as _:I.Type) -> I
         where I:FixedWidthInteger
     {
@@ -168,6 +172,7 @@ extension LZ77.Inflator.In
             return .init(extended &>> b & mask)
         }
     }
+
     subscript(i:Int) -> UInt16
     {
         self.storage.withUnsafeMutablePointerToElements
@@ -189,6 +194,7 @@ extension LZ77.Inflator.In
 }
 extension LZ77.Inflator.In:ExpressibleByArrayLiteral
 {
+    @usableFromInline
     init(arrayLiteral:UInt8...)
     {
         self.init(arrayLiteral)

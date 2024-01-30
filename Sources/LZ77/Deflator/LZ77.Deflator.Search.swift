@@ -1,5 +1,6 @@
 extension LZ77.Deflator
 {
+    @frozen @usableFromInline
     enum Search
     {
         case greedy(attempts:Int, goal:Int)
