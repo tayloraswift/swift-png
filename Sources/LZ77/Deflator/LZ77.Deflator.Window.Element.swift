@@ -1,5 +1,6 @@
 extension LZ77.Deflator.Window
 {
+    @frozen @usableFromInline
     struct Element
     {
         // stores a modular index

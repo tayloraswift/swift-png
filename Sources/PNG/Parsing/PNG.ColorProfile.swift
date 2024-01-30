@@ -1,3 +1,5 @@
+import LZ77
+
 extension PNG
 {
     /// struct PNG.ColorProfile
@@ -106,7 +108,7 @@ extension PNG.ColorProfile
         data.append(0) // compression method
 
         var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
-        deflator.push(self.profile, last: true)
+            deflator.push(self.profile, last: true)
         while true
         {
             let segment:[UInt8] = deflator.pull()

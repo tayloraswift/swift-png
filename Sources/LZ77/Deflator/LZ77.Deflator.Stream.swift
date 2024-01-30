@@ -1,5 +1,6 @@
 extension LZ77.Deflator
 {
+    @frozen @usableFromInline
     struct Stream
     {
         let format:LZ77.Format
@@ -14,7 +15,8 @@ extension LZ77.Deflator
 
         init(format:LZ77.Format, level:Int, exponent:Int, hint:Int)
         {
-            precondition(8 ..< 16 ~= exponent, "exponent cannot be less than 8 or greater than 15")
+            precondition(8 ..< 16 ~= exponent,
+                "exponent cannot be less than 8 or greater than 15")
 
             switch level
             {

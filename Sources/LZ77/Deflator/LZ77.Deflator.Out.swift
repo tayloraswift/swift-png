@@ -1,5 +1,6 @@
 extension LZ77.Deflator
 {
+    @frozen @usableFromInline
     struct Out
     {
         private
@@ -10,6 +11,20 @@ extension LZ77.Deflator
         private
         var queue:[[UInt8]],
             queued:Int
+
+        init(hint:Int)
+        {
+            self.count = 0
+
+            var capacity:Int = hint
+            self.storage = .create(minimumCapacity: hint)
+            {
+                capacity = $0.capacity
+            }
+            self.capacity = capacity
+            self.queue = []
+            self.queued = 0
+        }
     }
 }
 extension LZ77.Deflator.Out
@@ -25,28 +40,16 @@ extension LZ77.Deflator.Out
         (bytes + 1) >> 1 + 3 // 3 padding shorts
     }
 
-    init(hint:Int)
-    {
-        self.count          = 0
-
-        var capacity:Int    = hint
-        self.storage        = .create(minimumCapacity: hint)
-        {
-            capacity = $0.capacity
-            return ()
-        }
-        self.capacity       = capacity
-        self.queue          = []
-        self.queued         = 0
-    }
-
     mutating
     func exclude()
     {
         if !isKnownUniquelyReferenced(&self.storage)
         {
             #if WARN_COPY_ON_WRITE
-            print("warning: managed buffer in type '\(String.init(reflecting: Self.self))' has multiple references; buffer is being copied to preserve value semantics")
+            print("""
+                warning: managed buffer in type '\(String.init(reflecting: Self.self))' has \
+                multiple references; buffer is being copied to preserve value semantics
+                """)
             #endif
 
             self.storage = self.storage.withUnsafeMutablePointerToElements

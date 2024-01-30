@@ -4,6 +4,7 @@
 
 extension LZ77
 {
+    @frozen public
     struct Deflator
     {
         private
@@ -12,6 +13,7 @@ extension LZ77
 }
 extension LZ77.Deflator
 {
+    public
     init(format:LZ77.Format = .zlib, level:Int, exponent:Int = 15, hint:Int = 1 << 12)
     {
         let e:Int
@@ -24,7 +26,7 @@ extension LZ77.Deflator
         self.stream = .init(format: format, level: level, exponent: e, hint: hint)
         self.stream.start(exponent: e)
     }
-    mutating
+    public mutating
     func push(_ data:[UInt8], last:Bool = false)
     {
         // rebase input buffer
@@ -48,12 +50,12 @@ extension LZ77.Deflator
             self.stream.checksum()
         }
     }
-    mutating
+    public mutating
     func pop() -> [UInt8]?
     {
         self.stream.output.pop()
     }
-    mutating
+    public mutating
     func pull() -> [UInt8]
     {
         return self.pop() ?? self.stream.output.pull()

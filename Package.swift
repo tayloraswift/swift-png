@@ -4,6 +4,7 @@ import PackageDescription
 let package:Package = .init(name: "swift-png",
     products:
     [
+        .library(   name: "LZ77",                       targets: ["LZ77"]),
         .library(   name: "PNG",                        targets: ["PNG"]),
 
         .executable(name: "PNGTests",                   targets: ["PNGTests"]),
@@ -27,19 +28,28 @@ let package:Package = .init(name: "swift-png",
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
             from: "0.5.0")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
-            from: "0.3.3")),
+            from: "0.3.4")),
     ],
     targets:
     [
-        .target(name: "TerminalColors"),
+        .target(name: "LZ77"),
 
         .target(name: "PNG",
             dependencies:
             [
+                .target(name: "LZ77"),
                 .target(name: "TerminalColors"),
                 .product(name: "CRC", package: "swift-hash"),
             ]),
 
+        .target(name: "TerminalColors"),
+
+        .executableTarget(name: "LZ77Tests",
+            dependencies:
+            [
+                .target(name: "LZ77"),
+                .product(name: "Testing", package: "swift-grammar"),
+            ]),
 
         .executableTarget(name: "PNGTests",
             dependencies:

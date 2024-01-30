@@ -1,5 +1,6 @@
 extension LZ77.Inflator.Semistatic
 {
+    @frozen @usableFromInline
     struct Meta
     {
         private
