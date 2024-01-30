@@ -1,10 +1,10 @@
-# improving *deflate* compression ratios
+# Improving *deflate* compression ratios
 
 Version 4 of Swift *PNG* features a native Swift implementation of the *DEFLATE* and *INFLATE* algorithms, as described in the [rfc-1951](https://tools.ietf.org/html/rfc1951). *DEFLATE* implementations can vary widely in quality, with some implementations producing far better-optimized (higher compression ratio) output streams than others. So, just as it is important to ensure Swift *PNG*’s *INFLATE* procedure [is as fast as that of the *zlib* C library](../low-level-swift-optimization.md), it is also important to ensure Swift *PNG*’s *DEFLATE* output is as optimal as *zlib*’s. This readme documents some comparisons between Swift *PNG* and *libpng*/*zlib*, as well as choices of compression parameters in the framework at the time of writing.
 
-## i. methodology 
+## Methodology
 
-### i.i. test images 
+### Test images
 
 All of Swift *PNG*’s compression benchmarks run on the following 28 test images. They depict essentially the same subject, in photographic and non-photographic forms, and in different PNG color formats in order to be representative of how PNGs are used in the real world. Because casual PNG users do stupid things (from the perspective of 𝒸𝑜𝓂𝓅𝓇𝑒𝓈𝓈𝒾𝑜𝓃 𝑒𝓃𝑔𝒾𝓃𝑒𝑒𝓇𝓈, who are \~never\~ stupid) like save a monochrome image in RGB(A) format, the test suite includes representation for those use cases as well. None of the images have transparent alpha, as PNG images with varying alpha are rare. (Most transparent PNGs such as logos, test overlays, etc., have alpha that comes in regions of either full or zero opacity, which has the same compression characteristics as fully opaque alpha.)
 
@@ -12,50 +12,50 @@ All baseline images were saved in [GIMP 2.10](https://www.gimp.org/) at the maxi
 
 | Test image | Color format | Size |
 | ---------- | ------------ | ---- |
-| `v8-monochrome-photographic.png`          <br/> <img src="../tests/compression/baseline/v8-monochrome-photographic.png"/>             | `v8`       |  59,743 B | 
-| `v8-monochrome-nonphotographic.png`       <br/> <img src="../tests/compression/baseline/v8-monochrome-nonphotographic.png"/>          | `v8`       |  48,191 B | 
-| `v16-monochrome-photographic.png`         <br/> <img src="../tests/compression/baseline/v16-monochrome-photographic.png"/>            | `v16`      | 176,236 B | 
-| `v16-monochrome-nonphotographic.png`      <br/> <img src="../tests/compression/baseline/v16-monochrome-nonphotographic.png"/>         | `v16`      | 123,371 B | 
+| `v8-monochrome-photographic.png`          <br/> <img src="../Tests/Baselines/v8-monochrome-photographic.png"/>             | `v8`       |  59,743 B |
+| `v8-monochrome-nonphotographic.png`       <br/> <img src="../Tests/Baselines/v8-monochrome-nonphotographic.png"/>          | `v8`       |  48,191 B |
+| `v16-monochrome-photographic.png`         <br/> <img src="../Tests/Baselines/v16-monochrome-photographic.png"/>            | `v16`      | 176,236 B |
+| `v16-monochrome-nonphotographic.png`      <br/> <img src="../Tests/Baselines/v16-monochrome-nonphotographic.png"/>         | `v16`      | 123,371 B |
 |   |   |   |
-| `va8-monochrome-photographic.png`         <br/> <img src="../tests/compression/baseline/va8-monochrome-photographic.png"/>            | `va8`      |  76,280 B | 
-| `va8-monochrome-nonphotographic.png`      <br/> <img src="../tests/compression/baseline/va8-monochrome-nonphotographic.png"/>         | `va8`      |  60,478 B | 
-| `va16-monochrome-photographic.png`        <br/> <img src="../tests/compression/baseline/va16-monochrome-photographic.png"/>           | `va16`     | 209,902 B | 
-| `va16-monochrome-nonphotographic.png`     <br/> <img src="../tests/compression/baseline/va16-monochrome-nonphotographic.png"/>        | `va16`     | 143,935 B | 
+| `va8-monochrome-photographic.png`         <br/> <img src="../Tests/Baselines/va8-monochrome-photographic.png"/>            | `va8`      |  76,280 B |
+| `va8-monochrome-nonphotographic.png`      <br/> <img src="../Tests/Baselines/va8-monochrome-nonphotographic.png"/>         | `va8`      |  60,478 B |
+| `va16-monochrome-photographic.png`        <br/> <img src="../Tests/Baselines/va16-monochrome-photographic.png"/>           | `va16`     | 209,902 B |
+| `va16-monochrome-nonphotographic.png`     <br/> <img src="../Tests/Baselines/va16-monochrome-nonphotographic.png"/>        | `va16`     | 143,935 B |
 |   |   |   |
-| `indexed8-monochrome-photographic.png`    <br/> <img src="../tests/compression/baseline/indexed8-monochrome-photographic.png"/>       | `indexed8` |  82,014 B | 
-| `indexed8-color-photographic.png`         <br/> <img src="../tests/compression/baseline/indexed8-color-photographic.png"/>            | `indexed8` |  65,487 B | 
-| `indexed8-monochrome-nonphotographic.png` <br/> <img src="../tests/compression/baseline/indexed8-monochrome-nonphotographic.png"/>    | `indexed8` |  62,888 B | 
-| `indexed8-color-nonphotographic.png`      <br/> <img src="../tests/compression/baseline/indexed8-color-nonphotographic.png"/>         | `indexed8` |  43,496 B | 
+| `indexed8-monochrome-photographic.png`    <br/> <img src="../Tests/Baselines/indexed8-monochrome-photographic.png"/>       | `indexed8` |  82,014 B |
+| `indexed8-color-photographic.png`         <br/> <img src="../Tests/Baselines/indexed8-color-photographic.png"/>            | `indexed8` |  65,487 B |
+| `indexed8-monochrome-nonphotographic.png` <br/> <img src="../Tests/Baselines/indexed8-monochrome-nonphotographic.png"/>    | `indexed8` |  62,888 B |
+| `indexed8-color-nonphotographic.png`      <br/> <img src="../Tests/Baselines/indexed8-color-nonphotographic.png"/>         | `indexed8` |  43,496 B |
 |   |   |   |
-| `rgb8-monochrome-photographic.png`        <br/> <img src="../tests/compression/baseline/rgb8-monochrome-photographic.png"/>           | `rgb8`     |  92,023 B | 
-| `rgb8-color-photographic.png`             <br/> <img src="../tests/compression/baseline/rgb8-color-photographic.png"/>                | `rgb8`     | 174,298 B | 
-| `rgb8-monochrome-nonphotographic.png`     <br/> <img src="../tests/compression/baseline/rgb8-monochrome-nonphotographic.png"/>        | `rgb8`     |  76,636 B | 
-| `rgb8-color-nonphotographic.png`          <br/> <img src="../tests/compression/baseline/rgb8-color-nonphotographic.png"/>             | `rgb8`     | 130,595 B | 
-| `rgb16-monochrome-photographic.png`       <br/> <img src="../tests/compression/baseline/rgb16-monochrome-photographic.png"/>          | `rgb16`    | 379,113 B | 
-| `rgb16-color-photographic.png`            <br/> <img src="../tests/compression/baseline/rgb16-color-photographic.png"/>               | `rgb16`    | 477,784 B | 
-| `rgb16-monochrome-nonphotographic.png`    <br/> <img src="../tests/compression/baseline/rgb16-monochrome-nonphotographic.png"/>       | `rgb16`    | 244,077 B | 
-| `rgb16-color-nonphotographic.png`         <br/> <img src="../tests/compression/baseline/rgb16-color-nonphotographic.png"/>            | `rgb16`    | 365,253 B | 
+| `rgb8-monochrome-photographic.png`        <br/> <img src="../Tests/Baselines/rgb8-monochrome-photographic.png"/>           | `rgb8`     |  92,023 B |
+| `rgb8-color-photographic.png`             <br/> <img src="../Tests/Baselines/rgb8-color-photographic.png"/>                | `rgb8`     | 174,298 B |
+| `rgb8-monochrome-nonphotographic.png`     <br/> <img src="../Tests/Baselines/rgb8-monochrome-nonphotographic.png"/>        | `rgb8`     |  76,636 B |
+| `rgb8-color-nonphotographic.png`          <br/> <img src="../Tests/Baselines/rgb8-color-nonphotographic.png"/>             | `rgb8`     | 130,595 B |
+| `rgb16-monochrome-photographic.png`       <br/> <img src="../Tests/Baselines/rgb16-monochrome-photographic.png"/>          | `rgb16`    | 379,113 B |
+| `rgb16-color-photographic.png`            <br/> <img src="../Tests/Baselines/rgb16-color-photographic.png"/>               | `rgb16`    | 477,784 B |
+| `rgb16-monochrome-nonphotographic.png`    <br/> <img src="../Tests/Baselines/rgb16-monochrome-nonphotographic.png"/>       | `rgb16`    | 244,077 B |
+| `rgb16-color-nonphotographic.png`         <br/> <img src="../Tests/Baselines/rgb16-color-nonphotographic.png"/>            | `rgb16`    | 365,253 B |
 |   |   |   |
-| `rgba8-monochrome-photographic.png`       <br/> <img src="../tests/compression/baseline/rgba8-monochrome-photographic.png"/>          | `rgba8`    | 101,521 B | 
-| `rgba8-color-photographic.png`            <br/> <img src="../tests/compression/baseline/rgba8-color-photographic.png"/>               | `rgba8`    | 196,537 B | 
-| `rgba8-monochrome-nonphotographic.png`    <br/> <img src="../tests/compression/baseline/rgba8-monochrome-nonphotographic.png"/>       | `rgba8`    |  84,098 B | 
-| `rgba8-color-nonphotographic.png`         <br/> <img src="../tests/compression/baseline/rgba8-color-nonphotographic.png"/>            | `rgba8`    | 147,023 B | 
-| `rgba16-monochrome-photographic.png`      <br/> <img src="../tests/compression/baseline/rgba16-monochrome-photographic.png"/>         | `rgba16`   | 414,526 B | 
-| `rgba16-color-photographic.png`           <br/> <img src="../tests/compression/baseline/rgba16-color-photographic.png"/>              | `rgba16`   | 518,368 B | 
-| `rgba16-monochrome-nonphotographic.png`   <br/> <img src="../tests/compression/baseline/rgba16-monochrome-nonphotographic.png"/>      | `rgba16`   | 143,935 B | 
-| `rgba16-color-nonphotographic.png`        <br/> <img src="../tests/compression/baseline/rgba16-color-nonphotographic.png"/>           | `rgba16`   | 394,493 B | 
+| `rgba8-monochrome-photographic.png`       <br/> <img src="../Tests/Baselines/rgba8-monochrome-photographic.png"/>          | `rgba8`    | 101,521 B |
+| `rgba8-color-photographic.png`            <br/> <img src="../Tests/Baselines/rgba8-color-photographic.png"/>               | `rgba8`    | 196,537 B |
+| `rgba8-monochrome-nonphotographic.png`    <br/> <img src="../Tests/Baselines/rgba8-monochrome-nonphotographic.png"/>       | `rgba8`    |  84,098 B |
+| `rgba8-color-nonphotographic.png`         <br/> <img src="../Tests/Baselines/rgba8-color-nonphotographic.png"/>            | `rgba8`    | 147,023 B |
+| `rgba16-monochrome-photographic.png`      <br/> <img src="../Tests/Baselines/rgba16-monochrome-photographic.png"/>         | `rgba16`   | 414,526 B |
+| `rgba16-color-photographic.png`           <br/> <img src="../Tests/Baselines/rgba16-color-photographic.png"/>              | `rgba16`   | 518,368 B |
+| `rgba16-monochrome-nonphotographic.png`   <br/> <img src="../Tests/Baselines/rgba16-monochrome-nonphotographic.png"/>      | `rgba16`   | 143,935 B |
+| `rgba16-color-nonphotographic.png`        <br/> <img src="../Tests/Baselines/rgba16-color-nonphotographic.png"/>           | `rgba16`   | 394,493 B |
 
-### i.ii. benchmarks
+### Benchmarks
 
-The compression benchmarks come in their own package target, `compression-test`. The repository’s [CI](https://github.com/kelvin13/swift-png/actions?query=workflow%3Abuild) builds and runs them, though it doesn’t really care about the output. The test binary can run all of the test cases, a subset of the test cases, or a single test case.
+The compression benchmarks come in their own package target, `compression-test`. The repository’s [CI](https://github.com/tayloraswift/swift-png/actions?query=workflow%3Abuild) builds and runs them, though it doesn’t really care about the output. The test binary can run all of the test cases, a subset of the test cases, or a single test case.
 
 ```bash
-# run all test cases 
-./compression-test 
-# run a subset of test cases 
-./compression-test rgb8 
+# run all test cases
+./compression-test
+# run a subset of test cases
+./compression-test rgb8
 # run one test case
-./compression-test rgb8:rgb8-color-photographic.png 
+./compression-test rgb8:rgb8-color-photographic.png
 ```
 
 The `compression-test` product is most useful when Swift *PNG* is built with one of several inspection features enabled. To enable inspection, pass one of the following compiler build flags:
@@ -65,7 +65,7 @@ The `compression-test` product is most useful when Swift *PNG* is built with one
 3. `DUMP_LZ77_BLOCKS`
 4. `DUMP_LZ77_SYMBOL_HISTOGRAM`
 
-> To pass a build flag with the Swift Package Manager, use `-Xswiftc -D`. For example, to build with scanline dumping enabled, pass `-Xswiftc -DDUMP_FILTERED_SCANLINES` to the Swift compiler. 
+> To pass a build flag with the Swift Package Manager, use `-Xswiftc -D`. For example, to build with scanline dumping enabled, pass `-Xswiftc -DDUMP_FILTERED_SCANLINES` to the Swift compiler.
 
 #### `DUMP_FILTERED_SCANLINES`
 
@@ -77,10 +77,10 @@ Makes the decoder print out each *DEFLATE* term (either a literal value or a str
 
 #### `DUMP_LZ77_BLOCKS`
 
-Makes the decoder print out information about each *DEFLATE* block, and aggregate statistics for the entire *DEFLATE* stream, including: 
+Makes the decoder print out information about each *DEFLATE* block, and aggregate statistics for the entire *DEFLATE* stream, including:
 
 * the average entropy-coding efficiency of the literal terms in the stream,
-* a histogram of composite lengths of the string reference terms in the stream, and 
+* a histogram of composite lengths of the string reference terms in the stream, and
 * a two-dimensional histogram of the run length decades and distance decades of the string reference terms in the stream.
 
 It also makes the encoder print out its decision-making process when determining optimal *DEFLATE* block boundaries.
@@ -91,7 +91,7 @@ The same as `DUMP_LZ77_BLOCKS`, except it only prints out the two-dimensional sy
 
 ![example histogram](sample-histogram.png)
 
-The *x*-axis is binned by **run-length decade**. Decade zero corresponds to a match length of 3 bytes. Decade 28 corresponds to a match length of 258 bytes. 
+The *x*-axis is binned by **run-length decade**. Decade zero corresponds to a match length of 3 bytes. Decade 28 corresponds to a match length of 258 bytes.
 
 The *y*-axis is binned by **distance decade**. Decade zero corresponds to an offset of 1 byte. Decade 29 corresponds to an offset of anywhere from 24,577 to 32,768 bytes, refined by extra bits. You can find the full table of run-length and distance decades on page 12 of the [rfc-1951](https://tools.ietf.org/html/rfc1951).
 
@@ -107,7 +107,7 @@ In general:
 
 * A few high-frequency bins are better than many low-frequency bins, because this reduces the entropy of the emitted terms, making the subsequent huffman coding more effective.
 
-## ii. naïve implementation
+## Naïve implementation
 
 I based this implementation on the recommendations of the original PNG and *DEFLATE* specifications. For filter selection, it uses a heuristic that minimizes the **sum of absolute values** of the filtered scanline, when interpreted as an array of signed `Int8`s. It performs non-greedy LZ77 compression with a backtracking limit of 1 byte. (LZ77 dictionaries have the [*suffix property*](https://scholar.acadiau.ca/islandora/object/theses:625), so you only need to backtrack once to find obscured matches.) For entropic partitioning, it emits *DEFLATE* blocks at fixed intervals of 32K *DEFLATE* terms each.
 
@@ -156,17 +156,17 @@ The sizes of the Swift *PNG* output images under this implementation are given b
 
 Most of the test images compress slightly worse than the baseline. (It would be very weird if a naïve implementation produced *better* output than the baseline.) A few of them — namely the indexed images and some of the monochrome images that were saved in an RGB or RGBA format — compress much better than the baseline. We’ll see later why that happened.
 
-## iii. improvement: better filter heuristics 
+## Improvement: better filter heuristics
 
-The filter selection heuristic is the only part of the compression pipeline that is under the control of the PNG codec if it does not also implement its own *DEFLATE*. So it’s a common starting point for improving PNG compression. 
+The filter selection heuristic is the only part of the compression pipeline that is under the control of the PNG codec if it does not also implement its own *DEFLATE*. So it’s a common starting point for improving PNG compression.
 
-### iii.i. minimum intervals
+### Minimum intervals
 
 Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum intervals** selector. It minimizes the number of byte changes in the filtered scanline, so it prefers data that looks like `[5, 5, 5, 5, 5, 5, 6, 6, 6, 6]`, whereas the absolute values selector would prefer data that looks like `[0, 1, 0, 1, 0, 1, 1, 0, 1, 0]`. It’s not really an improvement over the absolute values selector, but for reference, the benchmark results for this filter selector are given below (in the collapsible section):
 
 <details>
 <summary><em>Click to expand</em></summary>
-  
+
 | Filter selection | LZ77 algorithm | LZ77 matches | Entropic partitioning |
 | --------- | -------------- | ------- | ----- |
 | Intervals | Non-greedy | All allowed | Fixed-length blocks |
@@ -208,7 +208,7 @@ Versions 2 through 3.02 of Swift *PNG* used a heuristic called the **minimum int
 
 </details>
 
-### iii.ii. squared frequencies
+### Squared frequencies
 
 One alternative filter heuristic does seem to be an improvement over the absolute values selector: the **squared frequencies** selector. The squared frequencies selector maximizes the sum of the squared frequencies of each byte value in the filtered data. So it prefers data that looks like `[5, 6, 5, 5, 6, 5, 6, 6, 5, 6]` over data that looks like `[0, 0, 0, 1, 1, 1, 2, 2, 2, 2]`. (Which the previous two heuristics would prefer.)
 
@@ -253,16 +253,16 @@ The squared frequencies selector works by reducing the entropy of the filtered d
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 150.3066 KB   | **1.0693** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 403.0332 KB   | **1.0462** |
 
-## iv. improvement: better LZ77 matching 
+## Improvement: better LZ77 matching
 
-### iv.i. match thresholds 
+### Match thresholds
 
 Many of the test images are still compressing 5 to 15 percent worse than the baseline. When examining the symbol histograms of the original and recompressed images, we can see that the string matches Swift *PNG* is emitting are very different from the matches that *zlib* is emitting.
 
 In the screenshot below, the upper histogram is from one of the original test images (`rgb8-color-nonphotographic`), and the lower histogram is from the recompressed version.
 
 <p align="center">
-<img src="../tests/compression/baseline/rgb8-color-nonphotographic.png"/>
+<img src="../Tests/Baselines/rgb8-color-nonphotographic.png"/>
 </p>
 
 ![Comparison of string match frequencies for the original and recompressed versions of one of the test images](histogram-iv-1.png)
@@ -314,7 +314,7 @@ Getting Swift *PNG* to impose this condition improves the compression for almost
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 139.4336 KB   | **0.9920** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 385.1064 KB   | **0.9996** |
 
-### iv.ii. internal matches
+### Internal matches
 
 While most of the worst-case inputs have converged towards a ratio of 1.0, so have some of the best-case inputs. Notably, the monochrome RGB and RGBA images (some of which were previously outperforming the baseline by over 38 percent!) are now compressing about the same as the baseline. This is because certain monochrome RGB and RGBA byte patterns tend to produce lots of highly-efficient matches that get discarded by the match threshold. Many of these are **internal matches** (matches with a distance less than 3), which are very efficient to encode.
 
@@ -331,11 +331,11 @@ If you look at the histograms for the monochrome RGB16 images, you can see that 
 >
 > A similar effect happens in the monochrome RGBA16 images, but it is far less pronounced.
 
-### iv.iii. harmonic matches 
+### Harmonic matches
 
 A similar but unrelated phenomenon called **harmonic matching** takes place when compressing RGB and RGBA images, as well as some VA images. While internal matches are references to a sequence within the same logical pixel, harmonic matches are references to entire, preceeding pixels.
 
-Harmonic matches occur because PNG filters have a set [delay](http://www.libpng.org/pub/png/spec/1.2/PNG-Filters.html) determined by the logical stride of the image pixels. For an 8-bit RGB image, this delay is three bytes long. For a 16-bit RGBA image, the filter delay is eight bytes long. The filter delay tends to create repetitions in the filtered data at integer multiples of the delay length. We can think of this length as the natural wavelength of the PNG image, which creates clusters of matches at certain lengths and offsets. 
+Harmonic matches occur because PNG filters have a set [delay](http://www.libpng.org/pub/png/spec/1.2/PNG-Filters.html) determined by the logical stride of the image pixels. For an 8-bit RGB image, this delay is three bytes long. For a 16-bit RGBA image, the filter delay is eight bytes long. The filter delay tends to create repetitions in the filtered data at integer multiples of the delay length. We can think of this length as the natural wavelength of the PNG image, which creates clusters of matches at certain lengths and offsets.
 
 | Color format  | Wavelength    | Length decades        | Distance decades  |
 | ------------- | ------------- | --------------------- | ----------------- |
@@ -363,7 +363,7 @@ Harmonic matches are easiest to see in monochrome RGB/RGBA images, but they also
 
 > A symbol histogram from the test image `rgb8-color-nonphotographic.png`, compressed by Swift *PNG*, with match thresholding turned off. It has visible harmonic banding in the vertical (distance) direction, but not the horizontal (length) direction.
 
-## v. improvement: better LZ77 algorithm 
+## Improvement: better LZ77 algorithm
 
 With only a few exceptions, all of the test images compress to within 102 percent of the baseline with the improved algorithm in the last section. The two outliers are the 8-bit RGB monochrome images, which are still compressing about 10 percent worse than the baseline. By looking at their symbol histograms, we can see why that’s happening:
 
@@ -381,7 +381,7 @@ The opposite effect is happening in the images that compress *better* under Swif
 
 For images like these, Swift *PNG* is actually doing a better job concentrating match lengths into harmonic bands than *libpng*/*zlib* is, and accordingly, the Swift *PNG*-compressed image is significantly (by compression engineering standards) smaller than the baseline — almost 6 percent smaller! From all this, we can infer that harmonic banding is very important to PNG compression.
 
-### v.i. greedy algorithm
+### Greedy algorithm
 
 One remedy for the under-harmonized images is simple but counterintuitive — turn off all non-greedy matching, and fall back to a greedy LZ77 algorithm. This makes all of the monochrome RGB and RGBA images converge towards the baseline.
 
@@ -424,34 +424,34 @@ One remedy for the under-harmonized images is simple but counterintuitive — tu
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 139.6055 KB   | **0.9932** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 383.8066 KB   | **0.9963** |
 
-### v.ii. semi-greedy algorithms 
+### Semi-greedy algorithms
 
 One possibility for a more sophisticated LZ77 algorithm is to allow greedy matching, but only if the match length does not fall on a harmonic decade. In theory, this should encourage the algorithm to both collapse more literals and concentrate match lengths into fewer length decades. In practice, this is exactly what happens — matches migrate from the non-harmonic decades into harmonic decades, and length decade 3 (matches of length 6) gains additional matches from the non-greedy search that the greedy search would not have found. For RGB images, length decade 3 is also a harmonic decade, resulting in even more match concentration. But, for reasons that remain unclear, this doesn’t meaningfully improve overall compression, even for RGB images, and sometimes worsens it slightly.
 
-### v.iii. lazy algorithms 
+### Lazy algorithms
 
 Another possible algorithmic improvement is to enable lazy LZ77 matching. Lazy matching is similar to non-greedy matching, but it works from the beginning of the match candidate instead of the end. In other words, before accepting a match candidate, it first checks to see if there is a better match starting one byte later. Non-greedy matching either detects additional matched phrases, or transfers matched bytes from earlier matches to later matches. (The second case has absolutely no effect on the surrounding context.) Lazy matching, on the other hand, makes the matches you already have longer. The following diagram contains an illustration of this effect:
 
 ```
-                                      greedy matching 
+                                      greedy matching
                                             |
 [ 1 : 2 : 3 : 4 : 2 : 3 : 4 : 5 : 6 : 7 : 8 | 1 : 2 : 3 : 4 : 5 : 6 : 7 : 8 ]
  ~~~~~~~~~~~~~~~             ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~
      match 0                     match 1    |    match 0         match 1
 ```
 ```
-                                  non-greedy matching 
+                                  non-greedy matching
                                             |
 [ 1 : 2 : 3 : 4 : 2 : 3 : 4 : 5 : 6 : 7 : 8 | 1 : 2 : 3 : 4 : 5 : 6 : 7 : 8 ]
  ~~~~~~~~~~~~            ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~
    match 0                     match 1      |  match 0         match 1
 ```
 ```
-                                        lazy matching 
+                                        lazy matching
                                             |
 [ 1 : 2 : 3 : 4 : 2 : 3 : 4 : 5 : 6 : 7 : 8 | 1 : 2 : 3 : 4 : 5 : 6 : 7 : 8 ]
                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                           match 0          |              match 0 
+                           match 0          |              match 0
 ```
 
 Enabling lazy matching consistently improves PNG compression, though the amount of savings is small.
@@ -495,27 +495,27 @@ Enabling lazy matching consistently improves PNG compression, though the amount 
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 138.6230 KB   | **0.9862** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 382.2695 KB   | **0.9923** |
 
-## vi. improvement: better entropic partitioning 
+## Improvement: better entropic partitioning
 
 One last thing we can try is see if Swift *PNG* can be a little more intelligent when it comes to determining *DEFLATE* block boundaries. Ideally, it would choose boundaries such that each block’s probability model (huffman tree) is specialized for its contents. For example, if you have data that looks like `[0, 1, 0, 1, 1, 0, 2, 3, 3, 2]`, it would compress better with two specialized huffman trees coding the subarrays `[0, 1, 0, 1, 1, 0]` and `[2, 3, 3, 2]` than with a single generic huffman tree coding the entire array. By itself, this concept suggests that the optimal partitioning for any input array is a sequence of subarrays each containing a single unique value. (For the previous example, that would be `[0], [1], [0], [1, 1], [0], [2], [3, 3], [2]`.) But storing the huffman trees themselves at the beginning of each *DEFLATE* block also has a size cost, so partitions become less efficient the smaller they get.
 
 We can state the problem \~formally\~ like this:
 
-Given an input array *A*, find a contiguous sequence of index ranges *i*<sub>0</sub>,&nbsp;…&nbsp;,&nbsp;*i*<sub>*k*&nbsp;–&nbsp;1</sub> where 
+Given an input array *A*, find a contiguous sequence of index ranges *i*<sub>0</sub>,&nbsp;…&nbsp;,&nbsp;*i*<sub>*k*&nbsp;–&nbsp;1</sub> where
 
-* *i*<sub>0</sub>&nbsp;=&nbsp;*A*`.startIndex`, 
+* *i*<sub>0</sub>&nbsp;=&nbsp;*A*`.startIndex`,
 * *i*<sub>*k*&nbsp;–&nbsp;1</sub>&nbsp;=&nbsp;*A*`.endIndex`,
-* *i*<sub>*j*</sub>&nbsp;<&nbsp;*i*<sub>*j*&nbsp;+&nbsp;1</sub>, 
-  
+* *i*<sub>*j*</sub>&nbsp;<&nbsp;*i*<sub>*j*&nbsp;+&nbsp;1</sub>,
+
 and which minimizes
 
-Σ (Dynamic(Tree(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>)) + Encode(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>, Tree(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>))) for *j* in 0,&nbsp;…&nbsp;,&nbsp;*k*&nbsp;–&nbsp;2&nbsp;, 
+Σ (Dynamic(Tree(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>)) + Encode(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>, Tree(*i*<sub>*j*</sub>, *i*<sub>*j*&nbsp;+&nbsp;1</sub>))) for *j* in 0,&nbsp;…&nbsp;,&nbsp;*k*&nbsp;–&nbsp;2&nbsp;,
 
 where Tree(\_:\_:) returns an optimal huffman tree for the array slice of *A* given by its arguments, Dynamic(\_:) returns the size of its huffman tree argument when encoded as a dynamic *DEFLATE* block header, and Encode(\_:\_:\_:) returns the size of the entropy-coded bitstream given an array slice and a huffman tree.
 
 This problem has a dynamic programming solution that runs in *O*(*n*<sup>3</sup>) time (and *O*(*n*<sup>2</sup>) space), but the constant factor for the cubic term is so tiny — the cost of a single integer comparison — that it’s completely overshadowed by the quadratic term, which comes from computing the symbol frequencies and huffman tree for each interval. (Both are constant-time operations.)
 
-This optimization is computationally feasible because *n* doesn’t have to be the number of bytes in the input — it can be some smaller number of atoms determined by a partition granularity *g* of your choice. For example, you can cut *n* by a factor of 256 by only considering block boundaries that fall on multiples of 256. Finer-grained searches make the partitioning more efficient, but below a granularity of *g*&nbsp;≈&nbsp;2<sup>10</sup> symbols there is no noticeable improvement in compression. 
+This optimization is computationally feasible because *n* doesn’t have to be the number of bytes in the input — it can be some smaller number of atoms determined by a partition granularity *g* of your choice. For example, you can cut *n* by a factor of 256 by only considering block boundaries that fall on multiples of 256. Finer-grained searches make the partitioning more efficient, but below a granularity of *g*&nbsp;≈&nbsp;2<sup>10</sup> symbols there is no noticeable improvement in compression.
 
 Because this algorithm is still super-linear, it also makes sense to impose a maximum partition size *h*, where *h* is much bigger than (and ideally a multiple of) *g*. This means we do entropic partitioning by first dividing the *DEFLATE* terms into fixed-size segments of size *h*, and then running the *O*(*h*<sup>2</sup>/*g*<sup>2</sup>)-ish algorithm on each segment.
 
@@ -562,15 +562,15 @@ Empirically, the settings *g*&nbsp;=&nbsp;2<sup>12</sup>, *h*&nbsp;=&nbsp;2<sup>
 | `rgba16-monochrome-nonphotographic`   | 140.5615 KB   | 138.4209 KB   | **0.9848** |
 | `rgba16-color-nonphotographic`        | 385.2471 KB   | 381.7754 KB   | **0.9910** |
 
-## vii. conclusions 
+## Conclusions
 
 Using the techniques documented here, Swift *PNG*’s filtering and *DEFLATE* implementation is able to compress all of the non-indexed test images to within 1.6 percent of their *libpng*/*zlib*-compressed equivalents. In fact, Swift *PNG* is able to compress many of the test images up to 1.5 percent *better* than *libpng*/*zlib*. Swift *PNG*, through its choice of filter selection heuristic, is biased towards non-photographic images. This means that relatively speaking, Swift *PNG* is slightly better at compressing cartoon images, while *libpng* is slightly better at compressing photorealistic images.
 
-Indexed images are special cases, and while three of the indexed test images compress much better than their *libpng*/*zlib*-compressed equivalents, one of them (`indexed8-color-nonphotographic.png`) compresses about 4.4 percent worse. From the perspective of the *DEFLATE* engine, all four images are identical, so any differences in compression are due to differences in indexing and filtering. 
+Indexed images are special cases, and while three of the indexed test images compress much better than their *libpng*/*zlib*-compressed equivalents, one of them (`indexed8-color-nonphotographic.png`) compresses about 4.4 percent worse. From the perspective of the *DEFLATE* engine, all four images are identical, so any differences in compression are due to differences in indexing and filtering.
 
-*libpng*’s poor average-case compression for the indexed images is probably because the original [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Encoders.html#E.Filter-selection) recommended against filtering indexed images, so *libpng* does not even attempt to apply filters to these images. Like a lot of advice from the 90s, this decision has not aged well. Most indexed images benefit greatly from filtering. 
+*libpng*’s poor average-case compression for the indexed images is probably because the original [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Encoders.html#E.Filter-selection) recommended against filtering indexed images, so *libpng* does not even attempt to apply filters to these images. Like a lot of advice from the 90s, this decision has not aged well. Most indexed images benefit greatly from filtering.
 
-Another contributing factor to *libpng*’s poor performance for indexed images is the fact that *libpng* does not appear to use match thresholding for this color format. However, Swift *PNG* with match thresholding turned off still outperforms *libpng* by large margins for three out of four test images, so match thresholding is not the entire reason for the discrepancy. 
+Another contributing factor to *libpng*’s poor performance for indexed images is the fact that *libpng* does not appear to use match thresholding for this color format. However, Swift *PNG* with match thresholding turned off still outperforms *libpng* by large margins for three out of four test images, so match thresholding is not the entire reason for the discrepancy.
 
 It is likely that we could achieve even bigger compression improvements for indexed PNGs by optimizing the palette indexing itself. For example, assigning numerically close palette indices to visually adjacent colors and applying a PNG filter to the result could produce highly compressible data. However, this is a very niche optimization that would only affect a small subset of PNGs, so I haven’t explored that possibility.
 
@@ -578,7 +578,7 @@ We could achieve huge compression gains for monochrome RGB and RGBA images by se
 
 As I’ve already indicated, all comparisons here are against *libpng*/*zlib* on its highest compression settings. A fully-featured PNG codec should also provide modes optimized for encoding speed instead of compression ratio, which is the next step for Swift *PNG*.
 
-## \~ *further reading* \~
+## Further reading
 
 1. [PNG tech](http://optipng.sourceforge.net/pngtech/)
 2. [The Effect of Non-Greedy Parsing in Ziv-Lempel Compression Methods](https://webhome.cs.uvic.ca/~nigelh/Publications/LZ-non-greedy.pdf)
