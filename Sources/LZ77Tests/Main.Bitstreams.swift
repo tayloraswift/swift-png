@@ -1,3 +1,4 @@
+#if DEBUG
 @testable
 import LZ77
 import Testing
@@ -101,3 +102,4 @@ extension Main.Bitstreams:TestBattery
         }
     }
 }
+#endif

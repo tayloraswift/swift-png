@@ -49,6 +49,10 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "LZ77"),
                 .product(name: "Testing", package: "swift-grammar"),
+            ],
+            swiftSettings:
+            [
+                .define("DEBUG", .when(configuration: .debug))
             ]),
 
         .executableTarget(name: "PNGTests",
@@ -56,6 +60,10 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
+            ],
+            swiftSettings:
+            [
+                .define("DEBUG", .when(configuration: .debug))
             ]),
 
         .executableTarget(name: "PNGIntegrationTests",
