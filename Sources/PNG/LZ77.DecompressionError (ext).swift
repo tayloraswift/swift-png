@@ -2,11 +2,11 @@ import LZ77
 
 extension LZ77.DecompressionError:PNG.Error
 {
-    /// The string `"decompression error"`.
+    /// The string `"Decompression error"`.
     public static
     var namespace:String
     {
-        "decompression error"
+        "Decompression error"
     }
     /// A human-readable summary of this error.
     public
@@ -14,14 +14,6 @@ extension LZ77.DecompressionError:PNG.Error
     {
         switch self
         {
-        case .invalidStreamCompressionMethodCode:
-            return "invalid rfc-1950 stream compression method code"
-        case .invalidStreamWindowSize:
-            return "invalid rfc-1950 stream window size"
-        case .invalidStreamHeaderCheckBits:
-            return "invalid rfc-1950 stream header check bits"
-        case .unexpectedStreamDictionary:
-            return "unexpected rfc-1950 stream dictionary"
         case .invalidStreamChecksum:
             return "invalid rfc-1950 checksum"
         case .invalidBlockTypeCode:
@@ -46,25 +38,28 @@ extension LZ77.DecompressionError:PNG.Error
     {
         switch self
         {
-        case    .invalidStreamCompressionMethodCode(let code):
-            return "(\(code)) is not a valid compression method code"
-        case    .invalidStreamWindowSize(exponent: let exponent):
-            return "base-2 log of stream window size (\(exponent)) must be in the range 8 ... 15"
-        case    .invalidStreamHeaderCheckBits,
-                .unexpectedStreamDictionary,
-                .invalidHuffmanCodelengthHuffmanTable,
-                .invalidHuffmanCodelengthSequence,
-                .invalidHuffmanTable,
-                .invalidStringReference:
-            return nil
-        case    .invalidStreamChecksum(declared: let declared, computed: let computed):
-            return "computed mrc-32 checksum (\(computed)) does not match declared checksum (\(declared))"
-        case    .invalidBlockTypeCode(let code):
-            return "(\(code)) is not a valid block type code"
-        case    .invalidBlockElementCountParity(let l, let m):
-            return "inverted block element count (\(String.init(~l, radix: 2))) does not match declared parity bits (\(String.init(m, radix: 2)))"
-        case    .invalidHuffmanRunLiteralSymbolCount(let count):
-            return "run-literal symbol count (\(count)) must be in the range 257 ... 286"
+        case .invalidHuffmanCodelengthHuffmanTable:
+            nil
+        case .invalidHuffmanCodelengthSequence:
+            nil
+        case .invalidHuffmanTable:
+            nil
+        case .invalidStringReference:
+            nil
+        case .invalidStreamChecksum(declared: let declared, computed: let computed):
+            """
+            computed mrc-32 checksum (\(computed)) \
+            does not match declared checksum (\(declared))
+            """
+        case .invalidBlockTypeCode(let code):
+            "(\(code)) is not a valid block type code"
+        case .invalidBlockElementCountParity(let l, let m):
+            """
+            inverted block element count (\(String.init(~l, radix: 2))) does not match \
+            declared parity bits (\(String.init(m, radix: 2)))
+            """
+        case .invalidHuffmanRunLiteralSymbolCount(let count):
+            "run-literal symbol count (\(count)) must be in the range 257 ... 286"
         }
     }
 }

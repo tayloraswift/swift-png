@@ -63,7 +63,8 @@ extension LZ77.Inflator
         switch self.state
         {
         case .streamStart:
-            guard let window:Int = try self.stream.start()
+            guard
+            let window:Int = try self.stream.start()
             else
             {
                 return nil
@@ -72,8 +73,8 @@ extension LZ77.Inflator
             self.state                  = .blockStart
 
         case .blockStart:
-            guard let (final, compression):(Bool, Stream.Compression) =
-                try self.stream.blockStart()
+            guard
+            let (final, compression):(Bool, Stream.Compression) = try self.stream.blockStart()
             else
             {
                 return nil
@@ -99,7 +100,8 @@ extension LZ77.Inflator
             #endif
 
         case .blockTables(final: let final, runliterals: let runliterals, distances: let distances):
-            guard let (runliteral, distance):(LZ77.HuffmanTree<UInt16>, LZ77.HuffmanTree<UInt8>) =
+            guard
+            let (runliteral, distance):(LZ77.HuffmanTree<UInt16>, LZ77.HuffmanTree<UInt8>) =
                 try self.stream.blockTables(runliterals: runliterals, distances: distances)
             else
             {
@@ -110,7 +112,8 @@ extension LZ77.Inflator
                 semistatic: .init(runliteral: runliteral, distance: distance))
 
         case .blockUncompressed(final: let final, end: let end):
-            guard let _:Void = try self.stream.blockUncompressed(end: end)
+            guard
+            let _:Void = try self.stream.blockUncompressed(end: end)
             else
             {
                 return nil
@@ -118,7 +121,8 @@ extension LZ77.Inflator
             self.state = final ? .streamChecksum : .blockStart
 
         case .blockCompressed(final: let final, semistatic: let semistatic):
-            guard let _:Void = try self.stream.blockCompressed(semistatic: semistatic)
+            guard
+            let _:Void = try self.stream.blockCompressed(semistatic: semistatic)
             else
             {
                 return nil
@@ -126,7 +130,8 @@ extension LZ77.Inflator
             self.state = final ? .streamChecksum : .blockStart
 
         case .streamChecksum:
-            guard let _:Void = try self.stream.checksum()
+            guard
+            let _:Void = try self.stream.checksum()
             else
             {
                 return nil

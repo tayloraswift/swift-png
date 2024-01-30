@@ -18,18 +18,17 @@ extension LZ77.Inflator
         var storage:ManagedBuffer<Void, UInt8>
 
         private
-        var integral:(single:UInt32, double:UInt32)
+        var integral:LZ77.MRC32
     }
 }
 extension LZ77.Inflator.Out
 {
     init()
     {
-        var capacity:Int    = 0
+        var capacity:Int = 0
         self.storage = .create(minimumCapacity: 0)
         {
             capacity = $0.capacity
-            return ()
         }
         self.window         = 0
         self.startIndex     = 0
@@ -37,7 +36,7 @@ extension LZ77.Inflator.Out
         self.endIndex       = 0
         self.capacity       = capacity
 
-        self.integral       = (1, 0)
+        self.integral       = .init()
     }
 
     mutating
@@ -163,9 +162,10 @@ extension LZ77.Inflator.Out
             // rebase without reallocating
             self.storage.withUnsafeMutablePointerToElements
             {
-                self.integral   = LZ77.MRC32.update(self.integral,
-                            from: $0,                   count: self.startIndex)
-                $0.update(  from: $0 + self.startIndex, count: count)
+                self.integral.update(from: $0, count: self.startIndex)
+
+                $0.update(from: $0 + self.startIndex, count: count)
+
                 self.currentIndex  -= self.startIndex
                 self.endIndex      -= self.startIndex
                 self.startIndex     = 0
@@ -185,9 +185,9 @@ extension LZ77.Inflator.Out
 
                 new.withUnsafeMutablePointerToElements
                 {
-                    self.integral   = LZ77.MRC32.update(self.integral,
-                                from: body,                   count: self.startIndex)
-                    $0.update(  from: body + self.startIndex, count: count)
+                    self.integral.update(from: body, count: self.startIndex)
+
+                    $0.update(from: body + self.startIndex, count: count)
                 }
                 self.currentIndex  -= self.startIndex
                 self.endIndex      -= self.startIndex
@@ -203,9 +203,8 @@ extension LZ77.Inflator.Out
         // everything still in the storage buffer has not yet been integrated
         self.storage.withUnsafeMutablePointerToElements
         {
-            let (single, double):(UInt32, UInt32) =
-                LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
-            return double << 16 | single
+            self.integral.update(from: $0, count: self.endIndex)
+            return self.integral.checksum
         }
     }
 }
