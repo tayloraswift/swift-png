@@ -1,3 +1,5 @@
+import LZ77
+
 extension PNG
 {
     static

@@ -2,8 +2,10 @@
 import PackageDescription
 
 let package:Package = .init(name: "swift-png",
+    platforms: [.macOS(.v10_15)],
     products:
     [
+        .library(   name: "LZ77",                       targets: ["LZ77"]),
         .library(   name: "PNG",                        targets: ["PNG"]),
 
         .executable(name: "PNGTests",                   targets: ["PNGTests"]),
@@ -27,25 +29,42 @@ let package:Package = .init(name: "swift-png",
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
             from: "0.5.0")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
-            from: "0.3.3")),
+            from: "0.3.4")),
     ],
     targets:
     [
-        .target(name: "TerminalColors"),
+        .target(name: "LZ77"),
 
         .target(name: "PNG",
             dependencies:
             [
+                .target(name: "LZ77"),
                 .target(name: "TerminalColors"),
                 .product(name: "CRC", package: "swift-hash"),
             ]),
 
+        .target(name: "TerminalColors"),
+
+        .executableTarget(name: "LZ77Tests",
+            dependencies:
+            [
+                .target(name: "LZ77"),
+                .product(name: "Testing", package: "swift-grammar"),
+            ],
+            swiftSettings:
+            [
+                .define("DEBUG", .when(configuration: .debug))
+            ]),
 
         .executableTarget(name: "PNGTests",
             dependencies:
             [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
+            ],
+            swiftSettings:
+            [
+                .define("DEBUG", .when(configuration: .debug))
             ]),
 
         .executableTarget(name: "PNGIntegrationTests",
@@ -68,11 +87,6 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
-            ],
-            exclude:
-            [
-                "Baselines/",
-                "Outputs/",
             ]),
 
         .executableTarget(name: "PNGCompressionBenchmarks",
@@ -80,14 +94,14 @@ let package:Package = .init(name: "swift-png",
             [
                 .target(name: "PNG"),
             ],
-            path: "Benchmarks/compression/swift"),
+            path: "Benchmarks/Compression/Swift"),
 
         .executableTarget(name: "PNGDecompressionBenchmarks",
             dependencies:
             [
                 .target(name: "PNG"),
             ],
-            path: "Benchmarks/decompression/swift"),
+            path: "Benchmarks/Decompression/Swift"),
 
         .executableTarget(name: "PNGDecodeBasic",
             dependencies:

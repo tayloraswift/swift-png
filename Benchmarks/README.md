@@ -1,12 +1,12 @@
-# *swift png* benchmarks 
+# *swift png* benchmarks
 
-> generated on **January 15, 2021** for commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)** using **[`utils/benchmark`](../utils/benchmark)**
+> generated on **January 15, 2021** for commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)** using **[`utils/benchmark`](../utils/benchmark)**
 
-## running benchmarks 
+## running benchmarks
 
 *Swift PNG*’s benchmarks live in the `benchmarks` directory. They are divided into compression benchmarks ([`benchmarks/compression`](compression)) and decompression benchmarks ([`benchmarks/decompression`](decompression)). Each benchmark compares a *Swift PNG* test application to an equivalent *libpng*-based implementation. All performance benchmarks are *cold-start* measurements, meaning that the code sleeps for a fraction of a second before each trial run.
 
-All benchmarks run on a test suite of **28** images. 
+All benchmarks run on a test suite of **28** images.
 
 <details>
 <summary><em>Click to show test image table</em></summary>
@@ -46,15 +46,15 @@ All benchmarks run on a test suite of **28** images.
 
 ## results
 
-### decoding 
+### decoding
 
-The decompression benchmarks compare the performance of *Swift PNG* to that of *libpng* while decoding the **28** images in the library test suite. Run times are normalized according to the *median* runtime of the baseline (*libpng*) implementation *for each test image*. 
+The decompression benchmarks compare the performance of *Swift PNG* to that of *libpng* while decoding the **28** images in the library test suite. Run times are normalized according to the *median* runtime of the baseline (*libpng*) implementation *for each test image*.
 
 In the density plot below, the labeled curves represent the *aggregate distribution* of run times across all **28** test images. The unlabeled curves are the distributions for each individual test image. The dashed curve indicates the distribution for one of the 8-bit RGB test images (`rgb8-color-photographic`), one of the most common PNG image types.
 
 ![decompression performance](../benchmarks/results/decompression-speed.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median decoding time was **135.26 percent** that of *libpng*. *Swift PNG*’s median decoding time for the `rgb8-color-photographic` test image was **142.2 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median decoding time was **135.26 percent** that of *libpng*. *Swift PNG*’s median decoding time for the `rgb8-color-photographic` test image was **142.2 percent** that of *libpng*.
 
 ### encoding (levels `0 ... 9`)
 
@@ -69,7 +69,7 @@ In the density plots below, the labeled curves represent the *aggregate distribu
 
 ![compression performance](../benchmarks/results/compression-speed@0.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 0th compression level was **308.85 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **268.18 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 0th compression level was **308.85 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **268.18 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@0.svg)
 
@@ -80,7 +80,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@1.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 1st compression level was **174.18 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **131.52 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 1st compression level was **174.18 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **131.52 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@1.svg)
 
@@ -91,7 +91,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@2.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 2nd compression level was **169.1 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **130.64 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 2nd compression level was **169.1 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **130.64 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@2.svg)
 
@@ -102,7 +102,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@3.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 3rd compression level was **159.72 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **119.35 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 3rd compression level was **159.72 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **119.35 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@3.svg)
 
@@ -113,7 +113,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@4.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 4th compression level was **153.42 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **107.0 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 4th compression level was **153.42 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **107.0 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@4.svg)
 
@@ -124,7 +124,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@5.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 5th compression level was **145.8 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **112.61 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 5th compression level was **145.8 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **112.61 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@5.svg)
 
@@ -135,7 +135,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@6.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 6th compression level was **120.21 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **116.43 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 6th compression level was **120.21 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **116.43 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@6.svg)
 
@@ -146,7 +146,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@7.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 7th compression level was **111.13 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **107.94 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 7th compression level was **111.13 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **107.94 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@7.svg)
 
@@ -157,7 +157,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@8.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 8th compression level was **161.12 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **168.84 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 8th compression level was **161.12 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **168.84 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@8.svg)
 
@@ -168,7 +168,7 @@ As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614c
 
 ![compression performance](../benchmarks/results/compression-speed@9.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 9th compression level was **170.7 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **220.06 percent** that of *libpng*.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s median encoding time at its 9th compression level was **170.7 percent** that of *libpng*. *Swift PNG*’s median encoding time for the `rgb8-color-photographic` test image was **220.06 percent** that of *libpng*.
 
 ![compression ratios](../benchmarks/results/compression-size@9.svg)
 
@@ -182,33 +182,33 @@ The following file size plots compare the output of *Swift PNG* at its four high
 
 ![compression ratios](../benchmarks/results/compression-size@10.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 10th compression level for the `rgb8-color-photographic` test image was **98.04 percent** that of *libpng* at its highest compression level.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 10th compression level for the `rgb8-color-photographic` test image was **98.04 percent** that of *libpng* at its highest compression level.
 
 
 #### compression level 11
 
 ![compression ratios](../benchmarks/results/compression-size@11.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 11th compression level for the `rgb8-color-photographic` test image was **97.89 percent** that of *libpng* at its highest compression level.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 11th compression level for the `rgb8-color-photographic` test image was **97.89 percent** that of *libpng* at its highest compression level.
 
 
 #### compression level 12
 
 ![compression ratios](../benchmarks/results/compression-size@12.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 12th compression level for the `rgb8-color-photographic` test image was **97.82 percent** that of *libpng* at its highest compression level.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 12th compression level for the `rgb8-color-photographic` test image was **97.82 percent** that of *libpng* at its highest compression level.
 
 
 #### compression level 13
 
 ![compression ratios](../benchmarks/results/compression-size@13.svg)
 
-As of commit **[`89aa614`](https://github.com/kelvin13/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 13th compression level for the `rgb8-color-photographic` test image was **97.74 percent** that of *libpng* at its highest compression level.
+As of commit **[`89aa614`](https://github.com/tayloraswift/swift-png/commit/89aa614cf3d0c88ec74f0048d2f10d603c8c1bb8)**, *Swift PNG*’s generated file size its 13th compression level for the `rgb8-color-photographic` test image was **97.74 percent** that of *libpng* at its highest compression level.
 
 
-### performance by toolchain 
+### performance by toolchain
 
-*Swift PNG* is a pure Swift library, so its performance is ultimately constrained by the efficiency of the machine code generated by the Swift compiler. Experimentally, we can observe that the library is getting slightly faster with newer toolchains. The following plots compare the performance of the same version of *Swift PNG* on the `rgb8-color-photographic` test image when compiled with the following nightly toolchains: 
+*Swift PNG* is a pure Swift library, so its performance is ultimately constrained by the efficiency of the machine code generated by the Swift compiler. Experimentally, we can observe that the library is getting slightly faster with newer toolchains. The following plots compare the performance of the same version of *Swift PNG* on the `rgb8-color-photographic` test image when compiled with the following nightly toolchains:
 
 - `DEVELOPMENT-SNAPSHOT-2020-05-03-a`
 - `DEVELOPMENT-SNAPSHOT-2020-06-04-a`
