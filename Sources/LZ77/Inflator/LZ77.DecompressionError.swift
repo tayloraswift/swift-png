@@ -22,26 +22,6 @@ extension LZ77
     public
     enum DecompressionError:Error, Equatable, Sendable
     {
-        /// A compressed data stream had an invalid compression method code.
-        ///
-        /// The compression method code should always be `8`.
-        case invalidStreamCompressionMethodCode(UInt8)
-
-        /// A compressed data stream specified an invalid window size.
-        ///
-        /// The window size exponent should be in the range `8 ... 15`.
-        case invalidStreamWindowSize(exponent:Int)
-
-        /// A compressed data stream had invalid header check bits.
-        ///
-        /// The header check bits should not be confused with the modular redundancy checksum,
-        /// which corresponds to the ``invalidStreamChecksum(declared:computed:)`` error case.
-        case invalidStreamHeaderCheckBits
-
-        /// A compressed data stream contains a stream dictionary, which is not allowed in a
-        /// compressed PNG data stream.
-        case unexpectedStreamDictionary
-
         /// The modular redundancy checksum computed on the uncompressed data did not match the
         /// checksum declared in the compressed data stream footer.
         ///

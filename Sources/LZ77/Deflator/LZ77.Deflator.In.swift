@@ -14,26 +14,25 @@ extension LZ77.Deflator
         var storage:ManagedBuffer<Void, UInt8>
 
         private
-        var integral:(single:UInt32, double:UInt32)
+        var integral:LZ77.MRC32
     }
 }
 extension LZ77.Deflator.In
 {
     init()
     {
-        var capacity:Int    = 0
+        var capacity:Int = 0
         self.storage = .create(minimumCapacity: 0)
         {
             capacity = $0.capacity
-            return ()
         }
         // self.startIndex     = 0
         // self.endIndex       = 0
-        self.startIndex     = 4
-        self.endIndex       = 4
-        self.capacity       = capacity
+        self.startIndex = 4
+        self.endIndex = 4
+        self.capacity = capacity
 
-        self.integral       = (1, 0)
+        self.integral = .init()
     }
 
     var count:Int
@@ -160,10 +159,11 @@ extension LZ77.Deflator.In
             // rebase without reallocating
             self.storage.withUnsafeMutablePointerToElements
             {
-                self.integral   = LZ77.MRC32.update(self.integral,
-                            from: $0 + 4,                   count: self.startIndex - 4)
-                $0.update(  from: $0 - 4 + self.startIndex, count: self.count      + 4)
-                self.endIndex   = 4 + self.count
+                self.integral.update(from: $0 + 4, count: self.startIndex - 4)
+
+                $0.update(from: $0 - 4 + self.startIndex, count: self.count + 4)
+
+                self.endIndex = 4 + self.count
                 self.startIndex = 4
             }
         }
@@ -181,11 +181,11 @@ extension LZ77.Deflator.In
 
                 new.withUnsafeMutablePointerToElements
                 {
-                    self.integral   = LZ77.MRC32.update(self.integral,
-                                from: body + 4,                   count: self.startIndex - 4)
-                    $0.update(  from: body - 4 + self.startIndex, count: self.count      + 4)
+                    self.integral.update(from: body + 4, count: self.startIndex - 4)
+
+                    $0.update(from: body - 4 + self.startIndex, count: self.count + 4)
                 }
-                self.endIndex   = 4 + self.count
+                self.endIndex = 4 + self.count
                 self.startIndex = 4
                 return new
             }
@@ -198,10 +198,8 @@ extension LZ77.Deflator.In
         // everything still in the storage buffer has not yet been integrated
         self.storage.withUnsafeMutablePointerToElements
         {
-            let (single, double):(UInt32, UInt32) =
-                //LZ77.MRC32.update(self.integral, from: $0, count: self.endIndex)
-                LZ77.MRC32.update(self.integral, from: $0 + 4, count: self.endIndex - 4)
-            return double << 16 | single
+            self.integral.update(from: $0 + 4, count: self.endIndex - 4)
+            return self.integral.checksum
         }
     }
 

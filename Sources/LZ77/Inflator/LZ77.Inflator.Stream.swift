@@ -48,7 +48,7 @@ extension LZ77.Inflator.Stream
     mutating
     func start() throws -> Int?
     {
-        if case .ios = self.format
+        if  case .ios = self.format
         {
             return 1 << 15
         }
@@ -65,26 +65,26 @@ extension LZ77.Inflator.Stream
         case 8:
             break
         case let code:
-            throw LZ77.DecompressionError.invalidStreamCompressionMethodCode(code)
+            throw LZ77.StreamHeaderError.invalidCompressionMethod(code)
         }
 
         let exponent:Int = self.input[self.b + 4, count: 4, as: Int.self]
         guard exponent < 8
         else
         {
-            throw LZ77.DecompressionError.invalidStreamWindowSize(exponent: exponent + 8)
+            throw LZ77.StreamHeaderError.invalidWindowSize(exponent: exponent + 8)
         }
 
         let flags:Int = self.input[self.b + 8, count: 8, as: Int.self]
         guard (exponent << 12 | 8 << 8 + flags) % 31 == 0
         else
         {
-            throw LZ77.DecompressionError.invalidStreamHeaderCheckBits
+            throw LZ77.StreamHeaderError.invalidCheckBits
         }
         guard flags & 0x20 == 0
         else
         {
-            throw LZ77.DecompressionError.unexpectedStreamDictionary
+            throw LZ77.StreamHeaderError.unexpectedDictionary
         }
 
         self.b += 16
@@ -158,12 +158,13 @@ extension LZ77.Inflator.Stream
             }
 
             var lengths:[Int] = .init(repeating: 0, count: 19)
-            for (i, d):(Int, Int) in
-                zip(0 ..< codelengths, [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15])
+            for (i, d):(Int, Int) in zip(0 ..< codelengths,
+                [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15])
             {
                 lengths[d] = self.input[self.b + 17 + 3 * i, count: 3, as: Int.self]
             }
-            guard let tree:LZ77.HuffmanTree<UInt8> = .validate(symbols: 0 ... 18, lengths: lengths)
+            guard
+            let tree:LZ77.HuffmanTree<UInt8> = .validate(symbols: 0 ... 18, lengths: lengths)
             else
             {
                 throw LZ77.DecompressionError.invalidHuffmanCodelengthHuffmanTable
@@ -226,7 +227,8 @@ extension LZ77.Inflator.Stream
                 continue codelengths
 
             case 16:
-                guard let last:Int = self.lengths.last
+                guard
+                let last:Int = self.lengths.last
                 else
                 {
                     throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
@@ -286,12 +288,13 @@ extension LZ77.Inflator.Stream
         }
         #endif
 
-        guard   let runliteral:LZ77.HuffmanTree<UInt16> = .validate(
-                    symbols:        0 ... 287,
-                    lengths:        self.lengths.prefix(runliterals)),
-                let distance:LZ77.HuffmanTree<UInt8> = .validate(
-                    symbols:        0 ... 31,
-                    normalizing:    self.lengths.dropFirst(runliterals))
+        guard
+        let runliteral:LZ77.HuffmanTree<UInt16> = .validate(
+            symbols: 0 ... 287,
+            lengths: self.lengths.prefix(runliterals)),
+        let distance:LZ77.HuffmanTree<UInt8> = .validate(
+            symbols: 0 ... 31,
+            normalizing: self.lengths.dropFirst(runliterals))
         else
         {
             throw LZ77.DecompressionError.invalidHuffmanTable
@@ -449,7 +452,7 @@ extension LZ77.Inflator.Stream
         print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
         #endif
 
-        if case .ios = self.format
+        if  case .ios = self.format
         {
             return ()
         }
