@@ -15,8 +15,6 @@ let package:Package = .init(name: "swift-png",
         .executable(name: "compression-benchmark",      targets: ["PNGCompressionBenchmarks"]),
         .executable(name: "decompression-benchmark",    targets: ["PNGDecompressionBenchmarks"]),
 
-        .executable(name: "decode-basic",               targets: ["PNGDecodeBasic"]),
-        .executable(name: "encode-basic",               targets: ["PNGEncodeBasic"]),
         .executable(name: "indexing",                   targets: ["PNGIndexing"]),
         .executable(name: "iphone-optimized",           targets: ["PNGiPhoneOptimized"]),
         .executable(name: "metadata",                   targets: ["PNGMetadata"]),
@@ -39,11 +37,14 @@ let package:Package = .init(name: "swift-png",
             dependencies:
             [
                 .target(name: "LZ77"),
-                .target(name: "TerminalColors"),
                 .product(name: "CRC", package: "swift-hash"),
             ]),
 
-        .target(name: "TerminalColors"),
+        .target(name: "PNGInspection",
+            dependencies:
+            [
+                .target(name: "PNG"),
+            ]),
 
         .executableTarget(name: "LZ77Tests",
             dependencies:
@@ -103,40 +104,7 @@ let package:Package = .init(name: "swift-png",
             ],
             path: "Benchmarks/Decompression/Swift"),
 
-        .executableTarget(name: "PNGDecodeBasic",
-            dependencies:
-            [
-                .target(name: "PNG"),
-            ],
-            path: "Examples/decode-basic",
-            exclude:
-            [
-                "example.png.rgba",
-                "example.png.v.png",
-                "example.png.rgba.png",
-                "example.png",
-                "example.png.v",
-                "example.png.va.png",
-                "example.png.va",
-            ]),
-        .executableTarget(name: "PNGEncodeBasic",
-            dependencies:
-            [
-                .target(name: "PNG"),
-            ],
-            path: "Examples/encode-basic",
-            exclude:
-            [
-                "example-color-rgb@0.png",
-                "example-color-rgb@4.png",
-                "example-color-v.png",
-                "example-color-rgb@8.png",
-                "example-color-rgb.png",
-                "example-luminance-rgb.png",
-                "example.rgba",
-                "example-color-rgb@13.png",
-                "example-luminance-v.png",
-            ]),
+
         .executableTarget(name: "PNGIndexing",
             dependencies:
             [

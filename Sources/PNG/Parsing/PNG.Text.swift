@@ -5,8 +5,8 @@ extension PNG
     /// struct PNG.Text
     ///     A text comment.
     ///
-    ///     This type models the information stored in a [`(Chunk).tEXt`],
-    ///     [`(Chunk).zTXt`], or [`(Chunk).iTXt`] chunk.
+    ///     This type models the information stored in a ``Chunk/tEXt``,
+    ///     ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk.
     /// # [Parsing and serialization](text-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -18,8 +18,8 @@ extension PNG
         ///     uncompressed form within a PNG file.
         ///
         ///     This flag is `true` if the original text chunk was a
-        ///     [`(Chunk).zTXt`] chunk, and `false` if it was a [`(Chunk).tEXt`]
-        ///     chunk. If the original chunk was an [`(Chunk).iTXt`] chunk,
+        ///     ``Chunk/zTXt`` chunk, and `false` if it was a ``Chunk/tEXt``
+        ///     chunk. If the original chunk was an ``Chunk/iTXt`` chunk,
         ///     this flag can be either `true` or `false`.
         public
         let compressed:Bool
@@ -108,12 +108,12 @@ extension PNG.Text
     ///     Creates a text comment by parsing the given chunk data, interpreting
     ///     it either as a unicode text chunk, or a latin-1 text chunk.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).tEXt`], [`(Chunk).zTXt`], or [`(Chunk).iTXt`]
+    ///     The contents of a ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/iTXt``
     ///     chunk to parse.
     /// - unicode   : Swift.Bool
     ///     Specifies if the given chunk `data` should be interpreted as a
     ///     unicode chunk, or a latin-1 chunk. It should be set to `true` if the
-    ///     original text chunk was an [`(Chunk).iTXt`] chunk, and `false`
+    ///     original text chunk was an ``Chunk/iTXt`` chunk, and `false`
     ///     otherwise. The default value is `true`.
     ///
     ///     If this flag is set to `false`, the text is assumed to be in english,
@@ -314,12 +314,12 @@ extension PNG.Text
     }
     /// var PNG.Text.serialized : [Swift.UInt8] { get }
     ///     Encodes this text comment as the contents of a
-    ///     [`(Chunk).iTXt`] chunk.
+    ///     ``Chunk/iTXt`` chunk.
     ///
-    ///     This property *always* emits a unicode [`(Chunk).iTXt`]
+    ///     This property *always* emits a unicode ``Chunk/iTXt``
     ///     chunk, regardless of the type of the original chunk, if it was parsed
     ///     from raw chunk data. It is the opinion of the library that the
-    ///     latin-1 chunk types [`(Chunk).tEXt`] and [`(Chunk).zTXt`] are
+    ///     latin-1 chunk types ``Chunk/tEXt`` and ``Chunk/zTXt`` are
     ///     deprecated.
     /// ## (text-parsing-and-serialization)
     public

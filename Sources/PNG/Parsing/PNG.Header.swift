@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Header
     ///     An image header.
     ///
-    ///     This type models the information stored in a [`(Chunk).IHDR`] chunk.
+    ///     This type models the information stored in a ``Chunk/IHDR`` chunk.
     /// # [Parsing and serialization](header-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -73,7 +73,7 @@ extension PNG.Header
     ///     Creates an image header by parsing the given chunk data, interpreting it
     ///     according to the given PNG `standard`.
     /// - data      : [Swift.UInt8]
-    ///     The contents of an [`(Chunk).IHDR`] chunk to parse.
+    ///     The contents of an ``Chunk/IHDR`` chunk to parse.
     /// - standard  : Standard
     ///     Specifies if the header should be interpreted as a standard PNG header,
     ///     or an iphone-optimized PNG header.
@@ -138,7 +138,7 @@ extension PNG.Header
     }
 
     /// var PNG.Header.serialized   : [Swift.UInt8] { get }
-    ///     Encodes this image header as the contents of an [`(Chunk).IHDR`] chunk.
+    ///     Encodes this image header as the contents of an ``Chunk/IHDR`` chunk.
     /// ## (header-parsing-and-serialization)
     public
     var serialized:[UInt8]

@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Chromaticity
     ///     A chromaticity descriptor.
     ///
-    ///     This type models the information stored in a [`(Chunk).cHRM`] chunk.
+    ///     This type models the information stored in a ``Chunk/cHRM`` chunk.
     /// # [Parsing and serialization](chromaticity-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -64,7 +64,7 @@ extension PNG.Chromaticity
     /// throws
     ///     Creates a chromaticity descriptor by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).cHRM`] chunk to parse.
+    ///     The contents of a ``Chunk/cHRM`` chunk to parse.
     /// ## (chromaticity-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -86,7 +86,7 @@ extension PNG.Chromaticity
     }
     /// var PNG.Chromaticity.serialized : [Swift.UInt8] { get }
     ///     Encodes this chromaticity descriptor as the contents of a
-    ///     [`(Chunk).cHRM`] chunk.
+    ///     ``Chunk/cHRM`` chunk.
     /// ## (chromaticity-parsing-and-serialization)
     public
     var serialized:[UInt8]

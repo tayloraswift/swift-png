@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.TimeModified
     ///     An image modification time.
     ///
-    ///     This type models the information stored in a [`(Chunk).tIME`] chunk.
+    ///     This type models the information stored in a ``Chunk/tIME`` chunk.
     ///     This type is time-zone agnostic, and so all time values are assumed
     ///     to be in universal time (UTC).
     /// # [Parsing and serialization](timemodified-parsing-and-serialization)
@@ -100,7 +100,7 @@ extension PNG.TimeModified
     /// throws
     ///     Creates an image modification time by parsing the given chunk data.
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).tIME`] chunk to parse.
+    ///     The contents of a ``Chunk/tIME`` chunk to parse.
     /// ## (timemodified-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
@@ -137,7 +137,7 @@ extension PNG.TimeModified
     }
     /// var PNG.TimeModified.serialized : [Swift.UInt8] { get }
     ///     Encodes this image modification time as the contents of a
-    ///     [`(Chunk).tIME`] chunk.
+    ///     ``Chunk/tIME`` chunk.
     /// ## (timemodified-parsing-and-serialization)
     public
     var serialized:[UInt8]

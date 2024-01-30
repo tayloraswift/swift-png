@@ -3,7 +3,7 @@ extension PNG
     /// struct PNG.Background
     ///     A background descriptor.
     ///
-    ///     This type models the information stored in a [`(Chunk).bKGD`] chunk.
+    ///     This type models the information stored in a ``Chunk/bKGD`` chunk.
     ///     This information is used to populate the `fill` field in
     ///     an image color [`Format`].
     ///
@@ -147,7 +147,7 @@ extension PNG.Background
     ///     initializer does not check this assumption, as it is expected to have
     ///     been verified by [`Palette.init(parsing:pixel:)`].
     /// - data      : [Swift.UInt8]
-    ///     The contents of a [`(Chunk).bKGD`] chunk to parse.
+    ///     The contents of a ``Chunk/bKGD`` chunk to parse.
     /// - pixel     : Format.Pixel
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
@@ -216,7 +216,7 @@ extension PNG.Background
     }
     /// var PNG.Background.serialized : [Swift.UInt8] { get }
     ///     Encodes this background descriptor as the contents of a
-    ///     [`(Chunk).bKGD`] chunk.
+    ///     ``Chunk/bKGD`` chunk.
     /// ## (background-parsing-and-serialization)
     public
     var serialized:[UInt8]
