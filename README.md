@@ -17,8 +17,8 @@ Swift *PNG* is [available](LICENSE) under the [Mozilla Public License 2.0](https
 
 ## [tutorials and example programs](examples/)
 
-1. [basic decoding](examples/#basic-decoding) ([sources](examples/decode-basic/))
-2. [basic encoding](examples/#basic-encoding) ([sources](examples/encode-basic/))
+1. [basic decoding](Snippets/BasicDecoding.swift) ([sources](Snippets/BasicDecoding.swift/))
+2. [basic encoding](Snippets/BasicEncoding.swift) ([sources](Snippets/BasicEncoding.swift/))
 3. [using indexed images](examples/#using-indexed-images) ([sources](examples/indexed/))
 4. [using iphone-optimized images](examples/#using-iphone-optimized-images) ([sources](examples/iphone-optimized/))
 5. [working with metadata](examples/#working-with-metadata) ([sources](examples/metadata/))
@@ -48,7 +48,8 @@ Decode an image:
 import PNG
 func decode(png path:String) throws
 {
-    guard let image:PNG.Data.Rectangular = try .decompress(path: path)
+    guard
+    let image:PNG.Data.Rectangular = try .decompress(path: path)
     else
     {
         // failed to access file from file system
