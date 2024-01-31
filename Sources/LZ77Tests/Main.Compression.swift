@@ -39,21 +39,16 @@ extension Main.Compression:TestBattery
                     let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
 
                     var deflator:LZ77.Deflator = .init(level: level, exponent: 8, hint: 16)
-                        deflator.push(input, last: true)
+                        deflator.push(input[...], last: true)
 
                     var compressed:[UInt8] = []
-                    while true
+                    while let part:[UInt8] = deflator.pull()
                     {
-                        let part:[UInt8] = deflator.pull()
-                        if  part.isEmpty
-                        {
-                            break
-                        }
-                        compressed.append(contentsOf: part)
+                        compressed += part
                     }
 
                     var inflator:LZ77.Inflator = .init()
-                    try inflator.push(compressed)
+                    try inflator.push(compressed[...])
 
                     let output:[UInt8] = inflator.pull()
 

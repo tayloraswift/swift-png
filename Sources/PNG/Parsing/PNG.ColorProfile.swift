@@ -85,7 +85,7 @@ extension PNG.ColorProfile
         }
 
         var inflator:LZ77.Inflator = .init()
-        guard try inflator.push(.init(data.dropFirst(k + 2))) == nil
+        guard case nil = try inflator.push(data.dropFirst(k + 2))
         else
         {
             throw PNG.ParsingError.incompleteColorProfileCompressedDatastream
@@ -108,16 +108,9 @@ extension PNG.ColorProfile
         data.append(0) // compression method
 
         var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
-            deflator.push(self.profile, last: true)
-        while true
+            deflator.push(self.profile[...], last: true)
+        while let segment:[UInt8] = deflator.pull()
         {
-            let segment:[UInt8] = deflator.pull()
-            guard !segment.isEmpty
-            else
-            {
-                break
-            }
-
             data.append(contentsOf: segment)
         }
 

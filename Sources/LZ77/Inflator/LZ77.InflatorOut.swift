@@ -1,7 +1,7 @@
 extension LZ77
 {
     @frozen @usableFromInline
-    struct InflatorOutput<Integral> where Integral:LZ77.StreamIntegral
+    struct InflatorOut<Integral> where Integral:LZ77.StreamIntegral
     {
         var window:Int
 
@@ -35,7 +35,7 @@ extension LZ77
         }
     }
 }
-extension LZ77.InflatorOutput
+extension LZ77.InflatorOut
 {
     mutating
     func exclude()

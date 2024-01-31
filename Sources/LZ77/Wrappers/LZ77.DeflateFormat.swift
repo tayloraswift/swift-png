@@ -17,7 +17,7 @@ extension LZ77.DeflateFormat:LZ77.StreamFormat
     typealias Integral = LZ77.MRC32
 
     public
-    func begin(inflating input:inout LZ77.InflatorInput,
+    func begin(inflating input:inout LZ77.InflatorIn,
         at bit:inout Int) throws -> LZ77.DeflateHeader?
     {
         if  case .ios = self
@@ -66,7 +66,7 @@ extension LZ77.DeflateFormat:LZ77.StreamFormat
     }
 
     public
-    func check(inflating input:inout LZ77.InflatorInput, at bit:inout Int) -> UInt32??
+    func check(inflating input:inout LZ77.InflatorIn, at bit:inout Int) -> UInt32??
     {
         if  case .ios = self
         {
