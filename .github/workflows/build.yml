@@ -13,7 +13,7 @@ jobs:
         strategy:
             matrix:
                 os:
-                    -   macos-13
+                    -   macos-14
         steps:
             -   uses: actions/checkout@v2
 
@@ -29,8 +29,8 @@ jobs:
                         prefix: ubuntu2204
                         suffix: ubuntu22.04
                 swift:
-                    -   toolchain:  5.9.1-RELEASE
-                        branch:     swift-5.9.1-release
+                    -   toolchain:  5.9.2-RELEASE
+                        branch:     swift-5.9.2-release
 
         steps:
             -   uses: actions/checkout@v2
