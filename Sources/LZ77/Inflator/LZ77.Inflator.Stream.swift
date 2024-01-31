@@ -4,14 +4,14 @@ extension LZ77.Inflator
     struct Stream<Integral> where Integral:LZ77.StreamIntegral
     {
         // Stream.In manages its own COW in rebase(_:pointer:)
-        var input:LZ77.InflatorInput
+        var input:LZ77.InflatorIn
         var b:Int
         var lengths:[Int]
         // Meta and Stream.Out need to have COW manually implemented with
         // exclude() on each, to avoid redundant exclusions inside loops,,
         // reuse the same buffer since the size is fixed
         var meta:LZ77.InflatorTables.Meta
-        var output:LZ77.InflatorOutput<Integral>
+        var output:LZ77.InflatorOut<Integral>
 
         #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
         // histogram, no match can ever cost more than 17 bits per literal

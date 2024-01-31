@@ -83,7 +83,7 @@ extension LZ77.DeflatorOut
         // release all the buffered data chunks. this isn’t ideal (we should
         // be releasing them as soon as they are dequeued, but the semantics
         // of Array<T> don’t allow for this)
-        if self.queued <= 0
+        if  self.queued <= 0
         {
             self.queue.removeAll(keepingCapacity: true)
         }

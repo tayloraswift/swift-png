@@ -171,7 +171,7 @@ extension PNG.Text
                     throw PNG.ParsingError.invalidTextCompressionMethodCode(data[k + 2])
                 }
                 var inflator:LZ77.Inflator = .init()
-                guard try inflator.push(.init(data[(m + 1)...])) == nil
+                guard case nil = try inflator.push(data[(m + 1)...])
                 else
                 {
                     throw PNG.ParsingError.incompleteTextCompressedDatastream
@@ -194,7 +194,7 @@ extension PNG.Text
             if k + 1 < data.endIndex, data[k + 1] == 0
             {
                 var inflator:LZ77.Inflator = .init()
-                guard try inflator.push(.init(data[(k + 2)...])) == nil
+                guard case nil = try inflator.push(data[(k + 2)...])
                 else
                 {
                     throw PNG.ParsingError.incompleteTextCompressedDatastream
@@ -351,16 +351,9 @@ extension PNG.Text
         if self.compressed
         {
             var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
-            deflator.push(.init(self.content.utf8), last: true)
-            while true
+                deflator.push(.init(self.content.utf8), last: true)
+            while let segment:[UInt8] = deflator.pull()
             {
-                let segment:[UInt8] = deflator.pull()
-                guard !segment.isEmpty
-                else
-                {
-                    break
-                }
-
                 data.append(contentsOf: segment)
             }
         }

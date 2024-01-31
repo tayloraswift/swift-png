@@ -1,7 +1,7 @@
 extension LZ77
 {
     @frozen public
-    struct InflatorInput
+    struct InflatorIn
     {
         private
         var capacity:Int, // units in atoms
@@ -15,7 +15,7 @@ extension LZ77
         // atom 1   32 [ ← ← ← ← ← ← ← ← ] 16
         // atom 2   48 [ ← ← ← ← ← ← ← ← ] 32
         // atom 3   64 [ ← ← ← ← ← ← ← ← ] 48
-        init(_ data:[UInt8])
+        init(_ data:ArraySlice<UInt8>)
         {
             self.capacity   = 0
             self.bytes      = 0
@@ -26,7 +26,7 @@ extension LZ77
         }
     }
 }
-extension LZ77.InflatorInput
+extension LZ77.InflatorIn
 {
     var count:Int
     {
@@ -44,10 +44,9 @@ extension LZ77.InflatorInput
 
     /// Discards all bits before the pointer `b`
     mutating
-    func rebase(_ data:[UInt8], pointer b:inout Int)
+    func rebase(_ data:ArraySlice<UInt8>, pointer b:inout Int)
     {
-        guard !data.isEmpty
-        else
+        if  data.isEmpty
         {
             return
         }
@@ -192,11 +191,11 @@ extension LZ77.InflatorInput
         }
     }
 }
-extension LZ77.InflatorInput:ExpressibleByArrayLiteral
+extension LZ77.InflatorIn:ExpressibleByArrayLiteral
 {
     public
     init(arrayLiteral:UInt8...)
     {
-        self.init(arrayLiteral)
+        self.init(arrayLiteral[...])
     }
 }

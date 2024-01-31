@@ -25,7 +25,7 @@ extension Main.Matching:TestBattery
         var output:[[UInt8]] = []
         for (s, segment):(Int, [UInt8]) in segments.enumerated()
         {
-            input.enqueue(contentsOf: segment)
+            input.enqueue(contentsOf: segment[...])
 
             let lookahead:Int = (s == segments.count - 1 ? 0 : 10)
             while window.endIndex < 0, input.count > lookahead

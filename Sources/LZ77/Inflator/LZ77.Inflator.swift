@@ -31,7 +31,7 @@ extension LZ77.Inflator
 {
     // returns `nil` if the stream is finished
     public mutating
-    func push(_ data:[UInt8]) throws -> Void?
+    func push(_ data:ArraySlice<UInt8>) throws -> Void?
     {
         self.stream.input.rebase(data, pointer: &self.stream.b)
         while let _:Void = try self.advance()

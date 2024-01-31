@@ -54,7 +54,7 @@ extension PNG.Decoder
             throw PNG.DecodingError.extraneousImageDataCompressedData
         }
 
-        self.continue = try self.inflator.push(data)
+        self.continue = try self.inflator.push(data[...])
 
         let delay:Int   = (pixel.volume + 7) >> 3
         if let pass:Int = self.pass

@@ -36,7 +36,8 @@ extension PNG.Encoder
     }
 
     mutating
-    func pull(size:(x:Int, y:Int), pixel:PNG.Format.Pixel,
+    func pull(size:(x:Int, y:Int),
+        pixel:PNG.Format.Pixel,
         delegate:(inout UnsafeMutableBufferPointer<UInt8>, (x:Int, y:Int), Int) throws -> ())
         rethrows -> [UInt8]?
     {
@@ -70,7 +71,7 @@ extension PNG.Encoder
                 self.row = nil
                 for y:Int in start ..< subimage.y
                 {
-                    if let data:[UInt8] = self.deflator.pop()
+                    if  let data:[UInt8] = self.deflator.pop()
                     {
                         self.row  = (y, last)
                         self.pass = .subimage(z)
@@ -87,7 +88,7 @@ extension PNG.Encoder
                         $1 = last.count
                     }
 
-                    self.deflator.push(Self.filter(scanline, last: last, delay: delay))
+                    self.deflator.push(Self.filter(scanline, last: last, delay: delay)[...])
                     last = scanline
                 }
             }
@@ -103,7 +104,7 @@ extension PNG.Encoder
             self.row = nil
             for y:Int in start ..< size.y
             {
-                if let data:[UInt8] = self.deflator.pop()
+                if  let data:[UInt8] = self.deflator.pop()
                 {
                     self.row  = (y, last)
                     return data
@@ -119,7 +120,7 @@ extension PNG.Encoder
                     $1 = last.count
                 }
 
-                self.deflator.push(Self.filter(scanline, last: last, delay: delay))
+                self.deflator.push(Self.filter(scanline, last: last, delay: delay)[...])
                 last = scanline
             }
 
@@ -130,8 +131,7 @@ extension PNG.Encoder
             break
         }
 
-        let data:[UInt8] = self.deflator.pull()
-        return data.isEmpty ? nil : data
+        return self.deflator.pull()
     }
 
     static

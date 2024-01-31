@@ -83,16 +83,26 @@ extension LZ77.DeflatorIn
     }
 
     mutating
-    func enqueue(contentsOf elements:[UInt8])
+    func enqueue(contentsOf elements:ArraySlice<UInt8>)
     {
-        // always allocate 4 extra tail elements to allow for limited reads
-        // from beyond the end of the buffer
-        self.reserve(elements.count + 4)
-        self.storage.withUnsafeMutablePointerToElements
+        elements.withUnsafeBufferPointer
         {
-            ($0 + self.endIndex).update(from: elements, count: elements.count)
+            guard
+            let base:UnsafePointer<UInt8> = $0.baseAddress
+            else
+            {
+                return
+            }
+            let count:Int = $0.count
+            // always allocate 4 extra tail elements to allow for limited reads
+            // from beyond the end of the buffer
+            self.reserve(count + 4)
+            self.storage.withUnsafeMutablePointerToElements
+            {
+                ($0 + self.endIndex).update(from: base, count: count)
+            }
+            self.endIndex += count
         }
-        self.endIndex += elements.count
     }
 
     private mutating
