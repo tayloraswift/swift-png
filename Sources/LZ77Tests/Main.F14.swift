@@ -14,7 +14,7 @@ extension Main.F14:TestBattery
     static
     func run(tests:TestGroup)
     {
-        let dictionary:General.Dictionary = .init(exponent: 10)
+        let dictionary:F14.HashTable = .init(exponent: 10)
 
         tests.expect(nil: dictionary.update(key: 0, value: 1))
         tests.expect(nil: dictionary.update(key: 1, value: 2))
@@ -25,7 +25,7 @@ extension Main.F14:TestBattery
         tests.expect(value: dictionary.remove(key: 1, value: 6))
         tests.expect(nil: dictionary.update(key: 1, value: 7))
 
-        var a:General.Dictionary    = .init(exponent: 15),
+        var a:F14.HashTable    = .init(exponent: 15),
             b:[UInt32: UInt16]      = [:]
         for i:UInt16 in ((0 ... .max).map{ $0 & 0x00ff })
         {

@@ -3,17 +3,17 @@ extension LZ77.Deflator
     @frozen @usableFromInline
     struct Stream
     {
-        let format:LZ77.Format
-        let search:Search
+        let format:LZ77.DeflateFormat
+        let search:LZ77.DeflatorSearch
 
-        var input:In
+        var input:LZ77.DeflatorIn<LZ77.MRC32>
         //var queued:(run:Int, extend:Int, distance:Int)?
         //var terms:[Term]
-        var window:Window
-        var matches:Matches
-        var output:Out
+        var window:LZ77.DeflatorWindow
+        var matches:LZ77.DeflatorMatches
+        var output:LZ77.DeflatorOut
 
-        init(format:LZ77.Format, level:Int, exponent:Int, hint:Int)
+        init(format:LZ77.DeflateFormat, level:Int, exponent:Int, hint:Int)
         {
             precondition(8 ..< 16 ~= exponent,
                 "exponent cannot be less than 8 or greater than 15")
@@ -463,9 +463,9 @@ extension LZ77.Deflator.Stream
     }
 
     private mutating
-    func blockTables(_ metaterms:[LZ77.Deflator.Term.Meta], semistatic:LZ77.Deflator.Semistatic)
+    func blockTables(_ metaterms:[LZ77.DeflatorTerm.Meta], semistatic:LZ77.DeflatorTables)
     {
-        for metaterm:LZ77.Deflator.Term.Meta in metaterms
+        for metaterm:LZ77.DeflatorTerm.Meta in metaterms
         {
             let codeword:LZ77.Codeword = semistatic[meta: metaterm.symbol]
             self.output.append(codeword.bits, count: codeword.length)
@@ -474,14 +474,14 @@ extension LZ77.Deflator.Stream
     }
 
     private mutating
-    func blockCompressed(semistatic:LZ77.Deflator.Semistatic)
+    func blockCompressed(semistatic:LZ77.DeflatorTables)
     {
         switch self.search
         {
         case .greedy, .lazy:
             for index:Int in self.matches.indices
             {
-                let term:LZ77.Deflator.Term = .init(storage: self.matches[offset: index])
+                let term:LZ77.DeflatorTerm = .init(storage: self.matches[offset: index])
 
                 let symbol:(runliteral:UInt16, distance:UInt8) = term.symbol
                 let codeword:(runliteral:LZ77.Codeword, distance:LZ77.Codeword)
@@ -606,7 +606,7 @@ extension LZ77.Deflator.Stream
         var repetitions:Int = 1,
             last:UInt8      = lengths[0]
         var iterator:ArraySlice<UInt8>.Iterator = lengths[1 ..< r + d].makeIterator(),
-            terms:[LZ77.Deflator.Term.Meta]     = []
+            terms:[LZ77.DeflatorTerm.Meta]     = []
         while true
         {
             let current:UInt8? = iterator.next()
@@ -667,7 +667,7 @@ extension LZ77.Deflator.Stream
 
         // construct metatree
         var frequencies:[Int] = .init(repeating: 0, count: 19)
-        for term:LZ77.Deflator.Term.Meta in terms
+        for term:LZ77.DeflatorTerm.Meta in terms
         {
             frequencies[.init(term.symbol)] += 1
         }
@@ -676,7 +676,7 @@ extension LZ77.Deflator.Stream
 
         self.blockStart(final: final, runliterals: r, distances: d, metatree: tree.meta)
 
-        let semistatic:LZ77.Deflator.Semistatic = .init(
+        let semistatic:LZ77.DeflatorTables = .init(
             runliteral: tree.runliteral,
             distance: tree.distance,
             meta: tree.meta)
@@ -693,7 +693,7 @@ extension LZ77.Deflator.Stream
     /* private mutating
     func block(_ index:Int, dicing:LZ77.Deflator.Dicing, last:Bool)
     {
-        let semistatic:LZ77.Deflator.Semistatic,
+        let semistatic:LZ77.DeflatorTables,
             range:Range<Int>
         switch dicing[index]
         {
@@ -767,7 +767,7 @@ extension LZ77.Deflator.Stream
     mutating
     func checksum()
     {
-        if case .ios = self.format
+        if  case .ios = self.format
         {
             return
         }

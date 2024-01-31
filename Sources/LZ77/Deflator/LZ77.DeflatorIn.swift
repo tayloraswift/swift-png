@@ -1,7 +1,7 @@
-extension LZ77.Deflator
+extension LZ77
 {
     @frozen @usableFromInline
-    struct In
+    struct DeflatorIn<Integral> where Integral:LZ77.StreamIntegral
     {
         private
         var startIndex:Int,
@@ -9,32 +9,29 @@ extension LZ77.Deflator
 
         private
         var capacity:Int
-
+        private
+        var integral:Integral
         private
         var storage:ManagedBuffer<Void, UInt8>
 
-        private
-        var integral:LZ77.MRC32
+        init()
+        {
+            var capacity:Int = 0
+            self.storage = .create(minimumCapacity: 0)
+            {
+                capacity = $0.capacity
+            }
+            // self.startIndex     = 0
+            // self.endIndex       = 0
+            self.startIndex = 4
+            self.endIndex = 4
+            self.capacity = capacity
+            self.integral = .init()
+        }
     }
 }
-extension LZ77.Deflator.In
+extension LZ77.DeflatorIn
 {
-    init()
-    {
-        var capacity:Int = 0
-        self.storage = .create(minimumCapacity: 0)
-        {
-            capacity = $0.capacity
-        }
-        // self.startIndex     = 0
-        // self.endIndex       = 0
-        self.startIndex = 4
-        self.endIndex = 4
-        self.capacity = capacity
-
-        self.integral = .init()
-    }
-
     var count:Int
     {
         self.endIndex - self.startIndex

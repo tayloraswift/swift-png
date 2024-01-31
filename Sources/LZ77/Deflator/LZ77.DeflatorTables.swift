@@ -1,6 +1,6 @@
-extension LZ77.Deflator
+extension LZ77
 {
-    struct Semistatic
+    struct DeflatorTables
     {
         private
         let storage:ManagedBuffer<Void, LZ77.Codeword>
@@ -21,9 +21,10 @@ extension LZ77.Deflator
         //  339 └───────────────────────┘
     }
 }
-extension LZ77.Deflator.Semistatic
+extension LZ77.DeflatorTables
 {
-    init(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>,
+    init(runliteral:LZ77.HuffmanTree<UInt16>,
+        distance:LZ77.HuffmanTree<UInt8>,
         meta:LZ77.HuffmanTree<UInt8>? = nil)
     {
         self.storage = .create(minimumCapacity: 339){ _ in () }

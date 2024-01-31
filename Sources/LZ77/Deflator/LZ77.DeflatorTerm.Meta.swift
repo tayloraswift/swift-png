@@ -1,4 +1,4 @@
-extension LZ77.Deflator.Term
+extension LZ77.DeflatorTerm
 {
     struct Meta
     {
@@ -8,7 +8,7 @@ extension LZ77.Deflator.Term
         let storage:(symbol:UInt8, bits:UInt8)
     }
 }
-extension LZ77.Deflator.Term.Meta
+extension LZ77.DeflatorTerm.Meta
 {
     var symbol:UInt8
     {
@@ -42,7 +42,7 @@ extension LZ77.Deflator.Term.Meta
         }
     }
 }
-extension LZ77.Deflator.Term.Meta:CustomStringConvertible
+extension LZ77.DeflatorTerm.Meta:CustomStringConvertible
 {
     var description:String
     {

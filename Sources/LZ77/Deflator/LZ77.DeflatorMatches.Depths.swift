@@ -1,4 +1,4 @@
-extension LZ77.Deflator.Matches
+extension LZ77.DeflatorMatches
 {
     @frozen @usableFromInline
     struct Depths
@@ -9,7 +9,7 @@ extension LZ77.Deflator.Matches
         var generic:Bool
     }
 }
-extension LZ77.Deflator.Matches.Depths
+extension LZ77.DeflatorMatches.Depths
 {
     //  depth table layout:
     //

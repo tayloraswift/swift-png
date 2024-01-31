@@ -5,10 +5,6 @@ extension LZ77
     /// ## Topics
     ///
     /// ### Stream errors
-    /// -   ``invalidStreamCompressionMethodCode(_:)``
-    /// -   ``invalidStreamWindowSize(exponent:)``
-    /// -   ``invalidStreamHeaderCheckBits``
-    /// -   ``unexpectedStreamDictionary``
     /// -   ``invalidStreamChecksum(declared:computed:)``
     ///
     /// ### Block errors

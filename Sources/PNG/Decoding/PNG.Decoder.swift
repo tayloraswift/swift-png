@@ -33,7 +33,7 @@ extension PNG.Decoder
         self.pass       = interlaced ? 0 : nil
         self.continue   = ()
 
-        let format:LZ77.Format
+        let format:LZ77.DeflateFormat
         switch standard
         {
         case .common:   format = .zlib

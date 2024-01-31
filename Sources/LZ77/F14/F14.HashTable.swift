@@ -1,8 +1,8 @@
-extension General
+extension F14
 {
     /// A simple `(UInt32) -> UInt16` hashmap based on F14.
     @frozen @usableFromInline
-    struct Dictionary
+    struct HashTable
     {
         private
         var storage:ManagedBuffer<Void, UInt8>
@@ -10,7 +10,7 @@ extension General
         var mask:Int
     }
 }
-extension General.Dictionary
+extension F14.HashTable
 {
     //  memory layout:
     //
@@ -39,7 +39,7 @@ extension General.Dictionary
     //  cache already anyway.
     init(exponent:Int)
     {
-        assert(MemoryLayout<District.Row>.stride == 8)
+        assert(MemoryLayout<F14.District.Row>.stride == 8)
         // to ensure a power-of-two number of districts, we size the table so
         // that there is an average of 8 key-value pairs per district, implying
         // a load factor of ~57 percent.
@@ -62,15 +62,15 @@ extension General.Dictionary
         {
             (buffer:UnsafeMutableRawPointer) -> UInt16? in
 
-            let hash:Hash               = .init(key)
+            let hash:F14.Hash = .init(key)
 
-            let tag:UInt8               = hash.tag,
-                start:District.Index    = hash.startIndex(mask: self.mask)
-            var current:District.Index  = start
+            let tag:UInt8 = hash.tag
+            let start:F14.District.Index = hash.startIndex(mask: self.mask)
+            var current:F14.District.Index = start
             repeat
             {
-                let district:District   = buffer + current,
-                    tagged:UInt16       = district.header.find(tag)
+                let district:F14.District = buffer + current,
+                    tagged:UInt16 = district.header.find(tag)
 
                 var i:Int = tagged.trailingZeroBitCount
                 while i < 14
@@ -116,15 +116,15 @@ extension General.Dictionary
         {
             (buffer:UnsafeMutableRawPointer) in
 
-            let hash:Hash               = .init(key)
+            let hash:F14.Hash = .init(key)
 
-            let tag:UInt8               = hash.tag,
-                start:District.Index    = hash.startIndex(mask: self.mask)
-            var current:District.Index  = start
+            let tag:UInt8 = hash.tag,
+                start:F14.District.Index = hash.startIndex(mask: self.mask)
+            var current:F14.District.Index = start
             repeat
             {
-                let district:District   = buffer + current,
-                    tagged:UInt16       = district.header.find(tag)
+                let district:F14.District = buffer + current,
+                    tagged:UInt16 = district.header.find(tag)
 
                 var i:Int = tagged.trailingZeroBitCount
                 while i < 14
@@ -176,15 +176,15 @@ extension General.Dictionary
         {
             (buffer:UnsafeMutableRawPointer) in
 
-            let hash:Hash               = .init(key)
+            let hash:F14.Hash = .init(key)
 
-            let tag:UInt8               = hash.tag,
-                start:District.Index    = hash.startIndex(mask: self.mask)
-            var current:District.Index  = start
+            let tag:UInt8 = hash.tag,
+                start:F14.District.Index = hash.startIndex(mask: self.mask)
+            var current:F14.District.Index = start
             repeat
             {
-                let district:District   = buffer + current,
-                    tagged:UInt16       = district.header.find(tag)
+                let district:F14.District = buffer + current,
+                    tagged:UInt16 = district.header.find(tag)
 
                 var i:Int = tagged.trailingZeroBitCount
                 while i < 14
@@ -224,8 +224,8 @@ extension General.Dictionary
 
                 // print("insert(district: \(current.offset), slot: \(j))")
 
-                let insertion:District.Index    = current
-                var displaced:UInt16            = district.displaced
+                let insertion:F14.District.Index = current
+                var displaced:UInt16 = district.displaced
                 while displaced > 0
                 {
                     current = hash.index(after: current, mask: self.mask)
@@ -239,8 +239,8 @@ extension General.Dictionary
                         break
                     }
 
-                    let district:District   = buffer + current,
-                        tagged:UInt16       = district.header.find(tag)
+                    let district:F14.District = buffer + current,
+                        tagged:UInt16 = district.header.find(tag)
 
                     var i:Int = tagged.trailingZeroBitCount
                     while i < 14

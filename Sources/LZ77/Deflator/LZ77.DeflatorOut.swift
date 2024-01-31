@@ -1,7 +1,7 @@
-extension LZ77.Deflator
+extension LZ77
 {
     @frozen @usableFromInline
-    struct Out
+    struct DeflatorOut
     {
         private
         var capacity:Int, // units in atoms
@@ -27,7 +27,7 @@ extension LZ77.Deflator
         }
     }
 }
-extension LZ77.Deflator.Out
+extension LZ77.DeflatorOut
 {
     var bytes:Int
     {

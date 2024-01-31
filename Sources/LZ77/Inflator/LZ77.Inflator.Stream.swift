@@ -1,18 +1,17 @@
 extension LZ77.Inflator
 {
     @frozen @usableFromInline
-    struct Stream
+    struct Stream<Integral> where Integral:LZ77.StreamIntegral
     {
-        let format:LZ77.Format
         // Stream.In manages its own COW in rebase(_:pointer:)
-        var input:In
+        var input:LZ77.InflatorInput
         var b:Int
         var lengths:[Int]
         // Meta and Stream.Out need to have COW manually implemented with
         // exclude() on each, to avoid redundant exclusions inside loops,,
         // reuse the same buffer since the size is fixed
-        var meta:Semistatic.Meta
-        var output:Out
+        var meta:LZ77.InflatorTables.Meta
+        var output:LZ77.InflatorOutput<Integral>
 
         #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
         // histogram, no match can ever cost more than 17 bits per literal
@@ -31,10 +30,8 @@ extension LZ77.Inflator
         )
         #endif
 
-        init(format:LZ77.Format)
+        init()
         {
-            self.format     = format
-
             self.b          = 0
             self.input      = []
             self.lengths    = []
@@ -46,56 +43,7 @@ extension LZ77.Inflator
 extension LZ77.Inflator.Stream
 {
     mutating
-    func start() throws -> Int?
-    {
-        if  case .ios = self.format
-        {
-            return 1 << 15
-        }
-
-        // read stream header
-        guard self.b + 16 <= self.input.count
-        else
-        {
-            return nil
-        }
-
-        switch self.input[self.b + 0, count: 4, as: UInt8.self]
-        {
-        case 8:
-            break
-        case let code:
-            throw LZ77.StreamHeaderError.invalidCompressionMethod(code)
-        }
-
-        let exponent:Int = self.input[self.b + 4, count: 4, as: Int.self]
-        guard exponent < 8
-        else
-        {
-            throw LZ77.StreamHeaderError.invalidWindowSize(exponent: exponent + 8)
-        }
-
-        let flags:Int = self.input[self.b + 8, count: 8, as: Int.self]
-        guard (exponent << 12 | 8 << 8 + flags) % 31 == 0
-        else
-        {
-            throw LZ77.StreamHeaderError.invalidCheckBits
-        }
-        guard flags & 0x20 == 0
-        else
-        {
-            throw LZ77.StreamHeaderError.unexpectedDictionary
-        }
-
-        self.b += 16
-        return 1 << (8 + exponent)
-    }
-    mutating
-    func blockStart() throws ->
-    (
-        final:Bool,
-        compression:Compression
-    )?
+    func blockStart() throws -> (final:Bool, type:LZ77.BlockType)?
     {
         guard self.b + 3 <= self.input.count
         else
@@ -105,7 +53,7 @@ extension LZ77.Inflator.Stream
 
         // read block header bits
         let final:Bool = self.input[self.b, count: 1, as: UInt8.self] != 0
-        let compression:Compression
+        let type:LZ77.BlockType
         switch self.input[self.b + 1, count: 2, as: UInt8.self]
         {
         case 0:
@@ -125,11 +73,11 @@ extension LZ77.Inflator.Stream
                 throw LZ77.DecompressionError.invalidBlockElementCountParity(l, m)
             }
 
-            compression = .none(bytes: .init(l))
+            type = .bytes(.init(l))
             self.b  = boundary + 32
 
         case 1:
-            compression = .fixed
+            type = .fixed
             self.b += 3
 
         case 2:
@@ -173,13 +121,13 @@ extension LZ77.Inflator.Stream
             self.meta.replace(tree: tree)
 
             self.b += 17 + 3 * codelengths
-            compression = .dynamic(runliterals: runliterals, distances: distances)
+            type = .dynamic(runliterals: runliterals, distances: distances)
 
         case let code:
             throw LZ77.DecompressionError.invalidBlockTypeCode(code)
         }
 
-        return (final, compression)
+        return (final, type)
     }
     mutating
     func blockTables(runliterals:Int, distances:Int)
@@ -302,7 +250,7 @@ extension LZ77.Inflator.Stream
         return (runliteral, distance)
     }
     mutating
-    func blockCompressed(semistatic:LZ77.Inflator.Semistatic) throws -> Void?
+    func blockCompressed(semistatic:LZ77.InflatorTables) throws -> Void?
     {
         while self.b < self.input.count
         {
@@ -434,8 +382,9 @@ extension LZ77.Inflator.Stream
 
         return ()
     }
+
     mutating
-    func checksum() throws -> Void?
+    func check(declared checksum:UInt32?) throws
     {
         #if DUMP_LZ77_BLOCKS
         let efficiency:Double = self.statistics.literals.enumerated().reduce(0.0){ $0 + .init($1.0 * $1.1) } /
@@ -452,39 +401,19 @@ extension LZ77.Inflator.Stream
         print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
         #endif
 
-        if  case .ios = self.format
-        {
-            return ()
-        }
-
-        // skip to next byte boundary, read 4 bytes
-        let boundary:Int = (self.b + 7) & ~7
-        guard boundary + 32 <= self.input.count
+        guard
+        let checksum:UInt32
         else
         {
-            return nil
+            return // Checksum missing.
         }
 
-        // mrc-32 is big-endian
-        let bytes:(UInt32, UInt32, UInt32, UInt32) =
-        (
-            self.input[boundary,      count: 8, as: UInt32.self],
-            self.input[boundary +  8, count: 8, as: UInt32.self],
-            self.input[boundary + 16, count: 8, as: UInt32.self],
-            self.input[boundary + 24, count: 8, as: UInt32.self]
-        )
-        let checksum:UInt32   = bytes.0 << 24 |
-                                bytes.1 << 16 |
-                                bytes.2 <<  8 |
-                                bytes.3
         let computed:UInt32   = self.output.checksum()
-        guard computed == checksum
-        else
+        if  computed != checksum
         {
             throw LZ77.DecompressionError.invalidStreamChecksum(
-                declared: checksum, computed: computed)
+                declared: checksum,
+                computed: computed)
         }
-        self.b = boundary + 32
-        return ()
     }
 }
