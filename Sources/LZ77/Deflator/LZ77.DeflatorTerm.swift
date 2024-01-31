@@ -1,11 +1,11 @@
-extension LZ77.Deflator
+extension LZ77
 {
-    struct Term
+    struct DeflatorTerm
     {
         let storage:UInt32
     }
 }
-extension LZ77.Deflator.Term
+extension LZ77.DeflatorTerm
 {
     //  it takes about 28 bits to represent a length-distance pair, and
     //  we can save ourselves some branching by using the remaining 4
@@ -55,7 +55,7 @@ extension LZ77.Deflator.Term
         self.storage = symbols | bits
     }
 }
-extension LZ77.Deflator.Term:CustomStringConvertible
+extension LZ77.DeflatorTerm:CustomStringConvertible
 {
     var description:String
     {

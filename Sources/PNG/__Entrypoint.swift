@@ -196,7 +196,7 @@ extension __Entrypoint.Benchmark.Dictionary
             let t:(Int, Int)
 
             t.0 = clock()
-            let dictionary:General.Dictionary = .init(exponent: 15)
+            let dictionary:F14.HashTable = .init(exponent: 15)
             for (i, key):(Int, UInt32) in data.enumerated()
             {
                 let value:UInt16 = .init(i & 0x7f_ff)

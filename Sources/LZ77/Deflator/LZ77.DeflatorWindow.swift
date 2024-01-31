@@ -1,12 +1,12 @@
-extension LZ77.Deflator
+extension LZ77
 {
     @frozen @usableFromInline
-    struct Window
+    struct DeflatorWindow
     {
         private
         var storage:ManagedBuffer<Void, Element>
         private
-        var head:General.Dictionary
+        var head:F14.HashTable
 
         private(set)
         var endIndex:Int // absolute index
@@ -18,7 +18,7 @@ extension LZ77.Deflator
         let mask:Int
     }
 }
-extension LZ77.Deflator.Window
+extension LZ77.DeflatorWindow
 {
     init(exponent:Int)
     {
@@ -113,7 +113,7 @@ extension LZ77.Deflator.Window
     }
 
     func match(from head:(index:Int, next:UInt16?),
-        lookahead:LZ77.Deflator.In,
+        lookahead:LZ77.DeflatorIn<some LZ77.StreamIntegral>,
         attempts:Int,
         goal:Int) -> (run:Int, distance:Int)?
     {
@@ -130,7 +130,7 @@ extension LZ77.Deflator.Window
     }
 
     func match(from head:(index:Int, next:UInt16?),
-        lookahead:LZ77.Deflator.In,
+        lookahead:LZ77.DeflatorIn<some LZ77.StreamIntegral>,
         attempts:Int,
         goal:Int,
         delegate:(_ run:Int, _ distance:Int) -> ())

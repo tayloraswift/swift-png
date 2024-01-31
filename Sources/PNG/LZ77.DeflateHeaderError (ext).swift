@@ -1,6 +1,6 @@
 import LZ77
 
-extension LZ77.StreamHeaderError:PNG.Error
+extension LZ77.DeflateHeaderError:PNG.Error
 {
     /// The string `"Stream header error"`.
     public static

@@ -1,7 +1,7 @@
-extension LZ77.Deflator
+extension LZ77
 {
     @frozen @usableFromInline
-    struct Matches
+    struct DeflatorMatches
     {
         private
         var storage:ManagedBuffer<Void, UInt32>
@@ -16,7 +16,7 @@ extension LZ77.Deflator
         var depths:Depths
     }
 }
-extension LZ77.Deflator.Matches
+extension LZ77.DeflatorMatches
 {
     //  match buffer either contains a linear vector of LZ77 terms,
     //  or a directed graph.
@@ -115,7 +115,7 @@ extension LZ77.Deflator.Matches
         assert(self.unfilled > 0)
 
         self[offset: self.endIndex] =
-            LZ77.Deflator.Term.init(literal: literal).storage
+            LZ77.DeflatorTerm.init(literal: literal).storage
         self.count += 1
     }
     mutating
@@ -124,7 +124,7 @@ extension LZ77.Deflator.Matches
         assert(self.unfilled > 0)
 
         self[offset: self.endIndex] =
-            LZ77.Deflator.Term.init(run: match.run, distance: match.distance).storage
+            LZ77.DeflatorTerm.init(run: match.run, distance: match.distance).storage
         self.count += 1
     }
 
@@ -140,7 +140,7 @@ extension LZ77.Deflator.Matches
         var frequencies:[Int] = .init(repeating: 0, count: 320)
         for index:Int in self.indices
         {
-            let term:LZ77.Deflator.Term = .init(storage: self[offset: index])
+            let term:LZ77.DeflatorTerm = .init(storage: self[offset: index])
             // no need to differentiate between literals and run-distance pairs,
             // because literal terms have the distance symbol set to a non-
             // existent symbol (32)

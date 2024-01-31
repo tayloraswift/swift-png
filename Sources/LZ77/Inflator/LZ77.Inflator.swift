@@ -7,21 +7,28 @@ extension LZ77
     @frozen public
     struct Inflator
     {
+        typealias Format = DeflateFormat
+
         private
-        var state:State
+        let format:DeflateFormat
         private
-        var stream:Stream
+        var stream:Stream<MRC32>
+        private
+        var state:InflatorState
     }
 }
 extension LZ77.Inflator
 {
     public
-    init(format:LZ77.Format = .zlib)
+    init(format:LZ77.DeflateFormat = .zlib)
     {
+        self.format = format
+        self.stream = .init()
         self.state  = .streamStart
-        self.stream = .init(format: format)
     }
-
+}
+extension LZ77.Inflator
+{
     // returns `nil` if the stream is finished
     public mutating
     func push(_ data:[UInt8]) throws -> Void?
@@ -64,23 +71,24 @@ extension LZ77.Inflator
         {
         case .streamStart:
             guard
-            let window:Int = try self.stream.start()
+            let header:Format.Header = try self.format.begin(inflating: &self.stream.input,
+                at: &self.stream.b)
             else
             {
                 return nil
             }
-            self.stream.output.window   = window
+            self.stream.output.window   = header.window
             self.state                  = .blockStart
 
         case .blockStart:
             guard
-            let (final, compression):(Bool, Stream.Compression) = try self.stream.blockStart()
+            let (final, type):(Bool, LZ77.BlockType) = try self.stream.blockStart()
             else
             {
                 return nil
             }
 
-            switch compression
+            switch type
             {
             case .dynamic(runliterals: let runliterals, distances: let distances):
                 self.state = .blockTables(final: final,
@@ -89,14 +97,14 @@ extension LZ77.Inflator
             case .fixed:
                 self.state = .blockCompressed(final: final, semistatic: .fixed)
 
-            case .none(bytes: let count):
+            case .bytes(let count):
                 // compute endindex
                 let end:Int = self.stream.output.endIndex + count
                 self.state = .blockUncompressed(final: final, end: end)
             }
 
             #if DUMP_LZ77_BLOCKS
-            print("< \(compression)")
+            print("< \(type)")
             #endif
 
         case .blockTables(final: let final, runliterals: let runliterals, distances: let distances):
@@ -131,12 +139,16 @@ extension LZ77.Inflator
 
         case .streamChecksum:
             guard
-            let _:Void = try self.stream.checksum()
+            let declared:UInt32? = self.format.check(inflating: &self.stream.input,
+                at: &self.stream.b)
             else
             {
                 return nil
             }
+
+            try self.stream.check(declared: declared)
             self.state = .streamEnd
+
         case .streamEnd:
             return nil
         }

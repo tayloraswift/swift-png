@@ -3,7 +3,7 @@ extension LZ77
     /// Errors that can occur when decompressing a DEFLATE stream embedded in the ‘zlib’ wrapper
     /// format.
     public
-    enum StreamHeaderError:Error, Equatable
+    enum DeflateHeaderError:Error, Equatable
     {
         /// A compressed data stream had an invalid compression method code.
         ///

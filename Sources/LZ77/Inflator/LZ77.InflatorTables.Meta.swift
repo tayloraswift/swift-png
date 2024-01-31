@@ -1,4 +1,4 @@
-extension LZ77.Inflator.Semistatic
+extension LZ77.InflatorTables
 {
     @frozen @usableFromInline
     struct Meta
@@ -7,7 +7,7 @@ extension LZ77.Inflator.Semistatic
         var storage:ManagedBuffer<Void, UInt8>
     }
 }
-extension LZ77.Inflator.Semistatic.Meta
+extension LZ77.InflatorTables.Meta
 {
     private static
     var size:Int

@@ -16,7 +16,7 @@ extension Main.Bitstreams:TestBattery
     {
         if  let tests:TestGroup = tests / "Decode"
         {
-            var bits:LZ77.Inflator.In =
+            var bits:LZ77.InflatorInput =
             [
                 0b1001_1110,
                 0b1111_0110,
@@ -67,7 +67,7 @@ extension Main.Bitstreams:TestBattery
         }
         if  let tests:TestGroup = tests / "Encode"
         {
-            var bits:LZ77.Deflator.Out = .init(hint: 4)
+            var bits:LZ77.DeflatorOut = .init(hint: 4)
 
             bits.append(0b11, count: 2)
             bits.append(0b01_10, count: 4)

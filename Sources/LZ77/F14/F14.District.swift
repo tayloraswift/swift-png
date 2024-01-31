@@ -1,4 +1,4 @@
-extension General.Dictionary
+extension F14
 {
     struct District
     {
@@ -7,7 +7,7 @@ extension General.Dictionary
         let base:UnsafeMutableRawPointer
     }
 }
-extension General.Dictionary.District
+extension F14.District
 {
     var header:SIMD16<UInt8>
     {

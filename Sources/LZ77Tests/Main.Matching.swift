@@ -20,9 +20,9 @@ extension Main.Matching:TestBattery
             [2, 2, 2, 2, 0, 1, 2, 2, 0, 0, 0, 0, 2, 3, 2, 1, 2, 3, 3, 1, 5],
             [1, 1, 3, 3, 1, 2, 3, 1, 2, 4, 4, 2, 1]
         ]
-        var input:LZ77.Deflator.In      = .init()
-        var window:LZ77.Deflator.Window = .init(exponent: 4)
-        var output:[[UInt8]]            = []
+        var input:LZ77.DeflatorIn<LZ77.MRC32> = .init()
+        var window:LZ77.DeflatorWindow = .init(exponent: 4)
+        var output:[[UInt8]] = []
         for (s, segment):(Int, [UInt8]) in segments.enumerated()
         {
             input.enqueue(contentsOf: segment)

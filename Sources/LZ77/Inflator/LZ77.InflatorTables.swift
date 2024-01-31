@@ -1,7 +1,7 @@
-extension LZ77.Inflator
+extension LZ77
 {
     @frozen @usableFromInline
-    struct Semistatic
+    struct InflatorTables
     {
         private
         typealias Composite = (extra:UInt16, base:UInt16)
@@ -62,7 +62,7 @@ extension LZ77.Inflator
         //      └───────────────────────┘
     }
 }
-extension LZ77.Inflator.Semistatic
+extension LZ77.InflatorTables
 {
     init(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)
     {

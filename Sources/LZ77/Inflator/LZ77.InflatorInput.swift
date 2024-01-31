@@ -1,7 +1,7 @@
-extension LZ77.Inflator
+extension LZ77
 {
-    @frozen @usableFromInline
-    struct In
+    @frozen public
+    struct InflatorInput
     {
         private
         var capacity:Int, // units in atoms
@@ -26,7 +26,7 @@ extension LZ77.Inflator
         }
     }
 }
-extension LZ77.Inflator.In
+extension LZ77.InflatorInput
 {
     var count:Int
     {
@@ -192,9 +192,9 @@ extension LZ77.Inflator.In
         }
     }
 }
-extension LZ77.Inflator.In:ExpressibleByArrayLiteral
+extension LZ77.InflatorInput:ExpressibleByArrayLiteral
 {
-    @usableFromInline
+    public
     init(arrayLiteral:UInt8...)
     {
         self.init(arrayLiteral)

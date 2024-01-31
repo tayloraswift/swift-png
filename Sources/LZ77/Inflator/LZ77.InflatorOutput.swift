@@ -1,7 +1,7 @@
-extension LZ77.Inflator
+extension LZ77
 {
     @frozen @usableFromInline
-    struct Out
+    struct InflatorOutput<Integral> where Integral:LZ77.StreamIntegral
     {
         var window:Int
 
@@ -13,32 +13,30 @@ extension LZ77.Inflator
         // the apple docs said so
         private
         var capacity:Int
+        private
+        var integral:Integral
 
         private
         var storage:ManagedBuffer<Void, UInt8>
 
-        private
-        var integral:LZ77.MRC32
+        init()
+        {
+            var capacity:Int = 0
+            self.storage = .create(minimumCapacity: 0)
+            {
+                capacity = $0.capacity
+            }
+            self.window         = 0
+            self.startIndex     = 0
+            self.currentIndex   = 0
+            self.endIndex       = 0
+            self.capacity       = capacity
+            self.integral       = .init()
+        }
     }
 }
-extension LZ77.Inflator.Out
+extension LZ77.InflatorOutput
 {
-    init()
-    {
-        var capacity:Int = 0
-        self.storage = .create(minimumCapacity: 0)
-        {
-            capacity = $0.capacity
-        }
-        self.window         = 0
-        self.startIndex     = 0
-        self.currentIndex   = 0
-        self.endIndex       = 0
-        self.capacity       = capacity
-
-        self.integral       = .init()
-    }
-
     mutating
     func exclude()
     {

@@ -1,6 +1,6 @@
-extension LZ77.Deflator
+extension LZ77
 {
-    struct Dicing
+    struct DeflatorDicing
     {
         typealias Element = (weight:Int, node:Node)
 

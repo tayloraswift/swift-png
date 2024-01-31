@@ -1,4 +1,4 @@
-extension LZ77.Deflator.Dicing
+extension LZ77.DeflatorDicing
 {
     enum Node
     {
@@ -8,7 +8,7 @@ extension LZ77.Deflator.Dicing
             codelengths:[UInt16],
             runliterals:Int,
             distances:Int,
-            metaterms:[LZ77.Deflator.Term.Meta],
+            metaterms:[LZ77.DeflatorTerm.Meta],
             tree:
             (
                 runliteral:LZ77.HuffmanTree<UInt16>,

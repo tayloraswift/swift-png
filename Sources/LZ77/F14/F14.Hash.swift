@@ -1,4 +1,4 @@
-extension General.Dictionary
+extension F14
 {
     struct Hash
     {
@@ -6,7 +6,7 @@ extension General.Dictionary
         let value:Int
     }
 }
-extension General.Dictionary.Hash
+extension F14.Hash
 {
     // stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
     init(_ x:UInt32)
@@ -29,18 +29,15 @@ extension General.Dictionary.Hash
         .init(self.value & 0x7f | 0x80)
     }
 
-    func startIndex(mask:Int)
-        -> General.Dictionary.District.Index
+    func startIndex(mask:Int) -> F14.District.Index
     {
         .init(offset: self.value & mask)
     }
-    func index(before current:General.Dictionary.District.Index, mask:Int)
-        -> General.Dictionary.District.Index
+    func index(before current:F14.District.Index, mask:Int) -> F14.District.Index
     {
         .init(offset: (current.offset &- self.probe) & mask)
     }
-    func index(after current:General.Dictionary.District.Index, mask:Int)
-        -> General.Dictionary.District.Index
+    func index(after current:F14.District.Index, mask:Int) -> F14.District.Index
     {
         .init(offset: (current.offset &+ self.probe) & mask)
     }

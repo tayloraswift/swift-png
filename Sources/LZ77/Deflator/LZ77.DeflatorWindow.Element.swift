@@ -1,4 +1,4 @@
-extension LZ77.Deflator.Window
+extension LZ77.DeflatorWindow
 {
     @frozen @usableFromInline
     struct Element
