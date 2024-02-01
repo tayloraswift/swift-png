@@ -36,6 +36,26 @@ extension LZ77.InflatorBuffers
 extension LZ77.InflatorBuffers.Stream
 {
     mutating
+    func push(_ data:ArraySlice<UInt8>)
+    {
+        self.input.rebase(data, pointer: &self.b)
+    }
+    mutating
+    func pull(_ count:Int) -> [UInt8]?
+    {
+        self.output.exclude()
+        return self.output.release(bytes: count)
+    }
+    mutating
+    func pull() -> [UInt8]
+    {
+        self.output.exclude()
+        return self.output.release()
+    }
+}
+extension LZ77.InflatorBuffers.Stream
+{
+    mutating
     func readBlockMetadata(into metadata:inout LZ77.BlockMetadata) throws -> LZ77.BlockType?
     {
         guard self.b + 3 <= self.input.count
