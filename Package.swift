@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package:Package = .init(name: "swift-png",
-    platforms: [.macOS(.v10_15)],
+    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
     products: [
         .library(name: "LZ77", targets: ["LZ77"]),
         .library(name: "PNG", targets: ["PNG"]),
