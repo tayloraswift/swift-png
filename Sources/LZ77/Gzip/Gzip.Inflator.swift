@@ -1,30 +1,26 @@
-//  This Source Code Form is subject to the terms of the Mozilla Public
-//  License, v. 2.0. If a copy of the MPL was not distributed with this
-//  file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-extension LZ77
+extension Gzip
 {
     @frozen public
     struct Inflator
     {
         private
-        var buffers:InflatorBuffers<LZ77.Format>
+        var buffers:LZ77.InflatorBuffers<Gzip.Format>
         private
         var state:InflatorState
     }
 }
-extension LZ77.Inflator
+extension Gzip.Inflator
 {
     public
-    init(format:LZ77.Format = .zlib)
+    init()
     {
-        self.buffers = .init(format: format)
+        self.buffers = .init(format: .gzip)
         self.state = .initial
     }
 }
-extension LZ77.Inflator
+extension Gzip.Inflator
 {
-    /// Pushes **compressed** data to the inflator, returning nil once a complete zlib DEFLATE
+    /// Pushes **compressed** data to the inflator, returning nil once a complete gzip DEFLATE
     /// stream has been received.
     public mutating
     func push(_ data:ArraySlice<UInt8>) throws -> Void?
