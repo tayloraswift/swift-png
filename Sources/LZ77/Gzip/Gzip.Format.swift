@@ -1,15 +1,8 @@
-import CRC
-
 extension Gzip
 {
     @frozen public
-    enum Format
+    enum Format:LZ77.FormatType
     {
         case gzip
     }
-}
-extension Gzip.Format:LZ77.FormatType
-{
-    public
-    typealias Integral = CRC32
 }

@@ -4,7 +4,6 @@ extension LZ77
     {
         let exponent:Int
 
-        private
         init(exponent:Int)
         {
             self.exponent = exponent
@@ -52,5 +51,13 @@ extension LZ77.StreamHeader
         bit += 16
 
         return .init(exponent: 8 + e)
+    }
+
+    func write(_ output:inout LZ77.DeflatorOut)
+    {
+        let unpaired:UInt16 = .init(self.exponent - 8) << 4 | 0x08
+        let check:UInt16 = ~((unpaired << 8 | unpaired >> 8) % 31) & 31
+
+        output.append(check << 8 | unpaired, count: 16)
     }
 }

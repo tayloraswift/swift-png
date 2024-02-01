@@ -1,89 +1,31 @@
-extension LZ77.Deflator
+extension LZ77.DeflatorBuffers
 {
     @frozen @usableFromInline
     struct Stream
     {
-        let format:LZ77.Format
         let search:LZ77.DeflatorSearch
 
-        var input:LZ77.DeflatorIn<LZ77.MRC32>
-        //var queued:(run:Int, extend:Int, distance:Int)?
-        //var terms:[Term]
-        var window:LZ77.DeflatorWindow
         var matches:LZ77.DeflatorMatches
+        var window:LZ77.DeflatorWindow
         var output:LZ77.DeflatorOut
+        var input:LZ77.DeflatorIn<Format.Integral>
 
-        init(format:LZ77.Format, level:Int, exponent:Int, hint:Int)
+        init(search:LZ77.DeflatorSearch,
+            matches:LZ77.DeflatorMatches,
+            window:LZ77.DeflatorWindow,
+            output:LZ77.DeflatorOut,
+            input:LZ77.DeflatorIn<Format.Integral>)
         {
-            precondition(8 ..< 16 ~= exponent,
-                "exponent cannot be less than 8 or greater than 15")
-
-            switch level
-            {
-            case .min ... 0:
-                self.search = .greedy(attempts:   1, goal:   6)
-            case  1:
-                self.search = .greedy(attempts:   2, goal:   8)
-            case  2:
-                self.search = .greedy(attempts:   4, goal:  10)
-            case  3:
-                self.search = .greedy(attempts:  40, goal:  24)
-
-            case  4:
-                self.search = .lazy(  attempts:  20, goal:  32)
-            case  5:
-                self.search = .lazy(  attempts:  40, goal:  54)
-            case  6:
-                self.search = .lazy(  attempts:  64, goal:  80)
-            case  7:
-                self.search = .lazy(  attempts: 100, goal: 160)
-
-            case  8:
-                self.search = .full(  attempts:  14, goal:  20, iterations: 1)
-            case  9:
-                self.search = .full(  attempts:  20, goal:  32, iterations: 2)
-            case 10:
-                self.search = .full(  attempts:  30, goal:  50, iterations: 3)
-            case 11:
-                self.search = .full(  attempts:  60, goal:  80, iterations: 4)
-            case 12:
-                self.search = .full(  attempts: 100, goal: 133, iterations: 5)
-            default:
-                self.search = .full(  attempts:.max, goal: 258, iterations: 6)
-            }
-            // match buffer is either a vector of terms, or a directed-graph
-            switch self.search
-            {
-            case .greedy, .lazy:
-                self.matches = .terms(capacity: 1 << 15)
-            case .full:
-                self.matches = .graph(capacity: 1 << 16)
-            }
-
-            self.format = format
-
-            self.input  = .init()
-            self.window = .init(exponent: exponent)
-            self.output = .init(hint: hint)
+            self.search = search
+            self.matches = matches
+            self.window = window
+            self.output = output
+            self.input = input
         }
     }
 }
-extension LZ77.Deflator.Stream
+extension LZ77.DeflatorBuffers.Stream
 {
-    mutating
-    func start(exponent:Int)
-    {
-        if case .ios = self.format
-        {
-            return
-        }
-
-        let unpaired:UInt16 = .init(exponent - 8) << 4 | 0x08
-        let check:UInt16    = ~((unpaired << 8 | unpaired >> 8) % 31) & 31
-
-        self.output.append(check << 8 | unpaired, count: 16)
-    }
-
     mutating
     func compress(all:Bool) -> Void?
     {
@@ -427,140 +369,8 @@ extension LZ77.Deflator.Stream
         return nil
     }
 
-    private mutating
-    func blockStart(final:Bool, runliterals:Int, distances:Int, metatree:LZ77.HuffmanTree<UInt8>)
-    {
-        let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19)
-        {
-            $0.initialize(repeating: 0)
-            for (length, level):(UInt16, Range<Int>) in zip(1 ... 8, metatree.levels)
-            {
-                for symbol:UInt8 in metatree.symbols[level]
-                {
-                    let z:Int =
-                    [
-                        3, 17, 15, 13, 11,  9,  7,  5,
-                        4,  6,  8, 10, 12, 14, 16, 18,
-                        0, 1, 2
-                    ][.init(symbol)]
-
-                    $0[z] = length
-                }
-            }
-            // max(4, _) because HCLEN cannot be less than 4
-            $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
-        }
-
-        self.output.append(final ? 0b10_1 : 0b10_0,        count: 3)
-
-        self.output.append(.init(runliterals       - 257), count: 5)
-        self.output.append(.init(distances         -   1), count: 5)
-        self.output.append(.init(codelengths.count -   4), count: 4)
-        for codelength:UInt16 in codelengths
-        {
-            self.output.append(codelength, count: 3)
-        }
-    }
-
-    private mutating
-    func blockTables(_ metaterms:[LZ77.DeflatorTerm.Meta], semistatic:LZ77.DeflatorTables)
-    {
-        for metaterm:LZ77.DeflatorTerm.Meta in metaterms
-        {
-            let codeword:LZ77.Codeword = semistatic[meta: metaterm.symbol]
-            self.output.append(codeword.bits, count: codeword.length)
-            self.output.append(metaterm.bits, count: codeword.extra)
-        }
-    }
-
-    private mutating
-    func blockCompressed(semistatic:LZ77.DeflatorTables)
-    {
-        switch self.search
-        {
-        case .greedy, .lazy:
-            for index:Int in self.matches.indices
-            {
-                let term:LZ77.DeflatorTerm = .init(storage: self.matches[offset: index])
-
-                let symbol:(runliteral:UInt16, distance:UInt8) = term.symbol
-                let codeword:(runliteral:LZ77.Codeword, distance:LZ77.Codeword)
-
-                codeword.runliteral = semistatic[runliteral: symbol.runliteral]
-
-                self.output.append(codeword.runliteral.bits, count: codeword.runliteral.length)
-
-                if symbol.runliteral > 256
-                {
-                    // there are extra bits and a distance code to follow
-                    let bits:(run:UInt16, distance:UInt16) = term.bits
-
-                    codeword.distance = semistatic[distance: symbol.distance]
-
-                    self.output.append(bits.run,               count: codeword.runliteral.extra)
-                    self.output.append(codeword.distance.bits, count: codeword.distance.length)
-                    self.output.append(bits.distance,          count: codeword.distance.extra)
-                }
-            }
-
-            // end-of-block symbol
-            let end:LZ77.Codeword = semistatic[runliteral: 256]
-            self.output.append(end.bits, count: end.length)
-
-            self.matches.resetTerms()
-
-        case .full:
-            var index:Int = self.matches.startIndex
-            while index < self.matches.endIndex
-            {
-                let upstream:UInt32 = self.matches[offset: index << 5]
-                let count:Int       = .init(upstream >> 16)
-                if count == 1
-                {
-                    let literal:UInt16 = .init(upstream & 0x00_00_00_ff)
-                    let codeword:LZ77.Codeword = semistatic[runliteral: literal]
-                    self.output.append(codeword.bits, count: codeword.length)
-                }
-                else
-                {
-                    let decade:(run:UInt8, distance:UInt8) =
-                    (
-                        run:        LZ77.Decades[run: count],
-                        distance:   .init(truncatingIfNeeded: upstream >> 8)
-                    )
-                    let offset:UInt16 =
-                        .init(self.matches[offset: index << 5 | (2 + .init(decade.distance))] >> 16)
-
-                    let bits:(run:UInt16, distance:UInt16) =
-                    (
-                        run:        .init(count) - LZ77.Composites[run: decade.run].base,
-                        distance:   offset - LZ77.Composites[distance: decade.distance].base
-                    )
-
-                    let codeword:(run:LZ77.Codeword, distance:LZ77.Codeword) =
-                    (
-                        run:        semistatic[runliteral:  256 | .init(decade.run)],
-                        distance:   semistatic[distance:    decade.distance]
-                    )
-
-                    self.output.append(codeword.run.bits,      count: codeword.run.length)
-                    self.output.append(bits.run,               count: codeword.run.extra)
-                    self.output.append(codeword.distance.bits, count: codeword.distance.length)
-                    self.output.append(bits.distance,          count: codeword.distance.extra)
-                }
-
-                index += count
-            }
-            // emit end-of-block code
-            let end:LZ77.Codeword = semistatic[runliteral: 256]
-            self.output.append(end.bits, count: end.length)
-
-            self.matches.resetGraph()
-        }
-    }
-
     mutating
-    func block(final:Bool)
+    func writeBlock(final:Bool)
     {
         let tree:
         (
@@ -674,21 +484,164 @@ extension LZ77.Deflator.Stream
 
         tree.meta = .init(frequencies: frequencies, limit: 7)
 
-        self.blockStart(final: final, runliterals: r, distances: d, metatree: tree.meta)
+        self.writeBlockMetadata(tree: tree.meta,
+            literals: r,
+            distances: d,
+            final: final)
 
-        let semistatic:LZ77.DeflatorTables = .init(
+        let tables:LZ77.DeflatorTables = .init(
             runliteral: tree.runliteral,
             distance: tree.distance,
             meta: tree.meta)
 
-        self.blockTables(terms, semistatic: semistatic)
-        self.blockCompressed(semistatic: semistatic)
+        self.writeBlockTables(tables, terms: terms)
+        self.writeBlock(with: tables)
 
         /* let dicing:LZ77.Deflator.Dicing = .init(self.terms, unit: 1 << 12)
         self.block(dicing.startIndex, dicing: dicing, last: last)
         // empty literal buffer
         self.terms.removeAll(keepingCapacity: true) */
     }
+}
+extension LZ77.DeflatorBuffers.Stream
+{
+    private mutating
+    func writeBlockMetadata(tree:LZ77.HuffmanTree<UInt8>,
+        literals:Int,
+        distances:Int,
+        final:Bool)
+    {
+        let codelengths:[UInt16] = .init(unsafeUninitializedCapacity: 19)
+        {
+            $0.initialize(repeating: 0)
+            for (length, level):(UInt16, Range<Int>) in zip(1 ... 8, tree.levels)
+            {
+                for symbol:UInt8 in tree.symbols[level]
+                {
+                    let z:Int =
+                    [
+                        3, 17, 15, 13, 11,  9,  7,  5,
+                        4,  6,  8, 10, 12, 14, 16, 18,
+                        0, 1, 2
+                    ][.init(symbol)]
+
+                    $0[z] = length
+                }
+            }
+            // max(4, _) because HCLEN cannot be less than 4
+            $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
+        }
+
+        self.output.append(final ? 0b10_1 : 0b10_0,        count: 3)
+
+        self.output.append(.init(literals - 257), count: 5)
+        self.output.append(.init(distances - 1), count: 5)
+        self.output.append(.init(codelengths.count - 4), count: 4)
+        for codelength:UInt16 in codelengths
+        {
+            self.output.append(codelength, count: 3)
+        }
+    }
+
+    private mutating
+    func writeBlockTables(_ tables:LZ77.DeflatorTables, terms:[LZ77.DeflatorTerm.Meta])
+    {
+        for metaterm:LZ77.DeflatorTerm.Meta in terms
+        {
+            let codeword:LZ77.Codeword = tables[meta: metaterm.symbol]
+            self.output.append(codeword.bits, count: codeword.length)
+            self.output.append(metaterm.bits, count: codeword.extra)
+        }
+    }
+
+    private mutating
+    func writeBlock(with tables:LZ77.DeflatorTables)
+    {
+        switch self.search
+        {
+        case .greedy, .lazy:
+            for index:Int in self.matches.indices
+            {
+                let term:LZ77.DeflatorTerm = .init(storage: self.matches[offset: index])
+
+                let symbol:(runliteral:UInt16, distance:UInt8) = term.symbol
+                let codeword:(runliteral:LZ77.Codeword, distance:LZ77.Codeword)
+
+                codeword.runliteral = tables[runliteral: symbol.runliteral]
+
+                self.output.append(codeword.runliteral.bits, count: codeword.runliteral.length)
+
+                if symbol.runliteral > 256
+                {
+                    // there are extra bits and a distance code to follow
+                    let bits:(run:UInt16, distance:UInt16) = term.bits
+
+                    codeword.distance = tables[distance: symbol.distance]
+
+                    self.output.append(bits.run,               count: codeword.runliteral.extra)
+                    self.output.append(codeword.distance.bits, count: codeword.distance.length)
+                    self.output.append(bits.distance,          count: codeword.distance.extra)
+                }
+            }
+
+            // end-of-block symbol
+            let end:LZ77.Codeword = tables[runliteral: 256]
+            self.output.append(end.bits, count: end.length)
+
+            self.matches.resetTerms()
+
+        case .full:
+            var index:Int = self.matches.startIndex
+            while index < self.matches.endIndex
+            {
+                let upstream:UInt32 = self.matches[offset: index << 5]
+                let count:Int       = .init(upstream >> 16)
+                if count == 1
+                {
+                    let literal:UInt16 = .init(upstream & 0x00_00_00_ff)
+                    let codeword:LZ77.Codeword = tables[runliteral: literal]
+                    self.output.append(codeword.bits, count: codeword.length)
+                }
+                else
+                {
+                    let decade:(run:UInt8, distance:UInt8) =
+                    (
+                        run:        LZ77.Decades[run: count],
+                        distance:   .init(truncatingIfNeeded: upstream >> 8)
+                    )
+                    let offset:UInt16 = .init(
+                        self.matches[offset: index << 5 | (2 + .init(decade.distance))] >> 16)
+
+                    let bits:(run:UInt16, distance:UInt16) =
+                    (
+                        run:        .init(count) - LZ77.Composites[run: decade.run].base,
+                        distance:   offset - LZ77.Composites[distance: decade.distance].base
+                    )
+
+                    let codeword:(run:LZ77.Codeword, distance:LZ77.Codeword) =
+                    (
+                        run:        tables[runliteral:  256 | .init(decade.run)],
+                        distance:   tables[distance:    decade.distance]
+                    )
+
+                    self.output.append(codeword.run.bits,      count: codeword.run.length)
+                    self.output.append(bits.run,               count: codeword.run.extra)
+                    self.output.append(codeword.distance.bits, count: codeword.distance.length)
+                    self.output.append(bits.distance,          count: codeword.distance.extra)
+                }
+
+                index += count
+            }
+            // emit end-of-block code
+            let end:LZ77.Codeword = tables[runliteral: 256]
+            self.output.append(end.bits, count: end.length)
+
+            self.matches.resetGraph()
+        }
+    }
+}
+extension LZ77.DeflatorBuffers.Stream
+{
 
     /* private mutating
     func block(_ index:Int, dicing:LZ77.Deflator.Dicing, last:Bool)
@@ -765,17 +718,18 @@ extension LZ77.Deflator.Stream
     } */
 
     mutating
-    func checksum()
+    func writeLittleEndianUInt32(_ uint32:UInt32)
     {
-        if  case .ios = self.format
-        {
-            return
-        }
-        // checksum is written big-endian, which means it has to go into the
-        // bitstream msb-first
-        let checksum:UInt32 = self.input.checksum().byteSwapped
+        self.writeBigEndianUInt32(uint32.byteSwapped)
+    }
+
+    mutating
+    func writeBigEndianUInt32(_ uint32:UInt32)
+    {
+        let uint32:UInt32 = uint32.bigEndian
+
         self.output.pad(to: UInt8.self)
-        self.output.append(.init(truncatingIfNeeded: checksum       ), count: 16)
-        self.output.append(.init(                    checksum >>  16), count: 16)
+        self.output.append(.init(truncatingIfNeeded: uint32       ), count: 16)
+        self.output.append(.init(                    uint32 >>  16), count: 16)
     }
 }
