@@ -25,8 +25,7 @@ extension Gzip.StreamHeader
         }
 
         guard
-        case 0x1f = input[bit,     count: 8, as: UInt8.self],
-        case 0x8b = input[bit + 8, count: 8, as: UInt8.self]
+        case 0x1f_8b = input[bit, count: 16, as: UInt16.self]
         else
         {
             throw Gzip.StreamHeaderError.invalidSigil
@@ -81,5 +80,18 @@ extension Gzip.StreamHeader
             bit += 80
             return .init(flag: flag, xlen: 0)
         }
+    }
+
+    //  TODO: this is discarding all the metadata!
+    func write(_ output:inout LZ77.DeflatorOut)
+    {
+        output.append(0x1f_8b, count: 16)
+        output.append(0x08_00, count: 16)
+
+        //  TODO: support MTIME
+        output.append(0x00_00, count: 16)
+        output.append(0x00_00, count: 16)
+
+        output.append(0x00_ff, count: 16)
     }
 }

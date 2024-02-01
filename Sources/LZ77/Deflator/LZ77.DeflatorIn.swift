@@ -7,10 +7,10 @@ extension LZ77
         var startIndex:Int,
             endIndex:Int
 
+        private(set)
+        var integral:Integral
         private
         var capacity:Int
-        private
-        var integral:Integral
         private
         var storage:ManagedBuffer<Void, UInt8>
 
@@ -25,8 +25,8 @@ extension LZ77
             // self.endIndex       = 0
             self.startIndex = 4
             self.endIndex = 4
-            self.capacity = capacity
             self.integral = .init()
+            self.capacity = capacity
         }
     }
 }
