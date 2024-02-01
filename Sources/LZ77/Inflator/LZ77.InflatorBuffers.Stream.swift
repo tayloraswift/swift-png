@@ -1,17 +1,12 @@
-extension LZ77.Inflator
+extension LZ77.InflatorBuffers
 {
     @frozen @usableFromInline
-    struct Stream<Integral> where Integral:LZ77.StreamIntegral
+    struct Stream
     {
+        var output:LZ77.InflatorOut<Format.Integral>
         // Stream.In manages its own COW in rebase(_:pointer:)
         var input:LZ77.InflatorIn
         var b:Int
-        var lengths:[Int]
-        // Meta and Stream.Out need to have COW manually implemented with
-        // exclude() on each, to avoid redundant exclusions inside loops,,
-        // reuse the same buffer since the size is fixed
-        var meta:LZ77.InflatorTables.Meta
-        var output:LZ77.InflatorOut<Integral>
 
         #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
         // histogram, no match can ever cost more than 17 bits per literal
@@ -32,18 +27,16 @@ extension LZ77.Inflator
 
         init()
         {
-            self.b          = 0
-            self.input      = []
-            self.lengths    = []
-            self.meta       = .init()
             self.output     = .init()
+            self.input      = []
+            self.b          = 0
         }
     }
 }
-extension LZ77.Inflator.Stream
+extension LZ77.InflatorBuffers.Stream
 {
     mutating
-    func blockStart() throws -> (final:Bool, type:LZ77.BlockType)?
+    func readBlockMetadata(into metadata:inout LZ77.BlockMetadata) throws -> LZ77.BlockType?
     {
         guard self.b + 3 <= self.input.count
         else
@@ -53,7 +46,6 @@ extension LZ77.Inflator.Stream
 
         // read block header bits
         let final:Bool = self.input[self.b, count: 1, as: UInt8.self] != 0
-        let type:LZ77.BlockType
         switch self.input[self.b + 1, count: 2, as: UInt8.self]
         {
         case 0:
@@ -73,12 +65,12 @@ extension LZ77.Inflator.Stream
                 throw LZ77.DecompressionError.invalidBlockElementCountParity(l, m)
             }
 
-            type = .bytes(.init(l))
-            self.b  = boundary + 32
+            self.b = boundary + 32
+            return .bytes(final: final, count: .init(l))
 
         case 1:
-            type = .fixed
             self.b += 3
+            return .fixed(final: final)
 
         case 2:
             guard self.b + 17 <= self.input.count
@@ -95,14 +87,14 @@ extension LZ77.Inflator.Stream
                 return nil
             }
 
-            let runliterals:Int = 257 + self.input[self.b +  3, count: 5, as: Int.self]
-            let distances:Int   =   1 + self.input[self.b +  8, count: 5, as: Int.self]
+            let literals:Int = 257 + self.input[self.b +  3, count: 5, as: Int.self]
+            let distances:Int =  1 + self.input[self.b +  8, count: 5, as: Int.self]
             // other counts don’t need to be checked because the number of bits
             // matches the acceptable range
-            guard 257 ... 286 ~= runliterals
+            guard 257 ... 286 ~= literals
             else
             {
-                throw LZ77.DecompressionError.invalidHuffmanRunLiteralSymbolCount(runliterals)
+                throw LZ77.DecompressionError.invalidHuffmanRunLiteralSymbolCount(literals)
             }
 
             var lengths:[Int] = .init(repeating: 0, count: 19)
@@ -118,24 +110,25 @@ extension LZ77.Inflator.Stream
                 throw LZ77.DecompressionError.invalidHuffmanCodelengthHuffmanTable
             }
 
-            self.meta.replace(tree: tree)
+            metadata.replace(tree: tree)
 
             self.b += 17 + 3 * codelengths
-            type = .dynamic(runliterals: runliterals, distances: distances)
+            return .dynamic(final: final, literals: literals, distances: distances)
 
         case let code:
             throw LZ77.DecompressionError.invalidBlockTypeCode(code)
         }
-
-        return (final, type)
     }
+
     mutating
-    func blockTables(runliterals:Int, distances:Int)
-        throws -> (runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)?
+    func readBlockTables(
+        metadata:LZ77.BlockMetadata,
+        lengths count:(literals:Int, total:Int),
+        reusing lengths:inout [Int]) throws -> LZ77.InflatorTables?
     {
         // code lengths form an unbroken sequence
         codelengths:
-        while self.lengths.count < runliterals + distances
+        while lengths.count < count.total
         {
             guard self.b < self.input.count
             else
@@ -143,7 +136,7 @@ extension LZ77.Inflator.Stream
                 return nil
             }
 
-            let meta:LZ77.Metaword = self.meta[.init(truncatingIfNeeded: self.input[self.b])]
+            let meta:LZ77.Metaword = metadata[.init(truncatingIfNeeded: self.input[self.b])]
             // if the codeword length is longer than the available input
             // then we know the match is invalid (due to padding 0-bits)
             guard self.b + meta.length <= self.input.count
@@ -170,13 +163,13 @@ extension LZ77.Inflator.Stream
             switch meta.symbol
             {
             case 0 ..< 16:
-                self.lengths.append(.init(meta.symbol))
+                lengths.append(.init(meta.symbol))
                 self.b += meta.length
                 continue codelengths
 
             case 16:
                 guard
-                let last:Int = self.lengths.last
+                let last:Int = lengths.last
                 else
                 {
                     throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
@@ -207,15 +200,15 @@ extension LZ77.Inflator.Stream
             let repetitions:Int = base +
                 self.input[self.b + meta.length, count: extra, as: Int.self]
 
-            self.lengths.append(contentsOf: repeatElement(element, count: repetitions))
+            lengths.append(contentsOf: repeatElement(element, count: repetitions))
             self.b += meta.length + extra
         }
         defer
         {
             // important
-            self.lengths.removeAll(keepingCapacity: true)
+            lengths.removeAll(keepingCapacity: true)
         }
-        guard self.lengths.count == runliterals + distances
+        guard lengths.count == count.total
         else
         {
             throw LZ77.DecompressionError.invalidHuffmanCodelengthSequence
@@ -237,20 +230,20 @@ extension LZ77.Inflator.Stream
         #endif
 
         guard
-        let runliteral:LZ77.HuffmanTree<UInt16> = .validate(
-            symbols: 0 ... 287,
-            lengths: self.lengths.prefix(runliterals)),
-        let distance:LZ77.HuffmanTree<UInt8> = .validate(
-            symbols: 0 ... 31,
-            normalizing: self.lengths.dropFirst(runliterals))
+        let literalTree:LZ77.HuffmanTree<UInt16> = .validate(symbols: 0 ... 287,
+            lengths: lengths.prefix(count.literals)),
+        let distanceTree:LZ77.HuffmanTree<UInt8> = .validate(symbols: 0 ... 31,
+            normalizing: lengths.dropFirst(count.literals))
         else
         {
             throw LZ77.DecompressionError.invalidHuffmanTable
         }
-        return (runliteral, distance)
+
+        return .init(literals: literalTree, distances: distanceTree)
     }
+
     mutating
-    func blockCompressed(semistatic:LZ77.InflatorTables) throws -> Void?
+    func readBlock(with tables:LZ77.InflatorTables) throws -> Void?
     {
         while self.b < self.input.count
         {
@@ -264,7 +257,7 @@ extension LZ77.Inflator.Stream
             //  -------------------------
             //  total           : 48 bits
             let first:UInt16 = self.input[self.b]
-            let runliteral:LZ77.RunLiteral = semistatic[first, as: LZ77.RunLiteral.self]
+            let runliteral:LZ77.RunLiteral = tables[first, as: LZ77.RunLiteral.self]
 
             if      runliteral.symbol <  256
             {
@@ -319,17 +312,17 @@ extension LZ77.Inflator.Stream
                     offset:(extra:Int, base:Int)
                 )
 
-                composite.count     = semistatic.composite(decade: runliteral)
+                composite.count     = tables.composite(decade: runliteral)
                 let count:Int       = composite.count.base &+
                     .init(truncatingIfNeeded: slug & ~(.max &<< composite.count.extra))
 
                 slug &>>= composite.count.extra
 
                 let distance:LZ77.Distance =
-                    semistatic[.init(truncatingIfNeeded: slug), as: LZ77.Distance.self]
+                    tables[.init(truncatingIfNeeded: slug), as: LZ77.Distance.self]
                 slug &>>= distance.length
 
-                composite.offset    = semistatic.composite(decade: distance)
+                composite.offset    = tables.composite(decade: distance)
                 let offset:Int      = composite.offset.base &+
                     .init(truncatingIfNeeded: slug & ~(.max &<< composite.offset.extra))
 
@@ -366,8 +359,9 @@ extension LZ77.Inflator.Stream
         }
         return nil
     }
+
     mutating
-    func blockUncompressed(end:Int) throws -> Void?
+    func readBlock(upTo end:Int) throws -> Void?
     {
         while self.output.endIndex < end
         {

@@ -3,7 +3,7 @@ extension LZ77.Deflator
     @frozen @usableFromInline
     struct Stream
     {
-        let format:LZ77.DeflateFormat
+        let format:LZ77.Format
         let search:LZ77.DeflatorSearch
 
         var input:LZ77.DeflatorIn<LZ77.MRC32>
@@ -13,7 +13,7 @@ extension LZ77.Deflator
         var matches:LZ77.DeflatorMatches
         var output:LZ77.DeflatorOut
 
-        init(format:LZ77.DeflateFormat, level:Int, exponent:Int, hint:Int)
+        init(format:LZ77.Format, level:Int, exponent:Int, hint:Int)
         {
             precondition(8 ..< 16 ~= exponent,
                 "exponent cannot be less than 8 or greater than 15")

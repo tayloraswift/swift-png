@@ -14,7 +14,7 @@ extension LZ77
 extension LZ77.Deflator
 {
     public
-    init(format:LZ77.DeflateFormat = .zlib, level:Int, exponent:Int = 15, hint:Int = 1 << 12)
+    init(format:LZ77.Format = .zlib, level:Int, exponent:Int = 15, hint:Int = 1 << 12)
     {
         let e:Int
         switch format

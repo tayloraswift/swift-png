@@ -24,7 +24,7 @@ extension PNG.Encoder
         self.row        = nil
         self.pass       = interlaced ? .subimage(0) : .image
 
-        let format:LZ77.DeflateFormat
+        let format:LZ77.Format
         switch standard
         {
         case .common:   format = .zlib
