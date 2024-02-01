@@ -64,11 +64,11 @@ extension LZ77
 }
 extension LZ77.InflatorTables
 {
-    init(runliteral:LZ77.HuffmanTree<UInt16>, distance:LZ77.HuffmanTree<UInt8>)
+    init(literals:LZ77.HuffmanTree<UInt16>, distances:LZ77.HuffmanTree<UInt8>)
     {
         let start:Int   = 256    + MemoryLayout<Composite>.stride * 64
-        let offset:Int  = start  + MemoryLayout<LZ77.RunLiteral>.stride * runliteral.size.z
-        let size:Int    = offset + MemoryLayout<LZ77.Distance  >.stride *   distance.size.z
+        let offset:Int  = start  + MemoryLayout<LZ77.RunLiteral>.stride * literals.size.z
+        let size:Int    = offset + MemoryLayout<LZ77.Distance  >.stride * distances.size.z
         self.storage = .create(minimumCapacity: size){ _ in () }
         self.storage.withUnsafeMutablePointerToElements
         {
@@ -83,18 +83,18 @@ extension LZ77.InflatorTables
             }
             // write huffman tables
             (base +  start).withMemoryRebound(to: LZ77.RunLiteral.self,
-                capacity: runliteral.size.z)
+                capacity: literals.size.z)
             {
-                runliteral.table(initializing: $0)
+                literals.table(initializing: $0)
             }
             (base + offset).withMemoryRebound(to: LZ77.Distance.self,
-                capacity: distance.size.z)
+                capacity: distances.size.z)
             {
-                distance.table(initializing: $0)
+                distances.table(initializing: $0)
             }
         }
 
-        self.fence  = (runliteral: runliteral.size.n, distance: distance.size.n)
+        self.fence  = (runliteral: literals.size.n, distance: distances.size.n)
         self.offset = offset
     }
 
@@ -166,5 +166,5 @@ extension LZ77.InflatorTables
     }
 
     static
-    let fixed:Self = .init(runliteral: .runliteral, distance: .distance)
+    let fixed:Self = .init(literals: .runliteral, distances: .distance)
 }

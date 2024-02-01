@@ -1,0 +1,4 @@
+@frozen public
+enum Gzip
+{
+}

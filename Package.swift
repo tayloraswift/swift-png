@@ -24,13 +24,15 @@ let package:Package = .init(name: "swift-png",
     ],
     targets:
     [
-        .target(name: "LZ77"),
+        .target(name: "LZ77", dependencies:
+            [
+                .product(name: "CRC", package: "swift-hash"),
+            ]),
 
         .target(name: "PNG",
             dependencies:
             [
                 .target(name: "LZ77"),
-                .product(name: "CRC", package: "swift-hash"),
             ]),
 
         .target(name: "PNGInspection",
