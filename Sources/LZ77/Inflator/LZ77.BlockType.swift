@@ -2,8 +2,8 @@ extension LZ77
 {
     enum BlockType
     {
-        case dynamic(runliterals:Int, distances:Int)
-        case fixed
-        case bytes(Int)
+        case dynamic    (final:Bool, literals:Int, distances:Int)
+        case fixed      (final:Bool)
+        case bytes      (final:Bool, count:Int)
     }
 }

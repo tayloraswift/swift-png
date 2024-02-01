@@ -1,13 +1,13 @@
-extension LZ77.InflatorTables
+extension LZ77
 {
     @frozen @usableFromInline
-    struct Meta
+    struct BlockMetadata
     {
         private
         var storage:ManagedBuffer<Void, UInt8>
     }
 }
-extension LZ77.InflatorTables.Meta
+extension LZ77.BlockMetadata
 {
     private static
     var size:Int
