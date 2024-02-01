@@ -25,7 +25,7 @@ extension Gzip.StreamHeader
         }
 
         guard
-        case 0x1f_8b = input[bit, count: 16, as: UInt16.self]
+        case 0x8b_1f = input[bit]
         else
         {
             throw Gzip.StreamHeaderError.invalidSigil
@@ -69,7 +69,7 @@ extension Gzip.StreamHeader
             }
 
             //  This is little-endian!
-            let xlen:UInt16 = input[bit + 80, count: 16, as: UInt16.self].byteSwapped
+            let xlen:UInt16 = .init(littleEndian: input[bit + 80])
 
             bit += 96
 
@@ -85,13 +85,13 @@ extension Gzip.StreamHeader
     //  TODO: this is discarding all the metadata!
     func write(_ output:inout LZ77.DeflatorOut)
     {
-        output.append(0x1f_8b, count: 16)
-        output.append(0x08_00, count: 16)
+        output.append(0x8b_1f, count: 16)
+        output.append(0x00_08, count: 16)
 
         //  TODO: support MTIME
         output.append(0x00_00, count: 16)
         output.append(0x00_00, count: 16)
 
-        output.append(0x00_ff, count: 16)
+        output.append(0xff_00, count: 16)
     }
 }

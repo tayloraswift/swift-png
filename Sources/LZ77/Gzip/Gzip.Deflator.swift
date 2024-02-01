@@ -15,7 +15,7 @@ extension Gzip
 }
 extension Gzip.Deflator
 {
-    mutating
+    public mutating
     func push(_ data:ArraySlice<UInt8>, last:Bool = false)
     {
         self.buffers.push(data, last: last)

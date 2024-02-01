@@ -4,7 +4,7 @@ import PNG
 let path:String = "Snippets/GzipCompression/example"
 
 guard
-let gzipped:[UInt8] = (System.File.Source.open(path: "\(path).gz")
+let original:[UInt8] = (System.File.Source.open(path: "\(path).gz")
 {
     (source:inout System.File.Source) -> [UInt8]? in
 
@@ -21,8 +21,20 @@ else
 }
 
 var inflator:Gzip.Inflator = .init()
-try inflator.push(gzipped[...])
+try inflator.push(original[...])
 
-let text:String = .init(decoding: inflator.pull(), as: Unicode.UTF8.self)
+let utf8:[UInt8] = inflator.pull()
+let text:String = .init(decoding: utf8, as: Unicode.UTF8.self)
 
 print(text)
+
+var deflator:Gzip.Deflator = .init(level: 13, exponent: 15, hint: 128 << 10)
+    deflator.push(utf8[...], last: true)
+
+let _:Void? = System.File.Destination.open(path: "\(path).txt.gz")
+{
+    while let part:[UInt8] = deflator.pull()
+    {
+        $0.write(part)
+    }
+}
