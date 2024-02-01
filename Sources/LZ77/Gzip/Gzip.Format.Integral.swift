@@ -2,7 +2,7 @@ import CRC
 
 extension Gzip.Format
 {
-    @frozen public
+    @frozen @usableFromInline
     struct Integral
     {
         @usableFromInline
@@ -20,10 +20,10 @@ extension Gzip.Format
 }
 extension Gzip.Format.Integral:LZ77.StreamIntegral
 {
-    @inlinable public
+    @inlinable
     var checksum:UInt32 { self.crc32.checksum }
 
-    @inlinable public mutating
+    @inlinable mutating
     func update(from buffer:UnsafePointer<UInt8>, count:Int)
     {
         self.crc32.update(with: UnsafeBufferPointer.init(start: buffer, count: count))

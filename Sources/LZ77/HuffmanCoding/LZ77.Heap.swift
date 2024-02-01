@@ -2,7 +2,7 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-extension General
+extension LZ77
 {
     struct Heap<Key, Value> where Key:Comparable
     {
@@ -48,7 +48,7 @@ extension General
         }
     }
 }
-extension General.Heap
+extension LZ77.Heap
 {
     @inline(__always)
     private static
@@ -174,7 +174,7 @@ extension General.Heap
         }
     }
 }
-extension General.Heap:ExpressibleByArrayLiteral
+extension LZ77.Heap:ExpressibleByArrayLiteral
 {
     init(arrayLiteral:(key:Key, value:Value)...)
     {

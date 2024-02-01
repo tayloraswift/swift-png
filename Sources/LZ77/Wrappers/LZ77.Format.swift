@@ -13,7 +13,7 @@ extension LZ77
 }
 extension LZ77.Format:LZ77.FormatType
 {
-    public
+    @usableFromInline
     typealias Integral = LZ77.MRC32
 }
 extension LZ77.Format

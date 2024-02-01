@@ -33,11 +33,11 @@ extension LZ77.DeflatorTables
             runliteral.codewords(initializing: $0,       count: 288)
             {
                 $0 > 256 ?
-                .init(LZ77.Composites[run: .init(truncatingIfNeeded: $0)].extra) : 0
+                UInt8.init(LZ77.Composites[run: .init(truncatingIfNeeded: $0)].extra) : 0
             }
             distance.codewords(  initializing: $0 + 288, count:  32)
             {
-                .init(LZ77.Composites[distance: $0].extra)
+                UInt8.init(LZ77.Composites[distance: $0].extra)
             }
             meta?.codewords(     initializing: $0 + 320, count:  19)
             {

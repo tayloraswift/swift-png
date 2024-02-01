@@ -1,9 +1,9 @@
 extension LZ77
 {
-    public
+    @usableFromInline
     typealias StreamIntegral = _LZ77StreamIntegral
 }
-public
+@usableFromInline
 protocol _LZ77StreamIntegral
 {
     init()

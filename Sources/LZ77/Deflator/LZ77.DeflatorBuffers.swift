@@ -1,6 +1,6 @@
 extension LZ77
 {
-    @frozen public
+    @frozen @usableFromInline
     struct DeflatorBuffers<Format> where Format:LZ77.FormatType
     {
         var stream:Stream
