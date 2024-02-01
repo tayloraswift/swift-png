@@ -137,7 +137,13 @@ extension LZ77.InflatorIn
         }
     }
 
-    /// Returns bits in the low end of the returned integer.
+    /// Returns bits in the low end of the returned integer. The maximum meaningful bit `count`
+    /// is 16.
+    ///
+    /// The best way to think about the bit order is to imagine the bitstream as a single,
+    /// arbitrarily-precision integer. This means if you load a slice of the integer into a
+    /// ``UInt16``, the most-significant bits in the result will correspond to the bits that
+    /// appear later in the bitstream.
     ///
     /// ```text
     /// { b.15, b.14, b.13, b.12, b.11, b.10, b.9, b.8, b.7, b.6, b.5, b.4, b.3, b.2, b.1, b.0 }
