@@ -1,7 +1,7 @@
 extension LZ77
 {
     /// Modular redundancy check (similar to ``CRC32``)
-    @frozen public
+    @frozen @usableFromInline
     struct MRC32
     {
         @usableFromInline
@@ -9,7 +9,7 @@ extension LZ77
         @usableFromInline
         var double:UInt32
 
-        @inlinable public
+        @inlinable
         init()
         {
             self.single = 1
@@ -22,7 +22,7 @@ extension LZ77.MRC32:LZ77.StreamIntegral
     // software.intel.com/content/www/us/en/develop/articles/fast-computation-of-adler32-checksums
     // link also says to use simd vectorization, but that just seems to slow
     // things down (probably because llvm is already autovectorizing it)
-    @inlinable public mutating
+    @inlinable mutating
     func update(from start:UnsafePointer<UInt8>, count:Int)
     {
         let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
@@ -46,6 +46,6 @@ extension LZ77.MRC32:LZ77.StreamIntegral
         self.double %= 65521
     }
 
-    @inlinable public
+    @inlinable
     var checksum:UInt32 { self.double << 16 | self.single }
 }

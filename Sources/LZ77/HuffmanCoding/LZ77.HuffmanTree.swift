@@ -204,23 +204,25 @@ extension LZ77.HuffmanTree where Symbol:BinaryInteger
 extension LZ77.HuffmanTree where Symbol:BinaryInteger
 {
     func codewords(initializing destination:UnsafeMutablePointer<LZ77.Codeword>,
-        count:Int, extra:(Symbol) -> Int)
+        count:Int,
+        extra:(Symbol) -> UInt8)
     {
         // initialize all entries to 0, as symbols with frequency 0 are omitted
         // from self.symbols
-        destination.initialize(repeating: .init(bits: 0, length: 0, extra: 0),
+        destination.initialize(
+            repeating: .init(shape: (length: 0, extra: 0), bits: 0),
             count: count)
 
         var counter:UInt16  = 0
-        for (length, level):(Int, Range<Int>) in zip(1 ... 15, self.levels)
+        for (length, level):(UInt8, Range<Int>) in zip(1 ... 15, self.levels)
         {
             for symbol:Symbol in self.symbols[level]
             {
                 assert(.init(symbol) < count, "symbol out of range")
 
-                destination[.init(symbol)]  =
-                    .init(counter: counter, length: length, extra: extra(symbol))
-                counter                    += 1
+                destination[.init(symbol)] = .init(counter: counter,
+                    shape: (length: length, extra: extra(symbol)))
+                counter += 1
             }
 
             counter <<= 1
@@ -265,7 +267,7 @@ extension LZ77.HuffmanTree where Symbol:BinaryInteger
 
         // reversing (to get canonically sorted array) gets the heapify below
         // to its best-case O(n) time, not that O matters for n = 256
-        var heap:General.Heap<Int, [Int]> = .init(symbols.reversed().map
+        var heap:LZ77.Heap<Int, [Int]> = .init(symbols.reversed().map
         {
             (frequencies[frequencies.startIndex + .init($0)], [1])
         })
