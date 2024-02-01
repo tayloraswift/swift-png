@@ -2,7 +2,7 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
     import Darwin
 #elseif os(Linux)
     import Glibc
@@ -13,7 +13,7 @@
     #warning("unsupported or untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)")
 #endif
 
-#if os(macOS) || os(Linux) || os(Windows)
+#if os(macOS) || os(iOS) || os(Linux) || os(Windows)
 
 /// enum System
 ///     A namespace for platform-dependent functionality.
