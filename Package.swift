@@ -1,76 +1,61 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.8
 import PackageDescription
 
 let package:Package = .init(name: "swift-png",
     platforms: [.macOS(.v10_15)],
-    products:
-    [
-        .library(   name: "LZ77",                       targets: ["LZ77"]),
-        .library(   name: "PNG",                        targets: ["PNG"]),
+    products: [
+        .library(name: "LZ77", targets: ["LZ77"]),
+        .library(name: "PNG", targets: ["PNG"]),
 
-        .executable(name: "PNGTests",                   targets: ["PNGTests"]),
-        .executable(name: "PNGIntegrationTests",        targets: ["PNGIntegrationTests"]),
-        .executable(name: "PNGCompressionTests",        targets: ["PNGCompressionTests"]),
-
-        .executable(name: "compression-benchmark",      targets: ["PNGCompressionBenchmarks"]),
-        .executable(name: "decompression-benchmark",    targets: ["PNGDecompressionBenchmarks"]),
+        .executable(name: "compression-benchmark", targets: ["PNGCompressionBenchmarks"]),
+        .executable(name: "decompression-benchmark", targets: ["PNGDecompressionBenchmarks"]),
     ],
-    dependencies:
-    [
+    dependencies: [
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
             from: "0.5.0")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
             from: "0.3.4")),
     ],
-    targets:
-    [
-        .target(name: "LZ77", dependencies:
-            [
+    targets: [
+        .target(name: "LZ77",
+            dependencies: [
                 .product(name: "CRC", package: "swift-hash"),
             ]),
 
         .target(name: "PNG",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "LZ77"),
             ]),
 
         .target(name: "PNGInspection",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "PNG"),
             ]),
 
         .executableTarget(name: "LZ77Tests",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "LZ77"),
                 .product(name: "Testing", package: "swift-grammar"),
             ],
-            swiftSettings:
-            [
+            swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ]),
 
         .executableTarget(name: "PNGTests",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
             ],
-            swiftSettings:
-            [
+            swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ]),
 
         .executableTarget(name: "PNGIntegrationTests",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
             ],
-            exclude:
-            [
+            exclude: [
                 "PngSuite.LICENSE",
                 "PngSuite.README",
                 "Inputs/",
@@ -79,25 +64,37 @@ let package:Package = .init(name: "swift-png",
             ]),
 
         .executableTarget(name: "PNGCompressionTests",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "PNG"),
                 .product(name: "Testing", package: "swift-grammar"),
             ]),
 
         .executableTarget(name: "PNGCompressionBenchmarks",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "PNG"),
             ],
             path: "Benchmarks/Compression/Swift"),
 
         .executableTarget(name: "PNGDecompressionBenchmarks",
-            dependencies:
-            [
+            dependencies: [
                 .target(name: "PNG"),
             ],
             path: "Benchmarks/Decompression/Swift"),
     ],
     swiftLanguageVersions: [.v5]
 )
+
+for target:PackageDescription.Target in package.targets
+{
+    {
+        var settings:[PackageDescription.SwiftSetting] = $0 ?? []
+
+        settings.append(.enableUpcomingFeature("BareSlashRegexLiterals"))
+        settings.append(.enableUpcomingFeature("ConciseMagicFile"))
+        settings.append(.enableUpcomingFeature("ExistentialAny"))
+
+        settings.append(.unsafeFlags(["-parse-as-library"], .when(platforms: [.windows])))
+
+        $0 = settings
+    } (&target.swiftSettings)
+}
