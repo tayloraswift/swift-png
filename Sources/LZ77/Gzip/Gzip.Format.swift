@@ -3,7 +3,7 @@ import CRC
 extension Gzip
 {
     @frozen public
-    enum DeflateFormat
+    enum Format
     {
         case gzip
     }

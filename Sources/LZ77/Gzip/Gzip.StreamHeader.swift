@@ -4,9 +4,9 @@ extension Gzip
     struct StreamHeader
     {
         let flag:(Bool, Bool, Bool, Bool, Bool)
-        let xlen:Int
+        let xlen:UInt16
 
-        init(flag:(Bool, Bool, Bool, Bool, Bool), xlen:Int)
+        init(flag:(Bool, Bool, Bool, Bool, Bool), xlen:UInt16)
         {
             self.flag = flag
             self.xlen = xlen
@@ -55,6 +55,11 @@ extension Gzip.StreamHeader
 
         //  TODO: read MTIME instead of skipping over it
 
+        if  flag.1
+        {
+            throw Gzip.StreamHeaderError._headerChecksumUnsupported
+        }
+
         if  flag.2
         {
             guard bit + 96 <= input.count
@@ -64,7 +69,8 @@ extension Gzip.StreamHeader
                 return nil
             }
 
-            let xlen:Int = input[bit + 80, count: 16, as: Int.self]
+            //  This is little-endian!
+            let xlen:UInt16 = input[bit + 80, count: 16, as: UInt16.self].byteSwapped
 
             bit += 96
 

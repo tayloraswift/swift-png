@@ -7,8 +7,6 @@ extension Gzip
         case invalidCompressionMethod(UInt8)
         case invalidFlagBits(UInt8)
 
-        case _fextraUnsupported
-        case _fnameUnsupported
-        case _fcommentUnsupported
+        case _headerChecksumUnsupported
     }
 }
