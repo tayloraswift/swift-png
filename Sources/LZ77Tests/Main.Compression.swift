@@ -56,5 +56,39 @@ extension Main.Compression:TestBattery
                 }
             }
         }
+
+        if  let tests:TestGroup = tests / "Gzip"
+        {
+            for count:Int in [5, 15, 100, 200, 2000, 5000]
+            {
+                guard
+                let tests:TestGroup = tests / "\(count)"
+                else
+                {
+                    continue
+                }
+
+                tests.do
+                {
+                    let input:[UInt8] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
+
+                    var deflator:Gzip.Deflator = .init(level: 7, exponent: 15, hint: 64 << 10)
+                        deflator.push(input[...], last: true)
+
+                    var compressed:[UInt8] = []
+                    while let part:[UInt8] = deflator.pull()
+                    {
+                        compressed += part
+                    }
+
+                    var inflator:Gzip.Inflator = .init()
+                    try inflator.push(compressed[...])
+
+                    let output:[UInt8] = inflator.pull()
+
+                    tests.expect(input ..? output)
+                }
+            }
+        }
     }
 }
