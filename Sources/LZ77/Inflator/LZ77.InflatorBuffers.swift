@@ -62,7 +62,7 @@ extension LZ77.InflatorBuffers
             }
 
         case .uncompressed(final: let final, end: let end):
-            if  let _:Void = try self.stream.readBlock(upTo: end)
+            if  let _:Void = self.stream.readBlock(upTo: end)
             {
                 return final ? .some(nil) : .metadata
             }
@@ -110,10 +110,22 @@ extension LZ77.InflatorBuffers<LZ77.Format>
             }
 
         case .checksum:
-            if  let declared:UInt32? = self.format.check(inflating: &self.stream.input,
-                    at: &self.stream.b)
+            self.stream._dumpPerfStats()
+
+            if  case .ios = self.format
             {
-                try self.stream.check(declared: declared)
+                return .terminal
+            }
+            else if
+                let declared:UInt32 = self.stream.readBigEndianUInt32()
+            {
+                let computed:UInt32   = self.stream.output.checksum()
+                if  computed != declared
+                {
+                    throw LZ77.DecompressionError.invalidStreamChecksum(
+                        declared: declared,
+                        computed: computed)
+                }
                 return .terminal
             }
 
@@ -124,7 +136,7 @@ extension LZ77.InflatorBuffers<LZ77.Format>
         return nil
     }
 }
-extension LZ77.InflatorBuffers//<Gzip.Format>
+extension LZ77.InflatorBuffers<Gzip.Format>
 {
     mutating
     func advance(state:Gzip.InflatorState) throws -> Gzip.InflatorState?
@@ -156,14 +168,34 @@ extension LZ77.InflatorBuffers//<Gzip.Format>
                 guard header.xlen == 0, count == 0
                 else
                 {
-                    return .strings(start: self.stream.b + 8 * header.xlen, count: count)
+                    return .strings(skip: 8 * Int.init(header.xlen), count: count)
                 }
 
                 return .block(.metadata)
             }
 
-        case .strings(start: let bit, count: let count):
-            fatalError("unimplemented")
+        case .strings(skip: let skip, count: var count):
+            if  skip == 0
+            {
+                precondition(count > 0)
+
+                if  case ()? = self.stream.readString()
+                {
+                    count -= 1
+                }
+                else
+                {
+                    break
+                }
+
+                return count == 0 ? .block(.metadata) : .strings(skip: 0, count: count)
+            }
+            else if
+                self.stream.b + skip <= self.stream.input.count
+            {
+                self.stream.b += skip
+                return count == 0 ? .block(.metadata) : .strings(skip: 0, count: count)
+            }
 
         case .block(let block):
             if  let next:LZ77.BlockState? = try self.advance(state: block)
@@ -172,10 +204,26 @@ extension LZ77.InflatorBuffers//<Gzip.Format>
             }
 
         case .checksum:
-            fatalError("unimplemented")
+            if  let declared:UInt32 = self.stream.readLittleEndianUInt32()
+            {
+                let computed:UInt32   = self.stream.output.checksum()
+                if  computed != declared
+                {
+                    throw LZ77.DecompressionError.invalidStreamChecksum(
+                        declared: declared,
+                        computed: computed)
+                }
+                return .epilogue
+            }
+
+        case .epilogue:
+            if  let _:UInt32 = self.stream.readLittleEndianUInt32()
+            {
+                return .terminal
+            }
 
         case .terminal:
-            break
+            preconditionFailure("Attempted to advance past terminal state!")
         }
 
         return nil

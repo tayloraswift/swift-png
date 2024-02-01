@@ -361,24 +361,93 @@ extension LZ77.InflatorBuffers.Stream
     }
 
     mutating
-    func readBlock(upTo end:Int) throws -> Void?
+    func readBlock(upTo end:Int) -> Void?
     {
         while self.output.endIndex < end
         {
-            guard self.b + 8 <= self.input.count
+            if  let byte:UInt8 = self.readByte()
+            {
+                self.output.append(byte)
+            }
             else
             {
                 return nil
             }
-            self.output.append(self.input[self.b, count: 8, as: UInt8.self])
-            self.b += 8
         }
 
         return ()
     }
 
     mutating
-    func check(declared checksum:UInt32?) throws
+    func readBigEndianUInt32() -> UInt32?
+    {
+        // skip to next byte boundary, read 4 bytes
+        let boundary:Int = (self.b + 7) & ~7
+        if  boundary + 32 <= input.count
+        {
+            b = boundary + 32
+        }
+        else
+        {
+            return nil
+        }
+
+        // mrc-32 is big-endian
+        let bytes:(UInt32, UInt32, UInt32, UInt32) =
+        (
+            input[boundary,      count: 8, as: UInt32.self],
+            input[boundary +  8, count: 8, as: UInt32.self],
+            input[boundary + 16, count: 8, as: UInt32.self],
+            input[boundary + 24, count: 8, as: UInt32.self]
+        )
+        let checksum:UInt32   = bytes.0 << 24 |
+                                bytes.1 << 16 |
+                                bytes.2 <<  8 |
+                                bytes.3
+
+        return checksum
+    }
+
+    mutating
+    func readLittleEndianUInt32() -> UInt32?
+    {
+        self.readBigEndianUInt32()?.byteSwapped
+    }
+
+    mutating
+    func readString() -> Void?
+    {
+        reading:
+        do
+        {
+            switch self.readByte()
+            {
+            case nil:   return nil
+            case 0?:    return ()
+            case _?:    continue reading
+            }
+        }
+    }
+
+    @inline(__always)
+    mutating
+    func readByte() -> UInt8?
+    {
+        guard self.b + 8 <= self.input.count
+        else
+        {
+            return nil
+        }
+        defer
+        {
+            self.b += 8
+        }
+
+        return self.input[self.b, count: 8, as: UInt8.self]
+    }
+
+    mutating
+    func _dumpPerfStats()
     {
         #if DUMP_LZ77_BLOCKS
         let efficiency:Double = self.statistics.literals.enumerated().reduce(0.0){ $0 + .init($1.0 * $1.1) } /
@@ -394,20 +463,5 @@ extension LZ77.InflatorBuffers.Stream
         #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
         print(String.init(histogram: self.statistics.symbols, size: (29, 30), pad: 4))
         #endif
-
-        guard
-        let checksum:UInt32
-        else
-        {
-            return // Checksum missing.
-        }
-
-        let computed:UInt32   = self.output.checksum()
-        if  computed != checksum
-        {
-            throw LZ77.DecompressionError.invalidStreamChecksum(
-                declared: checksum,
-                computed: computed)
-        }
     }
 }
