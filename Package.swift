@@ -93,7 +93,7 @@ for target:PackageDescription.Target in package.targets
         settings.append(.enableUpcomingFeature("ConciseMagicFile"))
         settings.append(.enableUpcomingFeature("ExistentialAny"))
 
-        settings.append(.unsafeFlags(["-parse-as-library"], .when(platforms: [.windows])))
+        //  settings.append(.unsafeFlags(["-parse-as-library"], .when(platforms: [.windows])))
 
         $0 = settings
     } (&target.swiftSettings)
