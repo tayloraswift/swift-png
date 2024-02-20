@@ -36,8 +36,8 @@ protocol _PNGColor<Aggregate>
     ///         generate a dereferencing function. This function should only be invoked
     ///         if the color `format` is an indexed format.
     ///
-    ///     See the [indexed color tutorial](Indexing) for more about the semantics of this
-    ///     function.
+    /// See the [indexed color tutorial](Indexing) for more about the semantics of this
+    /// function.
     ///
     /// -   Returns:
     ///     A pixel array containing instances of this color target. The pixels
@@ -64,17 +64,17 @@ protocol _PNGColor<Aggregate>
     ///         generate a referencing function. This function should only be invoked
     ///         if the color `format` is an indexed format.
     ///
-    ///         See the [indexed color tutorial](Indexing)
-    ///         for more about the semantics of this function.
+    /// See the [indexed color tutorial](Indexing)
+    /// for more about the semantics of this function.
     ///
     /// -   Returns:
     ///     An image data buffer. The packed samples in this buffer should appear
     ///     in the same order as the pixels in the `pixels` array. (But not
     ///     necessarily in the same order within each individual pixel.)
     ///
-    ///     When the library uses an implementation of this function to construct
-    ///     a ``PNG/Data/Rectangular`` image, this data buffer will be stored in
-    ///     its ``PNG/Data/Rectangular/storage`` property.
+    /// When the library uses an implementation of this function to construct
+    /// a ``PNG/Data/Rectangular`` image, this data buffer will be stored in
+    /// its ``PNG/Data/Rectangular/storage`` property.
     static
     func pack(_ pixels:[Self],
         as format:PNG.Format,
@@ -87,13 +87,13 @@ protocol _PNGColor<Aggregate>
     /// entry, in that order, as the palette aggregate, given an index *i*,
     /// when unpacking from an indexed color format.
     ///
-    ///     If ``Aggregate`` is `(UInt8, UInt8, UInt8, UInt8)`, the default
-    ///     implementation of this function will use the red, green, blue, and
-    ///     alpha components of the *i*th palette entry, in that order, as the
-    ///     palette aggregate, given an index *i*.
+    /// If ``Aggregate`` is `(UInt8, UInt8, UInt8, UInt8)`, the default
+    /// implementation of this function will use the red, green, blue, and
+    /// alpha components of the *i*th palette entry, in that order, as the
+    /// palette aggregate, given an index *i*.
     ///
-    ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
-    ///     for more about the semantics of the default implementations.
+    /// See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
+    /// for more about the semantics of the default implementations.
     ///
     /// -   Parameters:
     ///     -   interleaved:
