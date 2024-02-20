@@ -1,65 +1,29 @@
 extension PNG
 {
-    /// enum PNG.Data
-    ///     A namespace containing the ``Data.Rectangular`` type.
-    /// ## (0:images)
+    /// A namespace containing the ``Data.Rectangular`` type.
+    @available(*, deprecated)
     public
     enum Data
     {
-    }
-
-    // Returns the value of the paeth filter function with the given parameters.
-    static
-    func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
-    {
-        // abs here is poorly-predicted so it benefits from this
-        // branchless implementation
-        func abs(_ x:Int16) -> Int16
-        {
-            let mask:Int16 = x >> 15
-            return (x ^ mask) + (mask & 1)
-        }
-
-        let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
-        let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
-        let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
-
-        let p:(UInt8, UInt8, UInt8) =
-        (
-            .init(truncatingIfNeeded: (f.1 - f.0) >> 15), // 0x00 if f.0 <= f.1 else 0xff
-            .init(truncatingIfNeeded: (f.2 - f.0) >> 15),
-            .init(truncatingIfNeeded: (f.2 - f.1) >> 15)
-        )
-
-        return ~(p.0 | p.1) &  a        |
-                (p.0 | p.1) & (b & ~p.2 | c & p.2)
+        @available(*, deprecated, renamed: "PNG.Image")
+        typealias Rectangular = PNG.Image
     }
 }
-extension PNG.Data
+extension PNG
 {
-    /// struct PNG.Data.Rectangular
-    ///     A rectangular image.
-    /// # [Decoding an image](decoding)
-    /// # [Encoding an image](encoding)
-    /// # [Unpacking pixels](unpacking-pixels)
-    /// # [Packing pixels](packing-pixels)
-    /// ## (0:images)
+    /// A rectangular image.
     public
-    struct Rectangular
+    struct Image
     {
-        /// let PNG.Data.Rectangular.size : (x:Swift.Int, y:Swift.Int)
         ///     The size of this image, measured in pixels.
         public
         let size:(x:Int, y:Int)
-        /// let PNG.Data.Rectangular.layout : Layout
         ///     The layout of this image.
         public
         let layout:PNG.Layout
-        /// var PNG.Data.Rectangular.metadata : Metadata
         ///     The metadata in this image.
         public
         var metadata:PNG.Metadata
-        /// var PNG.Data.Rectangular.storage : [Swift.UInt8] { get }
         ///     The raw backing storage of the image content.
         ///
         ///     Depending on the bit depth of the image, it either stores a matrix
@@ -120,7 +84,6 @@ extension PNG.Data.Rectangular
         }
     }
 
-    /// func PNG.Data.Rectangular.bindStorage(to:)
     ///     Rebinds this image to a compatible layout.
     ///
     ///     This interface can be used to switch image layouts without unpacking
@@ -322,9 +285,6 @@ extension PNG.Data.Rectangular
 }
 extension PNG.Data.Rectangular
 {
-    /// static func PNG.Data.Rectangular.decompress<Source>(stream:)
-    /// throws
-    /// where Source:Bytestream.Source
     ///     Decompresses and decodes a PNG from the given bytestream.
     ///
     ///     On appropriate platforms, the ``decompress(path:)`` function provides
@@ -333,9 +293,6 @@ extension PNG.Data.Rectangular
     ///     A bytestream providing the contents of a PNG file.
     /// -   Returns:
     ///     The decoded image.
-    /// # [See also](encoding-and-decoding)
-    /// ## (0:encoding-and-decoding)
-    /// ## (0:decoding)
     public static
     func decompress<Source>(stream:inout Source) throws -> Self
         where Source:PNG.Bytestream.Source
@@ -588,9 +545,6 @@ extension PNG.Data.Rectangular
 // compression
 extension PNG.Data.Rectangular
 {
-    /// func PNG.Data.Rectangular.compress<Destination>(stream:level:hint:)
-    /// throws
-    /// where Destination:Bytestream.Destination
     ///     Encodes and compresses a PNG to the given bytestream.
     ///
     ///     Compression `level` `9` is roughly equivalent to *libpng*’s maximum
@@ -621,9 +575,6 @@ extension PNG.Data.Rectangular
     ///     Setting this parameter to a value less than `1` is the same as setting
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
     ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
-    /// # [See also](encoding-and-decoding)
-    /// ## (2:encoding-and-decoding)
-    /// ## (0:encoding)
     public
     func compress<Destination>(stream:inout Destination, level:Int = 9, hint:Int = 1 << 15)
         throws

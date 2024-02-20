@@ -1,17 +1,14 @@
 extension PNG
 {
-    /// struct PNG.Context
-    ///     A decoding context.
+    /// A decoding context.
     ///
-    ///     This type provides support for custom decoding schemes. You can
-    ///     work through an example of its usage in the
-    ///     [online decoding tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#online-decoding).
-    /// ## (contextual-decoding)
+    /// This type provides support for custom decoding schemes. You can
+    /// work through an example of its usage in the
+    /// [online decoding tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#online-decoding).
     public
     struct Context
     {
-        /// var PNG.Context.image : Data.Rectangular { get }
-        ///     The current image state.
+        /// The current image state.
         public private(set)
         var image:PNG.Data.Rectangular
 
@@ -21,11 +18,10 @@ extension PNG
 }
 extension PNG.Context
 {
-    /// init PNG.Context.init?(standard:header:palette:background:transparency:metadata:uninitialized:)
-    ///     Creates a fresh decoding context.
+    /// Creates a fresh decoding context.
     ///
-    ///     It is expected that client applications will initialize a decoding
-    ///     context upon encountering the first ``Chunk/IDAT`` chunk in the image.
+    /// It is expected that client applications will initialize a decoding
+    /// context upon encountering the first ``Chunk/IDAT`` chunk in the image.
     /// -   Parameter standard:
     ///     The PNG standard of the image being decoded. This should be ``Standard/ios``
     ///     if the image began with a ``Chunk/CgBI`` chunk, and ``Standard/common``
@@ -78,10 +74,8 @@ extension PNG.Context
         self.image      = image
         self.decoder    = .init(standard: standard, interlaced: image.layout.interlaced)
     }
-    /// mutating func PNG.Context.push(data:overdraw:)
-    /// throws
-    ///     Decompresses the contents of an ``Chunk/IDAT`` chunk, and updates
-    ///     the image state with the newly-decompressed image data.
+    /// Decompresses the contents of an ``Chunk/IDAT`` chunk, and updates
+    /// the image state with the newly-decompressed image data.
     /// -   Parameter data:
     ///     The contents of the ``Chunk/IDAT`` chunk to process.
     /// -   Parameter overdraw:
@@ -90,7 +84,6 @@ extension PNG.Context
     ///     effect for ``Layout/interlaced`` images.
     ///
     ///     The default value is `false`.
-    /// ## ()
     public mutating
     func push(data:[UInt8], overdraw:Bool = false) throws
     {
@@ -107,26 +100,23 @@ extension PNG.Context
             self.image.assign(scanline: $0, at: $1, stride: $2.x)
         })
     }
-    /// mutating func PNG.Context.push(ancillary:)
-    /// throws
-    ///     Parses an ancillary chunk appearing after the last ``Chunk/IDAT``
-    ///     chunk, and adds it to the ``image`` ``Data.Rectangular/metadata``.
+    /// Parses an ancillary chunk appearing after the last ``Chunk/IDAT``
+    /// chunk, and adds it to the ``image`` ``Data.Rectangular/metadata``.
     ///
-    ///     This function validates the multiplicity of the given `chunk`, and
-    ///     its chunk ordering with respect to the ``Chunk/IDAT`` chunks. The
-    ///     caller is expected to have consumed all preceeding ``Chunk/IDAT``
-    ///     chunks in the image being decoded.
+    /// This function validates the multiplicity of the given `chunk`, and
+    /// its chunk ordering with respect to the ``Chunk/IDAT`` chunks. The
+    /// caller is expected to have consumed all preceeding ``Chunk/IDAT``
+    /// chunks in the image being decoded.
     ///
-    ///     Despite its name, this function can also accept an ``Chunk/IEND``
-    ///     critical chunk, in which case this function will verify that the
-    ///     compressed image data stream has been properly-terminated.
+    /// Despite its name, this function can also accept an ``Chunk/IEND``
+    /// critical chunk, in which case this function will verify that the
+    /// compressed image data stream has been properly-terminated.
     /// -   Parameter chunk:
     ///     The chunk to process. Its `type` must be one of ``Chunk/tIME``,
     ///     ``Chunk/iTXt``, ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/IEND``,
     ///     or a private application data chunk type.
     ///
     ///     All other chunk types will `throw` appropriate errors.
-    /// ## ()
     public mutating
     func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8])) throws
     {
