@@ -34,7 +34,7 @@ extension PNG
 
         /// init PNG.PhysicalDimensions.init(density:)
         ///     Creates a physical dimensions descriptor.
-        /// - density : (x:Swift.Int, y:Swift.Int, unit:Unit?)
+        /// -   Parameter density:
         ///     The number of pixels in each dimension per the given `unit` of
         ///     measurement.
         ///

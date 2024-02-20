@@ -24,9 +24,9 @@ extension PNG
         ///     This initializer will validate the fields of the given color
         ///     `format`. Passing an invalid `format` will result in a
         ///     precondition failure.
-        /// - format : Format
+        /// -   Parameter format:
         ///     A color format.
-        /// - interlaced : Swift.Bool
+        /// -   Parameter interlaced:
         ///     Specifies if the image uses interlacing. The default value is
         ///     `false`.
         public

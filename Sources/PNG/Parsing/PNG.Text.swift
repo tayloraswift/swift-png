@@ -43,10 +43,10 @@ extension PNG
 
         /// init PNG.Text.init(compressed:keyword:language:content:)
         ///     Creates a text comment.
-        /// - compressed : Swift.Bool
+        /// -   Parameter compressed:
         ///     Indicates if the text is to be stored in compressed or
         ///     uncompressed form within a PNG file.
-        /// - keyword : (english:Swift.String, localized:Swift.String)
+        /// -   Parameter keyword:
         ///     A keyword tag, in english, and possibly a non-english language.
         ///
         ///     The english keyword must contain only unicode scalars
@@ -59,7 +59,7 @@ extension PNG
         ///
         ///     If the text is in english, the `localized` keyword should be
         ///     set to the empty string `""`.
-        /// - language : [Swift.String]
+        /// -   Parameter language:
         ///     An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt)
         ///     language tag, where each element is a language subtag.
         ///
@@ -68,7 +68,7 @@ extension PNG
         ///     will result in a precondition failure.
         ///
         ///     If this array is empty, then the language is unspecified.
-        /// - content : Swift.String
+        /// -   Parameter content:
         ///     The text content. There are no restrictions on it. It is allowed
         ///     (but not recommended) to contain null characters.
         public

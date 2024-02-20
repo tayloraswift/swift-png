@@ -24,7 +24,7 @@ protocol _PNGBytestreamDestination
     ///     as indicating a write failure.
     /// - bytes     : [Swift.UInt8]
     ///     The bytes to write.
-    /// - ->        : Swift.Void?
+    /// -   Returns:
     ///     A ``Swift.Void`` tuple, or `nil` if the write attempt failed. This
     ///     method should return `nil` even if any number of bytes less than
     ///     `bytes.count` were successfully written.
@@ -61,9 +61,9 @@ extension _PNGBytestreamDestination
     ///     ``FormattingError`` if it fails to write to the bytestream.
     ///
     ///     This function is the inverse of ``Source.chunk()``.
-    /// - type : PNG.Chunk
+    /// -   Parameter type:
     ///     The type identifier of the chunk to emit.
-    /// - data : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of the chunk to emit. It should not include a checksum
     ///     footer, as this function computes and appends it automatically.
     ///

@@ -165,27 +165,23 @@ extension PNG.Data.Rectangular
 // custom-indexer APIs
 extension PNG.Data.Rectangular
 {
-    /// func PNG.Data.Rectangular.unpack<Color>(as:deindexer:)
-    /// where Color:Color
-    /// @   inlinable
-    ///     Unpacks this image to a pixel array, using a custom deindexing
-    ///     function.
-    /// - _ : Color.Type
+    /// Unpacks this image to a pixel array, using a custom deindexing function.
+    ///
+    /// -   Parameter _:
     ///     A color target type. This type provides the ``Color/unpack(_:of:deindexer:)``
     ///     implementation used to unpack the image data.
-    /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Color.Aggregate
+    /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a dereferencing function. This function is only expected to
     ///     be invoked if [`layout``(Layout).format`] is an indexed format.
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
-    /// - -> : [Color]
+    ///
+    /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
-    /// # [See also](unpacking-pixels)
-    /// ## (1:unpacking-pixels)
     @inlinable
     public
     func unpack<Color>(as _:Color.Type,
@@ -195,46 +191,41 @@ extension PNG.Data.Rectangular
     {
         Color.unpack(self.storage, of: self.layout.format, deindexer: deindexer)
     }
-    /// func PNG.Data.Rectangular.unpack<T>(as:deindexer:)
-    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
-    /// @   inlinable
-    ///     Unpacks this image to a scalar pixel array, using a custom deindexing
-    ///     function.
+    /// Unpacks this image to a scalar pixel array, using a custom deindexing function.
     ///
-    ///     For an image with a grayscale-alpha color ``Layout/format``,
-    ///     this function selects the *v* component from pixels of the form (*v*, *a*)
+    /// For an image with a grayscale-alpha color ``Layout/format``,
+    /// this function selects the *v* component from pixels of the form (*v*, *a*)
     ///
-    ///     For an image with an RGB color ``Layout/format``,
-    ///     this function selects the *r* component from pixels of the form (*r*, *g*, *b*).
+    /// For an image with an RGB color ``Layout/format``,
+    /// this function selects the *r* component from pixels of the form (*r*, *g*, *b*).
     ///
-    ///     For an image with an RGBA color ``Layout/format``, this function selects the *r* component from
-    ///     pixels of the form (*r*, *g*, *b*, *a*).
+    /// For an image with an RGBA color ``Layout/format``, this function selects the *r* component from
+    /// pixels of the form (*r*, *g*, *b*, *a*).
     ///
-    ///     For an image with a BGR color ``Layout/format``,
-    ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*).
+    /// For an image with a BGR color ``Layout/format``,
+    /// this function selects the *r* component from pixels of the form (*b*, *g*, *r*).
     ///
-    ///     For an image with a BGRA color ``Layout/format``,
-    ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*, *a*).
+    /// For an image with a BGRA color ``Layout/format``,
+    /// this function selects the *r* component from pixels of the form (*b*, *g*, *r*, *a*).
     ///
-    ///     This function ignores chroma keys, as its scalar color target is not
-    ///     capable of representing transparency. The unpacked components
-    ///     are scaled to fill the range of `T`, according to the color depth
-    ///     computed from the color ``Layout/format``.
-    /// - _ : T.Type
+    /// This function ignores chroma keys, as its scalar color target is not
+    /// capable of representing transparency. The unpacked components
+    /// are scaled to fill the range of `T`, according to the color depth
+    /// computed from the color ``Layout/format``.
+    ///
+    /// -   Parameter _:
     ///     A scalar color target type.
-    /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Swift.UInt8
+    /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a dereferencing function. This function will only
     ///     be invoked if [`layout``(Layout).format`] is an indexed format.
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
-    /// - -> : [T]
+    /// -   Returns:
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
-    /// # [See also](unpacking-pixels)
-    /// ## (3:unpacking-pixels)
     @inlinable
     public
     func unpack<T>(as _:T.Type,
@@ -244,11 +235,9 @@ extension PNG.Data.Rectangular
     {
         Self.unpack(self.storage, of: self.layout.format, as: T.self, deindexer: deindexer)
     }
-    /// init PNG.Data.Rectangular.init<Color>(packing:size:layout:metadata:indexer:)
-    /// where Color:Color
-    /// @   inlinable
-    ///     Creates an image from a pixel array, using a custom indexing function.
-    /// - pixels : [Color]
+    /// Creates an image from a pixel array, using a custom indexing function.
+    ///
+    /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. The `Color` type provides the ``Color/pack(_:as:indexer:)``
@@ -256,22 +245,20 @@ extension PNG.Data.Rectangular
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
     ///     array of the wrong length will result in a precondition failure.
-    /// - size : (x:Swift.Int, y:Swift.Int)
+    /// -   Parameter size:
     ///     The size of the image. Both dimensions must be greater than zero.
     ///     Passing an invalid image size will result in a precondition failure.
-    /// - layout : Layout
+    /// -   Parameter layout:
     ///     An image layout.
-    /// - metadata : Metadata
+    /// -   Parameter metadata:
     ///     A metadata structure. The default value is an empty metadata structure.
-    /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Color.Aggregate) -> Swift.Int
+    /// -   Parameter indexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a referencing function. This function is only expected to
     ///     be invoked if the image color ``Layout/format`` is an indexed format.
     ///
-    ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
-    ///     for more about the semantics of this function.
-    /// # [See also](packing-pixels)
-    /// ## (1:packing-pixels)
+    /// See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
+    /// for more about the semantics of this function.
     @inlinable
     public
     init<Color>(packing pixels:[Color],
@@ -286,48 +273,42 @@ extension PNG.Data.Rectangular
         self.init(size: size, layout: layout, metadata: metadata,
             storage: Color.pack(pixels, as: layout.format, indexer: indexer))
     }
-    /// init PNG.Data.Rectangular.init<T>(packing:size:layout:metadata:indexer:)
-    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
-    /// @   inlinable
-    ///     Creates an image from a scalar pixel array, using a custom indexing
-    ///     function.
+    /// Creates an image from a scalar pixel array, using a custom indexing function.
     ///
-    ///     For an image with a grayscale-alpha color ``Layout/format``,
-    ///     this function assigns the gray channel to the given scalars, and
-    ///     sets the alpha channel to `T.max`.
+    /// For an image with a grayscale-alpha color ``Layout/format``,
+    /// this function assigns the gray channel to the given scalars, and
+    /// sets the alpha channel to `T.max`.
     ///
-    ///     For an image with an RGB or BGR color ``Layout/format``,
-    ///     this function assigns all channels to the given scalars, replicating
-    ///     each scalar three times.
+    /// For an image with an RGB or BGR color ``Layout/format``,
+    /// this function assigns all channels to the given scalars, replicating
+    /// each scalar three times.
     ///
-    ///     For an image with an RGBA or BGRA color ``Layout/format``, this
-    ///     function assigns all opaque channels to the given scalars, replicating
-    ///     each scalar three times, and sets the alpha channel to `T.max`.
+    /// For an image with an RGBA or BGRA color ``Layout/format``, this
+    /// function assigns all opaque channels to the given scalars, replicating
+    /// each scalar three times, and sets the alpha channel to `T.max`.
     ///
-    ///     The scalar values are assumed to fill the entire range of `T`.
-    /// - pixels : [T]
+    /// The scalar values are assumed to fill the entire range of `T`.
+    /// -   Parameter pixels:
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
     ///     array of the wrong length will result in a precondition failure.
-    /// - size : (x:Swift.Int, y:Swift.Int)
+    /// -   Parameter size:
     ///     The size of the image. Both dimensions must be greater than zero.
     ///     Passing an invalid image size will result in a precondition failure.
-    /// - layout : Layout
+    /// -   Parameter layout:
     ///     An image layout.
-    /// - metadata : Metadata
+    /// -   Parameter metadata:
     ///     A metadata structure. The default value is an empty metadata structure.
-    /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.UInt8) -> Swift.Int
+    /// -   Parameter indexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a referencing function. This function will only
     ///     be invoked if the image color ``Layout/format`` is an indexed format.
     ///
-    ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
-    ///     for more about the semantics of this function.
-    /// # [See also](packing-pixels)
-    /// ## (3:packing-pixels)
+    /// See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
+    /// for more about the semantics of this function.
     @inlinable
     public
     init<T>(packing pixels:[T],
@@ -345,30 +326,24 @@ extension PNG.Data.Rectangular
 }
 extension PNG.Data.Rectangular
 {
-    /// func PNG.Data.Rectangular.unpack<Color>(as:)
-    /// where Color:Color
-    /// @   inlinable
-    ///     Unpacks this image to a pixel array.
-    /// - _ : Color.Type
+    /// Unpacks this image to a pixel array.
+    ///
+    /// -   Parameter _:
     ///     A color target type. This type provides the ``Color/unpack(_:of:)``
     ///     implementation used to unpack the image data.
-    /// - -> : [Color]
+    /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
-    /// # [See also](unpacking-pixels)
-    /// ## (0:unpacking-pixels)
     @inlinable
     public
     func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
     {
         Color.unpack(self.storage, of: self.layout.format)
     }
-    /// init PNG.Data.Rectangular.init<Color>(packing:size:layout:metadata:)
-    /// where Color:Color
-    /// @   inlinable
-    ///     Creates an image from a pixel array.
-    /// - pixels : [Color]
+    /// Creates an image from a pixel array.
+    ///
+    /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. The `Color` type provides the ``Color/pack(_:as:)``
@@ -376,15 +351,13 @@ extension PNG.Data.Rectangular
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
     ///     array of the wrong length will result in a precondition failure.
-    /// - size : (x:Swift.Int, y:Swift.Int)
+    /// -   Parameter size:
     ///     The size of the image. Both dimensions must be greater than zero.
     ///     Passing an invalid image size will result in a precondition failure.
-    /// - layout : Layout
+    /// -   Parameter layout:
     ///     An image layout.
-    /// - metadata : Metadata
+    /// -   Parameter metadata:
     ///     A metadata structure. The default value is an empty metadata structure.
-    /// # [See also](packing-pixels)
-    /// ## (0:packing-pixels)
     @inlinable
     public
     init<Color>(packing pixels:[Color],
@@ -398,43 +371,39 @@ extension PNG.Data.Rectangular
         self.init(size: size, layout: layout, metadata: metadata,
             storage: Color.pack(pixels, as: layout.format))
     }
-    /// func PNG.Data.Rectangular.unpack<T>(as:)
-    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
-    /// @   inlinable
-    ///     Unpacks this image to a scalar pixel array.
+    /// Unpacks this image to a scalar pixel array.
     ///
-    ///     For an image with a grayscale-alpha color ``Layout/format``,
-    ///     this function selects the *v* component from pixels of the form (*v*, *a*)
+    /// For an image with a grayscale-alpha color ``Layout/format``,
+    /// this function selects the *v* component from pixels of the form (*v*, *a*)
     ///
-    ///     For an image with an RGB color ``Layout/format``,
-    ///     this function selects the *r* component from pixels of the form (*r*, *g*, *b*).
+    /// For an image with an RGB color ``Layout/format``,
+    /// this function selects the *r* component from pixels of the form (*r*, *g*, *b*).
     ///
-    ///     For an image with an indexed color ``Layout/format``,
-    ///     this function selects the *r* component from palette entries of the
-    ///     form (*r*, *g*, *b*, *a*). The palette entry is chosen by taking the
-    ///     *i*th element in the palette, from pixels of the form (*i*).
+    /// For an image with an indexed color ``Layout/format``,
+    /// this function selects the *r* component from palette entries of the
+    /// form (*r*, *g*, *b*, *a*). The palette entry is chosen by taking the
+    /// i*th element in the palette, from pixels of the form (*i*).
     ///
-    ///     For an image with an RGBA color ``Layout/format``, this function
-    ///     selects the *r* component from pixels of the form (*r*, *g*, *b*, *a*).
+    /// For an image with an RGBA color ``Layout/format``, this function
+    /// selects the *r* component from pixels of the form (*r*, *g*, *b*, *a*).
     ///
-    ///     For an image with a BGR color ``Layout/format``,
-    ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*).
+    /// For an image with a BGR color ``Layout/format``,
+    /// this function selects the *r* component from pixels of the form (*b*, *g*, *r*).
     ///
-    ///     For an image with a BGRA color ``Layout/format``,
-    ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*, *a*).
+    /// For an image with a BGRA color ``Layout/format``,
+    /// this function selects the *r* component from pixels of the form (*b*, *g*, *r*, *a*).
     ///
-    ///     This function ignores chroma keys, as its scalar color target is not
-    ///     capable of representing transparency. The unpacked components
-    ///     are scaled to fill the range of `T`, according to the color depth
-    ///     computed from the color ``Layout/format``.
-    /// - _ : T.Type
+    /// This function ignores chroma keys, as its scalar color target is not
+    /// capable of representing transparency. The unpacked components
+    /// are scaled to fill the range of `T`, according to the color depth
+    /// computed from the color ``Layout/format``.
+    ///
+    /// -   Parameter _:
     ///     A scalar color target type.
-    /// - -> : [T]
+    /// -   Returns:
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
-    /// # [See also](unpacking-pixels)
-    /// ## (2:unpacking-pixels)
     @inlinable
     public
     func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
@@ -447,47 +416,42 @@ extension PNG.Data.Rectangular
             }
         }
     }
-    /// init PNG.Data.Rectangular.init<T>(packing:size:layout:metadata:)
-    /// where T:Swift.FixedWidthInteger & Swift.UnsignedInteger
-    /// @   inlinable
-    ///     Creates an image from a scalar pixel array.
+    /// Creates an image from a scalar pixel array.
     ///
-    ///     For an image with a grayscale-alpha color ``Layout/format``,
-    ///     this function assigns the gray channel to the given scalars, and
-    ///     sets the alpha channel to `T.max`.
+    /// For an image with a grayscale-alpha color ``Layout/format``,
+    /// this function assigns the gray channel to the given scalars, and
+    /// sets the alpha channel to `T.max`.
     ///
-    ///     For an image with an indexed color ``Layout/format``,
-    ///     this function expands the given scalars, each of the form (*v*), to
-    ///     RGBA quadruplets (*v*, *v*, *v*, `T.max`), and assigns the index
-    ///     channel to the index of a matching palette entry. If more than one
-    ///     palette entry matches, the matching entry is chosen arbitrarily.
-    ///     If no palette entries match, the first palette entry is chosen.
+    /// For an image with an indexed color ``Layout/format``,
+    /// this function expands the given scalars, each of the form (*v*), to
+    /// RGBA quadruplets (*v*, *v*, *v*, `T.max`), and assigns the index
+    /// channel to the index of a matching palette entry. If more than one
+    /// palette entry matches, the matching entry is chosen arbitrarily.
+    /// If no palette entries match, the first palette entry is chosen.
     ///
-    ///     For an image with an RGB or BGR color ``Layout/format``,
-    ///     this function assigns all channels to the given scalars, replicating
-    ///     each scalar three times.
+    /// For an image with an RGB or BGR color ``Layout/format``,
+    /// this function assigns all channels to the given scalars, replicating
+    /// each scalar three times.
     ///
-    ///     For an image with an RGBA or BGRA color ``Layout/format``, this
-    ///     function assigns all opaque channels to the given scalars, replicating
-    ///     each scalar three times, and sets the alpha channel to `T.max`.
+    /// For an image with an RGBA or BGRA color ``Layout/format``, this
+    /// function assigns all opaque channels to the given scalars, replicating
+    /// each scalar three times, and sets the alpha channel to `T.max`.
     ///
-    ///     The scalar values are assumed to fill the entire range of `T`.
-    /// - pixels : [T]
+    /// The scalar values are assumed to fill the entire range of `T`.
+    /// -   Parameter pixels:
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
     ///     array of the wrong length will result in a precondition failure.
-    /// - size : (x:Swift.Int, y:Swift.Int)
+    /// -   Parameter size:
     ///     The size of the image. Both dimensions must be greater than zero.
     ///     Passing an invalid image size will result in a precondition failure.
-    /// - layout : Layout
+    /// -   Parameter layout:
     ///     An image layout.
-    /// - metadata : Metadata
+    /// -   Parameter metadata:
     ///     A metadata structure. The default value is an empty metadata structure.
-    /// # [See also](packing-pixels)
-    /// ## (2:packing-pixels)
     @inlinable
     public
     init<T>(packing pixels:[T],

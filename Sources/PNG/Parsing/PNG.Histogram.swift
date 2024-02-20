@@ -26,7 +26,7 @@ extension PNG.Histogram
     ///
     ///     This initializer validates the background information against the
     ///     given image palette.
-    /// - frequencies : [Swift.UInt16]
+    /// -   Parameter frequencies:
     ///     The frequency of each palette entry in the image. The *i*th frequency
     ///     value corresponds to the *i*th palette entry. This array must have the
     ///     the exact same number of elements as entries in the image palette.

@@ -19,13 +19,13 @@ extension PNG
         {
             /// case PNG.SuggestedPalette.Entries.rgba8(_:)
             ///     A suggested palette with an 8-bit color depth.
-            /// - _ : [(color:(r:Swift.UInt8,  g:Swift.UInt8,  b:Swift.UInt8,  a:Swift.UInt8),  frequency:Swift.UInt16)]
+            /// -   Parameter _:
             ///     An array of 8-bit palette colors and frequencies.
             /// ## ()
             case rgba8( [(color:(r:UInt8,  g:UInt8,  b:UInt8,  a:UInt8),  frequency:UInt16)])
             /// case PNG.SuggestedPalette.Entries.rgba16(_:)
             ///     A suggested palette with a 16-bit color depth.
-            /// - _ : [(color:(r:Swift.UInt16,  g:Swift.UInt16,  b:Swift.UInt16,  a:Swift.UInt16),  frequency:Swift.UInt16)]
+            /// -   Parameter _:
             ///     An array of 16-bit palette colors and frequencies.
             /// ## ()
             case rgba16([(color:(r:UInt16, g:UInt16, b:UInt16, a:UInt16), frequency:UInt16)])
@@ -41,14 +41,14 @@ extension PNG
 
         /// init PNG.SuggestedPalette.init(name:entries:)
         ///     Creates a suggested palette.
-        /// - name : Swift.String
+        /// -   Parameter name:
         ///     The palette name.
         ///
         ///     This string must contain only unicode scalars
         ///     in the ranges `"\u{20}" ... "\u{7d}"` or `"\u{a1}" ... "\u{ff}"`.
         ///     Leading, trailing, and consecutive spaces are not allowed.
         ///     Passing an invalid string will result in a precondition failure.
-        /// - entries : Entries
+        /// -   Parameter entries:
         ///     A variant array of palette colors and frequencies.
         public
         init(name:String, entries:Entries)

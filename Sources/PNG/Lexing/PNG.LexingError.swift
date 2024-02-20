@@ -17,7 +17,7 @@ extension PNG
         ///     sequence.
         ///
         ///     The expected byte sequence is `[137, 80, 78, 71, 13, 10, 26, 10]`.
-        /// - _ : [Swift.UInt8]
+        /// -   Parameter _:
         ///     The invalid signature bytes.
         case invalidSignature([UInt8])
         /// case PNG.LexingError.truncatedChunkHeader
@@ -27,20 +27,20 @@ extension PNG
         /// case PNG.LexingError.truncatedChunkBody(expected:)
         ///     The lexer encountered end-of-stream while reading a chunk body
         ///     from a bytestream.
-        /// - expected : Swift.Int
+        /// -   Parameter expected:
         ///     The number of bytes the lexer expected to read.
         case truncatedChunkBody(expected:Int)
         /// case PNG.LexingError.invalidChunkTypeCode(_:)
         ///     The lexer read a chunk with an invalid type identifier code.
-        /// - _ : Swift.UInt32
+        /// -   Parameter _:
         ///     The invalid type identifier code.
         case invalidChunkTypeCode(UInt32)
         /// case PNG.LexingError.invalidChunkChecksum(declared:computed:)
         ///     The chunk checksum computed by the lexer did not match the
         ///     checksum declared in the chunk footer.
-        /// - declared : Swift.UInt32
+        /// -   Parameter declared:
         ///     The checksum declared in the chunk footer.
-        /// - computed : Swift.UInt32
+        /// -   Parameter computed:
         ///     The checksum computed by the lexer.
         case invalidChunkChecksum(declared:UInt32, computed:UInt32)
     }

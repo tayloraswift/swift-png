@@ -26,30 +26,30 @@ extension PNG.Context
     ///
     ///     It is expected that client applications will initialize a decoding
     ///     context upon encountering the first ``Chunk/IDAT`` chunk in the image.
-    /// - standard : Standard
+    /// -   Parameter standard:
     ///     The PNG standard of the image being decoded. This should be ``Standard/ios``
     ///     if the image began with a ``Chunk/CgBI`` chunk, and ``Standard/common``
     ///     otherwise.
-    /// - header : Header
+    /// -   Parameter header:
     ///     The header of the image being decoded. This is expected to have been
     ///     parsed from a previously-encountered ``Chunk/IHDR`` chunk.
-    /// - palette : Palette?
+    /// -   Parameter palette:
     ///     The palette of the image being decoded, if present. If not `nil`,
     ///     this is expected to have been parsed from a previously-encountered
     ///     ``Chunk/PLTE`` chunk.
-    /// - background : Background?
+    /// -   Parameter background:
     ///     The background descriptor of the image being decoded, if present.
     ///     If not `nil`, this is expected to have been parsed from a
     ///     previously-encountered ``Chunk/bKGD`` chunk.
-    /// - transparency : Transparency?
+    /// -   Parameter transparency:
     ///     The transparency descriptor of the image being decoded, if present.
     ///     If not `nil`, this is expected to have been parsed from a
     ///     previously-encountered ``Chunk/tRNS`` chunk.
-    /// - metadata : Metadata
+    /// -   Parameter metadata:
     ///     A metadata instance. It is expected to contain metadata from all
     ///     previously-encountered ancillary chunks, with the exception of
     ///     ``Chunk/bKGD`` and ``Chunk/tRNS``.
-    /// - uninitialized : Swift.Bool
+    /// -   Parameter uninitialized:
     ///     Specifies if the ``image`` ``Data.Rectangular/storage`` should
     ///     be initialized. If `false`, the storage buffer will be initialized
     ///     to all zeros. This can be safely set to `true` if there is no need
@@ -82,9 +82,9 @@ extension PNG.Context
     /// throws
     ///     Decompresses the contents of an ``Chunk/IDAT`` chunk, and updates
     ///     the image state with the newly-decompressed image data.
-    /// - data : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of the ``Chunk/IDAT`` chunk to process.
-    /// - overdraw : Swift.Bool
+    /// -   Parameter overdraw:
     ///     If `true`, pixels that are not yet available will be filled-in
     ///     with values from nearby available pixels. This option only has an
     ///     effect for ``Layout/interlaced`` images.
@@ -120,7 +120,7 @@ extension PNG.Context
     ///     Despite its name, this function can also accept an ``Chunk/IEND``
     ///     critical chunk, in which case this function will verify that the
     ///     compressed image data stream has been properly-terminated.
-    /// - chunk : (type:Chunk, data:[Swift.UInt8])
+    /// -   Parameter chunk:
     ///     The chunk to process. Its `type` must be one of ``Chunk/tIME``,
     ///     ``Chunk/iTXt``, ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/IEND``,
     ///     or a private application data chunk type.

@@ -76,7 +76,7 @@ extension System.File.Source
     ///     opened, otherwise this method will return `nil`. If `body` has a
     ///     return value and the specified file could be opened, this method
     ///     returns the return value of the closure.
-    /// - ->    : R?
+    /// -   Returns:
     ///     The return value of the closure argument, or `nil` if the specified
     ///     file could not be opened.
     public static
@@ -106,7 +106,7 @@ extension System.File.Source
     ///     specified could be read. This method advances the file pointer.
     /// - capacity  : Swift.Int
     ///     The number of bytes to read.
-    /// - ->        : [Swift.UInt8]?
+    /// -   Returns:
     ///     An array containing the read data, or `nil` if the specified
     ///     number of bytes could not be read.
     public
@@ -196,7 +196,7 @@ extension System.File.Destination
     ///     be successfully opened, otherwise this method will return `nil`.
     ///     If `body` has a return value and the specified file could be opened,
     ///     this method returns the return value of the closure.
-    /// - ->    : R?
+    /// -   Returns:
     ///     The return value of the closure argument, or `nil` if the specified
     ///     file could not be opened.
     public static
@@ -226,7 +226,7 @@ extension System.File.Destination
     ///     be written. This method advances the file pointer.
     /// - buffer    : [Swift.UInt8]
     ///     The data to write.
-    /// - ->        : Swift.Void?
+    /// -   Returns:
     ///     A ``Swift.Void`` tuple if the entire array argument could be written,
     ///     or `nil` otherwise.
     public
@@ -265,9 +265,9 @@ extension PNG.Data.Rectangular
     ///     This interface is only available on MacOS and Linux. The
     ///     ``decompress(stream:)`` function provides a platform-independent
     ///     decoding interface.
-    /// - path : Swift.String
+    /// -   Parameter path:
     ///     A path to a PNG file.
-    /// - -> : Self?
+    /// -   Returns:
     ///     The decoded image, or `nil` if the file at the given `path` could
     ///     not be opened.
     /// # [See also](encoding-and-decoding)
@@ -297,16 +297,16 @@ extension PNG.Data.Rectangular
     ///     This interface is only available on MacOS and Linux. The
     ///     ``compress(stream:level:hint:)`` function provides a platform-independent
     ///     encoding interface.
-    /// - path : Swift.String
+    /// -   Parameter path:
     ///     A path to save the PNG file at.
-    /// - level : Swift.Int
+    /// -   Parameter level:
     ///     The compression level to use. It should be in the range `0 ... 13`,
     ///     where `13` is the most aggressive setting. The default value is `9`.
     ///
     ///     Setting this parameter to a value less than `0` is the same as
     ///     setting it to `0`. Likewise, setting it to a value greater than `13`
     ///     is the same as setting it to `13`.
-    /// - hint : Swift.Int
+    /// -   Parameter hint:
     ///     A size hint for the emitted ``Chunk/IDAT`` chunks. It should be in
     ///     the range `1 ... 2147483647`. Reasonable settings range from around
     ///     1\ K to 64\ K. The default value is `32768` (2^15^).
@@ -314,7 +314,7 @@ extension PNG.Data.Rectangular
     ///     Setting this parameter to a value less than `1` is the same as setting
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
     ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
-    /// - -> : Swift.Void?
+    /// -   Returns:
     ///     A ``Swift.Void`` tuple if the destination file could be opened
     ///     successfully, or `nil` otherwise.
     /// # [See also](encoding-and-decoding)

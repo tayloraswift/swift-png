@@ -36,13 +36,13 @@ extension PNG
 
         /// init PNG.Chromaticity.init(w:r:g:b:)
         ///     Creates a chromaticity descriptor with the given values.
-        /// - w : (x:Percentmille, y:Percentmille)
+        /// -   Parameter w:
         ///     The white point, expressed as a pair of fractions.
-        /// - r : (x:Percentmille, y:Percentmille)
+        /// -   Parameter r:
         ///     The red chromaticity, expressed as a pair of fractions.
-        /// - g : (x:Percentmille, y:Percentmille)
+        /// -   Parameter g:
         ///     The green chromaticity, expressed as a pair of fractions.
-        /// - b : (x:Percentmille, y:Percentmille)
+        /// -   Parameter b:
         ///     The blue chromaticity, expressed as a pair of fractions.
         public
         init(

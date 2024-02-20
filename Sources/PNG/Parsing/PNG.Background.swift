@@ -29,7 +29,7 @@ extension PNG
             case palette(index:Int)
             /// case PNG.Background.Case.rgb(_:)
             ///     A background descriptor for an RGB, BGR, RGBA, or BGRA image.
-            /// - _     : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)
+            /// -   Parameter _:
             ///     A background color.
             ///
             ///     Note that the background components are unscaled samples. If
@@ -38,7 +38,7 @@ extension PNG
             case rgb((r:UInt16, g:UInt16, b:UInt16))
             /// case PNG.Background.Case.v(_:)
             ///     A background descriptor for a grayscale or grayscale-alpha image.
-            /// - _       : Swift.UInt16
+            /// -   Parameter _:
             ///     A background color.
             ///
             ///     Note that the background value is an unscaled sample. If

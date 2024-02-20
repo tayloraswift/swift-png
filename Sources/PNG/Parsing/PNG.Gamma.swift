@@ -16,7 +16,7 @@ extension PNG
         let value:Percentmille
         /// init PNG.Gamma.init(value:)
         ///     Creates a gamma descriptor with the given value.
-        /// - value : Percentmille
+        /// -   Parameter value:
         ///     A rational gamma value.
         public
         init(value:Percentmille)

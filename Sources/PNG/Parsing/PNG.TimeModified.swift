@@ -45,23 +45,23 @@ extension PNG
         ///     The time is time-zone agnostic, and so all time parameters are
         ///     assumed to be in universal time (UTC). Passing out-of-range
         ///     time parameters will result in a precondition failure.
-        /// - year : Swift.Int
+        /// -   Parameter year:
         ///     The complete [gregorian](https://en.wikipedia.org/wiki/Gregorian_calendar)
         ///     year. It must be in the range `0 ..< 1 << 16`. It can be
         ///     reasonably expected to have four decimal digits.
-        /// - month : Swift.Int
+        /// -   Parameter month:
         ///     The calendar month, expressed as a 1-indexed integer. It must
         ///     be in the range `1 ... 12`.
-        /// - day : Swift.Int
+        /// -   Parameter day:
         ///     The calendar day, expressed as a 1-indexed integer.
         ///     It must be in the range `1 ... 31`.
-        /// - hour : Swift.Int
+        /// -   Parameter hour:
         ///     The hour, in 24-hour time, expressed as a 0-indexed integer.
         ///     It must be in the range `0 ... 23`.
-        /// - minute : Swift.Int
+        /// -   Parameter minute:
         ///     The minute, expressed as a 0-indexed integer.
         ///     It must be in the range `0 ... 59`.
-        /// - second : Swift.Int
+        /// -   Parameter second:
         ///     The second, expressed as a 0-indexed integer.
         ///     It must be in the range `0 ... 60`, where the value `60` is
         ///     used to represent leap seconds.
