@@ -1,3 +1,7 @@
+// On platforms with built-in file system support (MacOS and Linux), decoding a PNG file to a
+// pixel array takes just two function calls.
+
+// snippet.RGBA
 import PNG
 
 let path:String = "Sources/PNG/_.docc/BasicDecoding/BasicDecoding"
@@ -10,6 +14,9 @@ else
 }
 
 let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
+
+// snippet.end
+
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.rgba")
 {
@@ -25,7 +32,11 @@ else
     fatalError("failed to open file '\(path).png.rgba'")
 }
 
+// snippet.VA
+
 let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
+
+// snippet.end
 
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.va")
