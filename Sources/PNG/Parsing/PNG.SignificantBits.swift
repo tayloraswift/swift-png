@@ -48,7 +48,7 @@ extension PNG
             ///
             ///     The meaning of a color precision descriptor is
             ///     poorly-defined for BGR images. It is strongly recommended that
-            ///     iphone-optimized images use ``(PNG).SignificantBits`` only if all
+            ///     iphone-optimized images use ``PNG/SignificantBits`` only if all
             ///     samples have the same precision.
             ///
             ///     Each precision value must be greater than zero, and none of them
@@ -63,7 +63,7 @@ extension PNG
             ///
             ///     The meaning of a color precision descriptor is
             ///     poorly-defined for BGRA images. It is strongly recommended that
-            ///     iphone-optimized images use ``(PNG).SignificantBits`` only if all
+            ///     iphone-optimized images use ``PNG/SignificantBits`` only if all
             ///     samples have the same precision.
             ///
             ///     Each precision value must be greater than zero, and none of them

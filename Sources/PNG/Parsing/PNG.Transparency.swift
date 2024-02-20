@@ -7,7 +7,7 @@ extension PNG
     ///     This information either used to populate the `key` field in
     ///     an image color ``Format``, or augment its `palette` field, when appropriate.
     ///
-    ///     The value of this descriptor is stored in the ``(PNG.Transparency).case``
+    ///     The value of this descriptor is stored in the ``PNG.Transparency/case``
     ///     property, after validation.
     /// # [Parsing and serialization](transparency-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
@@ -72,7 +72,7 @@ extension PNG.Transparency
     /// - case      : Case
     ///     A transparency descriptor value.
     ///
-    ///     If this parameter is a ``(Case).v(key:)`` or ``(Case).rgb(key:)`` case,
+    ///     If this parameter is a ``Case/v(key:)`` or ``Case/rgb(key:)`` case,
     ///     the samples in its chroma key payload must fall within the
     ///     range determined by the image color depth. Passing an enumeration
     ///     case with an invalid chroma key sample will result in a precondition
@@ -89,12 +89,12 @@ extension PNG.Transparency
     ///     The palette of the image this transparency descriptor is to be
     ///     used for.
     ///
-    ///     If `case` is a ``(Case).palette(alpha:)`` case, this palette must
+    ///     If `case` is a ``Case/palette(alpha:)`` case, this palette must
     ///     not be `nil`, and must contain at least as many entries as the
-    ///     number of alpha samples in the ``(Case).palette(alpha:)`` payload.
+    ///     number of alpha samples in the ``Case/palette(alpha:)`` payload.
     ///     Otherwise, this initializer will suffer a precondition failure.
     ///
-    ///     If `case` is a ``(Case).v(key:)`` or ``(Case).rgb(key:)`` case,
+    ///     If `case` is a ``Case/v(key:)`` or ``Case/rgb(key:)`` case,
     ///     this parameter is ignored.
     public
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?)

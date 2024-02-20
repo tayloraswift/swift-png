@@ -27,8 +27,8 @@ extension PNG.Context
     ///     It is expected that client applications will initialize a decoding
     ///     context upon encountering the first ``Chunk/IDAT`` chunk in the image.
     /// - standard : Standard
-    ///     The PNG standard of the image being decoded. This should be ``(Standard).ios``
-    ///     if the image began with a ``Chunk/CgBI`` chunk, and ``(Standard).common``
+    ///     The PNG standard of the image being decoded. This should be ``Standard/ios``
+    ///     if the image began with a ``Chunk/CgBI`` chunk, and ``Standard/common``
     ///     otherwise.
     /// - header : Header
     ///     The header of the image being decoded. This is expected to have been
@@ -50,7 +50,7 @@ extension PNG.Context
     ///     previously-encountered ancillary chunks, with the exception of
     ///     ``Chunk/bKGD`` and ``Chunk/tRNS``.
     /// - uninitialized : Swift.Bool
-    ///     Specifies if the ``image`` ``(Data.Rectangular).storage`` should
+    ///     Specifies if the ``image`` ``Data.Rectangular/storage`` should
     ///     be initialized. If `false`, the storage buffer will be initialized
     ///     to all zeros. This can be safely set to `true` if there is no need
     ///     to access the image while it is in a partially-decoded state.
@@ -87,7 +87,7 @@ extension PNG.Context
     /// - overdraw : Swift.Bool
     ///     If `true`, pixels that are not yet available will be filled-in
     ///     with values from nearby available pixels. This option only has an
-    ///     effect for ``(Layout).interlaced`` images.
+    ///     effect for ``Layout/interlaced`` images.
     ///
     ///     The default value is `false`.
     /// ## ()
@@ -110,7 +110,7 @@ extension PNG.Context
     /// mutating func PNG.Context.push(ancillary:)
     /// throws
     ///     Parses an ancillary chunk appearing after the last ``Chunk/IDAT``
-    ///     chunk, and adds it to the ``image`` ``(Data.Rectangular).metadata``.
+    ///     chunk, and adds it to the ``image`` ``Data.Rectangular/metadata``.
     ///
     ///     This function validates the multiplicity of the given `chunk`, and
     ///     its chunk ordering with respect to the ``Chunk/IDAT`` chunks. The

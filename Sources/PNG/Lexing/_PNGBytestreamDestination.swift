@@ -4,7 +4,7 @@ import CRC
 ///     A destination bytestream.
 ///
 ///     To implement a custom data destination type, conform it to this protocol by
-///     implementing ``(Destination).write(_:)``. It can
+///     implementing ``Destination/write(_:)``. It can
 ///     then be used with the library’s core compression interfaces.
 /// #  [Stream interface](file-io-destination-interface)
 /// #  [See also](file-io-protocols, system-file-destination)

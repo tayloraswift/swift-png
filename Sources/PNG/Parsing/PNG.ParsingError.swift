@@ -41,14 +41,14 @@ extension PNG
         ///     according to the PNG standard used by the image.
         ///
         ///     This error gets thrown when an iphone-optimized image
-        ///     (``(Standard).ios``) has a pixel format that is not
-        ///     ``(Format.Pixel).rgb8`` or ``(Format.Pixel).rgba8``.
+        ///     (``Standard/ios``) has a pixel format that is not
+        ///     ``Format.Pixel/rgb8`` or ``Format.Pixel/rgba8``.
         /// - _ : Format.Pixel
         ///     The invalid pixel format.
         /// - standard : Standard
         ///     The PNG standard. This error is only relevant for iphone-optimized
         ///     images, so library-generated instances of this error case always have
-        ///     this field set to ``(Standard).ios``.
+        ///     this field set to ``Standard/ios``.
         /// ## (IHDR-parsing-errors)
 
         /// case PNG.ParsingError.invalidHeaderCompressionMethodCode(_:)
