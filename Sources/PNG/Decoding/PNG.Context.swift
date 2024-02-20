@@ -10,7 +10,7 @@ extension PNG
     {
         /// The current image state.
         public private(set)
-        var image:PNG.Data.Rectangular
+        var image:PNG.Image
 
         private
         var decoder:PNG.Decoder
@@ -46,7 +46,7 @@ extension PNG.Context
     ///     previously-encountered ancillary chunks, with the exception of
     ///     ``Chunk/bKGD`` and ``Chunk/tRNS``.
     /// -   Parameter uninitialized:
-    ///     Specifies if the ``image`` ``Data.Rectangular/storage`` should
+    ///     Specifies if the ``image`` ``Image/storage`` should
     ///     be initialized. If `false`, the storage buffer will be initialized
     ///     to all zeros. This can be safely set to `true` if there is no need
     ///     to access the image while it is in a partially-decoded state.
@@ -58,7 +58,7 @@ extension PNG.Context
         metadata:PNG.Metadata,
         uninitialized:Bool = true)
     {
-        guard let image:PNG.Data.Rectangular = PNG.Data.Rectangular.init(
+        guard let image:PNG.Image = PNG.Image.init(
             standard:       standard,
             header:         header,
             palette:        palette,
@@ -101,7 +101,7 @@ extension PNG.Context
         })
     }
     /// Parses an ancillary chunk appearing after the last ``Chunk/IDAT``
-    /// chunk, and adds it to the ``image`` ``Data.Rectangular/metadata``.
+    /// chunk, and adds it to the ``image`` ``Image/metadata``.
     ///
     /// This function validates the multiplicity of the given `chunk`, and
     /// its chunk ordering with respect to the ``Chunk/IDAT`` chunks. The

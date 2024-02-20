@@ -117,7 +117,7 @@ The non-grayscale color formats include a `palette` field. Setting it to the emp
 To create a rectangular image data instance, use the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer. This initializer is the inverse of the [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
 
 ```swift
-let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.rgb)
+let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.rgb)
 ```
 
 On platforms with built-in file system support, we can compress it to a file using the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
@@ -158,7 +158,7 @@ If we inspect the emitted PNG files, we can verify that the higher compression s
 We can also encode the same pixel data using the grayscale layout we defined earlier.
 
 ```swift
-let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.v)
+let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.v)
 try image.compress(path: "\(path)-color-v.png", level: 9)
 ```
 
@@ -184,7 +184,7 @@ let luminance:[UInt8] = rgba.map
 We can encode it to a file just as we did with the array of [`PNG.RGBA<UInt8>`](https://tayloraswift.github.io/swift-png/PNG/RGBA/) colors:
 
 ```swift
-let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: layout.v)
+let image:PNG.Image  = .init(packing: luminance, size: size, layout: layout.v)
 try image.compress(path: "\(path)-luminance-v.png", level: 9)
 ```
 
@@ -197,7 +197,7 @@ Observe that it looks different from the previous output, since we used informat
 We could also have encoded it using an RGB color format, which produces a visually identical image.
 
 ```swift
-let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: layout.rgb)
+let image:PNG.Image  = .init(packing: luminance, size: size, layout: layout.rgb)
 try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
 ```
 
@@ -238,7 +238,7 @@ import PNG
 
 let path:String = "examples/indexing/example"
 
-guard let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+guard let image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -592,7 +592,7 @@ let swatch:[PNG.RGBA<UInt8>] = (0 ..< 16).flatMap
         return .init(r, g, b, a)
     }
 }
-let visualization:PNG.Data.Rectangular = .init(packing: swatch, size: (256, 16),
+let visualization:PNG.Image = .init(packing: swatch, size: (256, 16),
     layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
 try visualization.compress(path: "examples/indexing/gradient-visualization.png")
 ```
@@ -604,7 +604,7 @@ try visualization.compress(path: "examples/indexing/gradient-visualization.png")
 We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, [`init(packing:size:layout:metadata:indexer:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/), and pass it a custom **indexing function**.
 
 ```swift
-let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size,
+let indexed:PNG.Image = .init(packing: v, size: image.size,
     layout:  .init(format: .indexed8(palette: gradient, fill: nil)),
     metadata: image.metadata)
 {
@@ -726,7 +726,7 @@ import PNG
 
 let path:String = "examples/iphone-optimized/example"
 
-guard var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+guard var image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -755,7 +755,7 @@ It is often convenient to work in the premultiplied color space, so the library 
 
 > **note:** unpacking bgra images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. if you trying to unpack grayscale values from an iphone-optimized image with transparency, unpack it to the [`PNG.VA<T>`](https://tayloraswift.github.io/swift-png/PNG/VA/) color target, and take the gray channel *after* straightening the grayscale-alpha pixels.
 
-Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the [`storage`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/storage) property on [`PNG.Data.Rectangular`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/).
+Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the [`storage`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/storage) property on [`PNG.Image`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/).
 
 ```swift
 print(image.storage[..<16])
@@ -768,7 +768,7 @@ print(image.storage[..<16])
 We can convert the iphone-optimized example image to a standard PNG file by re-encoding it as any of the standard color formats.
 
 ```swift
-let standard:PNG.Data.Rectangular = .init(
+let standard:PNG.Image = .init(
     packing: rgba,
     size:    image.size,
     layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
@@ -783,7 +783,7 @@ try standard.compress(path: "\(path)-rgb8.png")
 We can convert it back into an iphone-optimized image by specifying one of the iphone-optimized color formats. The [`premultiplied`](https://tayloraswift.github.io/swift-png/PNG/RGBA/premultiplied/) property on the [`PNG.RGBA<T>`](https://tayloraswift.github.io/swift-png/PNG/RGBA/) color target converts the pixels to the premultiplied color space. Again, this step is unnecessary if you know the image contains no transparency.
 
 ```swift
-let apple:PNG.Data.Rectangular = .init(
+let apple:PNG.Image = .init(
     packing: standard.unpack(as: PNG.RGBA<UInt8>.self).map(\.premultiplied),
     size:    standard.size,
     layout: .init(format: .bgr8(palette: [], fill: nil, key: nil)))
@@ -822,7 +822,7 @@ import PNG
 
 let path:String = "examples/metadata/example"
 
-guard var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+guard var image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -905,7 +905,7 @@ We can save it and read it back to show that the new image now has a different v
 try image.compress(path: "\(path)-newtime.png")
 
 if let time:PNG.TimeModified =
-    (try PNG.Data.Rectangular.decompress(path: "\(path)-newtime.png")).map(\.metadata.time) ?? nil
+    (try PNG.Image.decompress(path: "\(path)-newtime.png")).map(\.metadata.time) ?? nil
 {
     print(time)
 }
@@ -1026,7 +1026,7 @@ var blob:System.Blob = .init(data)
 To decode from our `System.Blob` type, we use the [`decompress(stream:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/decompress(stream:)/) function, which is part of the core library, and does essentially the same thing as the file system-aware [`decompress(path:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) function. We can then unpack pixels from the returned image data structure as we would in any other situation.
 
 ```swift
-let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+let image:PNG.Image  = try .decompress(stream: &blob)
 let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
 ```
 
@@ -1287,8 +1287,8 @@ To do online decoding, we are going to write a function `decodeOnline(stream:ove
 
 ```swift
 func decodeOnline(stream:inout Stream, overdraw:Bool,
-    capture:(PNG.Data.Rectangular) throws -> ()) throws
-    -> PNG.Data.Rectangular
+    capture:(PNG.Image) throws -> ()) throws
+    -> PNG.Image
 ```
 
 The `capture` parameter is a delegate that will receive a partially-decoded image each time an image data chunk has been decompressed. The `overdraw` parameter is a switch which we will use later in this tutorial.
@@ -1434,13 +1434,13 @@ In the last phase of the loop, we process all the trailing metadata chunks by pa
 
 > **note:** you can pass an [`IEND`](https://tayloraswift.github.io/swift-png/PNG/Chunk/IEND) chunk to the [`push(ancillary:)`](https://tayloraswift.github.io/swift-png/PNG/Context/push(ancillary:)/) method, as we have done above, even though [`IEND`](https://tayloraswift.github.io/swift-png/PNG/Chunk/IEND) is a critical chunk type. this makes the decoder context check that the compressed image data stream has been properly terminated.
 
-We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal [`PNG.Data.Rectangular`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular) instances that we can treat like any other image data instance.
+We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal [`PNG.Image`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular) instances that we can treat like any other image data instance.
 
 ```swift
 var counter:Int                 = 0
-let image:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
+let image:PNG.Image  = try decodeOnline(stream: &stream, overdraw: false)
 {
-    (snapshot:PNG.Data.Rectangular) in
+    (snapshot:PNG.Image) in
 
     let _:[PNG.RGBA<UInt8>] = snapshot.unpack(as: PNG.RGBA<UInt8>.self)
 
@@ -1471,7 +1471,7 @@ When emitting the preprocessed file, we have manually set the **chunk granularit
 
 ```swift
 let layout:PNG.Layout = .init(format: image.layout.format, interlaced: true)
-let progressive:PNG.Data.Rectangular = image.bindStorage(to: layout)
+let progressive:PNG.Image = image.bindStorage(to: layout)
 
 try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
 ```
@@ -1481,9 +1481,9 @@ We can invoke `decodeOnline(stream:overdraw:capture:)` on the interlaced image a
 ```swift
 stream                      = .init(path: "\(path)-progressive.png")
 counter                     = 0
-let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: false)
+let _:PNG.Image  = try decodeOnline(stream: &stream, overdraw: false)
 {
-    (snapshot:PNG.Data.Rectangular) in
+    (snapshot:PNG.Image) in
 
     try snapshot.compress(path: "\(path)-progressive-\(counter).png")
     counter += 1
@@ -1511,9 +1511,9 @@ If we enable **overdrawing**, *Swift PNG* will pre-fill missing pixels with valu
 stream.reset(position: 0)
 
 counter                     = 0
-let _:PNG.Data.Rectangular  = try decodeOnline(stream: &stream, overdraw: true)
+let _:PNG.Image  = try decodeOnline(stream: &stream, overdraw: true)
 {
-    (snapshot:PNG.Data.Rectangular) in
+    (snapshot:PNG.Image) in
 
     try snapshot.compress(path: "\(path)-progressive-overdrawn-\(counter).png")
     counter += 1
@@ -2085,7 +2085,7 @@ Now, we can put our custom `HSVA` color target to work.
 
 ```swift
 let path:String = "examples/custom-color/example"
-guard let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+guard let image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -2097,7 +2097,7 @@ let hsva:[HSVA] = image.unpack(as: HSVA.self)
 We can visualize the hue, saturation, and value channels as follows:
 
 ```swift
-let hue:PNG.Data.Rectangular = .init(
+let hue:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: $0.h, s: .max / 2, v: .max, a: $0.a) },
     size: image.size, layout: image.layout, metadata: image.metadata)
 try hue.compress(path: "\(path)-hue.png")
@@ -2108,7 +2108,7 @@ try hue.compress(path: "\(path)-hue.png")
 > a visualization of the example image hue.
 
 ```swift
-let saturation:PNG.Data.Rectangular = .init(
+let saturation:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: 370000, s: $0.s, v: .max, a: $0.a) },
     size: image.size, layout: image.layout, metadata: image.metadata)
 try saturation.compress(path: "\(path)-saturation.png")
@@ -2119,7 +2119,7 @@ try saturation.compress(path: "\(path)-saturation.png")
 > a visualization of the example image saturation.
 
 ```swift
-let value:PNG.Data.Rectangular = .init(
+let value:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: 0, s: 0, v: $0.v, a: $0.a) },
     size: image.size, layout: image.layout, metadata: image.metadata)
 try value.compress(path: "\(path)-value.png")
@@ -2132,7 +2132,7 @@ try value.compress(path: "\(path)-value.png")
 We can test our pixel packing implementation by re-encoding the HSVA image.
 
 ```swift
-let new:PNG.Data.Rectangular = .init(packing: hsva,
+let new:PNG.Image = .init(packing: hsva,
     size: image.size, layout: image.layout, metadata: image.metadata)
 try new.compress(path: "\(path).png.png")
 ```

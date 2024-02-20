@@ -134,7 +134,7 @@ extension __Entrypoint.Benchmark.Decode
             {
                 let start:Int = clock()
 
-                let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+                let image:PNG.Image  = try .decompress(stream: &blob)
                 let pixels:[PNG.RGBA<UInt8>]    = image.unpack(as: PNG.RGBA<UInt8>.self)
 
                 let stop:Int = clock()
@@ -152,7 +152,7 @@ extension __Entrypoint.Benchmark.Encode
     public static
     func rgba8(level:Int, path:String, trials:Int) -> ([(time:Int, hash:Int)], Int)
     {
-        guard let image:PNG.Data.Rectangular = try? .decompress(path: path)
+        guard let image:PNG.Image = try? .decompress(path: path)
         else
         {
             fatalError("failed to decode test image '\(path)'")

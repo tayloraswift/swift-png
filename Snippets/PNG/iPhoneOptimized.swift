@@ -3,7 +3,7 @@ import PNG
 let path:String = "Sources/PNG/docs.docc/iPhoneOptimized/iPhoneOptimized"
 
 guard
-var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+var image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -15,14 +15,14 @@ let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straig
 
 print(image.storage[..<16])
 
-let standard:PNG.Data.Rectangular = .init(
+let standard:PNG.Image = .init(
     packing: rgba,
     size:    image.size,
     layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
 
 try standard.compress(path: "\(path)-rgb8.png")
 
-let apple:PNG.Data.Rectangular = .init(
+let apple:PNG.Image = .init(
     packing: standard.unpack(as: PNG.RGBA<UInt8>.self).map(\.premultiplied),
     size:    standard.size,
     layout: .init(format: .bgr8(palette: [], fill: nil, key: nil)))

@@ -64,7 +64,7 @@ else
 
 var blob:System.Blob = .init(data)
 // read from blob
-let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+let image:PNG.Image  = try .decompress(stream: &blob)
 let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.rgba")
