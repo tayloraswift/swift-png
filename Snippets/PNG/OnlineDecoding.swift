@@ -1,6 +1,6 @@
 import PNG
 
-let path:String = "Sources/PNG/_.docc/OnlineDecoding/OnlineDecoding"
+let path:String = "Sources/PNG/docs.docc/OnlineDecoding/OnlineDecoding"
 
 struct Stream
 {

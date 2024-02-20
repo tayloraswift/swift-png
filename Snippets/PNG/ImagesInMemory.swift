@@ -1,6 +1,6 @@
 import PNG
 
-let path:String = "Sources/PNG/_.docc/ImagesInMemory/ImagesInMemory"
+let path:String = "Sources/PNG/docs.docc/ImagesInMemory/ImagesInMemory"
 
 extension System
 {

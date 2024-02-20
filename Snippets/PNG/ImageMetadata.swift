@@ -1,7 +1,7 @@
 import PNG
 
 /// https://commons.wikimedia.org/wiki/File:Coat_of_arms_of_Siam.svg
-let path:String = "Sources/PNG/_.docc/ImageMetadata/ImageMetadata"
+let path:String = "Sources/PNG/docs.docc/ImageMetadata/ImageMetadata"
 
 guard
 var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")

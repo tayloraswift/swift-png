@@ -4,7 +4,7 @@
 // snippet.RGBA
 import PNG
 
-let path:String = "Sources/PNG/_.docc/BasicDecoding/BasicDecoding"
+let path:String = "Sources/PNG/docs.docc/BasicDecoding/BasicDecoding"
 
 guard
 let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
