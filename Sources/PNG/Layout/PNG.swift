@@ -171,13 +171,13 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer.
-    /// - dereference : (Swift.Int) -> A
+    /// -   Parameter dereference:
     ///     A dereferencing function.
-    /// - kernel : (T) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has the same number of elements as `buffer`.
     /// # [See also](convolution)
@@ -227,13 +227,13 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer.
-    /// - dereference : (Swift.Int) -> (A, A)
+    /// -   Parameter dereference:
     ///     A dereferencing function.
-    /// - kernel : ((T, T)) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has the same number of elements as `buffer`.
     /// # [See also](convolution)
@@ -283,13 +283,13 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer.
-    /// - dereference : (Swift.Int) -> (A, A, A)
+    /// -   Parameter dereference:
     ///     A dereferencing function.
-    /// - kernel : ((T, T, T)) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has the same number of elements as `buffer`.
     /// # [See also](convolution)
@@ -339,13 +339,13 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer.
-    /// - dereference : (Swift.Int) -> (A, A, A, A)
+    /// -   Parameter dereference:
     ///     A dereferencing function.
-    /// - kernel : ((T, T, T, T)) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has the same number of elements as `buffer`.
     /// # [See also](convolution)
@@ -398,16 +398,16 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer. Its length must be divisible by the stride of `A`.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth used to interpret the intensity of each atom.
     ///     This depth must be no greater than `A.bitWidth`.
-    /// - kernel : (T, A) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has a length of `buffer.count` divided by the stride of `A`.
     /// # [See also](convolution)
@@ -457,17 +457,17 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer. Its length must be divisible by twice the
     ///     stride of `A`.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth used to interpret the intensity of each atom.
     ///     This depth must be no greater than `A.bitWidth`.
-    /// - kernel : ((T, T)) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has a length of `buffer.count` divided by the twice the
     ///     stride of `A`.
@@ -519,17 +519,17 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer. Its length must be divisible by three times the
     ///     stride of `A`.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth used to interpret the intensity of each atom.
     ///     This depth must be no greater than `A.bitWidth`.
-    /// - kernel : ((T, T, T), (A, A, A)) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has a length of `buffer.count` divided by the three times
     ///     the stride of `A`.
@@ -580,17 +580,17 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - buffer : [Swift.UInt8]
+    /// -   Parameter buffer:
     ///     An image data buffer. Its length must be divisible by four times the
     ///     stride of `A`.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth used to interpret the intensity of each atom.
     ///     This depth must be no greater than `A.bitWidth`.
-    /// - kernel : ((T, T, T, T)) -> C
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [C]
+    /// -   Returns:
     ///     An array of pixels constructed by the given `kernel` function.
     ///     This array has a length of `buffer.count` divided by the four times
     ///     the stride of `A`.
@@ -743,15 +743,15 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - reference : (A) -> Swift.Int
+    /// -   Parameter reference:
     ///     A referencing function. Its return value must be in the range `0 ... 255`.
     ///     Depending on bit depth of the image it is being used for, there may
     ///     be further restrictions on the range of the returned indices.
-    /// - kernel : (C) -> T
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has the same number of elements as `pixels`.
     /// # [See also](deconvolution)
@@ -809,15 +809,15 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - reference : ((A, A)) -> Swift.Int
+    /// -   Parameter reference:
     ///     A referencing function. Its return value must be in the range `0 ... 255`.
     ///     Depending on bit depth of the image it is being used for, there may
     ///     be further restrictions on the range of the returned indices.
-    /// - kernel : (C) -> (T, T)
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has the same number of elements as `pixels`.
     /// # [See also](deconvolution)
@@ -875,15 +875,15 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - reference : ((A, A, A)) -> Swift.Int
+    /// -   Parameter reference:
     ///     A referencing function. Its return value must be in the range `0 ... 255`.
     ///     Depending on bit depth of the image it is being used for, there may
     ///     be further restrictions on the range of the returned indices.
-    /// - kernel : (C) -> (T, T, T)
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has the same number of elements as `pixels`.
     /// # [See also](deconvolution)
@@ -941,15 +941,15 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - reference : ((A, A, A, A)) -> Swift.Int
+    /// -   Parameter reference:
     ///     A referencing function. Its return value must be in the range `0 ... 255`.
     ///     Depending on bit depth of the image it is being used for, there may
     ///     be further restrictions on the range of the returned indices.
-    /// - kernel : (C) -> (T, T, T, T)
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has the same number of elements as `pixels`.
     /// # [See also](deconvolution)
@@ -1006,16 +1006,16 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth specifying the range of the atom values. This depth
     ///     can be no greater than `A.bitWidth`.
-    /// - kernel : (C) -> T
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has a length of `pixels.count`, multiplied by the stride
     ///     of `A`.
@@ -1073,16 +1073,16 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth specifying the range of the atom values. This depth
     ///     can be no greater than `A.bitWidth`.
-    /// - kernel : (C) -> (T, T)
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has a length of `pixels.count`, multiplied by twice the
     ///     stride of `A`.
@@ -1140,16 +1140,16 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth specifying the range of the atom values. This depth
     ///     can be no greater than `A.bitWidth`.
-    /// - kernel : (C) -> (T, T, T)
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has a length of `pixels.count`, multiplied by three times
     ///     the stride of `A`.
@@ -1207,16 +1207,16 @@ extension PNG
     ///     A worked example of how to use this function to implement a custom
     ///     color target can be found in the
     ///     [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-    /// - pixels : [C]
+    /// -   Parameter pixels:
     ///     A pixel array.
-    /// - _ : A.Type
+    /// -   Parameter _:
     ///     An atom type.
-    /// - depth : Swift.Int
+    /// -   Parameter depth:
     ///     A color depth specifying the range of the atom values. This depth
     ///     can be no greater than `A.bitWidth`.
-    /// - kernel : (C) -> (T, T, T, T)
+    /// -   Parameter kernel:
     ///     A pixel kernel.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer.
     ///     This array has a length of `pixels.count`, multiplied by four times
     ///     the stride of `A`.

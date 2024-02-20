@@ -28,7 +28,7 @@ extension PNG
         ///
         ///     The numerical value of this percentmille value will be the given
         ///     numerator divided by `100000`.
-        /// - points : T
+        /// -   Parameter points:
         ///     The numerator.
         public
         init<T>(_ points:T) where T:BinaryInteger
@@ -44,7 +44,7 @@ extension PNG
         ///     The provided integer literal is *not* the numerical value of the
         ///     created percentmille value. It will be interpreted as the numerator
         ///     of a rational value.
-        /// - integerLiteral : Swift.Int
+        /// -   Parameter integerLiteral:
         ///     The integer literal.
         public
         init(integerLiteral:Int)
@@ -59,7 +59,7 @@ extension PNG
         ///     The first value to add.
         /// - rhs   : Self
         ///     The second value to add.
-        /// - ->    : Self
+        /// -   Returns:
         ///     The sum of the two given percentmille values.
         public static
         func + (lhs:Self, rhs:Self) -> Self
@@ -87,7 +87,7 @@ extension PNG
         ///     A percentmille value.
         /// - rhs   : Self
         ///     The value to subtract from `lhs`.
-        /// - ->    : Self
+        /// -   Returns:
         ///     The difference of the two given percentmille values.
         public static
         func - (lhs:Self, rhs:Self) -> Self

@@ -11,16 +11,16 @@ extension PNG
         /// case PNG.DecodingError.required(chunk:before:)
         ///     The decoder encountered a chunk of a type that requires a
         ///     previously encountered chunk of a particular type.
-        /// - chunk : Chunk
+        /// -   Parameter chunk:
         ///     The type of the preceeding chunk required by the encountered chunk.
-        /// - before : Chunk
+        /// -   Parameter before:
         ///     The type of the encountered chunk.
         /// ## ()
 
         /// case PNG.DecodingError.duplicate(chunk:)
         ///     The decoder encountered multiple instances of a chunk type that
         ///     can only appear once in a PNG file.
-        /// - chunk : Chunk
+        /// -   Parameter chunk:
         ///     The type of the duplicated chunk.
         /// ## ()
 
@@ -30,9 +30,9 @@ extension PNG
         ///
         ///     If both fields are set to ``Chunk/IDAT``, this indicates
         ///     a non-contiguous ``Chunk/IDAT`` sequence.
-        /// - chunk : Chunk
+        /// -   Parameter chunk:
         ///     The type of the encountered chunk.
-        /// - after : Chunk
+        /// -   Parameter after:
         ///     The type of the preceeding chunk that precludes the encountered chunk.
         /// ## ()
         case required(chunk:PNG.Chunk, before:PNG.Chunk)

@@ -17,7 +17,7 @@ extension PNG
         {
             /// case PNG.SignificantBits.Case.v(_:)
             ///     A color precision descriptor for a grayscale image.
-            /// - _ : Swift.Int
+            /// -   Parameter _:
             ///     The number of significant bits in each grayscale sample.
             ///
             ///     This value must be greater than zero, and can be no greater
@@ -26,7 +26,7 @@ extension PNG
             case v(Int)
             /// case PNG.SignificantBits.Case.va(_:)
             ///     A color precision descriptor for a grayscale-alpha image.
-            /// - _ : (v:Swift.Int, a:Swift.Int)
+            /// -   Parameter _:
             ///     The number of significant bits in each grayscale and alpha
             ///     sample, respectively.
             ///
@@ -36,7 +36,7 @@ extension PNG
             case va((v:Int, a:Int))
             /// case PNG.SignificantBits.Case.rgb(_:)
             ///     A color precision descriptor for an RGB, BGR, or indexed image.
-            /// - _ : (r:Swift.Int, g:Swift.Int, b:Swift.Int)
+            /// -   Parameter _:
             ///     The number of significant bits in each red, green, and blue
             ///     sample, respectively. If the image uses an indexed color format,
             ///     the precision values refer to the precision of the palette
@@ -57,7 +57,7 @@ extension PNG
             case rgb((r:Int, g:Int, b:Int))
             /// case PNG.SignificantBits.Case.rgba(_:)
             ///     A color precision descriptor for an RGBA or BGRA image.
-            /// - _ : (r:Swift.Int, g:Swift.Int, b:Swift.Int, a:Swift.Int)
+            /// -   Parameter _:
             ///     The number of significant bits in each red, green, blue, and alpha
             ///     sample, respectively.
             ///

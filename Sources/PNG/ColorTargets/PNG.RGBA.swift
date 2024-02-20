@@ -48,7 +48,7 @@ extension PNG.RGBA
     ///
     ///     The ``r``, ``g``, and ``b`` components will be set to `value`,
     ///     and the ``a`` component will be set to [`T`max`].
-    /// - value : T
+    /// -   Parameter value:
     ///     A gray value.
     /// ## ()
     @inlinable
@@ -63,9 +63,9 @@ extension PNG.RGBA
     ///
     ///     The ``r``, ``g``, and ``b`` components will be set to `value`,
     ///     and the ``a`` component will be set to `alpha`.
-    /// - value : T
+    /// -   Parameter value:
     ///     A gray value.
-    /// - alpha : T
+    /// -   Parameter alpha:
     ///     An alpha value.
     /// ## ()
     @inlinable
@@ -80,11 +80,11 @@ extension PNG.RGBA
     ///
     ///     The ``r``, ``g``, and ``b`` components will be set to `red`, `green`,
     ///     and `blue`, respectively. The ``a`` component will be set to [`T`max`].
-    /// - red : T
+    /// -   Parameter red:
     ///     A red value.
-    /// - green : T
+    /// -   Parameter green:
     ///     A green value.
-    /// - blue : T
+    /// -   Parameter blue:
     ///     A blue value.
     /// ## ()
     @inlinable
@@ -99,13 +99,13 @@ extension PNG.RGBA
     ///
     ///     The ``r``, ``g``, ``b``, and ``a`` components will be set to `red`,
     ///     `green`, `blue`, and `alpha` respectively.
-    /// - red : T
+    /// -   Parameter red:
     ///     A red value.
-    /// - green : T
+    /// -   Parameter green:
     ///     A green value.
-    /// - blue : T
+    /// -   Parameter blue:
     ///     A blue value.
-    /// - alpha : T
+    /// -   Parameter alpha:
     ///     An alpha value.
     /// ## ()
     @inlinable
@@ -124,7 +124,7 @@ extension PNG.RGBA
     ///
     ///     This function is equivalent to calling ``init(_:_:)`` with
     ///     the ``VA/v`` and ``VA/a`` components of `va`.
-    /// - va : VA<T>
+    /// -   Parameter va:
     ///     A grayscale-alpha color.
     @inlinable
     public
@@ -173,10 +173,10 @@ extension PNG.RGBA
     ///     on ``r``, ``g``, and ``b``, after scaling them to the range of `U`.
     ///     The returned components are then scaled back to the range of ``T``.
     ///     The rescaling operation also affects the ``a`` component.
-    /// - _ : U.Type
+    /// -   Parameter _:
     ///     The integer type to perform the premultiplications in. `U.bitWidth`
     ///     must be less than [`T`bitWidth`].
-    /// - -> : Self
+    /// -   Returns:
     ///     The premultiplied color.
     @inlinable
     public
@@ -224,10 +224,10 @@ extension PNG.RGBA
     ///     on ``r``, ``g``, and ``b``, after scaling them to the range of `U`.
     ///     The returned components are then scaled back to the range of ``T``.
     ///     The rescaling operation also affects the ``a`` component.
-    /// - _ : U.Type
+    /// -   Parameter _:
     ///     The integer type to perform the straightening in. `U.bitWidth`
     ///     must be less than [`T`bitWidth`].
-    /// - -> : Self
+    /// -   Returns:
     ///     The straightened color.
     @inlinable
     public
@@ -282,16 +282,16 @@ extension PNG.RGBA:PNG.Color
     ///     This function will apply chroma keys if present. The unpacked components
     ///     are scaled to fill the range of ``T``, according to the color depth
     ///     computed from the color `format`.
-    /// - interleaved : [Swift.UInt8]
+    /// -   Parameter interleaved:
     ///     An image data buffer. It is expected to be obtained from the
     ///     ``Data.Rectangular/storage`` property of a ``Data/Rectangular``
     ///     image.
-    /// - format : Format
+    /// -   Parameter format:
     ///     The color format associated with the given data buffer.
     ///     It is expected to be obtained from the the
     ///     [`(Data.Rectangular).layout``(Layout).format`] property of a
     ///     ``Data/Rectangular`` image.
-    /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate
+    /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color `format` to
     ///     generate a dereferencing function. This function is only invoked
     ///     if the color `format` is an indexed format. Its palette aggregates
@@ -299,7 +299,7 @@ extension PNG.RGBA:PNG.Color
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
-    /// - -> : [Self]
+    /// -   Returns:
     ///     An array of RGBA pixels. The pixels
     ///     appear in the same order as they do in the image data buffer.
     @_specialize(where T == UInt8)
@@ -435,15 +435,15 @@ extension PNG.RGBA:PNG.Color
     ///
     ///     The components in each RGBA pixel are assumed to fill the entire
     ///     range of ``T``.
-    /// - pixels : [Self]
+    /// -   Parameter pixels:
     ///     An array of RGBA pixels.
-    /// - format : Format
+    /// -   Parameter format:
     ///     The color format to pack the given pixels as in the returned data buffer.
     ///
     ///     When the library uses an implementation of this function to construct
     ///     a ``Data/Rectangular`` image, this color format will be stored in
     ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
-    /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int
+    /// -   Parameter indexer:
     ///     A function which uses the palette entries in the color `format` to
     ///     generate a referencing function. This function will only be invoked
     ///     if the color `format` is an indexed format. Its palette aggregates
@@ -451,7 +451,7 @@ extension PNG.RGBA:PNG.Color
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
-    /// - -> : [Swift.UInt8]
+    /// -   Returns:
     ///     An image data buffer. The packed samples in this buffer appear
     ///     in the same order as the pixels in the `pixels` array. (But not
     ///     necessarily in the same order within each individual pixel.)

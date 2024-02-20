@@ -26,13 +26,13 @@ extension PNG
         ///     An ``Chunk/IHDR`` chunk had the wrong length.
         ///
         ///     Header chunks should be exactly `13` bytes long.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (IHDR-parsing-errors)
 
         /// case PNG.ParsingError.invalidHeaderPixelFormatCode(_:)
         ///     An ``Chunk/IHDR`` chunk had an invalid pixel format code.
-        /// - _ : (Swift.UInt8, Swift.UInt8)
+        /// -   Parameter _:
         ///     The invalid pixel format code.
         /// ## (IHDR-parsing-errors)
 
@@ -43,9 +43,9 @@ extension PNG
         ///     This error gets thrown when an iphone-optimized image
         ///     (``Standard/ios``) has a pixel format that is not
         ///     ``Format.Pixel/rgb8`` or ``Format.Pixel/rgba8``.
-        /// - _ : Format.Pixel
+        /// -   Parameter _:
         ///     The invalid pixel format.
-        /// - standard : Standard
+        /// -   Parameter standard:
         ///     The PNG standard. This error is only relevant for iphone-optimized
         ///     images, so library-generated instances of this error case always have
         ///     this field set to ``Standard/ios``.
@@ -55,7 +55,7 @@ extension PNG
         ///     An ``Chunk/IHDR`` chunk had an invalid compression method code.
         ///
         ///     The compression method code should always be `0`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid compression method code.
         /// ## (IHDR-parsing-errors)
 
@@ -63,7 +63,7 @@ extension PNG
         ///     An ``Chunk/IHDR`` chunk had an invalid filter code.
         ///
         ///     The filter code should always be `0`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid filter code.
         /// ## (IHDR-parsing-errors)
 
@@ -71,7 +71,7 @@ extension PNG
         ///     An ``Chunk/IHDR`` chunk had an invalid interlacing code.
         ///
         ///     The interlacing code should be either `0` or `1`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid interlacing code.
         /// ## (IHDR-parsing-errors)
 
@@ -79,7 +79,7 @@ extension PNG
         ///     An ``Chunk/IHDR`` chunk specified an invalid image size.
         ///
         ///     Both size dimensions must be strictly positive.
-        /// - _ : (x:Swift.Int, y:Swift.Int)
+        /// -   Parameter _:
         ///     The invalid size.
         /// ## (IHDR-parsing-errors)
         case invalidHeaderChunkLength(Int)
@@ -93,21 +93,21 @@ extension PNG
         /// case PNG.ParsingError.unexpectedPalette(pixel:)
         ///     The parser encountered a ``Chunk/PLTE`` chunk in an image
         ///     with a pixel format that forbids it.
-        /// - pixel : Format.Pixel
+        /// -   Parameter pixel:
         ///     The image pixel format.
         /// ## (PLTE-parsing-errors)
 
         /// case PNG.ParsingError.invalidPaletteChunkLength(_:)
         ///     A ``Chunk/PLTE`` chunk had a length that is not divisible by `3`.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (PLTE-parsing-errors)
 
         /// case PNG.ParsingError.invalidPaletteCount(_:max:)
         ///     A ``Chunk/PLTE`` chunk contained more entries than allowed.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The number of palette entries.
-        /// - max : Swift.Int
+        /// -   Parameter max:
         ///     The maximum allowed number of palette entries, according to the
         ///     image bit depth.
         /// ## (PLTE-parsing-errors)
@@ -118,32 +118,32 @@ extension PNG
         /// case PNG.ParsingError.unexpectedTransparency(pixel:)
         ///     The parser encountered a ``Chunk/tRNS`` chunk in an image
         ///     with a pixel format that forbids it.
-        /// - pixel : Format.Pixel
+        /// -   Parameter pixel:
         ///     The image pixel format.
         /// ## (tRNS-parsing-errors)
 
         /// case PNG.ParsingError.invalidTransparencyChunkLength(_:expected:)
         ///     A ``Chunk/tRNS`` chunk had the wrong length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - expected : Swift.Int
+        /// -   Parameter expected:
         ///     The expected chunk length.
         /// ## (tRNS-parsing-errors)
 
         /// case PNG.ParsingError.invalidTransparencySample(_:max:)
         ///     A ``Chunk/tRNS`` chunk contained an invalid chroma key sample.
-        /// - _ : Swift.UInt16
+        /// -   Parameter _:
         ///     The value of the invalid chroma key sample.
-        /// - max : Swift.UInt16
+        /// -   Parameter max:
         ///     The maximum allowed value for a chroma key sample, according to the
         ///     image color depth.
         /// ## (tRNS-parsing-errors)
 
         /// case PNG.ParsingError.invalidTransparencyCount(_:max:)
         ///     A ``Chunk/tRNS`` chunk contained too many alpha samples.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The number of alpha samples present.
-        /// - max : Swift.Int
+        /// -   Parameter max:
         ///     The maximum allowed number of alpha samples, which is equal to
         ///     the number of entries in the image palette.
         /// ## (tRNS-parsing-errors)
@@ -154,26 +154,26 @@ extension PNG
 
         /// case PNG.ParsingError.invalidBackgroundChunkLength(_:expected:)
         ///     A ``Chunk/bKGD`` chunk had the wrong length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - expected : Swift.Int
+        /// -   Parameter expected:
         ///     The expected chunk length.
         /// ## (bKGD-parsing-errors)
 
         /// case PNG.ParsingError.invalidBackgroundSample(_:max:)
         ///     A ``Chunk/bKGD`` chunk contained an invalid background sample.
-        /// - _ : Swift.UInt16
+        /// -   Parameter _:
         ///     The value of the invalid background sample.
-        /// - max : Swift.UInt16
+        /// -   Parameter max:
         ///     The maximum allowed value for a background sample, according to the
         ///     image color depth.
         /// ## (bKGD-parsing-errors)
 
         /// case PNG.ParsingError.invalidBackgroundIndex(_:max:)
         ///     A ``Chunk/bKGD`` chunk specified an out-of-range palette index.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The invalid index.
-        /// - max : Swift.Int
+        /// -   Parameter max:
         ///     The maximum allowed index value, which is equal to one less than
         ///     the number of entries in the image palette.
         /// ## (bKGD-parsing-errors)
@@ -183,9 +183,9 @@ extension PNG
 
         /// case PNG.ParsingError.invalidHistogramChunkLength(_:expected:)
         ///     A ``Chunk/hIST`` chunk had the wrong length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - expected : Swift.Int
+        /// -   Parameter expected:
         ///     The expected chunk length.
         /// ## (hIST-parsing-errors)
         case invalidHistogramChunkLength(Int, expected:Int)
@@ -194,7 +194,7 @@ extension PNG
         ///     A ``Chunk/gAMA`` chunk had the wrong length.
         ///
         ///     Gamma chunks should be exactly `4` bytes long.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (gAMA-parsing-errors)
         case invalidGammaChunkLength(Int)
@@ -203,7 +203,7 @@ extension PNG
         ///     A ``Chunk/cHRM`` chunk had the wrong length.
         ///
         ///     Chromaticity chunks should be exactly `32` bytes long.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (cHRM-parsing-errors)
         case invalidChromaticityChunkLength(Int)
@@ -212,7 +212,7 @@ extension PNG
         ///     An ``Chunk/sRGB`` chunk had the wrong length.
         ///
         ///     Color rendering chunks should be exactly `1` byte long.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (sRGB-parsing-errors)
 
@@ -220,7 +220,7 @@ extension PNG
         ///     An ``Chunk/sRGB`` chunk had an invalid color rendering code.
         ///
         ///     The color rendering code should be one of `0`, `1`, `2`, or `3`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid color rendering code.
         /// ## (sRGB-parsing-errors)
         case invalidColorRenderingChunkLength(Int)
@@ -228,17 +228,17 @@ extension PNG
 
         /// case PNG.ParsingError.invalidSignificantBitsChunkLength(_:expected:)
         ///     An ``Chunk/sBIT`` chunk had the wrong length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - expected : Swift.Int
+        /// -   Parameter expected:
         ///     The expected chunk length.
         /// ## (sBIT-parsing-errors)
 
         /// case PNG.ParsingError.invalidSignificantBitsPrecision(_:max:)
         ///     An ``Chunk/sBIT`` chunk specified an invalid precision value.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The invalid precision value.
-        /// - max : Swift.Int
+        /// -   Parameter max:
         ///     The maximum allowed precision value, which is equal to the image
         ///     color depth.
         /// ## (sBIT-parsing-errors)
@@ -247,15 +247,15 @@ extension PNG
 
         /// case PNG.ParsingError.invalidColorProfileChunkLength(_:min:)
         ///     An ``Chunk/iCCP`` chunk had an invalid length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - min : Swift.Int
+        /// -   Parameter min:
         ///     The minimum expected chunk length.
         /// ## (iCCP-parsing-errors)
 
         /// case PNG.ParsingError.invalidColorProfileName(_:)
         ///     An ``Chunk/iCCP`` chunk had an invalid profile name.
-        /// - _ : Swift.String?
+        /// -   Parameter _:
         ///     The invalid profile name, or `nil` if the parser could not find
         ///     the null-terminator of the profile name string.
         /// ## (iCCP-parsing-errors)
@@ -264,7 +264,7 @@ extension PNG
         ///     An ``Chunk/iCCP`` chunk had an invalid compression method code.
         ///
         ///     The compression method code should always be `0`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid compression method code.
         /// ## (iCCP-parsing-errors)
 
@@ -281,7 +281,7 @@ extension PNG
         ///     A ``Chunk/pHYs`` chunk had the wrong length.
         ///
         ///     Physical dimensions chunks should be exactly `9` bytes long.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (pHYs-parsing-errors)
 
@@ -289,7 +289,7 @@ extension PNG
         ///     A ``Chunk/pHYs`` chunk had an invalid density unit code.
         ///
         ///     The density code should be either `0` or `1`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid density unit code.
         /// ## (pHYs-parsing-errors)
         case invalidPhysicalDimensionsChunkLength(Int)
@@ -297,15 +297,15 @@ extension PNG
 
         /// case PNG.ParsingError.invalidSuggestedPaletteChunkLength(_:min:)
         ///     An ``Chunk/sPLT`` chunk had an invalid length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - min : Swift.Int
+        /// -   Parameter min:
         ///     The minimum expected chunk length.
         /// ## (sPLT-parsing-errors)
 
         /// case PNG.ParsingError.invalidSuggestedPaletteName(_:)
         ///     An ``Chunk/sPLT`` chunk had an invalid palette name.
-        /// - _ : Swift.String?
+        /// -   Parameter _:
         ///     The invalid palette name, or `nil` if the parser could not find
         ///     the null-terminator of the palette name string.
         /// ## (sPLT-parsing-errors)
@@ -313,9 +313,9 @@ extension PNG
         /// case PNG.ParsingError.invalidSuggestedPaletteDataLength(_:stride:)
         ///     The length of the palette data in an ``Chunk/sPLT`` chunk was
         ///     not divisible by its expected stride.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The length of the palette data.
-        /// - stride : Swift.Int
+        /// -   Parameter stride:
         ///     The expected stride of the palette entries.
         /// ## (sPLT-parsing-errors)
 
@@ -323,7 +323,7 @@ extension PNG
         ///     An ``Chunk/sPLT`` chunk had an invalid depth code.
         ///
         ///     The depth code should be either `8` or `16`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid depth code.
         /// ## (sPLT-parsing-errors)
 
@@ -341,23 +341,23 @@ extension PNG
         ///     A ``Chunk/tIME`` chunk had the wrong length.
         ///
         ///     Time modified chunks should be exactly `7` bytes long.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
         /// ## (tIME-parsing-errors)
 
         /// case PNG.ParsingError.invalidTimeModifiedTime(year:month:day:hour:minute:second:)
         ///     A ``Chunk/tIME`` chunk specified an invalid timestamp.
-        /// - year : Swift.Int
+        /// -   Parameter year:
         ///     The specified year.
-        /// - month : Swift.Int
+        /// -   Parameter month:
         ///     The specified month.
-        /// - day : Swift.Int
+        /// -   Parameter day:
         ///     The specified day.
-        /// - hour : Swift.Int
+        /// -   Parameter hour:
         ///     The specified hour.
-        /// - minute : Swift.Int
+        /// -   Parameter minute:
         ///     The specified minute.
-        /// - second : Swift.Int
+        /// -   Parameter second:
         ///     The specified second.
         /// ## (tIME-parsing-errors)
         case invalidTimeModifiedChunkLength(Int)
@@ -366,7 +366,7 @@ extension PNG
         /// case PNG.ParsingError.invalidTextEnglishKeyword(_:)
         ///     A ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk
         ///     had an invalid english keyword.
-        /// - _ : Swift.String?
+        /// -   Parameter _:
         ///     The invalid english keyword, or `nil` if the parser could not find
         ///     the null-terminator of the keyword string.
         /// ## (text-chunk-parsing-errors)
@@ -374,9 +374,9 @@ extension PNG
         /// case PNG.ParsingError.invalidTextChunkLength(_:min:)
         ///     A ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk
         ///     had an invalid length.
-        /// - _ : Swift.Int
+        /// -   Parameter _:
         ///     The chunk length.
-        /// - min : Swift.Int
+        /// -   Parameter min:
         ///     The minimum expected chunk length.
         /// ## (text-chunk-parsing-errors)
 
@@ -384,7 +384,7 @@ extension PNG
         ///     An ``Chunk/iTXt`` chunk had an invalid compression code.
         ///
         ///     The compression code should be either `0` or `1`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid compression code.
         /// ## (text-chunk-parsing-errors)
 
@@ -393,13 +393,13 @@ extension PNG
         ///     compression method code.
         ///
         ///     The compression method code should always be `0`.
-        /// - _ : Swift.UInt8
+        /// -   Parameter _:
         ///     The invalid compression method code.
         /// ## (text-chunk-parsing-errors)
 
         /// case PNG.ParsingError.invalidTextLanguageTag(_:)
         ///     An ``Chunk/iTXt`` chunk had an invalid language tag.
-        /// - _ : Swift.String?
+        /// -   Parameter _:
         ///     The invalid language tag component, or `nil` if the parser could
         ///     not find the null-terminator of the language tag string.
         ///     The language tag component is not the entire language tag string.

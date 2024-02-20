@@ -24,14 +24,14 @@ extension PNG
 
         /// init PNG.ColorProfile.init(name:profile:)
         ///     Creates a color profile.
-        /// - name : Swift.String
+        /// -   Parameter name:
         ///     The profile name.
         ///
         ///     This string must contain only unicode scalars
         ///     in the ranges `"\u{20}" ... "\u{7d}"` or `"\u{a1}" ... "\u{ff}"`.
         ///     Leading, trailing, and consecutive spaces are not allowed.
         ///     Passing an invalid string will result in a precondition failure.
-        /// - profile : [Swift.UInt8]
+        /// -   Parameter profile:
         ///     The uncompressed [ICC](http://www.color.org/index.xalter) color
         ///     profile data. The data will be compressed when this color profile
         ///     is ``serialized`` into an ``Chunk/iCCP`` chunk.

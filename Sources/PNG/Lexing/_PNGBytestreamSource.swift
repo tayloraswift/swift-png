@@ -24,7 +24,7 @@ protocol _PNGBytestreamSource
     ///     as indicating end-of-stream.
     /// - count     : Swift.Int
     ///     The number of bytes to read.
-    /// - ->        : [Swift.UInt8]?
+    /// -   Returns:
     ///     The `count` bytes read, or `nil` if the read attempt failed. This
     ///     method should return `nil` even if any number of bytes less than `count`
     ///     were successfully read.
@@ -70,7 +70,7 @@ extension _PNGBytestreamSource
     ///     catch these two error cases.
     ///
     ///     This function is the inverse of ``Destination.format(type:data:)``.
-    /// - -> : (type:PNG.Chunk, data:[Swift.UInt8])
+    /// -   Returns:
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.
     public mutating

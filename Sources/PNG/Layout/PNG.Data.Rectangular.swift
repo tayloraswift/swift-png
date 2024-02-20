@@ -126,14 +126,14 @@ extension PNG.Data.Rectangular
     ///     This interface can be used to switch image layouts without unpacking
     ///     to and repacking from a color target array. Rebinding to an
     ///     incompatible layout will result in a precondition failure.
-    /// - layout : Layout
+    /// -   Parameter layout:
     ///     The new image layout.
     ///
     ///     Both the original color ``Layout/format`` and the new
     ///     color ``Layout/format`` must be of the same enumeration case, though the fields
     ///     may differ. The exceptions are the indexed color formats, which require
     ///     the lengths of their `palette` payloads to match exactly.
-    /// - -> : Self
+    /// -   Returns:
     ///     An image with the given layout. This image will share backing ``storage``
     ///     with the original image until it is copied-on-write.
     public
@@ -329,9 +329,9 @@ extension PNG.Data.Rectangular
     ///
     ///     On appropriate platforms, the ``decompress(path:)`` function provides
     ///     a file system-aware interface to this function.
-    /// - stream : inout Source
+    /// -   Parameter stream:
     ///     A bytestream providing the contents of a PNG file.
-    /// - -> : Self
+    /// -   Returns:
     ///     The decoded image.
     /// # [See also](encoding-and-decoding)
     /// ## (0:encoding-and-decoding)
@@ -604,16 +604,16 @@ extension PNG.Data.Rectangular
     ///
     ///     On appropriate platforms, the ``compress(path:level:hint:)`` function
     ///     provides a file system-aware interface to this function.
-    /// - stream : inout Destination
+    /// -   Parameter stream:
     ///     A bytestream receiving the contents of a PNG file.
-    /// - level : Swift.Int
+    /// -   Parameter level:
     ///     The compression level to use. It should be in the range `0 ... 13`,
     ///     where `13` is the most aggressive setting. The default value is `9`.
     ///
     ///     Setting this parameter to a value less than `0` is the same as
     ///     setting it to `0`. Likewise, setting it to a value greater than `13`
     ///     is the same as setting it to `13`.
-    /// - hint : Swift.Int
+    /// -   Parameter hint:
     ///     A size hint for the emitted ``Chunk/IDAT`` chunks. It should be in
     ///     the range `1 ... 2147483647`. Reasonable settings range from around
     ///     1\ K to 64\ K. The default value is `32768` (2^15^).
