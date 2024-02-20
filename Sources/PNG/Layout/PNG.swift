@@ -42,7 +42,35 @@ enum PNG
         typealias Destination   = _PNGBytestreamDestination
     }
 }
+extension PNG
+{
+    /// Returns the value of the paeth filter function with the given parameters.
+    static
+    func paeth(_ a:UInt8, _ b:UInt8, _ c:UInt8) -> UInt8
+    {
+        // abs here is poorly-predicted so it benefits from this
+        // branchless implementation
+        func abs(_ x:Int16) -> Int16
+        {
+            let mask:Int16 = x >> 15
+            return (x ^ mask) + (mask & 1)
+        }
 
+        let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
+        let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
+        let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
+
+        let p:(UInt8, UInt8, UInt8) =
+        (
+            .init(truncatingIfNeeded: (f.1 - f.0) >> 15), // 0x00 if f.0 <= f.1 else 0xff
+            .init(truncatingIfNeeded: (f.2 - f.0) >> 15),
+            .init(truncatingIfNeeded: (f.2 - f.1) >> 15)
+        )
+
+        return ~(p.0 | p.1) &  a        |
+                (p.0 | p.1) & (b & ~p.2 | c & p.2)
+    }
+}
 extension PNG
 {
     private static
