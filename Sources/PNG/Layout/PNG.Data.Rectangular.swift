@@ -67,7 +67,7 @@ extension PNG.Data
         ///     samples. The pixels are arranged in row-major order, where the
         ///     beginning of the storage array corresponds to the visual top-left
         ///     corner of the image, regardless of whether the ``layout`` is
-        ///     ``(Layout).interlaced`` or not.
+        ///     ``Layout/interlaced`` or not.
         public private(set)
         var storage:[UInt8]
 
@@ -129,8 +129,8 @@ extension PNG.Data.Rectangular
     /// - layout : Layout
     ///     The new image layout.
     ///
-    ///     Both the original color ``(Layout).format`` and the new
-    ///     color ``(Layout).format`` must be of the same enumeration case, though the fields
+    ///     Both the original color ``Layout/format`` and the new
+    ///     color ``Layout/format`` must be of the same enumeration case, though the fields
     ///     may differ. The exceptions are the indexed color formats, which require
     ///     the lengths of their `palette` payloads to match exactly.
     /// - -> : Self

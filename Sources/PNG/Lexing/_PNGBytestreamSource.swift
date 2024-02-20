@@ -4,7 +4,7 @@ import CRC
 ///     A source bytestream.
 ///
 ///     To implement a custom data source type, conform it to this protocol by
-///     implementing ``(Source).read(count:)``. It can
+///     implementing ``Source/read(count:)``. It can
 ///     then be used with the library’s core decompression interfaces.
 /// #  [Stream interface](file-io-source-interface)
 /// #  [See also](file-io-protocols, system-file-source)

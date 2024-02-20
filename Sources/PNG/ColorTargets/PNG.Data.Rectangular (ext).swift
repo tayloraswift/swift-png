@@ -171,10 +171,10 @@ extension PNG.Data.Rectangular
     ///     Unpacks this image to a pixel array, using a custom deindexing
     ///     function.
     /// - _ : Color.Type
-    ///     A color target type. This type provides the ``(Color).unpack(_:of:deindexer:)``
+    ///     A color target type. This type provides the ``Color/unpack(_:of:deindexer:)``
     ///     implementation used to unpack the image data.
     /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Color.Aggregate
-    ///     A function which uses the palette entries in the color ``(Layout).format`` to
+    ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a dereferencing function. This function is only expected to
     ///     be invoked if [`layout``(Layout).format`] is an indexed format.
     ///
@@ -201,29 +201,29 @@ extension PNG.Data.Rectangular
     ///     Unpacks this image to a scalar pixel array, using a custom deindexing
     ///     function.
     ///
-    ///     For an image with a grayscale-alpha color ``(Layout).format``,
+    ///     For an image with a grayscale-alpha color ``Layout/format``,
     ///     this function selects the *v* component from pixels of the form (*v*, *a*)
     ///
-    ///     For an image with an RGB color ``(Layout).format``,
+    ///     For an image with an RGB color ``Layout/format``,
     ///     this function selects the *r* component from pixels of the form (*r*, *g*, *b*).
     ///
-    ///     For an image with an RGBA color ``(Layout).format``, this function selects the *r* component from
+    ///     For an image with an RGBA color ``Layout/format``, this function selects the *r* component from
     ///     pixels of the form (*r*, *g*, *b*, *a*).
     ///
-    ///     For an image with a BGR color ``(Layout).format``,
+    ///     For an image with a BGR color ``Layout/format``,
     ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*).
     ///
-    ///     For an image with a BGRA color ``(Layout).format``,
+    ///     For an image with a BGRA color ``Layout/format``,
     ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*, *a*).
     ///
     ///     This function ignores chroma keys, as its scalar color target is not
     ///     capable of representing transparency. The unpacked components
     ///     are scaled to fill the range of `T`, according to the color depth
-    ///     computed from the color ``(Layout).format``.
+    ///     computed from the color ``Layout/format``.
     /// - _ : T.Type
     ///     A scalar color target type.
     /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Swift.UInt8
-    ///     A function which uses the palette entries in the color ``(Layout).format`` to
+    ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a dereferencing function. This function will only
     ///     be invoked if [`layout``(Layout).format`] is an indexed format.
     ///
@@ -251,7 +251,7 @@ extension PNG.Data.Rectangular
     /// - pixels : [Color]
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``(Color).pack(_:as:indexer:)``
+    ///     the image. The `Color` type provides the ``Color/pack(_:as:indexer:)``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
@@ -264,9 +264,9 @@ extension PNG.Data.Rectangular
     /// - metadata : Metadata
     ///     A metadata structure. The default value is an empty metadata structure.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Color.Aggregate) -> Swift.Int
-    ///     A function which uses the palette entries in the color ``(Layout).format`` to
+    ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a referencing function. This function is only expected to
-    ///     be invoked if the image color ``(Layout).format`` is an indexed format.
+    ///     be invoked if the image color ``Layout/format`` is an indexed format.
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
@@ -292,15 +292,15 @@ extension PNG.Data.Rectangular
     ///     Creates an image from a scalar pixel array, using a custom indexing
     ///     function.
     ///
-    ///     For an image with a grayscale-alpha color ``(Layout).format``,
+    ///     For an image with a grayscale-alpha color ``Layout/format``,
     ///     this function assigns the gray channel to the given scalars, and
     ///     sets the alpha channel to `T.max`.
     ///
-    ///     For an image with an RGB or BGR color ``(Layout).format``,
+    ///     For an image with an RGB or BGR color ``Layout/format``,
     ///     this function assigns all channels to the given scalars, replicating
     ///     each scalar three times.
     ///
-    ///     For an image with an RGBA or BGRA color ``(Layout).format``, this
+    ///     For an image with an RGBA or BGRA color ``Layout/format``, this
     ///     function assigns all opaque channels to the given scalars, replicating
     ///     each scalar three times, and sets the alpha channel to `T.max`.
     ///
@@ -320,9 +320,9 @@ extension PNG.Data.Rectangular
     /// - metadata : Metadata
     ///     A metadata structure. The default value is an empty metadata structure.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.UInt8) -> Swift.Int
-    ///     A function which uses the palette entries in the color ``(Layout).format`` to
+    ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a referencing function. This function will only
-    ///     be invoked if the image color ``(Layout).format`` is an indexed format.
+    ///     be invoked if the image color ``Layout/format`` is an indexed format.
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
@@ -350,7 +350,7 @@ extension PNG.Data.Rectangular
     /// @   inlinable
     ///     Unpacks this image to a pixel array.
     /// - _ : Color.Type
-    ///     A color target type. This type provides the ``(Color).unpack(_:of:)``
+    ///     A color target type. This type provides the ``Color/unpack(_:of:)``
     ///     implementation used to unpack the image data.
     /// - -> : [Color]
     ///     A pixel array. Its elements are arranged in row-major order. The
@@ -371,7 +371,7 @@ extension PNG.Data.Rectangular
     /// - pixels : [Color]
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``(Color).pack(_:as:)``
+    ///     the image. The `Color` type provides the ``Color/pack(_:as:)``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
@@ -403,30 +403,30 @@ extension PNG.Data.Rectangular
     /// @   inlinable
     ///     Unpacks this image to a scalar pixel array.
     ///
-    ///     For an image with a grayscale-alpha color ``(Layout).format``,
+    ///     For an image with a grayscale-alpha color ``Layout/format``,
     ///     this function selects the *v* component from pixels of the form (*v*, *a*)
     ///
-    ///     For an image with an RGB color ``(Layout).format``,
+    ///     For an image with an RGB color ``Layout/format``,
     ///     this function selects the *r* component from pixels of the form (*r*, *g*, *b*).
     ///
-    ///     For an image with an indexed color ``(Layout).format``,
+    ///     For an image with an indexed color ``Layout/format``,
     ///     this function selects the *r* component from palette entries of the
     ///     form (*r*, *g*, *b*, *a*). The palette entry is chosen by taking the
     ///     *i*th element in the palette, from pixels of the form (*i*).
     ///
-    ///     For an image with an RGBA color ``(Layout).format``, this function
+    ///     For an image with an RGBA color ``Layout/format``, this function
     ///     selects the *r* component from pixels of the form (*r*, *g*, *b*, *a*).
     ///
-    ///     For an image with a BGR color ``(Layout).format``,
+    ///     For an image with a BGR color ``Layout/format``,
     ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*).
     ///
-    ///     For an image with a BGRA color ``(Layout).format``,
+    ///     For an image with a BGRA color ``Layout/format``,
     ///     this function selects the *r* component from pixels of the form (*b*, *g*, *r*, *a*).
     ///
     ///     This function ignores chroma keys, as its scalar color target is not
     ///     capable of representing transparency. The unpacked components
     ///     are scaled to fill the range of `T`, according to the color depth
-    ///     computed from the color ``(Layout).format``.
+    ///     computed from the color ``Layout/format``.
     /// - _ : T.Type
     ///     A scalar color target type.
     /// - -> : [T]
@@ -452,22 +452,22 @@ extension PNG.Data.Rectangular
     /// @   inlinable
     ///     Creates an image from a scalar pixel array.
     ///
-    ///     For an image with a grayscale-alpha color ``(Layout).format``,
+    ///     For an image with a grayscale-alpha color ``Layout/format``,
     ///     this function assigns the gray channel to the given scalars, and
     ///     sets the alpha channel to `T.max`.
     ///
-    ///     For an image with an indexed color ``(Layout).format``,
+    ///     For an image with an indexed color ``Layout/format``,
     ///     this function expands the given scalars, each of the form (*v*), to
     ///     RGBA quadruplets (*v*, *v*, *v*, `T.max`), and assigns the index
     ///     channel to the index of a matching palette entry. If more than one
     ///     palette entry matches, the matching entry is chosen arbitrarily.
     ///     If no palette entries match, the first palette entry is chosen.
     ///
-    ///     For an image with an RGB or BGR color ``(Layout).format``,
+    ///     For an image with an RGB or BGR color ``Layout/format``,
     ///     this function assigns all channels to the given scalars, replicating
     ///     each scalar three times.
     ///
-    ///     For an image with an RGBA or BGRA color ``(Layout).format``, this
+    ///     For an image with an RGBA or BGRA color ``Layout/format``, this
     ///     function assigns all opaque channels to the given scalars, replicating
     ///     each scalar three times, and sets the alpha channel to `T.max`.
     ///

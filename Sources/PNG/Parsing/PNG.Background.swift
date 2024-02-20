@@ -7,7 +7,7 @@ extension PNG
     ///     This information is used to populate the `fill` field in
     ///     an image color ``Format``.
     ///
-    ///     The value of this descriptor is stored in the ``(PNG.Background).case``
+    ///     The value of this descriptor is stored in the ``PNG.Background/case``
     ///     property, after validation.
     /// # [Parsing and serialization](background-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
@@ -65,7 +65,7 @@ extension PNG.Background
     /// - case      : Case
     ///     A background descriptor value.
     ///
-    ///     If this parameter is a ``(Case).v(_:)`` or ``(Case).rgb(_:)`` case,
+    ///     If this parameter is a ``Case/v(_:)`` or ``Case/rgb(_:)`` case,
     ///     the samples in its background color payload must fall within the
     ///     range determined by the image color depth. Passing an enumeration
     ///     case with an invalid background sample will result in a precondition
@@ -78,13 +78,13 @@ extension PNG.Background
     ///     The palette of the image this background descriptor is to be
     ///     used for.
     ///
-    ///     If `case` is a ``(Case).palette(index:)`` case, this palette must
+    ///     If `case` is a ``Case/palette(index:)`` case, this palette must
     ///     not be `nil`, and the number of entries in it must be at least `1`
-    ///     greater than the value of the ``(Case).palette(index:)`` payload.
+    ///     greater than the value of the ``Case/palette(index:)`` payload.
     ///     If the index payload is out of range, this function will suffer a
     ///     precondition failure.
     ///
-    ///     If `case` is a ``(Case).v(_:)`` or ``(Case).rgb(_:)`` case,
+    ///     If `case` is a ``Case/v(_:)`` or ``Case/rgb(_:)`` case,
     ///     this parameter is ignored.
     public
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?)
