@@ -69,7 +69,7 @@ extension System.File.Source
     /// - path  : Swift.String
     ///     The path to the file to open.
     /// - body  : (inout Self) throws -> R
-    ///     A closure with a [`Source`] parameter from which data in
+    ///     A closure with a ``Source`` parameter from which data in
     ///     the specified file can be read. This interface is only valid
     ///     for the duration of the method’s execution. The closure is
     ///     only executed if the specified file could be successfully
@@ -189,7 +189,7 @@ extension System.File.Destination
     /// - path  : Swift.String
     ///     The path to the file to open.
     /// - body  : (inout Self) throws -> R
-    ///     A closure with a [`Destination`] parameter representing
+    ///     A closure with a ``Destination`` parameter representing
     ///     the specified file to which data can be written to. This
     ///     interface is only valid for the duration of the method’s
     ///     execution. The closure is only executed if the specified file could
@@ -227,7 +227,7 @@ extension System.File.Destination
     /// - buffer    : [Swift.UInt8]
     ///     The data to write.
     /// - ->        : Swift.Void?
-    ///     A [`Swift.Void`] tuple if the entire array argument could be written,
+    ///     A ``Swift.Void`` tuple if the entire array argument could be written,
     ///     or `nil` otherwise.
     public
     func write(_ buffer:[UInt8]) -> Void?
@@ -263,7 +263,7 @@ extension PNG.Data.Rectangular
     ///     Decompresses and decodes a PNG from a file at the given file path.
     ///
     ///     This interface is only available on MacOS and Linux. The
-    ///     [`decompress(stream:)`] function provides a platform-independent
+    ///     ``decompress(stream:)`` function provides a platform-independent
     ///     decoding interface.
     /// - path : Swift.String
     ///     A path to a PNG file.
@@ -295,7 +295,7 @@ extension PNG.Data.Rectangular
     ///     [this page](https://github.com/tayloraswift/swift-png/blob/master/benchmarks).
     ///
     ///     This interface is only available on MacOS and Linux. The
-    ///     [`compress(stream:level:hint:)`] function provides a platform-independent
+    ///     ``compress(stream:level:hint:)`` function provides a platform-independent
     ///     encoding interface.
     /// - path : Swift.String
     ///     A path to save the PNG file at.
@@ -315,7 +315,7 @@ extension PNG.Data.Rectangular
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
     ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
     /// - -> : Swift.Void?
-    ///     A [`Swift.Void`] tuple if the destination file could be opened
+    ///     A ``Swift.Void`` tuple if the destination file could be opened
     ///     successfully, or `nil` otherwise.
     /// # [See also](encoding-and-decoding)
     /// ## (3:encoding-and-decoding)

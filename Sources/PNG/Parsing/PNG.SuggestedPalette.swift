@@ -5,7 +5,7 @@ extension PNG
     ///
     ///     This type models the information stored in an ``Chunk/sPLT`` chunk.
     ///     It should not be confused with the suggested palette stored in the
-    ///     color [`Format`] of an RGB, BGR, RGBA, or BGRA image.
+    ///     color ``Format`` of an RGB, BGR, RGBA, or BGRA image.
     /// # [Parsing and serialization](suggestedpalette-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)

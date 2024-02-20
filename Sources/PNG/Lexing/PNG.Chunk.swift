@@ -45,7 +45,7 @@ extension PNG
         ///     The flag bit in the lowest byte (bit 5) is the **safe-to-copy** bit.
         ///
         ///     Passing an invalid type code will result in a precondition failure.
-        ///     For a failable version of this initializer, use [`init(validating:)`].
+        ///     For a failable version of this initializer, use ``init(validating:)``.
         ///     For more details on type code semantics, consult the
         ///     [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html).
         /// - name : Swift.UInt32
@@ -72,7 +72,7 @@ extension PNG
         ///     Creates a chunk type identifier, returning `nil` if the type code
         ///     is invalid.
         ///
-        ///     This initializer is a non-trapping version of [`init(name:)`].
+        ///     This initializer is a non-trapping version of ``init(name:)``.
         /// - name : Swift.UInt32
         ///     The chunk type code. Bit 13 must be set. If the type code is not
         ///     a public PNG chunk type code, then bit 29 must be clear.

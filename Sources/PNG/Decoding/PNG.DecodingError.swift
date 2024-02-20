@@ -47,7 +47,7 @@ extension PNG
         ///     The decoder encountered additional ``Chunk/IDAT`` chunks
         ///     after the end of the compressed image data stream.
         ///
-        ///     This error should not be confused with an [`unexpected(chunk:after:)`]
+        ///     This error should not be confused with an ``unexpected(chunk:after:)``
         ///     error with both fields set to ``Chunk/IDAT``, which indicates a
         ///     non-contiguous ``Chunk/IDAT`` sequence.
         case extraneousImageDataCompressedData

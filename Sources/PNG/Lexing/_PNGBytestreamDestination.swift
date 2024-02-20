@@ -4,7 +4,7 @@ import CRC
 ///     A destination bytestream.
 ///
 ///     To implement a custom data destination type, conform it to this protocol by
-///     implementing [`(Destination).write(_:)`]. It can
+///     implementing ``(Destination).write(_:)``. It can
 ///     then be used with the library’s core compression interfaces.
 /// #  [Stream interface](file-io-destination-interface)
 /// #  [See also](file-io-protocols, system-file-destination)
@@ -25,7 +25,7 @@ protocol _PNGBytestreamDestination
     /// - bytes     : [Swift.UInt8]
     ///     The bytes to write.
     /// - ->        : Swift.Void?
-    ///     A [`Swift.Void`] tuple, or `nil` if the write attempt failed. This
+    ///     A ``Swift.Void`` tuple, or `nil` if the write attempt failed. This
     ///     method should return `nil` even if any number of bytes less than
     ///     `bytes.count` were successfully written.
     /// ## (file-io-destination-interface)
@@ -40,9 +40,9 @@ extension _PNGBytestreamDestination
     ///
     ///     This function emits the constant byte sequence
     ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It will throw a
-    ///     [`FormattingError`] if it fails to write to the bytestream.
+    ///     ``FormattingError`` if it fails to write to the bytestream.
     ///
-    ///     This function is the inverse of [`Source.signature()`].
+    ///     This function is the inverse of ``Source.signature()``.
     public mutating
     func signature() throws
     {
@@ -58,9 +58,9 @@ extension _PNGBytestreamDestination
     ///
     ///     This function will compute the checksum for the given chunk contents and
     ///     format it with the appropriate chunk headers and footers. It will throw a
-    ///     [`FormattingError`] if it fails to write to the bytestream.
+    ///     ``FormattingError`` if it fails to write to the bytestream.
     ///
-    ///     This function is the inverse of [`Source.chunk()`].
+    ///     This function is the inverse of ``Source.chunk()``.
     /// - type : PNG.Chunk
     ///     The type identifier of the chunk to emit.
     /// - data : [Swift.UInt8]

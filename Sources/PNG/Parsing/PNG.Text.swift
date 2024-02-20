@@ -117,7 +117,7 @@ extension PNG.Text
     ///     otherwise. The default value is `true`.
     ///
     ///     If this flag is set to `false`, the text is assumed to be in english,
-    ///     and the [`language`] tag will be set to `["en"]`.
+    ///     and the ``language`` tag will be set to `["en"]`.
     /// ## (text-parsing-and-serialization)
     public
     init(parsing data:[UInt8], unicode:Bool = true) throws
