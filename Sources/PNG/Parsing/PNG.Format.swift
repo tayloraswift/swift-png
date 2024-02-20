@@ -15,7 +15,7 @@ extension PNG
     ///     can be set to the empty array `[]`.
     ///
     ///     Color format validation takes place when initializing a ``Layout`` instance,
-    ///     which stores the color format in a ``Data.Rectangular`` image.
+    ///     which stores the color format in a ``Image`` image.
     /// # [Grayscale formats](grayscale-color-formats)
     /// # [Grayscale-alpha formats](grayscale-alpha-color-formats)
     /// # [Indexed formats](indexed-color-formats)

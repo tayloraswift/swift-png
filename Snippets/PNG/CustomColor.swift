@@ -296,7 +296,7 @@ extension HSVA:PNG.Color
 }
 
 guard
-let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+let image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -304,28 +304,28 @@ else
 
 let hsva:[HSVA] = image.unpack(as: HSVA.self)
 
-let hue:PNG.Data.Rectangular = .init(
+let hue:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: $0.h, s: .max / 2, v: .max, a: $0.a) },
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)
 try hue.compress(path: "\(path)-hue.png")
 
-let saturation:PNG.Data.Rectangular = .init(
+let saturation:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: 370000, s: $0.s, v: .max, a: $0.a) },
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)
 try saturation.compress(path: "\(path)-saturation.png")
 
-let value:PNG.Data.Rectangular = .init(
+let value:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: 0, s: 0, v: $0.v, a: $0.a) },
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)
 try value.compress(path: "\(path)-value.png")
 
-let new:PNG.Data.Rectangular = .init(packing: hsva,
+let new:PNG.Image = .init(packing: hsva,
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)

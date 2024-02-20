@@ -33,7 +33,7 @@ let layout:(rgb:PNG.Layout, v:PNG.Layout) =
 
 do
 {
-    let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.rgb)
+    let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.rgb)
     try image.compress(path: "\(path)-color-rgb.png", level: 9)
 
     for level:Int in [0, 4, 8, 13]
@@ -43,7 +43,7 @@ do
 }
 do
 {
-    let image:PNG.Data.Rectangular  = .init(packing: rgba, size: size, layout: layout.v)
+    let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.v)
     try image.compress(path: "\(path)-color-v.png", level: 9)
 }
 
@@ -57,11 +57,11 @@ let luminance:[UInt8] = rgba.map
 }
 do
 {
-    let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: layout.v)
+    let image:PNG.Image  = .init(packing: luminance, size: size, layout: layout.v)
     try image.compress(path: "\(path)-luminance-v.png", level: 9)
 }
 do
 {
-    let image:PNG.Data.Rectangular  = .init(packing: luminance, size: size, layout: layout.rgb)
+    let image:PNG.Image  = .init(packing: luminance, size: size, layout: layout.rgb)
     try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
 }

@@ -3,7 +3,7 @@ import PNG
 let path:String = "Sources/PNG/docs.docc/Indexing/Indexing"
 
 guard
-let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+let image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")
@@ -77,12 +77,12 @@ let swatch:[PNG.RGBA<UInt8>] = (0 ..< 16).flatMap
         return .init(r, g, b, a)
     }
 }
-let visualization:PNG.Data.Rectangular = .init(packing: swatch, size: (256, 16),
+let visualization:PNG.Image = .init(packing: swatch, size: (256, 16),
     layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
 try visualization.compress(path: "\(path)-gradient.png")
 
 // encode colorized image
-let indexed:PNG.Data.Rectangular = .init(packing: v, size: image.size,
+let indexed:PNG.Image = .init(packing: v, size: image.size,
     layout:  .init(format: .indexed8(palette: gradient, fill: nil)),
     metadata: image.metadata)
 {

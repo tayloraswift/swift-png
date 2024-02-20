@@ -108,7 +108,7 @@ func waitChunk(stream:inout Stream) throws -> (type:PNG.Chunk, data:[UInt8])
 
 func decodeOnline(stream:inout Stream,
     overdraw:Bool,
-    capture:(PNG.Data.Rectangular) throws -> ()) throws -> PNG.Data.Rectangular
+    capture:(PNG.Image) throws -> ()) throws -> PNG.Image
 {
     // lex PNG signature bytes
     try waitSignature(stream: &stream)
@@ -212,9 +212,9 @@ func decodeOnline(stream:inout Stream,
 var stream:Stream = .init(path: "\(path).png")
 
 var counter:Int = 0
-let image:PNG.Data.Rectangular = try decodeOnline(stream: &stream, overdraw: false)
+let image:PNG.Image = try decodeOnline(stream: &stream, overdraw: false)
 {
-    (snapshot:PNG.Data.Rectangular) in
+    (snapshot:PNG.Image) in
 
     let _:[PNG.RGBA<UInt8>] = snapshot.unpack(as: PNG.RGBA<UInt8>.self)
 
@@ -223,15 +223,15 @@ let image:PNG.Data.Rectangular = try decodeOnline(stream: &stream, overdraw: fal
 }
 
 let layout:PNG.Layout = .init(format: image.layout.format, interlaced: true)
-let progressive:PNG.Data.Rectangular = image.bindStorage(to: layout)
+let progressive:PNG.Image = image.bindStorage(to: layout)
 
 try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
 
 stream = .init(path: "\(path)-progressive.png")
 counter = 0
-let _:PNG.Data.Rectangular = try decodeOnline(stream: &stream, overdraw: false)
+let _:PNG.Image = try decodeOnline(stream: &stream, overdraw: false)
 {
-    (snapshot:PNG.Data.Rectangular) in
+    (snapshot:PNG.Image) in
 
     try snapshot.compress(path: "\(path)-progressive-\(counter).png")
     counter += 1
@@ -240,9 +240,9 @@ let _:PNG.Data.Rectangular = try decodeOnline(stream: &stream, overdraw: false)
 stream.reset(position: 0)
 
 counter = 0
-let _:PNG.Data.Rectangular = try decodeOnline(stream: &stream, overdraw: true)
+let _:PNG.Image = try decodeOnline(stream: &stream, overdraw: true)
 {
-    (snapshot:PNG.Data.Rectangular) in
+    (snapshot:PNG.Image) in
 
     try snapshot.compress(path: "\(path)-progressive-overdrawn-\(counter).png")
     counter += 1

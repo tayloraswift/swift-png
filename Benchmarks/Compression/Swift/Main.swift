@@ -55,7 +55,7 @@ extension Benchmark.Encode
     static
     func rgba8(level:Int, path:String, trials:Int) -> ([(time:Int, hash:Int)], Int)
     {
-        guard let image:PNG.Data.Rectangular = try? .decompress(path: path)
+        guard let image:PNG.Image = try? .decompress(path: path)
         else
         {
             fatalError("failed to decode test image '\(path)'")

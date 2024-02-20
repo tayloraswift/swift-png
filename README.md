@@ -49,7 +49,7 @@ import PNG
 func decode(png path:String) throws
 {
     guard
-    let image:PNG.Data.Rectangular = try .decompress(path: path)
+    let image:PNG.Image = try .decompress(path: path)
     else
     {
         // failed to access file from file system
@@ -66,7 +66,7 @@ Encode an image:
 ```swift
 func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) throws
 {
-    let image:PNG.Data.Rectangular = .init(packing: pixels, size: size,
+    let image:PNG.Image = .init(packing: pixels, size: size,
         layout: .init(format: .rgba8(palette: [], fill: nil)))
     try image.compress(path: path, level: 9)
 }

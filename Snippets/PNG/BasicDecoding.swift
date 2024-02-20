@@ -7,7 +7,7 @@ import PNG
 let path:String = "Sources/PNG/docs.docc/BasicDecoding/BasicDecoding"
 
 guard
-let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
+let image:PNG.Image = try .decompress(path: "\(path).png")
 else
 {
     fatalError("failed to open file '\(path).png'")

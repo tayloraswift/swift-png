@@ -158,7 +158,7 @@ extension PNG.VA:PNG.Color
     /// computed from the color `format`.
     /// -   Parameter interleaved:
     ///     An image data buffer. It is expected to be obtained from the
-    ///     ``Data.Rectangular/storage`` property of a ``Data/Rectangular``
+    ///     ``Image/storage`` property of a ``Data/Rectangular``
     ///     image.
     /// -   Parameter format:
     ///     The color format associated with the given data buffer.
@@ -324,7 +324,7 @@ extension PNG.VA:PNG.Color
     ///
     ///     When the library uses an implementation of this function to construct
     ///     a ``Data/Rectangular`` image, this data buffer will be stored in
-    ///     its ``Data.Rectangular/storage`` property.
+    ///     its ``Image/storage`` property.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)

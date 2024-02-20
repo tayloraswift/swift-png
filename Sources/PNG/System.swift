@@ -256,9 +256,9 @@ extension System.File.Destination:PNG.Bytestream.Destination
 {
 }
 
-extension PNG.Data.Rectangular
+extension PNG.Image
 {
-    /// static func PNG.Data.Rectangular.decompress(path:)
+    /// static func PNG.Image.decompress(path:)
     /// throws
     ///     Decompresses and decodes a PNG from a file at the given file path.
     ///
@@ -281,7 +281,7 @@ extension PNG.Data.Rectangular
             try .decompress(stream: &$0)
         }
     }
-    /// func PNG.Data.Rectangular.compress(path:level:hint:)
+    /// func PNG.Image.compress(path:level:hint:)
     /// throws
     ///     Encodes and compresses a PNG to a file at the given file path.
     ///

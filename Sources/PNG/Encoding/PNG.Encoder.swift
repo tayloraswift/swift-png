@@ -4,12 +4,6 @@ extension PNG
 {
     struct Encoder
     {
-        enum Pass
-        {
-            case subimage(Int)
-            case image
-        }
-
         private
         var row:(index:Int, reference:[UInt8])?,
             pass:Pass?
