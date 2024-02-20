@@ -37,7 +37,7 @@ extension PNG.VA
     ///     Creates an opaque grayscale-alpha color.
     ///
     ///     The ``v`` component will be set to `value`,
-    ///     and the ``a`` component will be set to [`T`max`].
+    ///     and the ``a`` component will be set to `T.max`.
     /// -   Parameter value:
     ///     A gray value.
     /// ## ()
@@ -94,7 +94,7 @@ extension PNG.VA
     ///     The rescaling operation also affects the ``a`` component.
     /// -   Parameter _:
     ///     The integer type to perform the premultiplications in. `U.bitWidth`
-    ///     must be less than [`T`bitWidth`].
+    ///     must be less than `T.bitWidth`.
     /// -   Returns:
     ///     The premultiplied color.
     @inlinable
@@ -140,7 +140,7 @@ extension PNG.VA
     ///     The rescaling operation also affects the ``a`` component.
     /// -   Parameter _:
     ///     The integer type to perform the straightening in. `U.bitWidth`
-    ///     must be less than [`T`bitWidth`].
+    ///     must be less than `T.bitWidth`.
     /// -   Returns:
     ///     The straightened color.
     @inlinable
@@ -176,16 +176,16 @@ extension PNG.VA:PNG.Color
     ///     Unpacks an image data storage buffer to an array of grayscale-alpha pixels.
     ///
     ///     For a grayscale color `format`, this function expands
-    ///     pixels of the form (*v*) to grayscale-alpha pairs (*v*, [`T`max`]).
+    ///     pixels of the form (*v*) to grayscale-alpha pairs (*v*, `T.max`).
     ///
     ///     For an RGB color `format`, this function slices
-    ///     pixels of the form (*r*, *g*, *b*) into grayscale-alpha pairs (*r*, [`T`max`]).
+    ///     pixels of the form (*r*, *g*, *b*) into grayscale-alpha pairs (*r*, `T.max`).
     ///
     ///     For an RGBA color `format`, this function slices
     ///     pixels of the form (*r*, *g*, *b*, *a*) into grayscale-alpha pairs (*r*, *a*).
     ///
     ///     For a BGR color `format`, this function slices
-    ///     pixels of the form (*b*, *g*, *r*) to grayscale-alpha pairs (*r*, [`T`max`]).
+    ///     pixels of the form (*b*, *g*, *r*) to grayscale-alpha pairs (*r*, `T.max`).
     ///
     ///     For a BGRA color `format`, this function slices
     ///     pixels of the form (*b*, *g*, *r*, *a*) into grayscale-alpha pairs (*r*, *a*).
@@ -199,8 +199,7 @@ extension PNG.VA:PNG.Color
     ///     image.
     /// -   Parameter format:
     ///     The color format associated with the given data buffer.
-    ///     It is expected to be obtained from the the
-    ///     [`(Data.Rectangular).layout``(Layout).format`] property of a
+    ///     It is expected to be obtained from the the `layout.format` property of a
     ///     ``Data/Rectangular`` image.
     /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color `format` to
@@ -354,7 +353,7 @@ extension PNG.VA:PNG.Color
     ///
     ///     When the library uses an implementation of this function to construct
     ///     a ``Data/Rectangular`` image, this color format will be stored in
-    ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
+    ///     its `layout.format` property.
     /// -   Parameter indexer:
     ///     A function which uses the palette entries in the color `format` to
     ///     generate a referencing function. This function will only be invoked
