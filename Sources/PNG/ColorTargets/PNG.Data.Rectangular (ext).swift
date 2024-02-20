@@ -173,7 +173,7 @@ extension PNG.Data.Rectangular
     /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a dereferencing function. This function is only expected to
-    ///     be invoked if [`layout``(Layout).format`] is an indexed format.
+    ///     be invoked if `layout.format` is an indexed format.
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
@@ -181,7 +181,7 @@ extension PNG.Data.Rectangular
     /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
+    ///     the image. Its length is equal to `size.x` multiplied by `size.y`.
     @inlinable
     public
     func unpack<Color>(as _:Color.Type,
@@ -218,14 +218,14 @@ extension PNG.Data.Rectangular
     /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
     ///     generate a dereferencing function. This function will only
-    ///     be invoked if [`layout``(Layout).format`] is an indexed format.
+    ///     be invoked if `layout.format` is an indexed format.
     ///
     ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
     ///     for more about the semantics of this function.
     /// -   Returns:
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
+    ///     the image. Its length is equal to `size.x` multiplied by `size.y`.
     @inlinable
     public
     func unpack<T>(as _:T.Type,
@@ -334,7 +334,7 @@ extension PNG.Data.Rectangular
     /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
+    ///     the image. Its length is equal to `size.x` multiplied by `size.y`.
     @inlinable
     public
     func unpack<Color>(as _:Color.Type) -> [Color] where Color:PNG.Color
@@ -403,7 +403,7 @@ extension PNG.Data.Rectangular
     /// -   Returns:
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. Its length is equal to [`size`x`] multiplied by [`size`y`].
+    ///     the image. Its length is equal to `size.x` multiplied by `size.y`.
     @inlinable
     public
     func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
