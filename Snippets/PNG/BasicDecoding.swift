@@ -25,9 +25,8 @@ else
     fatalError("failed to open file '\(path).png.rgba'")
 }
 
-print("wrote \(rgba.count) pixels to '\(path).png.rgba'")
-
 let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
+
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.va")
 {
