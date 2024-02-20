@@ -99,7 +99,7 @@ extension PNG.TimeModified
     /// init PNG.TimeModified.init(parsing:)
     /// throws
     ///     Creates an image modification time by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/tIME`` chunk to parse.
     /// ## (timemodified-parsing-and-serialization)
     public

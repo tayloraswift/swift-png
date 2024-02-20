@@ -55,9 +55,9 @@ extension PNG
         /// static func PNG.Percentmille.(+)(_:_:)
         /// ?:  Swift.AdditiveArithmetic
         ///     Adds two percentmille values and produces their sum.
-        /// - lhs   : Self
+        /// -   Parameter lhs:
         ///     The first value to add.
-        /// - rhs   : Self
+        /// -   Parameter rhs:
         ///     The second value to add.
         /// -   Returns:
         ///     The sum of the two given percentmille values.
@@ -70,9 +70,9 @@ extension PNG
         /// ?:  Swift.AdditiveArithmetic
         ///     Adds two percentmille values and stores the result in the
         ///     left-hand-side variable.
-        /// - lhs   : inout Self
+        /// -   Parameter lhs:
         ///     The first value to add.
-        /// - rhs   : Self
+        /// -   Parameter rhs:
         ///     The second value to add.
         public static
         func += (lhs:inout Self, rhs:Self)
@@ -83,9 +83,9 @@ extension PNG
         /// ?:  Swift.AdditiveArithmetic
         ///     Subtracts one percentmille value from another and produces their
         ///     difference.
-        /// - lhs   : Self
+        /// -   Parameter lhs:
         ///     A percentmille value.
-        /// - rhs   : Self
+        /// -   Parameter rhs:
         ///     The value to subtract from `lhs`.
         /// -   Returns:
         ///     The difference of the two given percentmille values.
@@ -98,9 +98,9 @@ extension PNG
         /// ?:  Swift.AdditiveArithmetic
         ///     Subtracts one percentmille value from another and stores the
         ///     result in the left-hand-side variable.
-        /// - lhs   : inout Self
+        /// -   Parameter lhs:
         ///     A percentmille value.
-        /// - rhs   : Self
+        /// -   Parameter rhs:
         ///     The value to subtract from `lhs`.
         public static
         func -= (lhs:inout Self, rhs:Self)

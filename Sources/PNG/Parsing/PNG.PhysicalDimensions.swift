@@ -52,7 +52,7 @@ extension PNG.PhysicalDimensions
     /// init PNG.PhysicalDimensions.init(parsing:)
     /// throws
     ///     Creates a physical dimensions descriptor by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/pHYs`` chunk to parse.
     /// ## (physicaldimensions-parsing-and-serialization)
     public

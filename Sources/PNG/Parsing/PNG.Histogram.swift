@@ -32,7 +32,7 @@ extension PNG.Histogram
     ///     the exact same number of elements as entries in the image palette.
     ///     Passing an array of the wrong length will result in a precondition
     ///     failure.
-    /// - palette   : PNG.Palette
+    /// -   Parameter palette:
     ///     The image palette this histogram provides frequency information for.
     public
     init(frequencies:[UInt16], palette:PNG.Palette)
@@ -49,9 +49,9 @@ extension PNG.Histogram
     /// throws
     ///     Creates a palette histogram by parsing the given chunk data,
     ///     validating it according to the given image `palette`.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/hIST`` chunk to parse.
-    /// - palette   : Palette
+    /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against.
     /// ## (histogram-parsing-and-serialization)
     public

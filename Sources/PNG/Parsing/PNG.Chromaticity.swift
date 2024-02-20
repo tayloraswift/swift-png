@@ -63,7 +63,7 @@ extension PNG.Chromaticity
     /// init PNG.Chromaticity.init(parsing:)
     /// throws
     ///     Creates a chromaticity descriptor by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/cHRM`` chunk to parse.
     /// ## (chromaticity-parsing-and-serialization)
     public

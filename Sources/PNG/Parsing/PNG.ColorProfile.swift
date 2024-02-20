@@ -54,7 +54,7 @@ extension PNG.ColorProfile
     /// init PNG.ColorProfile.init(parsing:)
     /// throws
     ///     Creates a color profile by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of an ``Chunk/iCCP`` chunk to parse.
     /// ## (colorprofile-parsing-and-serialization)
     public

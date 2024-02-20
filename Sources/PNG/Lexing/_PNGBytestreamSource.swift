@@ -22,7 +22,7 @@ protocol _PNGBytestreamSource
     ///
     ///     The rest of the library interprets a `nil` return value from this function
     ///     as indicating end-of-stream.
-    /// - count     : Swift.Int
+    /// -   Parameter count:
     ///     The number of bytes to read.
     /// -   Returns:
     ///     The `count` bytes read, or `nil` if the read attempt failed. This

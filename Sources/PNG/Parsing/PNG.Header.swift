@@ -26,16 +26,16 @@ extension PNG
         ///
         ///     This initializer validates the image `size`, and validates the
         ///     `pixel` format against the given PNG `standard`.
-        /// - size      : (x:Swift.Int, y:Swift.Int)
+        /// -   Parameter size:
         ///     An image size, measured in pixels.
         ///
         ///     Passing a `size` with a zero or negative dimension
         ///     will result in a precondition failure.
-        /// - pixel     : Format.Pixel
+        /// -   Parameter pixel:
         ///     A pixel format.
         /// - interlaced: Swift.Bool
         ///     Indicates if interlacing is enabled.
-        /// - standard  : Standard
+        /// -   Parameter standard:
         ///     Specifies if the header is for a standard image,
         ///     or an iphone-optimized image.
         ///
@@ -72,9 +72,9 @@ extension PNG.Header
     /// throws
     ///     Creates an image header by parsing the given chunk data, interpreting it
     ///     according to the given PNG `standard`.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of an ``Chunk/IHDR`` chunk to parse.
-    /// - standard  : Standard
+    /// -   Parameter standard:
     ///     Specifies if the header should be interpreted as a standard PNG header,
     ///     or an iphone-optimized PNG header.
     /// ## (header-parsing-and-serialization)

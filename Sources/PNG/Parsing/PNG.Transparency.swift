@@ -22,7 +22,7 @@ extension PNG
         {
             /// case PNG.Transparency.Case.palette(alpha:)
             ///     A transparency descriptor for an indexed image.
-            /// - alpha     : [Swift.UInt8]
+            /// -   Parameter alpha:
             ///     An array of alpha samples, where each sample augments an
             ///     RGB triple in an image ``Palette``. This array can contain no
             ///     more elements than entries in the image palette, but it can
@@ -33,7 +33,7 @@ extension PNG
             case palette(alpha:[UInt8])
             /// case PNG.Transparency.Case.rgb(key:)
             ///     A transparency descriptor for an RGB or BGR image.
-            /// - key     : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)
+            /// -   Parameter key:
             ///     A chroma key used to display transparency. Pixels
             ///     matching this key will be displayed as transparent, if possible.
             ///
@@ -43,7 +43,7 @@ extension PNG
             case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
             /// case PNG.Transparency.Case.v(key:)
             ///     A transparency descriptor for a grayscale image.
-            /// - key     : Swift.UInt16
+            /// -   Parameter key:
             ///     A chroma key used to display transparency. Pixels
             ///     matching this key will be displayed as transparent, if possible.
             ///
@@ -69,7 +69,7 @@ extension PNG.Transparency
     ///     that `palette` must be `nil`. This initializer does not check this
     ///     assumption, as it is expected to have been verified by
     ///     ``Palette.init(entries:pixel:)``.
-    /// - case      : Case
+    /// -   Parameter case:
     ///     A transparency descriptor value.
     ///
     ///     If this parameter is a ``Case/v(key:)`` or ``Case/rgb(key:)`` case,
@@ -77,7 +77,7 @@ extension PNG.Transparency
     ///     range determined by the image color depth. Passing an enumeration
     ///     case with an invalid chroma key sample will result in a precondition
     ///     failure.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this transparency descriptor is to be
     ///     used for. Passing a mismatched enumeration `case` will result in a
     ///     precondition failure.
@@ -85,7 +85,7 @@ extension PNG.Transparency
     ///     Transparency descriptors are not allowed for grayscale-alpha or RGBA
     ///     images, so setting `pixel` to one of those pixel formats will always
     ///     result in a precondition failure.
-    /// - palette   : PNG.Palette?
+    /// -   Parameter palette:
     ///     The palette of the image this transparency descriptor is to be
     ///     used for.
     ///
@@ -160,12 +160,12 @@ extension PNG.Transparency
     ///     Some `pixel` formats imply that `palette` must be `nil`.
     ///     This initializer does not check this assumption, as it is expected
     ///     to have been verified by ``Palette.init(parsing:pixel:)``.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/tRNS`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
-    /// - palette   : Palette?
+    /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against, if
     ///     applicable.
     /// ## (transparency-parsing-and-serialization)

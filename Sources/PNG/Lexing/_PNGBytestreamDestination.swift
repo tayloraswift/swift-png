@@ -22,7 +22,7 @@ protocol _PNGBytestreamDestination
     ///
     ///     The rest of the library interprets a `nil` return value from this function
     ///     as indicating a write failure.
-    /// - bytes     : [Swift.UInt8]
+    /// -   Parameter bytes:
     ///     The bytes to write.
     /// -   Returns:
     ///     A ``Swift.Void`` tuple, or `nil` if the write attempt failed. This

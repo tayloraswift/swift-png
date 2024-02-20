@@ -1,29 +1,24 @@
 extension PNG
 {
-    /// struct PNG.Layout
-    ///     An image layout.
+    /// An image layout.
     ///
-    ///     This type stores all the information in an image that is not strictly
-    ///     metadata, or image content.
-    /// ## (1:images)
+    /// This type stores all the information in an image that is not strictly
+    /// metadata, or image content.
     public
     struct Layout
     {
-        /// let PNG.Layout.format : Format
-        ///     The image color format.
+        /// The image color format.
         public
         let format:PNG.Format
-        /// let PNG.Layout.interlaced : Swift.Bool
-        ///     Indicates if the image uses interlacing or not.
+        /// Indicates if the image uses interlacing or not.
         public
         let interlaced:Bool
 
-        /// init PNG.Layout.init(format:interlaced:)
-        ///     Creates an image layout.
+        /// Creates an image layout.
         ///
-        ///     This initializer will validate the fields of the given color
-        ///     `format`. Passing an invalid `format` will result in a
-        ///     precondition failure.
+        /// This initializer will validate the fields of the given color
+        /// `format`. Passing an invalid `format` will result in a
+        /// precondition failure.
         /// -   Parameter format:
         ///     A color format.
         /// -   Parameter interlaced:
