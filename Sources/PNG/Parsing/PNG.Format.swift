@@ -14,8 +14,8 @@ extension PNG
     ///     a non-empty `palette` is mandatory. For all other color formats, the `palette`
     ///     can be set to the empty array `[]`.
     ///
-    ///     Color format validation takes place when initializing a [`Layout`] instance,
-    ///     which stores the color format in a [`Data.Rectangular`] image.
+    ///     Color format validation takes place when initializing a ``Layout`` instance,
+    ///     which stores the color format in a ``Data.Rectangular`` image.
     /// # [Grayscale formats](grayscale-color-formats)
     /// # [Grayscale-alpha formats](grayscale-alpha-color-formats)
     /// # [Indexed formats](indexed-color-formats)
@@ -33,11 +33,11 @@ extension PNG
         ///     A pixel format specifies the color model and bit depth used by an
         ///     image. They do not specify the ordering of the color samples within
         ///     the internal representation of a PNG image. For example, the color formats
-        ///     [`(Format).rgba8(palette:fill:)`] and [`(Format).bgra8(palette:fill:)`]
-        ///     both correspond to the pixel format [`(Pixel).rgba8`].
+        ///     ``(Format).rgba8(palette:fill:)`` and ``(Format).bgra8(palette:fill:)``
+        ///     both correspond to the pixel format ``(Pixel).rgba8``.
         ///
         ///     The pixel format associated with a color format can be accessed
-        ///     through the [`(Format).pixel`] instance property.
+        ///     through the ``(Format).pixel`` instance property.
         /// # [Pixel formats](pixel-formats)
         /// # [See also](color-formats)
         /// ## (0:color-formats)
@@ -168,7 +168,7 @@ extension PNG
         /// case PNG.Format.v1(fill:key:)
         ///     A 1-bit grayscale color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).v1`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).v1``.
         /// - fill  : Swift.UInt8?
         ///     An optional background color. The sample is unscaled, and must
         ///     be in the range `0 ... 1`. Most PNG viewers ignore this field.
@@ -181,7 +181,7 @@ extension PNG
         /// case PNG.Format.v2(fill:key:)
         ///     A 2-bit grayscale color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).v2`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).v2``.
         /// - fill  : Swift.UInt8?
         ///     An optional background color. The sample is unscaled, and must
         ///     be in the range `0 ... 3`. Most PNG viewers ignore this field.
@@ -194,7 +194,7 @@ extension PNG
         /// case PNG.Format.v4(fill:key:)
         ///     A 4-bit grayscale color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).v4`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).v4``.
         /// - fill  : Swift.UInt8?
         ///     An optional background color. The sample is unscaled, and must
         ///     be in the range `0 ... 15`. Most PNG viewers ignore this field.
@@ -207,7 +207,7 @@ extension PNG
         /// case PNG.Format.v8(fill:key:)
         ///     An 8-bit grayscale color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).v8`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).v8``.
         /// - fill  : Swift.UInt8?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// - key   : Swift.UInt8?
@@ -218,7 +218,7 @@ extension PNG
         /// case PNG.Format.v16(fill:key:)
         ///     A 16-bit grayscale color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).v16`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).v16``.
         /// - fill  : Swift.UInt16?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// - key   : Swift.UInt16?
@@ -230,13 +230,13 @@ extension PNG
         ///     An 8-bit BGR color format.
         ///
         ///     This color format is an iphone-optimized format.
-        ///     It has a [`pixel`] format of [`(Pixel).rgb8`].
+        ///     It has a ``pixel`` format of ``(Pixel).rgb8``.
         /// - palette   : [(b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)]
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field.
         ///
         ///     This field is unrelated to, and should not be confused with a
-        ///     [`SuggestedPalette`].
+        ///     ``SuggestedPalette``.
         /// - fill      : (b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// - key       : (b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)?
@@ -247,13 +247,13 @@ extension PNG
         /// case PNG.Format.rgb8(palette:fill:key:)
         ///     An 8-bit RGB color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).rgb8`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).rgb8``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field.
         ///
         ///     This field is unrelated to, and should not be confused with a
-        ///     [`SuggestedPalette`].
+        ///     ``SuggestedPalette``.
         /// - fill      : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// - key       : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)?
@@ -264,14 +264,14 @@ extension PNG
         /// case PNG.Format.rgb16(palette:fill:key:)
         ///     A 16-bit RGB color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).rgb16`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).rgb16``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field. Although the image color depth is `16`, the
-        ///     palette atom type is [`Swift.UInt8`], not [`Swift.UInt16`].
+        ///     palette atom type is ``Swift.UInt8``, not ``Swift.UInt16``.
         ///
         ///     This field is unrelated to, and should not be confused with a
-        ///     [`SuggestedPalette`].
+        ///     ``SuggestedPalette``.
         /// - fill      : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// - key       : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)?
@@ -282,7 +282,7 @@ extension PNG
         /// case PNG.Format.indexed1(palette:fill:)
         ///     A 1-bit indexed color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).indexed1`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).indexed1``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
         ///     The palette values referenced by an image with this color format.
         ///     This palette must be non-empty, and can have at most `2` entries.
@@ -296,7 +296,7 @@ extension PNG
         /// case PNG.Format.indexed2(palette:fill:)
         ///     A 2-bit indexed color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).indexed2`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).indexed2``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
         ///     The palette values referenced by an image with this color format.
         ///     This palette must be non-empty, and can have at most `4` entries.
@@ -310,7 +310,7 @@ extension PNG
         /// case PNG.Format.indexed4(palette:fill:)
         ///     A 4-bit indexed color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).indexed4`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).indexed4``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
         ///     The palette values referenced by an image with this color format.
         ///     This palette must be non-empty, and can have at most `16` entries.
@@ -324,7 +324,7 @@ extension PNG
         /// case PNG.Format.indexed8(palette:fill:)
         ///     An 8-bit indexed color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).indexed8`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).indexed8``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]
         ///     The palette values referenced by an image with this color format.
         ///     This palette must be non-empty, and can have at most `256` entries.
@@ -338,7 +338,7 @@ extension PNG
         /// case PNG.Format.va8(fill:)
         ///     An 8-bit grayscale-alpha color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).va8`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).va8``.
         /// - fill      : Swift.UInt8?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// ## (grayscale-alpha-color-formats)
@@ -346,7 +346,7 @@ extension PNG
         /// case PNG.Format.va16(fill:)
         ///     A 16-bit grayscale-alpha color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).va16`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).va16``.
         /// - fill      : Swift.UInt16?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// ## (grayscale-alpha-color-formats)
@@ -355,13 +355,13 @@ extension PNG
         ///     An 8-bit BGRA color format.
         ///
         ///     This color format is an iphone-optimized format.
-        ///     It has a [`pixel`] format of [`(Pixel).rgba8`].
+        ///     It has a ``pixel`` format of ``(Pixel).rgba8``.
         /// - palette   : [(b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)]
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field.
         ///
         ///     This field is unrelated to, and should not be confused with a
-        ///     [`SuggestedPalette`].
+        ///     ``SuggestedPalette``.
         /// - fill      : (b:Swift.UInt8, g:Swift.UInt8, r:Swift.UInt8)?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// ## (ios-color-formats)
@@ -369,13 +369,13 @@ extension PNG
         /// case PNG.Format.rgba8(palette:fill:)
         ///     An 8-bit RGBA color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).rgba8`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).rgba8``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field.
         ///
         ///     This field is unrelated to, and should not be confused with a
-        ///     [`SuggestedPalette`].
+        ///     ``SuggestedPalette``.
         /// - fill      : (r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// ## (rgba-color-formats)
@@ -383,14 +383,14 @@ extension PNG
         /// case PNG.Format.rgba16(palette:fill:)
         ///     A 16-bit RGBA color format.
         ///
-        ///     This color format has a [`pixel`] format of [`(Pixel).rgba16`].
+        ///     This color format has a ``pixel`` format of ``(Pixel).rgba16``.
         /// - palette   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field. Although the image color depth is `16`, the
-        ///     palette atom type is [`Swift.UInt8`], not [`Swift.UInt16`].
+        ///     palette atom type is ``Swift.UInt8``, not ``Swift.UInt16``.
         ///
         ///     This field is unrelated to, and should not be confused with a
-        ///     [`SuggestedPalette`].
+        ///     ``SuggestedPalette``.
         /// - fill      : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)?
         ///     An optional background color. Most PNG viewers ignore this field.
         /// ## (rgba-color-formats)
@@ -508,17 +508,17 @@ extension PNG.Format.Pixel
     ///     indexed images always have a color depth of `8`, even though they may
     ///     have a bit depth less than `8`.
     ///
-    ///     This property returns `1` for the [`v1`] and [`indexed1`] pixel formats.
+    ///     This property returns `1` for the ``v1`` and ``indexed1`` pixel formats.
     ///
-    ///     This property returns `2` for the [`v2`] and [`indexed2`] pixel formats.
+    ///     This property returns `2` for the ``v2`` and ``indexed2`` pixel formats.
     ///
-    ///     This property returns `4` for the [`v4`] and [`indexed4`] pixel formats.
+    ///     This property returns `4` for the ``v4`` and ``indexed4`` pixel formats.
     ///
-    ///     This property returns `8` for the [`v8`], [`va8`], [`indexed8`],
-    ///     [`rgb8`], and [`rgba8`] pixel formats.
+    ///     This property returns `8` for the ``v8``, ``va8``, ``indexed8``,
+    ///     ``rgb8``, and ``rgba8`` pixel formats.
     ///
-    ///     This property returns `16` for the [`v16`], [`va16`],
-    ///     [`rgb16`], and [`rgba16`] pixel formats.
+    ///     This property returns `16` for the ``v16``, ``va16``,
+    ///     ``rgb16``, and ``rgba16`` pixel formats.
     @inlinable
     public
     var depth:Int

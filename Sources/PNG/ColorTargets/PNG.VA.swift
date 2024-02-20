@@ -36,8 +36,8 @@ extension PNG.VA
     /// @   inlinable
     ///     Creates an opaque grayscale-alpha color.
     ///
-    ///     The [`v`] component will be set to `value`,
-    ///     and the [`a`] component will be set to [`T`max`].
+    ///     The ``v`` component will be set to `value`,
+    ///     and the ``a`` component will be set to [`T`max`].
     /// - value : T
     ///     A gray value.
     /// ## ()
@@ -51,8 +51,8 @@ extension PNG.VA
     /// @   inlinable
     ///     Creates a grayscale-alpha color.
     ///
-    ///     The [`v`] component will be set to `value`,
-    ///     and the [`a`] component will be set to `alpha`.
+    ///     The ``v`` component will be set to `value`,
+    ///     and the ``a`` component will be set to `alpha`.
     /// - value : T
     ///     A gray value.
     /// - alpha : T
@@ -70,8 +70,8 @@ extension PNG.VA
     ///     The color obtained by premultiplying the gray
     ///     component of this color with its alpha channel.
     ///
-    ///     The premultiplied color is obtained by invoking [`premultiply(_:alpha:)`]
-    ///     on [`v`].
+    ///     The premultiplied color is obtained by invoking ``premultiply(_:alpha:)``
+    ///     on ``v``.
     @inlinable
     public
     var premultiplied:Self
@@ -88,10 +88,10 @@ extension PNG.VA
     ///     Premultiplication in a different integer type is sometimes necessary
     ///     to reproduce the output of other image processing frameworks.
     ///
-    ///     The premultiplied color is obtained by invoking [`premultiply(_:alpha:)`]
-    ///     on [`v`], after scaling it to the range of `U`.
-    ///     The returned component is then scaled back to the range of [`T`].
-    ///     The rescaling operation also affects the [`a`] component.
+    ///     The premultiplied color is obtained by invoking ``premultiply(_:alpha:)``
+    ///     on ``v``, after scaling it to the range of `U`.
+    ///     The returned component is then scaled back to the range of ``T``.
+    ///     The rescaling operation also affects the ``a`` component.
     /// - _ : U.Type
     ///     The integer type to perform the premultiplications in. `U.bitWidth`
     ///     must be less than [`T`bitWidth`].
@@ -116,8 +116,8 @@ extension PNG.VA
     ///     The color obtained by straightening the gray
     ///     component of this color according to its alpha channel.
     ///
-    ///     The straightened color is obtained by invoking [`straighten(_:alpha:)`]
-    ///     on [`v`].
+    ///     The straightened color is obtained by invoking ``straighten(_:alpha:)``
+    ///     on ``v``.
     @inlinable
     public
     var straightened:Self
@@ -134,10 +134,10 @@ extension PNG.VA
     ///     Straightening in a different integer type is sometimes necessary
     ///     to reproduce the output of other image processing frameworks.
     ///
-    ///     The straightened color is obtained by invoking [`straighten(_:alpha:)`]
-    ///     on [`v`], after scaling it to the range of `U`.
-    ///     The returned component is then scaled back to the range of [`T`].
-    ///     The rescaling operation also affects the [`a`] component.
+    ///     The straightened color is obtained by invoking ``straighten(_:alpha:)``
+    ///     on ``v``, after scaling it to the range of `U`.
+    ///     The returned component is then scaled back to the range of ``T``.
+    ///     The rescaling operation also affects the ``a`` component.
     /// - _ : U.Type
     ///     The integer type to perform the straightening in. `U.bitWidth`
     ///     must be less than [`T`bitWidth`].
@@ -191,17 +191,17 @@ extension PNG.VA:PNG.Color
     ///     pixels of the form (*b*, *g*, *r*, *a*) into grayscale-alpha pairs (*r*, *a*).
     ///
     ///     This function will apply chroma keys if present. The unpacked components
-    ///     are scaled to fill the range of [`T`], according to the color depth
+    ///     are scaled to fill the range of ``T``, according to the color depth
     ///     computed from the color `format`.
     /// - interleaved : [Swift.UInt8]
     ///     An image data buffer. It is expected to be obtained from the
-    ///     [`(Data.Rectangular).storage`] property of a [`(Data).Rectangular`]
+    ///     ``(Data.Rectangular).storage`` property of a ``(Data).Rectangular``
     ///     image.
     /// - format : Format
     ///     The color format associated with the given data buffer.
     ///     It is expected to be obtained from the the
     ///     [`(Data.Rectangular).layout``(Layout).format`] property of a
-    ///     [`(Data).Rectangular`] image.
+    ///     ``(Data).Rectangular`` image.
     /// - deindexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Swift.Int) -> Aggregate
     ///     A function which uses the palette entries in the color `format` to
     ///     generate a dereferencing function. This function is only invoked
@@ -335,25 +335,25 @@ extension PNG.VA:PNG.Color
     /// ?:  Color
     ///     Packs an array of grayscale-alpha pixels to an image data storage buffer.
     ///
-    ///     For a grayscale color `format`, this function selects the [`v`]
+    ///     For a grayscale color `format`, this function selects the ``v``
     ///     component of each grayscale-alpha pixel.
     ///
     ///     For an RGB or BGR color `format`, this function assigns all
-    ///     channels to the [`v`] component of each grayscale-alpha pixel.
+    ///     channels to the ``v`` component of each grayscale-alpha pixel.
     ///
     ///     For an RGBA or BGRA color `format`, this function assigns all opaque
-    ///     channels to the [`v`] component of each grayscale-alpha pixel, and
-    ///     the alpha channel to the [`a`] component.
+    ///     channels to the ``v`` component of each grayscale-alpha pixel, and
+    ///     the alpha channel to the ``a`` component.
     ///
     ///     The components in each grayscale-alpha pixel are assumed to fill the entire
-    ///     range of [`T`].
+    ///     range of ``T``.
     /// - pixels : [Self]
     ///     An array of grayscale-alpha pixels.
     /// - format : Format
     ///     The color format to pack the given pixels as in the returned data buffer.
     ///
     ///     When the library uses an implementation of this function to construct
-    ///     a [`(Data).Rectangular`] image, this color format will be stored in
+    ///     a ``(Data).Rectangular`` image, this color format will be stored in
     ///     its [`(Data.Rectangular).layout``(Layout).format`] property.
     /// - indexer : ([(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8, a:Swift.UInt8)]) -> (Aggregate) -> Swift.Int
     ///     A function which uses the palette entries in the color `format` to
@@ -368,8 +368,8 @@ extension PNG.VA:PNG.Color
     ///     in the same order as the pixels in the `pixels` array.
     ///
     ///     When the library uses an implementation of this function to construct
-    ///     a [`(Data).Rectangular`] image, this data buffer will be stored in
-    ///     its [`(Data.Rectangular).storage`] property.
+    ///     a ``(Data).Rectangular`` image, this data buffer will be stored in
+    ///     its ``(Data.Rectangular).storage`` property.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)
     @_specialize(where T == UInt32)

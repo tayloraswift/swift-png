@@ -162,7 +162,7 @@ extension PNG
     ///     Converts an image data buffer to a pixel array, using the given
     ///     pixel kernel and dereferencing function.
     ///
-    ///     This function casts each byte in `buffer` to an [`Swift.Int`] index,
+    ///     This function casts each byte in `buffer` to an ``Swift.Int`` index,
     ///     and passes each index to the given `dereference` function, receiving
     ///     scalar atoms of type `A` in return. It then scales the atoms to the
     ///     range of `T`, and constructs instances of `C` by mapping the given
@@ -218,7 +218,7 @@ extension PNG
     ///     Converts an image data buffer to a pixel array, using the given
     ///     pixel kernel and dereferencing function.
     ///
-    ///     This function casts each byte in `buffer` to an [`Swift.Int`] index,
+    ///     This function casts each byte in `buffer` to an ``Swift.Int`` index,
     ///     and passes each index to the given `dereference` function, receiving
     ///     pairs of atoms of type `A` in return. It then scales the atoms to the
     ///     range of `T`, and constructs instances of `C` by mapping the given
@@ -274,7 +274,7 @@ extension PNG
     ///     Converts an image data buffer to a pixel array, using the given
     ///     pixel kernel and dereferencing function.
     ///
-    ///     This function casts each byte in `buffer` to an [`Swift.Int`] index,
+    ///     This function casts each byte in `buffer` to an ``Swift.Int`` index,
     ///     and passes each index to the given `dereference` function, receiving
     ///     triplets of atoms of type `A` in return. It then scales the atoms to the
     ///     range of `T`, and constructs instances of `C` by mapping the given
@@ -330,7 +330,7 @@ extension PNG
     ///     Converts an image data buffer to a pixel array, using the given
     ///     pixel kernel and dereferencing function.
     ///
-    ///     This function casts each byte in `buffer` to an [`Swift.Int`] index,
+    ///     This function casts each byte in `buffer` to an ``Swift.Int`` index,
     ///     and passes each index to the given `dereference` function, receiving
     ///     quadruplets of atoms of type `A` in return. It then scales the atoms to the
     ///     range of `T`, and constructs instances of `C` by mapping the given
@@ -736,7 +736,7 @@ extension PNG
     ///     This function maps the given `kernel` function over each element in
     ///     `pixels`, receiving scalar intensities of type `T` in return. It then
     ///     converts them into atoms of type `A`, scaling each intensity value
-    ///     to the range of `A`. Each scalar atom is then converted to an [`Swift.Int`]
+    ///     to the range of `A`. Each scalar atom is then converted to an ``Swift.Int``
     ///     index using the given `reference` function, and stored as a byte in
     ///     the returned image data buffer.
     ///
@@ -802,7 +802,7 @@ extension PNG
     ///     This function maps the given `kernel` function over each element in
     ///     `pixels`, receiving `(T, T)` intensity pairs in return. It then
     ///     converts them into atoms of type `A`, scaling each intensity value
-    ///     to the range of `A`. Each `(A, A)` pair is then converted to an [`Swift.Int`]
+    ///     to the range of `A`. Each `(A, A)` pair is then converted to an ``Swift.Int``
     ///     index using the given `reference` function, and stored as a byte in
     ///     the returned image data buffer.
     ///
@@ -869,7 +869,7 @@ extension PNG
     ///     `pixels`, receiving `(T, T, T)` intensity triplets in return. It then
     ///     converts them into atoms of type `A`, scaling each intensity value
     ///     to the range of `A`. Each `(A, A, A)` triplet is then converted to
-    ///     an [`Swift.Int`] index using the given `reference` function, and
+    ///     an ``Swift.Int`` index using the given `reference` function, and
     ///     stored as a byte in the returned image data buffer.
     ///
     ///     A worked example of how to use this function to implement a custom
@@ -935,7 +935,7 @@ extension PNG
     ///     `pixels`, receiving `(T, T, T, T)` intensity quadruplets in return.
     ///     It then converts them into atoms of type `A`, scaling each intensity value
     ///     to the range of `A`. Each `(A, A, A, A)` quadruplet is then converted to
-    ///     an [`Swift.Int`] index using the given `reference` function, and
+    ///     an ``Swift.Int`` index using the given `reference` function, and
     ///     stored as a byte in the returned image data buffer.
     ///
     ///     A worked example of how to use this function to implement a custom

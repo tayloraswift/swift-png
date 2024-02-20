@@ -5,7 +5,7 @@ extension PNG
     ///
     ///     This type models the information stored in an ``Chunk/sRGB`` chunk.
     ///     It is not recommended for the same image to include both a `ColorRendering`
-    ///     mode and a [`ColorProfile`].
+    ///     mode and a ``ColorProfile``.
     /// # [Parsing and serialization](colorrendering-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)

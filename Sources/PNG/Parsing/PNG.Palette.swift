@@ -5,7 +5,7 @@ extension PNG
     ///
     ///     This type models the information stored in a ``Chunk/PLTE`` chunk.
     ///     This information is used to populate the non-alpha components of the
-    ///     `palette` field in an image color [`Format`], when appropriate.
+    ///     `palette` field in an image color ``Format``, when appropriate.
     /// # [Parsing and serialization](palette-parsing-and-serialization)
     /// # [See also](parsed-chunk-types)
     /// ## (parsed-chunk-types)
@@ -27,7 +27,7 @@ extension PNG.Palette
     ///     `pixel` format.
     /// - entries   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
     ///     An array of palette entries. This array must be non-empty, and can
-    ///     contain at most `256`, or `1 << pixel.`[`(Format.Pixel).depth`] elements,
+    ///     contain at most `256`, or `1 << pixel.```(Format.Pixel).depth`` elements,
     ///     whichever is lower.
     /// - pixel     : Format.Pixel
     ///     The pixel format of the image this palette is to be used for.

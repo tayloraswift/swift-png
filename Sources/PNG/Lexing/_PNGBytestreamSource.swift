@@ -4,7 +4,7 @@ import CRC
 ///     A source bytestream.
 ///
 ///     To implement a custom data source type, conform it to this protocol by
-///     implementing [`(Source).read(count:)`]. It can
+///     implementing ``(Source).read(count:)``. It can
 ///     then be used with the library’s core decompression interfaces.
 /// #  [Stream interface](file-io-source-interface)
 /// #  [See also](file-io-protocols, system-file-source)
@@ -40,10 +40,10 @@ extension _PNGBytestreamSource
     ///
     ///     This function expects to read the byte sequence
     ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It reports end-of-stream by throwing
-    ///     [`LexingError.truncatedSignature`]. To recover on end-of-stream,
+    ///     ``LexingError.truncatedSignature``. To recover on end-of-stream,
     ///     catch this error case.
     ///
-    ///     This function is the inverse of [`Destination.signature()`].
+    ///     This function is the inverse of ``Destination.signature()``.
     public mutating
     func signature() throws
     {
@@ -65,11 +65,11 @@ extension _PNGBytestreamSource
     ///
     ///     This function reads a chunk, validating its stored checksum for
     ///     data integrity. It reports end-of-stream by throwing
-    ///     [`LexingError.truncatedChunkHeader`] or
-    ///     [`LexingError.truncatedChunkBody(expected:)`]. To recover on end-of-stream,
+    ///     ``LexingError.truncatedChunkHeader`` or
+    ///     ``LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
     ///     catch these two error cases.
     ///
-    ///     This function is the inverse of [`Destination.format(type:data:)`].
+    ///     This function is the inverse of ``Destination.format(type:data:)``.
     /// - -> : (type:PNG.Chunk, data:[Swift.UInt8])
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.

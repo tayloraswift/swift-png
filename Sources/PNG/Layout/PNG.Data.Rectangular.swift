@@ -1,7 +1,7 @@
 extension PNG
 {
     /// enum PNG.Data
-    ///     A namespace containing the [`Data.Rectangular`] type.
+    ///     A namespace containing the ``Data.Rectangular`` type.
     /// ## (0:images)
     public
     enum Data
@@ -63,11 +63,11 @@ extension PNG.Data
         ///     The raw backing storage of the image content.
         ///
         ///     Depending on the bit depth of the image, it either stores a matrix
-        ///     of [`Swift.UInt8`] samples, or a matrix of big-endian [`Swift.UInt16`]
+        ///     of ``Swift.UInt8`` samples, or a matrix of big-endian ``Swift.UInt16``
         ///     samples. The pixels are arranged in row-major order, where the
         ///     beginning of the storage array corresponds to the visual top-left
-        ///     corner of the image, regardless of whether the [`layout`] is
-        ///     [`(Layout).interlaced`] or not.
+        ///     corner of the image, regardless of whether the ``layout`` is
+        ///     ``(Layout).interlaced`` or not.
         public private(set)
         var storage:[UInt8]
 
@@ -129,12 +129,12 @@ extension PNG.Data.Rectangular
     /// - layout : Layout
     ///     The new image layout.
     ///
-    ///     Both the original color [`(Layout).format`] and the new
-    ///     color [`(Layout).format`] must be of the same enumeration case, though the fields
+    ///     Both the original color ``(Layout).format`` and the new
+    ///     color ``(Layout).format`` must be of the same enumeration case, though the fields
     ///     may differ. The exceptions are the indexed color formats, which require
     ///     the lengths of their `palette` payloads to match exactly.
     /// - -> : Self
-    ///     An image with the given layout. This image will share backing [`storage`]
+    ///     An image with the given layout. This image will share backing ``storage``
     ///     with the original image until it is copied-on-write.
     public
     func bindStorage(to layout:PNG.Layout) -> Self
@@ -327,7 +327,7 @@ extension PNG.Data.Rectangular
     /// where Source:Bytestream.Source
     ///     Decompresses and decodes a PNG from the given bytestream.
     ///
-    ///     On appropriate platforms, the [`decompress(path:)`] function provides
+    ///     On appropriate platforms, the ``decompress(path:)`` function provides
     ///     a file system-aware interface to this function.
     /// - stream : inout Source
     ///     A bytestream providing the contents of a PNG file.
@@ -602,7 +602,7 @@ extension PNG.Data.Rectangular
     ///     compression settings can be found on
     ///     [this page](https://github.com/tayloraswift/swift-png/blob/master/benchmarks).
     ///
-    ///     On appropriate platforms, the [`compress(path:level:hint:)`] function
+    ///     On appropriate platforms, the ``compress(path:level:hint:)`` function
     ///     provides a file system-aware interface to this function.
     /// - stream : inout Destination
     ///     A bytestream receiving the contents of a PNG file.

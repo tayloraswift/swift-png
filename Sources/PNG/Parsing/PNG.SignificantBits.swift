@@ -43,12 +43,12 @@ extension PNG
             ///     entries, not the indices. The ``Chunk/sBIT`` chunk type is
             ///     not capable of specifying the precision of the alpha component
             ///     of the palette entries. If the image palette was augmented with
-            ///     alpha samples from a [`Transparency`] descriptor, the precision
+            ///     alpha samples from a ``Transparency`` descriptor, the precision
             ///     of those samples is left undefined.
             ///
             ///     The meaning of a color precision descriptor is
             ///     poorly-defined for BGR images. It is strongly recommended that
-            ///     iphone-optimized images use [`(PNG).SignificantBits`] only if all
+            ///     iphone-optimized images use ``(PNG).SignificantBits`` only if all
             ///     samples have the same precision.
             ///
             ///     Each precision value must be greater than zero, and none of them
@@ -63,7 +63,7 @@ extension PNG
             ///
             ///     The meaning of a color precision descriptor is
             ///     poorly-defined for BGRA images. It is strongly recommended that
-            ///     iphone-optimized images use [`(PNG).SignificantBits`] only if all
+            ///     iphone-optimized images use ``(PNG).SignificantBits`` only if all
             ///     samples have the same precision.
             ///
             ///     Each precision value must be greater than zero, and none of them

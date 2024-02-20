@@ -1,16 +1,15 @@
 extension PNG
 {
+    /// A color target.
+    ///
+    /// The library provides two built-in color targets, ``PNG.VA`` and ``PNG.RGBA``. A worked
+    /// example of how to implement a custom color target can be found in the <doc:CustomColor>
+    /// tutorial.
     public
     typealias Color = _PNGColor
 }
 
-/// A color target.
-///
-/// The library provides two built-in color targets, ``PNG.VA`` and ``PNG.RGBA``.
-/// A worked example of how to implement a custom color target can be found in the
-/// [custom color targets tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#custom-color-targets).
-///
-/// The preferred name for this protocol is ``PNG.Color``.
+/// The name of this protocol is ``PNG.Color``.
 public
 protocol _PNGColor<Aggregate>
 {
@@ -37,8 +36,9 @@ protocol _PNGColor<Aggregate>
     ///         generate a dereferencing function. This function should only be invoked
     ///         if the color `format` is an indexed format.
     ///
-    ///     See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
-    ///     for more about the semantics of this function.
+    ///     See the [indexed color tutorial](Indexing) for more about the semantics of this
+    ///     function.
+    ///
     /// -   Returns:
     ///     A pixel array containing instances of this color target. The pixels
     ///     should appear in the same order as they do in the image data buffer.
@@ -64,7 +64,7 @@ protocol _PNGColor<Aggregate>
     ///         generate a referencing function. This function should only be invoked
     ///         if the color `format` is an indexed format.
     ///
-    ///         See the [indexed color tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#using-indexed-images)
+    ///         See the [indexed color tutorial](Indexing)
     ///         for more about the semantics of this function.
     ///
     /// -   Returns:

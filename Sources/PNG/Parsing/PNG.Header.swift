@@ -39,8 +39,8 @@ extension PNG
         ///     Specifies if the header is for a standard image,
         ///     or an iphone-optimized image.
         ///
-        ///     If `standard` is [`(Standard).ios`], then the `pixel` format
-        ///     must be either [`(Format.Pixel).rgb8`] or [`(Format.Pixel).rgba8`].
+        ///     If `standard` is ``(Standard).ios``, then the `pixel` format
+        ///     must be either ``(Format.Pixel).rgb8`` or ``(Format.Pixel).rgba8``.
         ///     Otherwise, this initializer will suffer a precondition failure.
         public
         init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool,

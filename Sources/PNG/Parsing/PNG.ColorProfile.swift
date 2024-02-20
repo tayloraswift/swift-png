@@ -34,7 +34,7 @@ extension PNG
         /// - profile : [Swift.UInt8]
         ///     The uncompressed [ICC](http://www.color.org/index.xalter) color
         ///     profile data. The data will be compressed when this color profile
-        ///     is [`serialized`] into an ``Chunk/iCCP`` chunk.
+        ///     is ``serialized`` into an ``Chunk/iCCP`` chunk.
         public
         init(name:String, profile:[UInt8])
         {
