@@ -83,11 +83,11 @@ extension PNG.SignificantBits
     ///
     ///     This initializer validates the precision information against the
     ///     given pixel format.
-    /// - case      : Case
+    /// -   Parameter case:
     ///     A color precision case. Each precision value in the enumeration
     ///     payload must be greater than zero, and none of them
     ///     can be greater than the color depth of the image color format.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this color precision descriptor is to be
     ///     used for. Passing a mismatched enumeration `case` will result in a
     ///     precondition failure.
@@ -120,9 +120,9 @@ extension PNG.SignificantBits
     /// throws
     ///     Creates a color precision descriptor by parsing the given chunk data,
     ///     interpreting and validating it according to the given `pixel` format.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of an ``Chunk/sBIT`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
     /// ## (significantbits-parsing-and-serialization)

@@ -22,7 +22,7 @@ extension PNG
         {
             /// case PNG.Background.Case.palette(index:)
             ///     A background descriptor for an indexed image.
-            /// - index    : Swift.Int
+            /// -   Parameter index:
             ///     The index of the palette entry to be used as a background color.
             ///
             ///     This index must be within the index range of the image palette.
@@ -62,7 +62,7 @@ extension PNG.Background
     ///     that `palette` must be `nil`. This initializer does not check this
     ///     assumption, as it is expected to have been verified by
     ///     ``Palette.init(entries:pixel:)``.
-    /// - case      : Case
+    /// -   Parameter case:
     ///     A background descriptor value.
     ///
     ///     If this parameter is a ``Case/v(_:)`` or ``Case/rgb(_:)`` case,
@@ -70,11 +70,11 @@ extension PNG.Background
     ///     range determined by the image color depth. Passing an enumeration
     ///     case with an invalid background sample will result in a precondition
     ///     failure.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this background descriptor is to be
     ///     used for. Passing a mismatched enumeration `case` will result in a
     ///     precondition failure.
-    /// - palette   : PNG.Palette?
+    /// -   Parameter palette:
     ///     The palette of the image this background descriptor is to be
     ///     used for.
     ///
@@ -146,12 +146,12 @@ extension PNG.Background
     ///     Some `pixel` formats imply that `palette` must be `nil`. This
     ///     initializer does not check this assumption, as it is expected to have
     ///     been verified by ``Palette.init(parsing:pixel:)``.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/bKGD`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
-    /// - palette   : Palette?
+    /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against, if
     ///     applicable.
     /// ## (background-parsing-and-serialization)

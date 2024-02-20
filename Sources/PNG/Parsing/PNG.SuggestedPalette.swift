@@ -75,7 +75,7 @@ extension PNG.SuggestedPalette
     /// init PNG.SuggestedPalette.init(parsing:)
     /// throws
     ///     Creates a suggested palette by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of an ``Chunk/sPLT`` chunk to parse.
     /// ## (suggestedpalette-parsing-and-serialization)
     public

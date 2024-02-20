@@ -107,10 +107,10 @@ extension PNG.Text
     /// throws
     ///     Creates a text comment by parsing the given chunk data, interpreting
     ///     it either as a unicode text chunk, or a latin-1 text chunk.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/iTXt``
     ///     chunk to parse.
-    /// - unicode   : Swift.Bool
+    /// -   Parameter unicode:
     ///     Specifies if the given chunk `data` should be interpreted as a
     ///     unicode chunk, or a latin-1 chunk. It should be set to `true` if the
     ///     original text chunk was an ``Chunk/iTXt`` chunk, and `false`

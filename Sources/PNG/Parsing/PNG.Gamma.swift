@@ -30,7 +30,7 @@ extension PNG.Gamma
     /// init PNG.Gamma.init(parsing:)
     /// throws
     ///     Creates a gamma descriptor by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/gAMA`` chunk to parse.
     /// ## (gamma-parsing-and-serialization)
     public

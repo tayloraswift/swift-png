@@ -25,11 +25,11 @@ extension PNG.Palette
     ///
     ///     This initializer validates the palette information against the given
     ///     `pixel` format.
-    /// - entries   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+    /// -   Parameter entries:
     ///     An array of palette entries. This array must be non-empty, and can
     ///     contain at most `256`, or `1 << pixel.```Format.Pixel/depth`` elements,
     ///     whichever is lower.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this palette is to be used for.
     ///     If this parameter is a grayscale or grayscale-alpha format, this
     ///     initializer will suffer a precondition failure.
@@ -54,9 +54,9 @@ extension PNG.Palette
     /// throws
     ///     Creates an image palette by parsing the given chunk data, interpreting
     ///     and validating it according to the given `pixel` format.
-    /// - data      : [Swift.UInt8]
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/PLTE`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted.
     /// ## (palette-parsing-and-serialization)
     public

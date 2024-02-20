@@ -12,26 +12,26 @@ extension PNG
 extension PNG
 {
     /// A rectangular image.
-    public
+    @frozen public
     struct Image
     {
-        ///     The size of this image, measured in pixels.
+        /// The size of this image, measured in pixels.
         public
         let size:(x:Int, y:Int)
-        ///     The layout of this image.
+        /// The layout of this image.
         public
         let layout:PNG.Layout
-        ///     The metadata in this image.
+        /// The metadata in this image.
         public
         var metadata:PNG.Metadata
-        ///     The raw backing storage of the image content.
+        /// The raw backing storage of the image content.
         ///
-        ///     Depending on the bit depth of the image, it either stores a matrix
-        ///     of ``Swift.UInt8`` samples, or a matrix of big-endian ``Swift.UInt16``
-        ///     samples. The pixels are arranged in row-major order, where the
-        ///     beginning of the storage array corresponds to the visual top-left
-        ///     corner of the image, regardless of whether the ``layout`` is
-        ///     ``Layout/interlaced`` or not.
+        /// Depending on the bit depth of the image, it either stores a matrix
+        /// of ``Swift.UInt8`` samples, or a matrix of big-endian ``Swift.UInt16``
+        /// samples. The pixels are arranged in row-major order, where the
+        /// beginning of the storage array corresponds to the visual top-left
+        /// corner of the image, regardless of whether the ``layout`` is
+        /// ``Layout/interlaced`` or not.
         public private(set)
         var storage:[UInt8]
 
@@ -48,13 +48,13 @@ extension PNG
 }
 extension PNG.Image
 {
-    internal
     init?(standard:PNG.Standard, header:PNG.Header,
         palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?,
         metadata:PNG.Metadata,
         uninitialized:Bool)
     {
-        guard let layout:PNG.Layout = PNG.Layout.init(standard: standard,
+        guard
+        let layout:PNG.Layout = PNG.Layout.init(standard: standard,
             pixel:          header.pixel,
             palette:        palette,
             background:     background,
@@ -84,11 +84,11 @@ extension PNG.Image
         }
     }
 
-    ///     Rebinds this image to a compatible layout.
+    /// Rebinds this image to a compatible layout.
     ///
-    ///     This interface can be used to switch image layouts without unpacking
-    ///     to and repacking from a color target array. Rebinding to an
-    ///     incompatible layout will result in a precondition failure.
+    /// This interface can be used to switch image layouts without unpacking
+    /// to and repacking from a color target array. Rebinding to an
+    /// incompatible layout will result in a precondition failure.
     /// -   Parameter layout:
     ///     The new image layout.
     ///
@@ -285,10 +285,10 @@ extension PNG.Image
 }
 extension PNG.Image
 {
-    ///     Decompresses and decodes a PNG from the given bytestream.
+    /// Decompresses and decodes a PNG from the given bytestream.
     ///
-    ///     On appropriate platforms, the ``decompress(path:)`` function provides
-    ///     a file system-aware interface to this function.
+    /// On appropriate platforms, the ``decompress(path:)`` function provides
+    /// a file system-aware interface to this function.
     /// -   Parameter stream:
     ///     A bytestream providing the contents of a PNG file.
     /// -   Returns:
@@ -545,19 +545,15 @@ extension PNG.Image
 // compression
 extension PNG.Image
 {
-    ///     Encodes and compresses a PNG to the given bytestream.
+    /// Encodes and compresses a PNG to the given bytestream.
     ///
-    ///     Compression `level` `9` is roughly equivalent to *libpng*’s maximum
-    ///     compression setting in terms of compression ratio and encoding speed.
-    ///     The higher levels (`10` through `13`) are very computationally expensive,
-    ///     so they should only be used when optimizing for file size.
+    /// Compression `level` `9` is roughly equivalent to *libpng*’s maximum
+    /// compression setting in terms of compression ratio and encoding speed.
+    /// The higher levels (`10` through `13`) are very computationally expensive,
+    /// so they should only be used when optimizing for file size.
     ///
-    ///     Experimental comparisons between *Swift PNG* and *libpng*’s
-    ///     compression settings can be found on
-    ///     [this page](https://github.com/tayloraswift/swift-png/blob/master/benchmarks).
-    ///
-    ///     On appropriate platforms, the ``compress(path:level:hint:)`` function
-    ///     provides a file system-aware interface to this function.
+    /// On appropriate platforms, the ``compress(path:level:hint:)`` function
+    /// provides a file system-aware interface to this function.
     /// -   Parameter stream:
     ///     A bytestream receiving the contents of a PNG file.
     /// -   Parameter level:
