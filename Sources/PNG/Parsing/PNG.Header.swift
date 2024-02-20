@@ -1,31 +1,23 @@
 extension PNG
 {
-    /// struct PNG.Header
-    ///     An image header.
+    /// An image header.
     ///
-    ///     This type models the information stored in a ``Chunk/IHDR`` chunk.
-    /// # [Parsing and serialization](header-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in a ``Chunk/IHDR`` chunk.
     public
     struct Header
     {
-        /// let PNG.Header.size         : (x:Swift.Int, y:Swift.Int)
-        ///     The size of an image, measured in pixels.
+        /// The size of an image, measured in pixels.
         public
         let size:(x:Int, y:Int),
-        /// let PNG.Header.pixel        : Format.Pixel
-        ///     The pixel format of an image.
-            pixel:PNG.Format.Pixel,
-        /// let PNG.Header.interlaced   : Swift.Bool
-        ///     Indicates whether an image uses interlacing.
+        /// The pixel format of an image.
+            pixel:Format.Pixel,
+        /// Indicates whether an image uses interlacing.
             interlaced:Bool
 
-        /// init PNG.Header.init(size:pixel:interlaced:standard:)
-        ///     Creates an image header.
+        /// Creates an image header.
         ///
-        ///     This initializer validates the image `size`, and validates the
-        ///     `pixel` format against the given PNG `standard`.
+        /// This initializer validates the image `size`, and validates the
+        /// `pixel` format against the given PNG `standard`.
         /// -   Parameter size:
         ///     An image size, measured in pixels.
         ///
@@ -43,7 +35,9 @@ extension PNG
         ///     must be either ``Format.Pixel/rgb8`` or ``Format.Pixel/rgba8``.
         ///     Otherwise, this initializer will suffer a precondition failure.
         public
-        init(size:(x:Int, y:Int), pixel:PNG.Format.Pixel, interlaced:Bool,
+        init(size:(x:Int, y:Int),
+            pixel:Format.Pixel,
+            interlaced:Bool,
             standard:PNG.Standard)
         {
             guard size.x > 0, size.y > 0
@@ -68,16 +62,13 @@ extension PNG
 }
 extension PNG.Header
 {
-    /// init PNG.Header.init(parsing:standard:)
-    /// throws
-    ///     Creates an image header by parsing the given chunk data, interpreting it
-    ///     according to the given PNG `standard`.
+    /// Creates an image header by parsing the given chunk data, interpreting it
+    /// according to the given PNG `standard`.
     /// -   Parameter data:
     ///     The contents of an ``Chunk/IHDR`` chunk to parse.
     /// -   Parameter standard:
     ///     Specifies if the header should be interpreted as a standard PNG header,
     ///     or an iphone-optimized PNG header.
-    /// ## (header-parsing-and-serialization)
     public
     init(parsing data:[UInt8], standard:PNG.Standard) throws
     {
@@ -137,9 +128,7 @@ extension PNG.Header
         }
     }
 
-    /// var PNG.Header.serialized   : [Swift.UInt8] { get }
-    ///     Encodes this image header as the contents of an ``Chunk/IHDR`` chunk.
-    /// ## (header-parsing-and-serialization)
+    /// Encodes this image header as the contents of an ``Chunk/IHDR`` chunk.
     public
     var serialized:[UInt8]
     {

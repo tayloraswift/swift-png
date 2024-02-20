@@ -1,33 +1,24 @@
 extension PNG
 {
-    /// struct PNG.Percentmille
-    /// :   Swift.AdditiveArithmetic
-    /// :   Swift.ExpressibleByIntegerLiteral
-    ///     A rational percentmille value.
-    /// ## (currency-types)
+    /// A rational percentmille value.
     public
     struct Percentmille:AdditiveArithmetic, ExpressibleByIntegerLiteral
     {
-        /// var PNG.Percentmille.points : Swift.Int
-        ///     The numerator of this percentmille value.
+        /// The numerator of this percentmille value.
         ///
-        ///     The numerical value of this percentmille instance is this integer
-        ///     divided by `100000`.
+        /// The numerical value of this percentmille instance is this integer
+        /// divided by `100000`.
         public
         var points:Int
 
-        /// static let PNG.Percentmille.zero : Self
-        /// ?:  Swift.AdditiveArithmetic
-        ///     A percentmille value of zero.
+        /// A percentmille value of zero.
         public static
         let zero:Self = 0
 
-        /// init PNG.Percentmille.init<T>(_:)
-        /// where T:Swift.BinaryInteger
-        ///     Creates a percentmille value with the given numerator.
+        /// Creates a percentmille value with the given numerator.
         ///
-        ///     The numerical value of this percentmille value will be the given
-        ///     numerator divided by `100000`.
+        /// The numerical value of this percentmille value will be the given
+        /// numerator divided by `100000`.
         /// -   Parameter points:
         ///     The numerator.
         public
@@ -36,14 +27,12 @@ extension PNG
             self.points = .init(points)
         }
 
-        /// init PNG.Percentmille.init(integerLiteral:)
-        /// ?:  Swift.ExpressibleByIntegerLiteral
-        ///     Creates a percentmille value using the given integer literal as
-        ///     the numerator.
+        /// Creates a percentmille value using the given integer literal as
+        /// the numerator.
         ///
-        ///     The provided integer literal is *not* the numerical value of the
-        ///     created percentmille value. It will be interpreted as the numerator
-        ///     of a rational value.
+        /// The provided integer literal is *not* the numerical value of the
+        /// created percentmille value. It will be interpreted as the numerator
+        /// of a rational value.
         /// -   Parameter integerLiteral:
         ///     The integer literal.
         public
@@ -52,9 +41,7 @@ extension PNG
             self.init(integerLiteral)
         }
 
-        /// static func PNG.Percentmille.(+)(_:_:)
-        /// ?:  Swift.AdditiveArithmetic
-        ///     Adds two percentmille values and produces their sum.
+        /// Adds two percentmille values and produces their sum.
         /// -   Parameter lhs:
         ///     The first value to add.
         /// -   Parameter rhs:
@@ -66,10 +53,8 @@ extension PNG
         {
             .init(lhs.points + rhs.points)
         }
-        /// static func PNG.Percentmille.(+=)(_:_:)
-        /// ?:  Swift.AdditiveArithmetic
-        ///     Adds two percentmille values and stores the result in the
-        ///     left-hand-side variable.
+        /// Adds two percentmille values and stores the result in the
+        /// left-hand-side variable.
         /// -   Parameter lhs:
         ///     The first value to add.
         /// -   Parameter rhs:
@@ -79,10 +64,8 @@ extension PNG
         {
             lhs.points += rhs.points
         }
-        /// static func PNG.Percentmille.(-)(_:_:)
-        /// ?:  Swift.AdditiveArithmetic
-        ///     Subtracts one percentmille value from another and produces their
-        ///     difference.
+        /// Subtracts one percentmille value from another and produces their
+        /// difference.
         /// -   Parameter lhs:
         ///     A percentmille value.
         /// -   Parameter rhs:
@@ -94,10 +77,8 @@ extension PNG
         {
             .init(lhs.points - rhs.points)
         }
-        /// static func PNG.Percentmille.(-=)(_:_:)
-        /// ?:  Swift.AdditiveArithmetic
-        ///     Subtracts one percentmille value from another and stores the
-        ///     result in the left-hand-side variable.
+        /// Subtracts one percentmille value from another and stores the
+        /// result in the left-hand-side variable.
         /// -   Parameter lhs:
         ///     A percentmille value.
         /// -   Parameter rhs:

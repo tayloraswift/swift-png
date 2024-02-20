@@ -1,41 +1,28 @@
 extension PNG
 {
-    /// struct PNG.Chromaticity
-    ///     A chromaticity descriptor.
+    /// A chromaticity descriptor.
     ///
-    ///     This type models the information stored in a ``Chunk/cHRM`` chunk.
-    /// # [Parsing and serialization](chromaticity-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in a ``Chunk/cHRM`` chunk.
     public
     struct Chromaticity
     {
-        /// let PNG.Chromaticity.w : (x:Percentmille, y:Percentmille)
-        ///     The white point of an image, expressed as a pair of fractions.
-        /// ## ()
-
-        /// let PNG.Chromaticity.r : (x:Percentmille, y:Percentmille)
-        ///     The chromaticity of the red component of an image,
-        ///     expressed as a pair of fractions.
-        /// ## ()
-
-        /// let PNG.Chromaticity.g : (x:Percentmille, y:Percentmille)
-        ///     The chromaticity of the green component of an image,
-        ///     expressed as a pair of fractions.
-        /// ## ()
-
-        /// let PNG.Chromaticity.b : (x:Percentmille, y:Percentmille)
-        ///     The chromaticity of the blue component of an image,
-        ///     expressed as a pair of fractions.
-        /// ## ()
+        /// The white point of an image, expressed as a pair of fractions.
         public
-        let w:(x:Percentmille, y:Percentmille),
-            r:(x:Percentmille, y:Percentmille),
-            g:(x:Percentmille, y:Percentmille),
-            b:(x:Percentmille, y:Percentmille)
+        let w:(x:Percentmille, y:Percentmille)
+        /// The chromaticity of the red component of an image,
+        /// expressed as a pair of fractions.
+        public
+        let r:(x:Percentmille, y:Percentmille)
+        /// The chromaticity of the green component of an image,
+        /// expressed as a pair of fractions.
+        public
+        let g:(x:Percentmille, y:Percentmille)
+        /// The chromaticity of the blue component of an image,
+        /// expressed as a pair of fractions.
+        public
+        let b:(x:Percentmille, y:Percentmille)
 
-        /// init PNG.Chromaticity.init(w:r:g:b:)
-        ///     Creates a chromaticity descriptor with the given values.
+        /// Creates a chromaticity descriptor with the given values.
         /// -   Parameter w:
         ///     The white point, expressed as a pair of fractions.
         /// -   Parameter r:
@@ -60,12 +47,9 @@ extension PNG
 }
 extension PNG.Chromaticity
 {
-    /// init PNG.Chromaticity.init(parsing:)
-    /// throws
-    ///     Creates a chromaticity descriptor by parsing the given chunk data.
+    /// Creates a chromaticity descriptor by parsing the given chunk data.
     /// -   Parameter data:
     ///     The contents of a ``Chunk/cHRM`` chunk to parse.
-    /// ## (chromaticity-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
     {
@@ -84,10 +68,8 @@ extension PNG.Chromaticity
         self.b.x = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 24))
         self.b.y = .init(data.load(bigEndian: UInt32.self, as: Int.self, at: 28))
     }
-    /// var PNG.Chromaticity.serialized : [Swift.UInt8] { get }
-    ///     Encodes this chromaticity descriptor as the contents of a
-    ///     ``Chunk/cHRM`` chunk.
-    /// ## (chromaticity-parsing-and-serialization)
+    /// Encodes this chromaticity descriptor as the contents of a
+    /// ``Chunk/cHRM`` chunk.
     public
     var serialized:[UInt8]
     {
