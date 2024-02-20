@@ -15,64 +15,6 @@
 
 [`sources`](decode-basic/)
 
-> ***by the end of this tutorial, you should be able to:***
-> - *decompress a png file to its rectangular image representation*
-> - *unpack rectangular image data to the built-in rgba, grayscale-alpha, and scalar color targets*
-
-> ***key terms:***
-> - **color target**
-
-On platforms with built-in file system support (MacOS and Linux), decoding a PNG file to a pixel array takes just two function calls.
-
-```swift
-import PNG
-
-let path:String = "examples/decode-basic/example"
-
-guard let image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
-else
-{
-    fatalError("failed to open file '\(path).png'")
-}
-
-let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
-```
-
-<img src="decode-basic/example.png.rgba.png" alt="output png" width=300/>
-
-> the example image, decoded to an rgba data file, and re-encoded as a png (for display purposes).
->
-> *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)*
-
-The element type of the output array, [`PNG.RGBA<UInt8>`](https://tayloraswift.github.io/swift-png/PNG/RGBA/), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
-
-We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](https://tayloraswift.github.io/swift-png/PNG/VA/) built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
-
-```swift
-let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
-```
-
-<img src="decode-basic/example.png.va.png" alt="output png" width=300/>
-
-> the example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
-
-The [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method is [non-mutating](https://docs.swift.org/swift-book/LanguageGuide/Methods.html#ID239), so you can unpack the same image to multiple color targets without having to re-decode the file each time.
-
-The [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method also has an [overload](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-unpack(as:)/) which allows you to unpack an image into scalar grayscale samples.
-
-```swift
-let v:[UInt8] = image.unpack(as: UInt8.self)
-```
-
-<img src="decode-basic/example.png.v.png" alt="output png" width=300/>
-
-> the example image, decoded to an grayscale data file, and re-encoded as a png. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
-
-The two `unpack(as:)` methods support all Swift integer types that conform to [`FixedWidthInteger`](https://developer.apple.com/documentation/swift/fixedwidthinteger)`&`[`UnsignedInteger`](https://developer.apple.com/documentation/swift/unsignedinteger). They have generic specializations for [`UInt8`](https://developer.apple.com/documentation/swift/uint8), [`UInt16`](https://developer.apple.com/documentation/swift/uint16), [`UInt32`](https://developer.apple.com/documentation/swift/uint32), [`UInt64`](https://developer.apple.com/documentation/swift/uint64), and [`UInt`](https://developer.apple.com/documentation/swift/uint).
-
-If you unpack an image to an integer type `T` with a bit width different from the color depth of the original image, the samples will be scaled to fill the range `T.min ... T.max`. The scaling is done arithmetically, so if you unpack an 8-bit image to a [`UInt16`](https://developer.apple.com/documentation/swift/uint16)-based color target, then samples with the value `255` will become `65535`, not `65280`.
-
-> **warning:** the built-in grayscale color targets do not compute luminance for rgb- and rgba-type images. they simply use the red component as the gray value, and discard the green and blue components. to perform more sophisticated pixel unpacking, [define a custom pixel kernel](#custom-color-targets).
 
 ## basic encoding
 
