@@ -2,28 +2,21 @@ import LZ77
 
 extension PNG
 {
-    /// struct PNG.ColorProfile
-    ///     An embedded color profile.
+    /// An embedded color profile.
     ///
-    ///     This type models the information stored in an ``Chunk/iCCP`` chunk.
-    /// # [Parsing and serialization](colorprofile-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in an ``Chunk/iCCP`` chunk.
     public
     struct ColorProfile
     {
-        /// let PNG.ColorProfile.name : Swift.String
-        ///     The name of this profile.
+        /// The name of this profile.
         public
         let name:String
-        /// let PNG.ColorProfile.profile : [Swift.UInt8]
-        ///     The uncompressed [ICC](http://www.color.org/index.xalter) color
-        ///     profile data.
+        /// The uncompressed [ICC](http://www.color.org/index.xalter) color
+        /// profile data.
         public
         let profile:[UInt8]
 
-        /// init PNG.ColorProfile.init(name:profile:)
-        ///     Creates a color profile.
+        /// Creates a color profile.
         /// -   Parameter name:
         ///     The profile name.
         ///
@@ -51,12 +44,9 @@ extension PNG
 }
 extension PNG.ColorProfile
 {
-    /// init PNG.ColorProfile.init(parsing:)
-    /// throws
-    ///     Creates a color profile by parsing the given chunk data.
+    /// Creates a color profile by parsing the given chunk data.
     /// -   Parameter data:
     ///     The contents of an ``Chunk/iCCP`` chunk to parse.
-    /// ## (colorprofile-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
     {
@@ -93,10 +83,7 @@ extension PNG.ColorProfile
 
         self.profile = inflator.pull()
     }
-    /// var PNG.ColorProfile.serialized : [Swift.UInt8] { get }
-    ///     Encodes this color profile as the contents of an
-    ///     ``Chunk/iCCP`` chunk.
-    /// ## (colorprofile-parsing-and-serialization)
+    /// Encodes this color profile as the contents of an ``Chunk/iCCP`` chunk.
     public
     var serialized:[UInt8]
     {

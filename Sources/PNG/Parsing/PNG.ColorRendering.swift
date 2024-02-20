@@ -1,43 +1,28 @@
 extension PNG
 {
-    /// enum PNG.ColorRendering
-    ///     A color rendering mode.
+    /// A color rendering mode.
     ///
-    ///     This type models the information stored in an ``Chunk/sRGB`` chunk.
-    ///     It is not recommended for the same image to include both a `ColorRendering`
-    ///     mode and a ``ColorProfile``.
-    /// # [Parsing and serialization](colorrendering-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in an ``Chunk/sRGB`` chunk.
+    /// It is not recommended for the same image to include both a `ColorRendering`
+    /// mode and a ``ColorProfile``.
     public
     enum ColorRendering
     {
-        /// case PNG.ColorRendering.perceptual
-        ///     The perceptual rendering mode.
-        /// ## ()
+        /// The perceptual rendering mode.
         case perceptual
-        /// case PNG.ColorRendering.relative
-        ///     The relative colorimetric rendering mode.
-        /// ## ()
+        /// The relative colorimetric rendering mode.
         case relative
-        /// case PNG.ColorRendering.saturation
-        ///     The saturation rendering mode.
-        /// ## ()
+        /// The saturation rendering mode.
         case saturation
-        /// case PNG.ColorRendering.absolute
-        ///     The absolute colorimetric rendering mode.
-        /// ## ()
+        /// The absolute colorimetric rendering mode.
         case absolute
     }
 }
 extension PNG.ColorRendering
 {
-    /// init PNG.ColorRendering.init(parsing:)
-    /// throws
-    ///     Creates a color rendering mode by parsing the given chunk data.
+    /// Creates a color rendering mode by parsing the given chunk data.
     /// -   Parameter data:
     ///     The contents of an ``Chunk/sRGB`` chunk to parse.
-    /// ## (colorrendering-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
     {
@@ -57,10 +42,7 @@ extension PNG.ColorRendering
             throw PNG.ParsingError.invalidColorRenderingCode(code)
         }
     }
-    /// var PNG.ColorRendering.serialized : [Swift.UInt8] { get }
-    ///     Encodes this color rendering mode as the contents of an
-    ///     ``Chunk/sRGB`` chunk.
-    /// ## (colorrendering-parsing-and-serialization)
+    /// Encodes this color rendering mode as the contents of an ``Chunk/sRGB`` chunk.
     public
     var serialized:[UInt8]
     {

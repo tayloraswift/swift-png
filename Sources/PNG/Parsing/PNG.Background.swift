@@ -1,67 +1,30 @@
 extension PNG
 {
-    /// struct PNG.Background
-    ///     A background descriptor.
+    /// A background descriptor.
     ///
-    ///     This type models the information stored in a ``Chunk/bKGD`` chunk.
-    ///     This information is used to populate the `fill` field in
-    ///     an image color ``Format``.
+    /// This type models the information stored in a ``Chunk/bKGD`` chunk.
+    /// This information is used to populate the `fill` field in
+    /// an image color ``Format``.
     ///
-    ///     The value of this descriptor is stored in the ``PNG.Background/case``
-    ///     property, after validation.
-    /// # [Parsing and serialization](background-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// The value of this descriptor is stored in the ``PNG.Background/case``
+    /// property, after validation.
     public
     struct Background
     {
-        /// enum PNG.Background.Case
-        ///     A background case.
-        public
-        enum Case
-        {
-            /// case PNG.Background.Case.palette(index:)
-            ///     A background descriptor for an indexed image.
-            /// -   Parameter index:
-            ///     The index of the palette entry to be used as a background color.
-            ///
-            ///     This index must be within the index range of the image palette.
-            case palette(index:Int)
-            /// case PNG.Background.Case.rgb(_:)
-            ///     A background descriptor for an RGB, BGR, RGBA, or BGRA image.
-            /// -   Parameter _:
-            ///     A background color.
-            ///
-            ///     Note that the background components are unscaled samples. If
-            ///     the image color depth is less than `16`, only the least-significant
-            ///     bits of each sample are inhabited.
-            case rgb((r:UInt16, g:UInt16, b:UInt16))
-            /// case PNG.Background.Case.v(_:)
-            ///     A background descriptor for a grayscale or grayscale-alpha image.
-            /// -   Parameter _:
-            ///     A background color.
-            ///
-            ///     Note that the background value is an unscaled sample. If
-            ///     the image color depth is less than `16`, only the least-significant
-            ///     bits are inhabited.
-            case v(UInt16)
-        }
-        /// let PNG.Background.case : Case
-        ///     The value of this background descriptor.
+        /// The value of this background descriptor.
         public
         let `case`:Case
     }
 }
 extension PNG.Background
 {
-    /// init PNG.Background.init(case:pixel:palette:)
-    ///     Creates a background descriptor.
+    /// Creates a background descriptor.
     ///
-    ///     This initializer validates the background information against the
-    ///     given pixel format and image palette. Some `pixel` formats imply
-    ///     that `palette` must be `nil`. This initializer does not check this
-    ///     assumption, as it is expected to have been verified by
-    ///     ``Palette.init(entries:pixel:)``.
+    /// This initializer validates the background information against the
+    /// given pixel format and image palette. Some `pixel` formats imply
+    /// that `palette` must be `nil`. This initializer does not check this
+    /// assumption, as it is expected to have been verified by
+    /// ``Palette.init(entries:pixel:)``.
     /// -   Parameter case:
     ///     A background descriptor value.
     ///
@@ -137,15 +100,13 @@ extension PNG.Background
 
         self.case = `case`
     }
-    /// init PNG.Background.init(parsing:pixel:palette:)
-    /// throws
-    ///     Creates a background descriptor by parsing the given chunk data,
-    ///     interpreting and validating it according to the given `pixel` format and
-    ///     image `palette`.
+    /// Creates a background descriptor by parsing the given chunk data,
+    /// interpreting and validating it according to the given `pixel` format and
+    /// image `palette`.
     ///
-    ///     Some `pixel` formats imply that `palette` must be `nil`. This
-    ///     initializer does not check this assumption, as it is expected to have
-    ///     been verified by ``Palette.init(parsing:pixel:)``.
+    /// Some `pixel` formats imply that `palette` must be `nil`. This
+    /// initializer does not check this assumption, as it is expected to have
+    /// been verified by ``Palette.init(parsing:pixel:)``.
     /// -   Parameter data:
     ///     The contents of a ``Chunk/bKGD`` chunk to parse.
     /// -   Parameter pixel:
@@ -154,7 +115,6 @@ extension PNG.Background
     /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against, if
     ///     applicable.
-    /// ## (background-parsing-and-serialization)
     public
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
     {
@@ -214,10 +174,8 @@ extension PNG.Background
             self.case = .palette(index: index)
         }
     }
-    /// var PNG.Background.serialized : [Swift.UInt8] { get }
-    ///     Encodes this background descriptor as the contents of a
-    ///     ``Chunk/bKGD`` chunk.
-    /// ## (background-parsing-and-serialization)
+    /// Encodes this background descriptor as the contents of a
+    /// ``Chunk/bKGD`` chunk.
     public
     var serialized:[UInt8]
     {
