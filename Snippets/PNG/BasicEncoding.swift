@@ -1,7 +1,7 @@
 import PNG
 
 /// https://commons.wikimedia.org/wiki/File:Photo_of_a_venetian_mask_in_a_studio_photo_session.jpg
-let path:String = "Sources/PNG/_.docc/BasicEncoding/BasicEncoding"
+let path:String = "Sources/PNG/docs.docc/BasicEncoding/BasicEncoding"
 let size:(x:Int, y:Int) = (638, 425)
 
 guard

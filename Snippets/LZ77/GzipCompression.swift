@@ -1,7 +1,7 @@
 import LZ77
 import PNG
 
-let path:String = "Sources/LZ77/_.docc/GzipCompression/GzipCompression"
+let path:String = "Sources/LZ77/docs.docc/GzipCompression/GzipCompression"
 
 guard
 let original:[UInt8] = (System.File.Source.open(path: "\(path).gz")

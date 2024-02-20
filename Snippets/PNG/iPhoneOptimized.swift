@@ -1,6 +1,6 @@
 import PNG
 
-let path:String = "Sources/PNG/_.docc/iPhoneOptimized/iPhoneOptimized"
+let path:String = "Sources/PNG/docs.docc/iPhoneOptimized/iPhoneOptimized"
 
 guard
 var image:PNG.Data.Rectangular = try .decompress(path: "\(path).png")
