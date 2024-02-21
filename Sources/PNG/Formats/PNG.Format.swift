@@ -116,7 +116,7 @@ extension PNG
         /// -   Parameter palette:
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field. Although the image color depth is `16`, the
-        ///     palette atom type is ``Swift.UInt8``, not ``Swift.UInt16``.
+        ///     palette atom type is ``UInt8``, not ``UInt16``.
         ///
         ///     This field is unrelated to, and should not be confused with a
         ///     ``SuggestedPalette``.
@@ -228,7 +228,7 @@ extension PNG
         /// -   Parameter palette:
         ///     An palette of suggested posterization values. Most PNG viewers
         ///     ignore this field. Although the image color depth is `16`, the
-        ///     palette atom type is ``Swift.UInt8``, not ``Swift.UInt16``.
+        ///     palette atom type is ``UInt8``, not ``UInt16``.
         ///
         ///     This field is unrelated to, and should not be confused with a
         ///     ``SuggestedPalette``.

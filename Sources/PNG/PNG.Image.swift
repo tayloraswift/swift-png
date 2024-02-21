@@ -27,7 +27,7 @@ extension PNG
         /// The raw backing storage of the image content.
         ///
         /// Depending on the bit depth of the image, it either stores a matrix
-        /// of ``Swift.UInt8`` samples, or a matrix of big-endian ``Swift.UInt16``
+        /// of ``UInt8`` samples, or a matrix of big-endian ``UInt16``
         /// samples. The pixels are arranged in row-major order, where the
         /// beginning of the storage array corresponds to the visual top-left
         /// corner of the image, regardless of whether the ``layout`` is
