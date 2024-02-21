@@ -66,7 +66,7 @@ extension __Entrypoint
         }
     }
 }
-extension __Entrypoint.Benchmark.Decode.Blob:PNG.Bytestream.Source
+extension __Entrypoint.Benchmark.Decode.Blob:PNG.BytestreamSource
 {
     static
     func load(path:String) -> Self?
@@ -103,7 +103,7 @@ extension __Entrypoint.Benchmark.Decode.Blob:PNG.Bytestream.Source
         self.count = self.buffer.count
     }
 }
-extension __Entrypoint.Benchmark.Encode.Blob:PNG.Bytestream.Destination
+extension __Entrypoint.Benchmark.Encode.Blob:PNG.BytestreamDestination
 {
     mutating
     func write(_ data:[UInt8]) -> Void?
@@ -134,7 +134,7 @@ extension __Entrypoint.Benchmark.Decode
             {
                 let start:Int = clock()
 
-                let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+                let image:PNG.Image  = try .decompress(stream: &blob)
                 let pixels:[PNG.RGBA<UInt8>]    = image.unpack(as: PNG.RGBA<UInt8>.self)
 
                 let stop:Int = clock()
@@ -152,7 +152,7 @@ extension __Entrypoint.Benchmark.Encode
     public static
     func rgba8(level:Int, path:String, trials:Int) -> ([(time:Int, hash:Int)], Int)
     {
-        guard let image:PNG.Data.Rectangular = try? .decompress(path: path)
+        guard let image:PNG.Image = try? .decompress(path: path)
         else
         {
             fatalError("failed to decode test image '\(path)'")

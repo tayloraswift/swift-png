@@ -43,7 +43,7 @@ enum Benchmark
         }
     }
 }
-extension Benchmark.Decode.Blob:PNG.Bytestream.Source
+extension Benchmark.Decode.Blob:PNG.BytestreamSource
 {
     static
     func load(path:String) -> Self?
@@ -102,7 +102,7 @@ extension Benchmark.Decode
             {
                 let start:Int = clock()
 
-                let image:PNG.Data.Rectangular  = try .decompress(stream: &blob)
+                let image:PNG.Image  = try .decompress(stream: &blob)
                 let pixels:[PNG.RGBA<UInt8>]    = image.unpack(as: PNG.RGBA<UInt8>.self)
 
                 let stop:Int = clock()

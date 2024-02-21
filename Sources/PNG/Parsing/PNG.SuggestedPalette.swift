@@ -1,54 +1,29 @@
 extension PNG
 {
-    /// struct PNG.SuggestedPalette
-    ///     A suggested image palette.
+    /// A suggested image palette.
     ///
-    ///     This type models the information stored in an ``Chunk/sPLT`` chunk.
-    ///     It should not be confused with the suggested palette stored in the
-    ///     color [`Format`] of an RGB, BGR, RGBA, or BGRA image.
-    /// # [Parsing and serialization](suggestedpalette-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in an ``Chunk/sPLT`` chunk.
+    /// It should not be confused with the suggested palette stored in the
+    /// color ``Format`` of an RGB, BGR, RGBA, or BGRA image.
     public
     struct SuggestedPalette
     {
-        /// enum PNG.SuggestedPalette.Entries
-        ///     A variant array of palette colors and frequencies.
-        public
-        enum Entries
-        {
-            /// case PNG.SuggestedPalette.Entries.rgba8(_:)
-            ///     A suggested palette with an 8-bit color depth.
-            /// - _ : [(color:(r:Swift.UInt8,  g:Swift.UInt8,  b:Swift.UInt8,  a:Swift.UInt8),  frequency:Swift.UInt16)]
-            ///     An array of 8-bit palette colors and frequencies.
-            /// ## ()
-            case rgba8( [(color:(r:UInt8,  g:UInt8,  b:UInt8,  a:UInt8),  frequency:UInt16)])
-            /// case PNG.SuggestedPalette.Entries.rgba16(_:)
-            ///     A suggested palette with a 16-bit color depth.
-            /// - _ : [(color:(r:Swift.UInt16,  g:Swift.UInt16,  b:Swift.UInt16,  a:Swift.UInt16),  frequency:Swift.UInt16)]
-            ///     An array of 16-bit palette colors and frequencies.
-            /// ## ()
-            case rgba16([(color:(r:UInt16, g:UInt16, b:UInt16, a:UInt16), frequency:UInt16)])
-        }
-        /// let PNG.SuggestedPalette.name : Swift.String
-        ///     The name of this suggested palette.
+        /// The name of this suggested palette.
         public
         let name:String
-        /// let PNG.SuggestedPalette.entries : Entries
-        ///     The colors in this suggested palette, and their frequencies.
+        /// The colors in this suggested palette, and their frequencies.
         public
         var entries:Entries
 
-        /// init PNG.SuggestedPalette.init(name:entries:)
-        ///     Creates a suggested palette.
-        /// - name : Swift.String
+        /// Creates a suggested palette.
+        /// -   Parameter name:
         ///     The palette name.
         ///
         ///     This string must contain only unicode scalars
         ///     in the ranges `"\u{20}" ... "\u{7d}"` or `"\u{a1}" ... "\u{ff}"`.
         ///     Leading, trailing, and consecutive spaces are not allowed.
         ///     Passing an invalid string will result in a precondition failure.
-        /// - entries : Entries
+        /// -   Parameter entries:
         ///     A variant array of palette colors and frequencies.
         public
         init(name:String, entries:Entries)
@@ -72,12 +47,9 @@ extension PNG
 }
 extension PNG.SuggestedPalette
 {
-    /// init PNG.SuggestedPalette.init(parsing:)
-    /// throws
-    ///     Creates a suggested palette by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// Creates a suggested palette by parsing the given chunk data.
+    /// -   Parameter data:
     ///     The contents of an ``Chunk/sPLT`` chunk to parse.
-    /// ## (suggestedpalette-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
     {
@@ -182,10 +154,7 @@ extension PNG.SuggestedPalette
 
         return true
     }
-    /// var PNG.SuggestedPalette.serialized : [Swift.UInt8] { get }
-    ///     Encodes this suggested palette as the contents of an
-    ///     ``Chunk/sPLT`` chunk.
-    /// ## (suggestedpalette-parsing-and-serialization)
+    /// Encodes this suggested palette as the contents of an ``Chunk/sPLT`` chunk.
     public
     var serialized:[UInt8]
     {

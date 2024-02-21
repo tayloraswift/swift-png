@@ -1,67 +1,54 @@
 extension PNG
 {
-    /// struct PNG.TimeModified
-    ///     An image modification time.
+    /// An image modification time.
     ///
-    ///     This type models the information stored in a ``Chunk/tIME`` chunk.
-    ///     This type is time-zone agnostic, and so all time values are assumed
-    ///     to be in universal time (UTC).
-    /// # [Parsing and serialization](timemodified-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in a ``Chunk/tIME`` chunk.
+    /// This type is time-zone agnostic, and so all time values are assumed
+    /// to be in universal time (UTC).
     public
     struct TimeModified
     {
-        /// let PNG.TimeModified.year : Swift.Int
-        ///     The complete [gregorian](https://en.wikipedia.org/wiki/Gregorian_calendar)
-        ///     year.
-        /// ## ()
+        /// The complete [gregorian](https://en.wikipedia.org/wiki/Gregorian_calendar) year.
         public
-        let year:Int,
-        /// let PNG.TimeModified.month : Swift.Int
-        ///     The calendar month, expressed as a 1-indexed integer.
-        /// ## ()
-            month:Int,
-        /// let PNG.TimeModified.day : Swift.Int
-        ///     The calendar day, expressed as a 1-indexed integer.
-        /// ## ()
-            day:Int,
-        /// let PNG.TimeModified.hour : Swift.Int
-        ///     The hour, in 24-hour time, expressed as a 0-indexed integer.
-        /// ## ()
-            hour:Int,
-        /// let PNG.TimeModified.minute : Swift.Int
-        ///     The minute, expressed as a 0-indexed integer.
-        /// ## ()
-            minute:Int,
-        /// let PNG.TimeModified.second : Swift.Int
-        ///     The second, expressed as a 0-indexed integer.
-        /// ## ()
-            second:Int
+        let year:Int
+        /// The calendar month, expressed as a 1-indexed integer.
+        public
+        let month:Int
+        /// The calendar day, expressed as a 1-indexed integer.
+        public
+        let day:Int
+        /// The hour, in 24-hour time, expressed as a 0-indexed integer.
+        public
+        let hour:Int
+        /// The minute, expressed as a 0-indexed integer.
+        public
+        let minute:Int
+        /// The second, expressed as a 0-indexed integer.
+        public
+        let second:Int
 
-        /// init PNG.TimeModified.init(year:month:day:hour:minute:second:)
-        ///     Creates an image modification time.
+        /// Creates an image modification time.
         ///
-        ///     The time is time-zone agnostic, and so all time parameters are
-        ///     assumed to be in universal time (UTC). Passing out-of-range
-        ///     time parameters will result in a precondition failure.
-        /// - year : Swift.Int
+        /// The time is time-zone agnostic, and so all time parameters are
+        /// assumed to be in universal time (UTC). Passing out-of-range
+        /// time parameters will result in a precondition failure.
+        /// -   Parameter year:
         ///     The complete [gregorian](https://en.wikipedia.org/wiki/Gregorian_calendar)
         ///     year. It must be in the range `0 ..< 1 << 16`. It can be
         ///     reasonably expected to have four decimal digits.
-        /// - month : Swift.Int
+        /// -   Parameter month:
         ///     The calendar month, expressed as a 1-indexed integer. It must
         ///     be in the range `1 ... 12`.
-        /// - day : Swift.Int
+        /// -   Parameter day:
         ///     The calendar day, expressed as a 1-indexed integer.
         ///     It must be in the range `1 ... 31`.
-        /// - hour : Swift.Int
+        /// -   Parameter hour:
         ///     The hour, in 24-hour time, expressed as a 0-indexed integer.
         ///     It must be in the range `0 ... 23`.
-        /// - minute : Swift.Int
+        /// -   Parameter minute:
         ///     The minute, expressed as a 0-indexed integer.
         ///     It must be in the range `0 ... 59`.
-        /// - second : Swift.Int
+        /// -   Parameter second:
         ///     The second, expressed as a 0-indexed integer.
         ///     It must be in the range `0 ... 60`, where the value `60` is
         ///     used to represent leap seconds.
@@ -96,12 +83,9 @@ extension PNG
 }
 extension PNG.TimeModified
 {
-    /// init PNG.TimeModified.init(parsing:)
-    /// throws
-    ///     Creates an image modification time by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// Creates an image modification time by parsing the given chunk data.
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/tIME`` chunk to parse.
-    /// ## (timemodified-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
     {
@@ -135,10 +119,7 @@ extension PNG.TimeModified
                 second: self.second)
         }
     }
-    /// var PNG.TimeModified.serialized : [Swift.UInt8] { get }
-    ///     Encodes this image modification time as the contents of a
-    ///     ``Chunk/tIME`` chunk.
-    /// ## (timemodified-parsing-and-serialization)
+    /// Encodes this image modification time as the contents of a ``Chunk/tIME`` chunk.
     public
     var serialized:[UInt8]
     {

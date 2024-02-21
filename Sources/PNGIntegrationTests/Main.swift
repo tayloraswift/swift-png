@@ -384,7 +384,7 @@ enum Main:TestMain, TestBattery
     {
         do
         {
-            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.in)
+            guard let rectangular:PNG.Image = try .decompress(path: path.in)
             else
             {
                 return .failure(.init(message: "failed to open file '\(path.in)'"))
@@ -498,7 +498,7 @@ enum Main:TestMain, TestBattery
         func decode(_ name:String) throws -> Result<Void, _TestFailure>?
         {
             let path:String = "Sources/PNGIntegrationTests/Inputs/Invalid/\(name).png"
-            if let _:PNG.Data.Rectangular = try .decompress(path: path)
+            if let _:PNG.Image = try .decompress(path: path)
             {
                 return .failure(.init(message: "file '\(path)' is invalid, but decoded without errors"))
             }
@@ -638,7 +638,7 @@ enum Main:TestMain, TestBattery
     {
         do
         {
-            guard let rectangular:PNG.Data.Rectangular = try .decompress(path: path.in)
+            guard let rectangular:PNG.Image = try .decompress(path: path.in)
             else
             {
                 return .failure(.init(message: "failed to open file '\(path.in)'"))

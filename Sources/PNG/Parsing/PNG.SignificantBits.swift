@@ -1,93 +1,26 @@
 extension PNG
 {
-    /// struct PNG.SignificantBits
-    ///     A color precision descriptor.
+    /// A color precision descriptor.
     ///
-    ///     This type models the information stored in an ``Chunk/sBIT`` chunk.
-    /// # [Parsing and serialization](significantbits-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
-    public
+    /// This type models the information stored in an ``Chunk/sBIT`` chunk.
+    @frozen public
     struct SignificantBits
     {
-        /// enum PNG.SignificantBits.Case
-        ///     A color precision case.
-        public
-        enum Case
-        {
-            /// case PNG.SignificantBits.Case.v(_:)
-            ///     A color precision descriptor for a grayscale image.
-            /// - _ : Swift.Int
-            ///     The number of significant bits in each grayscale sample.
-            ///
-            ///     This value must be greater than zero, and can be no greater
-            ///     than the color depth of the image color format.
-            /// ## ()
-            case v(Int)
-            /// case PNG.SignificantBits.Case.va(_:)
-            ///     A color precision descriptor for a grayscale-alpha image.
-            /// - _ : (v:Swift.Int, a:Swift.Int)
-            ///     The number of significant bits in each grayscale and alpha
-            ///     sample, respectively.
-            ///
-            ///     Both precision values must be greater than zero, and neither
-            ///     can be greater than the color depth of the image color format.
-            /// ## ()
-            case va((v:Int, a:Int))
-            /// case PNG.SignificantBits.Case.rgb(_:)
-            ///     A color precision descriptor for an RGB, BGR, or indexed image.
-            /// - _ : (r:Swift.Int, g:Swift.Int, b:Swift.Int)
-            ///     The number of significant bits in each red, green, and blue
-            ///     sample, respectively. If the image uses an indexed color format,
-            ///     the precision values refer to the precision of the palette
-            ///     entries, not the indices. The ``Chunk/sBIT`` chunk type is
-            ///     not capable of specifying the precision of the alpha component
-            ///     of the palette entries. If the image palette was augmented with
-            ///     alpha samples from a [`Transparency`] descriptor, the precision
-            ///     of those samples is left undefined.
-            ///
-            ///     The meaning of a color precision descriptor is
-            ///     poorly-defined for BGR images. It is strongly recommended that
-            ///     iphone-optimized images use [`(PNG).SignificantBits`] only if all
-            ///     samples have the same precision.
-            ///
-            ///     Each precision value must be greater than zero, and none of them
-            ///     can be greater than the color depth of the image color format.
-            /// ## ()
-            case rgb((r:Int, g:Int, b:Int))
-            /// case PNG.SignificantBits.Case.rgba(_:)
-            ///     A color precision descriptor for an RGBA or BGRA image.
-            /// - _ : (r:Swift.Int, g:Swift.Int, b:Swift.Int, a:Swift.Int)
-            ///     The number of significant bits in each red, green, blue, and alpha
-            ///     sample, respectively.
-            ///
-            ///     The meaning of a color precision descriptor is
-            ///     poorly-defined for BGRA images. It is strongly recommended that
-            ///     iphone-optimized images use [`(PNG).SignificantBits`] only if all
-            ///     samples have the same precision.
-            ///
-            ///     Each precision value must be greater than zero, and none of them
-            ///     can be greater than the color depth of the image color format.
-            /// ## ()
-            case rgba((r:Int, g:Int, b:Int, a:Int))
-        }
-        /// let PNG.SignificantBits.case : Case
-        ///     The value of this color precision descriptor.
+        /// The value of this color precision descriptor.
         let `case`:Case
     }
 }
 extension PNG.SignificantBits
 {
-    /// init PNG.SignificantBits.init(case:pixel:)
-    ///     Creates a color precision descriptor.
+    /// Creates a color precision descriptor.
     ///
-    ///     This initializer validates the precision information against the
-    ///     given pixel format.
-    /// - case      : Case
+    /// This initializer validates the precision information against the
+    /// given pixel format.
+    /// -   Parameter case:
     ///     A color precision case. Each precision value in the enumeration
     ///     payload must be greater than zero, and none of them
     ///     can be greater than the color depth of the image color format.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this color precision descriptor is to be
     ///     used for. Passing a mismatched enumeration `case` will result in a
     ///     precondition failure.
@@ -116,16 +49,13 @@ extension PNG.SignificantBits
 
         self.case = `case`
     }
-    /// init PNG.SignificantBits.init(parsing:pixel:)
-    /// throws
-    ///     Creates a color precision descriptor by parsing the given chunk data,
-    ///     interpreting and validating it according to the given `pixel` format.
-    /// - data      : [Swift.UInt8]
+    /// Creates a color precision descriptor by parsing the given chunk data,
+    /// interpreting and validating it according to the given `pixel` format.
+    /// -   Parameter data:
     ///     The contents of an ``Chunk/sBIT`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
-    /// ## (significantbits-parsing-and-serialization)
     public
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel) throws
     {
@@ -178,10 +108,7 @@ extension PNG.SignificantBits
             throw PNG.ParsingError.invalidSignificantBitsPrecision(v, max: max)
         }
     }
-    /// var PNG.SignificantBits.serialized : [Swift.UInt8] { get }
-    ///     Encodes this color precision descriptor as the contents of an
-    ///     ``Chunk/sBIT`` chunk.
-    /// ## (significantbits-parsing-and-serialization)
+    /// Encodes this color precision descriptor as the contents of an ``Chunk/sBIT`` chunk.
     public
     var serialized:[UInt8]
     {
