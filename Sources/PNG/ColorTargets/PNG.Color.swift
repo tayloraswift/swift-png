@@ -26,11 +26,11 @@ protocol _PNGColor<Aggregate>
     /// -   Parameters:
     ///     -   interleaved:
     ///         An image data buffer. It is expected to be obtained from the
-    ///         ``Data/Rectangular/storage`` property of a ``Data/Rectangular`` image.
+    ///         ``Image/storage`` property of a ``Image`` image.
     ///     -   format:
     ///         The color format associated with the given data buffer.
     ///         It is expected to be obtained from the the ``PNG/Layout/format`` property of a
-    ///         ``PNG/Data/Rectangular`` image.
+    ///         ``PNG/Image`` image.
     ///     -   deindexer:
     ///         A function which uses the palette entries in the color `format` to
     ///         generate a dereferencing function. This function should only be invoked
@@ -57,7 +57,7 @@ protocol _PNGColor<Aggregate>
     ///         The color format to pack the given pixels as in the returned data buffer.
     ///
     ///         When the library uses an implementation of this function to construct
-    ///         a ``PNG/Data/Rectangular`` image, this color format will be stored in
+    ///         a ``PNG/Image`` image, this color format will be stored in
     ///         its ``PNG/Layout/format`` property.
     ///     -   indexer:
     ///         A function which uses the palette entries in the color `format` to
@@ -73,8 +73,8 @@ protocol _PNGColor<Aggregate>
     ///     necessarily in the same order within each individual pixel.)
     ///
     /// When the library uses an implementation of this function to construct
-    /// a ``PNG/Data/Rectangular`` image, this data buffer will be stored in
-    /// its ``PNG/Data/Rectangular/storage`` property.
+    /// a ``PNG/Image`` image, this data buffer will be stored in
+    /// its ``PNG/Image/storage`` property.
     static
     func pack(_ pixels:[Self],
         as format:PNG.Format,
@@ -98,12 +98,12 @@ protocol _PNGColor<Aggregate>
     /// -   Parameters:
     ///     -   interleaved:
     ///         An image data buffer. It is expected to be obtained from the
-    ///        ``PNG/Data/Rectangular/storage`` property of a ``PNG/Data/Rectangular``
+    ///        ``PNG/Image/storage`` property of a ``PNG/Image``
     ///         image.
     ///     -   format:
     ///         The color format associated with the given data buffer. It is
     ///         expected to be obtained from the the ``PNG/Layout/format`` property of a
-    ///         ``PNG/Data/Rectangular`` image.
+    ///         ``PNG/Image`` image.
     /// -   Returns:
     ///     A pixel array containing instances of this color target. The pixels
     ///     should appear in the same order as they do in the image data buffer.
@@ -140,7 +140,7 @@ protocol _PNGColor<Aggregate>
     ///         The color format to pack the given pixels as in the returned data buffer.
     ///
     ///         When the library uses an implementation of this function to construct
-    ///         a ``PNG/Data/Rectangular`` image, this color format will be stored in
+    ///         a ``PNG/Image`` image, this color format will be stored in
     ///         its ``PNG/Layout/format`` property.
     ///
     /// -   Returns:
@@ -149,8 +149,8 @@ protocol _PNGColor<Aggregate>
     ///     necessarily in the same order within each individual pixel.)
     ///
     ///     When the library uses an implementation of this function to construct
-    ///     a ``PNG/Data/Rectangular`` image, this data buffer will be stored in
-    ///     its ``PNG/Data/Rectangular/storage`` property.
+    ///     a ``PNG/Image`` image, this data buffer will be stored in
+    ///     its ``PNG/Image/storage`` property.
     static
     func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8]
 }

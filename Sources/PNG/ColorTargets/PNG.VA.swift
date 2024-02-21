@@ -158,12 +158,12 @@ extension PNG.VA:PNG.Color
     /// computed from the color `format`.
     /// -   Parameter interleaved:
     ///     An image data buffer. It is expected to be obtained from the
-    ///     ``Image/storage`` property of a ``Data/Rectangular``
+    ///     ``Image/storage`` property of a ``Image``
     ///     image.
     /// -   Parameter format:
     ///     The color format associated with the given data buffer.
     ///     It is expected to be obtained from the the `layout.format` property of a
-    ///     ``Data/Rectangular`` image.
+    ///     ``Image`` image.
     /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color `format` to
     ///     generate a dereferencing function. This function is only invoked
@@ -308,7 +308,7 @@ extension PNG.VA:PNG.Color
     ///     The color format to pack the given pixels as in the returned data buffer.
     ///
     ///     When the library uses an implementation of this function to construct
-    ///     a ``Data/Rectangular`` image, this color format will be stored in
+    ///     a ``Image`` image, this color format will be stored in
     ///     its `layout.format` property.
     /// -   Parameter indexer:
     ///     A function which uses the palette entries in the color `format` to
@@ -323,7 +323,7 @@ extension PNG.VA:PNG.Color
     ///     in the same order as the pixels in the `pixels` array.
     ///
     ///     When the library uses an implementation of this function to construct
-    ///     a ``Data/Rectangular`` image, this data buffer will be stored in
+    ///     a ``Image`` image, this data buffer will be stored in
     ///     its ``Image/storage`` property.
     @_specialize(where T == UInt8)
     @_specialize(where T == UInt16)

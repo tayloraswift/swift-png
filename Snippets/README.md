@@ -114,13 +114,13 @@ Most PNG viewers ignore the `fill` field, and a few ignore the `key` field as we
 
 The non-grayscale color formats include a `palette` field. Setting it to the empty array `[]` is analogous to setting `fill` or `key` to `nil`. For the indexed color formats, a non-empty `palette` is mandatory. For the other formats, it is optional (meaning it can be set to `[]`), and furthermore, ignored by almost all PNG clients, since it only specifies a suggested [posterization](https://en.wikipedia.org/wiki/Posterization) for the image.
 
-To create a rectangular image data instance, use the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer. This initializer is the inverse of the [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
+To create a rectangular image data instance, use the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Image/init(packing:size:layout:metadata:)/) initializer. This initializer is the inverse of the [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Image/unpack(as:)/) method we used in the [basic decoding](#basic-decoding) tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
 
 ```swift
 let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.rgb)
 ```
 
-On platforms with built-in file system support, we can compress it to a file using the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
+On platforms with built-in file system support, we can compress it to a file using the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Image/compress(path:level:hint:)/) method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the [online decoding](#online-decoding) tutorial.
 
 The `level` argument specifies the **compression level**. It should be in the range `0 ... 13`, where `13` is the most aggressive setting. Its default value is `9`. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
 
@@ -168,7 +168,7 @@ The built-in [`PNG.RGBA<T>`](https://tayloraswift.github.io/swift-png/PNG/RGBA/)
 
 > the example image, encoded by *swift png* in the 8-bit grayscale color format.
 
-Like the [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/unpack(as:)/) method, the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/init(packing:size:layout:metadata:)/) initializer is generic and can take an array of any color target. It also has an [overload](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array.
+Like the [`unpack(as:)`](https://tayloraswift.github.io/swift-png/PNG/Image/unpack(as:)/) method, the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Image/init(packing:size:layout:metadata:)/) initializer is generic and can take an array of any color target. It also has an [overload](https://tayloraswift.github.io/swift-png/PNG/Image/1-init(packing:size:layout:metadata:)/) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array.
 
 ```swift
 let luminance:[UInt8] = rgba.map
@@ -601,7 +601,7 @@ try visualization.compress(path: "examples/indexing/gradient-visualization.png")
 
 > a visualization of the generated gradient.
 
-We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, [`init(packing:size:layout:metadata:indexer:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/), and pass it a custom **indexing function**.
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Image/1-init(packing:size:layout:metadata:)/) initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, [`init(packing:size:layout:metadata:indexer:)`](https://tayloraswift.github.io/swift-png/PNG/Image/1-init(packing:size:layout:metadata:indexer:)/), and pass it a custom **indexing function**.
 
 ```swift
 let indexed:PNG.Image = .init(packing: v, size: image.size,
@@ -612,7 +612,7 @@ let indexed:PNG.Image = .init(packing: v, size: image.size,
 }
 ```
 
-The best way to understand the indexing function is to compare it with the behavior of the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:)/) initializer. Calling that initializer is equivalent to calling [`init(packing:size:layout:metadata:indexer:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-init(packing:size:layout:metadata:indexer:)/) with the following indexing function.
+The best way to understand the indexing function is to compare it with the behavior of the [`init(packing:size:layout:metadata:)`](https://tayloraswift.github.io/swift-png/PNG/Image/1-init(packing:size:layout:metadata:)/) initializer. Calling that initializer is equivalent to calling [`init(packing:size:layout:metadata:indexer:)`](https://tayloraswift.github.io/swift-png/PNG/Image/1-init(packing:size:layout:metadata:indexer:)/) with the following indexing function.
 
 ```swift
 {
@@ -648,7 +648,7 @@ Let’s go back to the custom indexing function:
 
 Since we just want to cast the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the [`Int.init(_:)`](https://developer.apple.com/documentation/swift/int/2885075-init) initializer, which casts the grayscale samples to [`Int`](https://developer.apple.com/documentation/swift/int)s. The Swift type inferencer will specialize it to the desired type `(UInt8) -> Int`.
 
-On appropriate platforms, we can encode the image to a file with the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) method.
+On appropriate platforms, we can encode the image to a file with the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Image/compress(path:level:hint:)/) method.
 
 ```swift
 try indexed.compress(path: "\(path)-indexed.png")
@@ -658,7 +658,7 @@ try indexed.compress(path: "\(path)-indexed.png")
 
 > the example image, colorized as an indexed png.
 
-To read back the index values from the indexed image, we can use a custom **deindexing function**, which we pass to [`unpack(as:deindexer:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/1-unpack(as:deindexer:)/).
+To read back the index values from the indexed image, we can use a custom **deindexing function**, which we pass to [`unpack(as:deindexer:)`](https://tayloraswift.github.io/swift-png/PNG/Image/1-unpack(as:deindexer:)/).
 
 ```swift
 let indices:[UInt8] = indexed.unpack(as: UInt8.self)
@@ -755,7 +755,7 @@ It is often convenient to work in the premultiplied color space, so the library 
 
 > **note:** unpacking bgra images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. if you trying to unpack grayscale values from an iphone-optimized image with transparency, unpack it to the [`PNG.VA<T>`](https://tayloraswift.github.io/swift-png/PNG/VA/) color target, and take the gray channel *after* straightening the grayscale-alpha pixels.
 
-Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the [`storage`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/storage) property on [`PNG.Image`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/).
+Depending on your use case, you may not be getting the most out of iphone-optimized images by unpacking them to a color target. As mentioned previously, the iphone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. We can access the packed data buffer through the [`storage`](https://tayloraswift.github.io/swift-png/PNG/Image/storage) property on [`PNG.Image`](https://tayloraswift.github.io/swift-png/PNG/Image/).
 
 ```swift
 print(image.storage[..<16])
@@ -815,7 +815,7 @@ In this tutorial, we will inspect and edit metadata in the following example ima
 
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:RIAN_archive_348_During_the_siege.jpg)*
 
-On appropriate platforms, we can decompress the image using the [`decompress(path:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) static method.
+On appropriate platforms, we can decompress the image using the [`decompress(path:)`](https://tayloraswift.github.io/swift-png/PNG/Image/decompress(path:)/) static method.
 
 ```swift
 import PNG
@@ -829,7 +829,7 @@ else
 }
 ```
 
-The image metadata lives in a [`PNG.Metadata`](https://tayloraswift.github.io/swift-png/PNG/Metadata/) structure, which is stored in the [`metadata`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/metadata) property of the image data structure. The metadata structure has the following properties:
+The image metadata lives in a [`PNG.Metadata`](https://tayloraswift.github.io/swift-png/PNG/Metadata/) structure, which is stored in the [`metadata`](https://tayloraswift.github.io/swift-png/PNG/Image/metadata) property of the image data structure. The metadata structure has the following properties:
 
 ```swift
 var time:PNG.TimeModified?
@@ -893,7 +893,7 @@ The example image also has several text chunks which contain machine-readable da
 print(image.metadata)
 ```
 
-The [`metadata`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/metadata) property is mutable, so we can overwrite metadata fields without having to repack the image pixels.
+The [`metadata`](https://tayloraswift.github.io/swift-png/PNG/Image/metadata) property is mutable, so we can overwrite metadata fields without having to repack the image pixels.
 
 ```swift
 image.metadata.time = .init(year: 1992, month: 8, day: 3, hour: 0, minute: 0, second: 0)
@@ -957,7 +957,7 @@ extension System
 }
 ```
 
-There are two **bytestream protocols** a custom data stream type can support: [`PNG.BytestreamSource`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source), and [`PNG.BytestreamDestination`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Destination). The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
+There are two **bytestream protocols** a custom data stream type can support: [`PNG.BytestreamSource`](https://tayloraswift.github.io/swift-png/PNG/BytestreamSource), and [`PNG.BytestreamDestination`](https://tayloraswift.github.io/swift-png/PNG/BytestreamDestination). The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
 
 ```swift
 extension System.Blob:PNG.BytestreamSource, PNG.BytestreamDestination
@@ -1023,14 +1023,14 @@ var blob:System.Blob = .init(data)
 >
 > *source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Agence_Rol,_24.4.21,_concours_de_machines_-_BnF.jpg)*
 
-To decode from our `System.Blob` type, we use the [`decompress(stream:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/decompress(stream:)/) function, which is part of the core library, and does essentially the same thing as the file system-aware [`decompress(path:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) function. We can then unpack pixels from the returned image data structure as we would in any other situation.
+To decode from our `System.Blob` type, we use the [`decompress(stream:)`](https://tayloraswift.github.io/swift-png/PNG/Image/decompress(stream:)/) function, which is part of the core library, and does essentially the same thing as the file system-aware [`decompress(path:)`](https://tayloraswift.github.io/swift-png/PNG/Image/decompress(path:)/) function. We can then unpack pixels from the returned image data structure as we would in any other situation.
 
 ```swift
 let image:PNG.Image  = try .decompress(stream: &blob)
 let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
 ```
 
-Just as with the decompression interfaces, the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) function has a generic [`compress(stream:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/compress(stream:level:hint:)/) counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
+Just as with the decompression interfaces, the [`compress(path:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Image/compress(path:level:hint:)/) function has a generic [`compress(stream:level:hint:)`](https://tayloraswift.github.io/swift-png/PNG/Image/compress(stream:level:hint:)/) counterpart. Here, we have cleared the blob storage, and written the example image we decoded earlier to it:
 
 ```swift
 blob = .init([])
@@ -1100,7 +1100,7 @@ struct Stream
 }
 ```
 
-Each time we try to [`read`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/read(count:)/) from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
+Each time we try to [`read`](https://tayloraswift.github.io/swift-png/PNG/BytestreamSource/read(count:)/) from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
 
 ```swift
 extension Stream:PNG.BytestreamSource
@@ -1178,13 +1178,13 @@ let path:String     = "examples/decode-online/example"
 var stream:Stream   = .init(path: "\(path).png")
 ```
 
-The key to making this work is understanding that if the [`read(count:)`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/read(count:)/) call on the stream instance returns `nil`, then one of three library errors will get thrown:
+The key to making this work is understanding that if the [`read(count:)`](https://tayloraswift.github.io/swift-png/PNG/BytestreamSource/read(count:)/) call on the stream instance returns `nil`, then one of three library errors will get thrown:
 
 - [`PNG.LexingError.truncatedSignature`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedSignature/)
 - [`PNG.LexingError.truncatedChunkHeader`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedChunkHeader/)
 - [`PNG.LexingError.truncatedChunkBody(expected:)`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedChunkBody(expected:)/)
 
-These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The [`signature()`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/signature()/) method lexes the PNG signature bytes from the beginning of a PNG file, and it can `throw` a [`truncatedSignature`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedSignature/) error. The [`chunk()`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/chunk()/) method lexes a PNG chunk, and it can `throw` a [`truncatedChunkHeader`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedChunkHeader) or [`truncatedChunkBody(expected:)`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedChunkBody(expected:)/) error.
+These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The [`signature()`](https://tayloraswift.github.io/swift-png/PNG/BytestreamSource/signature()/) method lexes the PNG signature bytes from the beginning of a PNG file, and it can `throw` a [`truncatedSignature`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedSignature/) error. The [`chunk()`](https://tayloraswift.github.io/swift-png/PNG/BytestreamSource/chunk()/) method lexes a PNG chunk, and it can `throw` a [`truncatedChunkHeader`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedChunkHeader) or [`truncatedChunkBody(expected:)`](https://tayloraswift.github.io/swift-png/PNG/LexingError/truncatedChunkBody(expected:)/) error.
 
 ```swift
 mutating
@@ -1196,7 +1196,7 @@ func chunk() throws -> (type:PNG.Chunk, data:[UInt8])
 
 A valid PNG file consists of a signature, followed by a sequence of chunks.
 
-The lexer functions are provided as extensions on the [`PNG.BytestreamSource`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/) protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
+The lexer functions are provided as extensions on the [`PNG.BytestreamSource`](https://tayloraswift.github.io/swift-png/PNG/BytestreamSource/) protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
 
 Normally, the three aforementioned errors would indicate an unexpected end-of-stream. In this case, they just mean that there is not enough data available yet, so the client needs to wait for more of the file to arrive before decoding can proceed. To allow the lexing functions to recover on end-of-stream instead of crashing the application, we wrap them in the following `waitSignature(stream:)` and `waitChunk(stream:)` functions, making sure to reset the file position if end-of-stream is encountered.
 
@@ -1434,7 +1434,7 @@ In the last phase of the loop, we process all the trailing metadata chunks by pa
 
 > **note:** you can pass an [`IEND`](https://tayloraswift.github.io/swift-png/PNG/Chunk/IEND) chunk to the [`push(ancillary:)`](https://tayloraswift.github.io/swift-png/PNG/Context/push(ancillary:)/) method, as we have done above, even though [`IEND`](https://tayloraswift.github.io/swift-png/PNG/Chunk/IEND) is a critical chunk type. this makes the decoder context check that the compressed image data stream has been properly terminated.
 
-We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal [`PNG.Image`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular) instances that we can treat like any other image data instance.
+We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure we created earlier, saving each partially-decoded image snapshot to a separate PNG file. The pixel-unpacking call in the middle of the delegate function doesn’t do anything; it’s just there to demonstrate that the snapshots are normal [`PNG.Image`](https://tayloraswift.github.io/swift-png/PNG/Image) instances that we can treat like any other image data instance.
 
 ```swift
 var counter:Int                 = 0
@@ -1465,7 +1465,7 @@ let image:PNG.Image  = try decodeOnline(stream: &stream, overdraw: false)
 
 Our example image was a non-interlaced image, so it gets decoded as a sequence of scanlines from top-to-bottom.
 
-We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the [`bindStorage(to:)`](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/bindStorage(to:)/) method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format enumeration case, though not necessarily the same values for `fill` or `key`. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
+We can make the previews more useful by preprocessing the image into an interlaced layout. (In a real use case, you would do this on the server, before sending it to client applications.) One way to do this is to unpack and repack the image pixels to a new image layout. A faster way to do it is to use the [`bindStorage(to:)`](https://tayloraswift.github.io/swift-png/PNG/Image/bindStorage(to:)/) method on the image data instance, which provides a safe interface for changing image layouts without unnecessary repacking operations. This method requires that both image layouts have the same color format enumeration case, though not necessarily the same values for `fill` or `key`. Furthermore, if the color format is an indexed format, the new image palette must have the same number of entries as the old palette.
 
 When emitting the preprocessed file, we have manually set the **chunk granularity** to 2<sup>12</sup> bytes, which is much smaller than the default of 2<sup>15</sup> bytes. The purpose of this is to make the encoder emit smaller [`IDAT`](https://tayloraswift.github.io/swift-png/PNG/Chunk/IDAT) chunks, so that we can observe a larger number of intermediate snapshots.
 
