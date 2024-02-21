@@ -957,10 +957,10 @@ extension System
 }
 ```
 
-There are two **bytestream protocols** a custom data stream type can support: [`PNG.Bytestream.Source`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source), and [`PNG.Bytestream.Destination`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Destination). The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
+There are two **bytestream protocols** a custom data stream type can support: [`PNG.BytestreamSource`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source), and [`PNG.BytestreamDestination`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Destination). The first one enables image decoding, while the second one enables image encoding. We can conform to both with the following implementations:
 
 ```swift
-extension System.Blob:PNG.Bytestream.Source, PNG.Bytestream.Destination
+extension System.Blob:PNG.BytestreamSource, PNG.BytestreamDestination
 {
     init(_ data:[UInt8])
     {
@@ -1103,7 +1103,7 @@ struct Stream
 Each time we try to [`read`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/read(count:)/) from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
 
 ```swift
-extension Stream:PNG.Bytestream.Source
+extension Stream:PNG.BytestreamSource
 {
     init(_ data:[UInt8])
     {
@@ -1196,7 +1196,7 @@ func chunk() throws -> (type:PNG.Chunk, data:[UInt8])
 
 A valid PNG file consists of a signature, followed by a sequence of chunks.
 
-The lexer functions are provided as extensions on the [`PNG.Bytestream.Source`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/) protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
+The lexer functions are provided as extensions on the [`PNG.BytestreamSource`](https://tayloraswift.github.io/swift-png/PNG/Bytestream/Source/) protocol, so they are available on any conforming data stream type, including our custom `Stream` type.
 
 Normally, the three aforementioned errors would indicate an unexpected end-of-stream. In this case, they just mean that there is not enough data available yet, so the client needs to wait for more of the file to arrive before decoding can proceed. To allow the lexing functions to recover on end-of-stream instead of crashing the application, we wrap them in the following `waitSignature(stream:)` and `waitChunk(stream:)` functions, making sure to reset the file position if end-of-stream is encountered.
 

@@ -10,7 +10,7 @@ struct Stream
         available:Int
 }
 
-extension Stream:PNG.Bytestream.Source
+extension Stream:PNG.BytestreamSource
 {
     init(_ data:[UInt8])
     {

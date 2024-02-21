@@ -226,10 +226,10 @@ extension System.File.Destination
 }
 
 // declare conformance (as a formality)
-extension System.File.Source:PNG.Bytestream.Source
+extension System.File.Source:PNG.BytestreamSource
 {
 }
-extension System.File.Destination:PNG.Bytestream.Destination
+extension System.File.Destination:PNG.BytestreamDestination
 {
 }
 

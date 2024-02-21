@@ -295,7 +295,7 @@ extension PNG.Image
     ///     The decoded image.
     public static
     func decompress<Source>(stream:inout Source) throws -> Self
-        where Source:PNG.Bytestream.Source
+        where Source:PNG.BytestreamSource
     {
         try stream.signature()
         let (standard, header):(PNG.Standard, PNG.Header) = try
@@ -574,7 +574,7 @@ extension PNG.Image
     public
     func compress<Destination>(stream:inout Destination, level:Int = 9, hint:Int = 1 << 15)
         throws
-        where Destination:PNG.Bytestream.Destination
+        where Destination:PNG.BytestreamDestination
     {
         try stream.signature()
 
