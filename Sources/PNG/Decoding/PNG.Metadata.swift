@@ -117,7 +117,7 @@ extension PNG.Metadata
     /// format and `palette`. It also validates its multiplicity, and its chunk ordering with
     /// respect to the ``Chunk/PLTE`` chunk.
     ///
-    /// - Parameters:
+    /// -   Parameters:
     ///     -   chunk:
     ///         The chunk to process.
     ///

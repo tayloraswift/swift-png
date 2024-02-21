@@ -1,83 +1,39 @@
 extension PNG
 {
-    /// struct PNG.Transparency
-    ///     A transparency descriptor.
+    /// A transparency descriptor.
     ///
-    ///     This type models the information stored in a ``Chunk/tRNS`` chunk.
-    ///     This information either used to populate the `key` field in
-    ///     an image color [`Format`], or augment its `palette` field, when appropriate.
+    /// This type models the information stored in a ``Chunk/tRNS`` chunk.
+    /// This information either used to populate the `key` field in
+    /// an image color ``Format``, or augment its `palette` field, when appropriate.
     ///
-    ///     The value of this descriptor is stored in the [`(PNG.Transparency).case`]
-    ///     property, after validation.
-    /// # [Parsing and serialization](transparency-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// The value of this descriptor is stored in the ``PNG.Transparency/case``
+    /// property, after validation.
     public
     struct Transparency
     {
-        /// enum PNG.Transparency.Case
-        ///     A transparency case.
-        public
-        enum Case
-        {
-            /// case PNG.Transparency.Case.palette(alpha:)
-            ///     A transparency descriptor for an indexed image.
-            /// - alpha     : [Swift.UInt8]
-            ///     An array of alpha samples, where each sample augments an
-            ///     RGB triple in an image [`Palette`]. This array can contain no
-            ///     more elements than entries in the image palette, but it can
-            ///     contain fewer.
-            ///
-            ///     It is acceptable (though pointless) for the `alpha` array to be
-            ///     empty.
-            case palette(alpha:[UInt8])
-            /// case PNG.Transparency.Case.rgb(key:)
-            ///     A transparency descriptor for an RGB or BGR image.
-            /// - key     : (r:Swift.UInt16, g:Swift.UInt16, b:Swift.UInt16)
-            ///     A chroma key used to display transparency. Pixels
-            ///     matching this key will be displayed as transparent, if possible.
-            ///
-            ///     Note that the chroma key components are unscaled samples. If
-            ///     the image color depth is less than `16`, only the least-significant
-            ///     bits of each sample are inhabited.
-            case rgb(key:(r:UInt16, g:UInt16, b:UInt16))
-            /// case PNG.Transparency.Case.v(key:)
-            ///     A transparency descriptor for a grayscale image.
-            /// - key     : Swift.UInt16
-            ///     A chroma key used to display transparency. Pixels
-            ///     matching this key will be displayed as transparent, if possible.
-            ///
-            ///     Note that the chroma key is an unscaled sample. If
-            ///     the image color depth is less than `16`, only the least-significant
-            ///     bits are inhabited.
-            case v(key:UInt16)
-        }
-
-        /// let PNG.Transparency.case : Case
-        ///     The value of this transparency descriptor.
+        /// The value of this transparency descriptor.
         public
         let `case`:Case
     }
 }
 extension PNG.Transparency
 {
-    /// init PNG.Transparency.init(case:pixel:palette:)
-    ///     Creates a transparency descriptor.
+    /// Creates a transparency descriptor.
     ///
-    ///     This initializer validates the transparency information against the
-    ///     given pixel format and image palette. Some `pixel` formats imply
-    ///     that `palette` must be `nil`. This initializer does not check this
-    ///     assumption, as it is expected to have been verified by
-    ///     [`Palette.init(entries:pixel:)`].
-    /// - case      : Case
+    /// This initializer validates the transparency information against the
+    /// given pixel format and image palette. Some `pixel` formats imply
+    /// that `palette` must be `nil`. This initializer does not check this
+    /// assumption, as it is expected to have been verified by
+    /// ``Palette.init(entries:pixel:)``.
+    /// -   Parameter case:
     ///     A transparency descriptor value.
     ///
-    ///     If this parameter is a [`(Case).v(key:)`] or [`(Case).rgb(key:)`] case,
+    ///     If this parameter is a ``Case/v(key:)`` or ``Case/rgb(key:)`` case,
     ///     the samples in its chroma key payload must fall within the
     ///     range determined by the image color depth. Passing an enumeration
     ///     case with an invalid chroma key sample will result in a precondition
     ///     failure.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this transparency descriptor is to be
     ///     used for. Passing a mismatched enumeration `case` will result in a
     ///     precondition failure.
@@ -85,16 +41,16 @@ extension PNG.Transparency
     ///     Transparency descriptors are not allowed for grayscale-alpha or RGBA
     ///     images, so setting `pixel` to one of those pixel formats will always
     ///     result in a precondition failure.
-    /// - palette   : PNG.Palette?
+    /// -   Parameter palette:
     ///     The palette of the image this transparency descriptor is to be
     ///     used for.
     ///
-    ///     If `case` is a [`(Case).palette(alpha:)`] case, this palette must
+    ///     If `case` is a ``Case/palette(alpha:)`` case, this palette must
     ///     not be `nil`, and must contain at least as many entries as the
-    ///     number of alpha samples in the [`(Case).palette(alpha:)`] payload.
+    ///     number of alpha samples in the ``Case/palette(alpha:)`` payload.
     ///     Otherwise, this initializer will suffer a precondition failure.
     ///
-    ///     If `case` is a [`(Case).v(key:)`] or [`(Case).rgb(key:)`] case,
+    ///     If `case` is a ``Case/v(key:)`` or ``Case/rgb(key:)`` case,
     ///     this parameter is ignored.
     public
     init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?)
@@ -151,24 +107,21 @@ extension PNG.Transparency
 
         self.case = `case`
     }
-    /// init PNG.Transparency.init(parsing:pixel:palette:)
-    /// throws
-    ///     Creates a transparency descriptor by parsing the given chunk data,
-    ///     interpreting and validating it according to the given `pixel` format and
-    ///     image `palette`.
+    /// Creates a transparency descriptor by parsing the given chunk data,
+    /// interpreting and validating it according to the given `pixel` format and
+    /// image `palette`.
     ///
-    ///     Some `pixel` formats imply that `palette` must be `nil`.
-    ///     This initializer does not check this assumption, as it is expected
-    ///     to have been verified by [`Palette.init(parsing:pixel:)`].
-    /// - data      : [Swift.UInt8]
+    /// Some `pixel` formats imply that `palette` must be `nil`.
+    /// This initializer does not check this assumption, as it is expected
+    /// to have been verified by ``Palette.init(parsing:pixel:)``.
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/tRNS`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted
     ///     and validated against.
-    /// - palette   : Palette?
+    /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against, if
     ///     applicable.
-    /// ## (transparency-parsing-and-serialization)
     public
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
     {
@@ -225,10 +178,7 @@ extension PNG.Transparency
             throw PNG.ParsingError.unexpectedTransparency(pixel: pixel)
         }
     }
-    /// var PNG.Transparency.serialized : [Swift.UInt8] { get }
-    ///     Encodes this transparency descriptor as the contents of a
-    ///     ``Chunk/tRNS`` chunk.
-    /// ## (transparency-parsing-and-serialization)
+    /// Encodes this transparency descriptor as the contents of a ``Chunk/tRNS`` chunk.
     public
     var serialized:[UInt8]
     {

@@ -41,7 +41,7 @@ enum Benchmark
         }
     }
 }
-extension Benchmark.Encode.Blob:PNG.Bytestream.Destination
+extension Benchmark.Encode.Blob:PNG.BytestreamDestination
 {
     mutating
     func write(_ data:[UInt8]) -> Void?
@@ -55,7 +55,7 @@ extension Benchmark.Encode
     static
     func rgba8(level:Int, path:String, trials:Int) -> ([(time:Int, hash:Int)], Int)
     {
-        guard let image:PNG.Data.Rectangular = try? .decompress(path: path)
+        guard let image:PNG.Image = try? .decompress(path: path)
         else
         {
             fatalError("failed to decode test image '\(path)'")

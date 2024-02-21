@@ -1,40 +1,31 @@
 extension PNG
 {
-    /// struct PNG.PhysicalDimensions
-    ///     A physical dimensions descriptor.
+    /// A physical dimensions descriptor.
     ///
-    ///     This type models the information stored in a ``Chunk/pHYs`` chunk.
-    /// # [Parsing and serialization](physicaldimensions-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in a ``Chunk/pHYs`` chunk.
     public
     struct PhysicalDimensions
     {
-        /// enum PNG.PhysicalDimensions.Unit
-        ///     A unit of measurement.
+        /// A unit of measurement.
         public
         enum Unit
         {
-            /// case PNG.PhysicalDimensions.Unit.meter
-            ///     The meter.
+            /// The meter.
             ///
-            ///     For conversion purposes, one inch is assumed to equal exactly
-            ///     `254 / 10000` meters.
+            /// For conversion purposes, one inch is assumed to equal exactly
+            /// `254 / 10000` meters.
             case meter
         }
 
-        /// let PNG.PhysicalDimensions.density : (x:Swift.Int, y:Swift.Int, unit:Unit?)
-        ///     The number of pixels in each dimension per the given `unit` of
-        ///     measurement.
+        /// The number of pixels in each dimension per the given `unit` of measurement.
         ///
-        ///     If `unit` is `nil`, the pixel density is unknown,
-        ///     and the `x` and `y` values specify the pixel aspect ratio only.
+        /// If `unit` is `nil`, the pixel density is unknown,
+        /// and the `x` and `y` values specify the pixel aspect ratio only.
         public
         let density:(x:Int, y:Int, unit:Unit?)
 
-        /// init PNG.PhysicalDimensions.init(density:)
-        ///     Creates a physical dimensions descriptor.
-        /// - density : (x:Swift.Int, y:Swift.Int, unit:Unit?)
+        /// Creates a physical dimensions descriptor.
+        /// -   Parameter density:
         ///     The number of pixels in each dimension per the given `unit` of
         ///     measurement.
         ///
@@ -49,12 +40,9 @@ extension PNG
 }
 extension PNG.PhysicalDimensions
 {
-    /// init PNG.PhysicalDimensions.init(parsing:)
-    /// throws
-    ///     Creates a physical dimensions descriptor by parsing the given chunk data.
-    /// - data      : [Swift.UInt8]
+    /// Creates a physical dimensions descriptor by parsing the given chunk data.
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/pHYs`` chunk to parse.
-    /// ## (physicaldimensions-parsing-and-serialization)
     public
     init(parsing data:[UInt8]) throws
     {
@@ -75,10 +63,7 @@ extension PNG.PhysicalDimensions
             throw PNG.ParsingError.invalidPhysicalDimensionsDensityUnitCode(code)
         }
     }
-    /// var PNG.PhysicalDimensions.serialized : [Swift.UInt8] { get }
-    ///     Encodes this physical dimensions descriptor as the contents of a
-    ///     ``Chunk/pHYs`` chunk.
-    /// ## (physicaldimensions-parsing-and-serialization)
+    /// Encodes this physical dimensions descriptor as the contents of a ``Chunk/pHYs`` chunk.
     public
     var serialized:[UInt8]
     {

@@ -2,51 +2,41 @@ import LZ77
 
 extension PNG
 {
-    /// struct PNG.Text
-    ///     A text comment.
+    /// A text comment.
     ///
-    ///     This type models the information stored in a ``Chunk/tEXt``,
-    ///     ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk.
-    /// # [Parsing and serialization](text-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
+    /// This type models the information stored in a ``Chunk/tEXt``,
+    /// ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk.
     public
     struct Text
     {
-        /// let PNG.Text.compressed : Swift.Bool
-        ///     Indicates if the text is (or is to be) stored in compressed or
-        ///     uncompressed form within a PNG file.
+        /// Indicates if the text is (or is to be) stored in compressed or
+        /// uncompressed form within a PNG file.
         ///
-        ///     This flag is `true` if the original text chunk was a
-        ///     ``Chunk/zTXt`` chunk, and `false` if it was a ``Chunk/tEXt``
-        ///     chunk. If the original chunk was an ``Chunk/iTXt`` chunk,
-        ///     this flag can be either `true` or `false`.
+        /// This flag is `true` if the original text chunk was a
+        /// ``Chunk/zTXt`` chunk, and `false` if it was a ``Chunk/tEXt``
+        /// chunk. If the original chunk was an ``Chunk/iTXt`` chunk,
+        /// this flag can be either `true` or `false`.
         public
         let compressed:Bool
-        /// let PNG.Text.keyword : (english:Swift.String, localized:Swift.String)
-        ///     A keyword tag, in english, and possibly a non-english language.
+        /// A keyword tag, in english, and possibly a non-english language.
         ///
-        ///     If the text is in english, the `localized` keyword is the empty
-        ///     string `""`.
+        /// If the text is in english, the `localized` keyword is the empty string `""`.
         public
         let keyword:(english:String, localized:String),
-        /// let PNG.Text.language : [Swift.String]
-        ///     An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt)
-        ///     language tag, where each element is a language subtag.
+        /// An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt)
+        /// language tag, where each element is a language subtag.
         ///
-        ///     If this array is empty, then the language is unspecified.
+        /// If this array is empty, then the language is unspecified.
             language:[String]
-        /// let PNG.Text.content : Swift.String
-        ///     The text content.
+        /// The text content.
         public
         let content:String
 
-        /// init PNG.Text.init(compressed:keyword:language:content:)
-        ///     Creates a text comment.
-        /// - compressed : Swift.Bool
+        /// Creates a text comment.
+        /// -   Parameter compressed:
         ///     Indicates if the text is to be stored in compressed or
         ///     uncompressed form within a PNG file.
-        /// - keyword : (english:Swift.String, localized:Swift.String)
+        /// -   Parameter keyword:
         ///     A keyword tag, in english, and possibly a non-english language.
         ///
         ///     The english keyword must contain only unicode scalars
@@ -59,7 +49,7 @@ extension PNG
         ///
         ///     If the text is in english, the `localized` keyword should be
         ///     set to the empty string `""`.
-        /// - language : [Swift.String]
+        /// -   Parameter language:
         ///     An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt)
         ///     language tag, where each element is a language subtag.
         ///
@@ -68,7 +58,7 @@ extension PNG
         ///     will result in a precondition failure.
         ///
         ///     If this array is empty, then the language is unspecified.
-        /// - content : Swift.String
+        /// -   Parameter content:
         ///     The text content. There are no restrictions on it. It is allowed
         ///     (but not recommended) to contain null characters.
         public
@@ -103,22 +93,19 @@ extension PNG
 }
 extension PNG.Text
 {
-    /// init PNG.Text.init(parsing:unicode:)
-    /// throws
-    ///     Creates a text comment by parsing the given chunk data, interpreting
-    ///     it either as a unicode text chunk, or a latin-1 text chunk.
-    /// - data      : [Swift.UInt8]
+    /// Creates a text comment by parsing the given chunk data, interpreting
+    /// it either as a unicode text chunk, or a latin-1 text chunk.
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/iTXt``
     ///     chunk to parse.
-    /// - unicode   : Swift.Bool
+    /// -   Parameter unicode:
     ///     Specifies if the given chunk `data` should be interpreted as a
     ///     unicode chunk, or a latin-1 chunk. It should be set to `true` if the
     ///     original text chunk was an ``Chunk/iTXt`` chunk, and `false`
     ///     otherwise. The default value is `true`.
     ///
     ///     If this flag is set to `false`, the text is assumed to be in english,
-    ///     and the [`language`] tag will be set to `["en"]`.
-    /// ## (text-parsing-and-serialization)
+    ///     and the ``language`` tag will be set to `["en"]`.
     public
     init(parsing data:[UInt8], unicode:Bool = true) throws
     {
@@ -312,16 +299,12 @@ extension PNG.Text
 
         return scalars.allSatisfy{ "a" ... "z" ~= $0 || "A" ... "Z" ~= $0 }
     }
-    /// var PNG.Text.serialized : [Swift.UInt8] { get }
-    ///     Encodes this text comment as the contents of a
-    ///     ``Chunk/iTXt`` chunk.
+    /// Encodes this text comment as the contents of a ``Chunk/iTXt`` chunk.
     ///
-    ///     This property *always* emits a unicode ``Chunk/iTXt``
-    ///     chunk, regardless of the type of the original chunk, if it was parsed
-    ///     from raw chunk data. It is the opinion of the library that the
-    ///     latin-1 chunk types ``Chunk/tEXt`` and ``Chunk/zTXt`` are
-    ///     deprecated.
-    /// ## (text-parsing-and-serialization)
+    /// This property *always* emits a unicode ``Chunk/iTXt``
+    /// chunk, regardless of the type of the original chunk, if it was parsed
+    /// from raw chunk data. It is the opinion of the library that the
+    /// latin-1 chunk types ``Chunk/tEXt`` and ``Chunk/zTXt`` are deprecated.
     public
     var serialized:[UInt8]
     {

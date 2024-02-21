@@ -15,30 +15,20 @@
 
 #if os(macOS) || os(iOS) || os(Linux) || os(Windows)
 
-/// enum System
-///     A namespace for platform-dependent functionality.
+/// A namespace for platform-dependent functionality.
 ///
-///     These APIs are only available on MacOS and Linux. The rest of the
-///     framework is pure Swift and supports all Swift platforms.
-/// #  [File IO](system-file-io)
-/// #  [See also](top-level-namespaces)
-/// ## (2:top-level-namespaces)
+/// These APIs are only available on MacOS and Linux. The rest of the
+/// framework is pure Swift and supports all Swift platforms.
 public
 enum System
 {
-    /// enum System.File
-    ///     A namespace for file IO functionality.
-    /// ## (system-file-io)
+    /// A namespace for file IO functionality.
     public
     enum File
     {
         typealias Descriptor = UnsafeMutablePointer<FILE>
 
-        /// struct System.File.Source
-        /// :   PNG.Bytestream.Source
-        ///     A type for reading data from files on disk.
-        /// ## (system-file-io)
-        /// ## (system-file-source)
+        /// A type for reading data from files on disk.
         public
         struct Source
         {
@@ -46,11 +36,7 @@ enum System
             let descriptor:Descriptor
         }
 
-        /// struct System.File.Destination
-        /// :   PNG.Bytestream.Destination
-        ///     A type for writing data to files on disk.
-        /// ## (system-file-io)
-        /// ## (system-file-destination)
+        /// A type for writing data to files on disk.
         public
         struct Destination
         {
@@ -61,22 +47,20 @@ enum System
 }
 extension System.File.Source
 {
-    /// static func System.File.Source.open<R>(path:_:)
-    /// rethrows
-    ///     Calls a closure with an interface for reading from the specified file.
+    /// Calls a closure with an interface for reading from the specified file.
     ///
-    ///     This method automatically closes the file when its closure argument returns.
-    /// - path  : Swift.String
+    /// This method automatically closes the file when its closure argument returns.
+    /// -   Parameter path:
     ///     The path to the file to open.
-    /// - body  : (inout Self) throws -> R
-    ///     A closure with a [`Source`] parameter from which data in
+    /// -   Parameter body:
+    ///     A closure with a ``Source`` parameter from which data in
     ///     the specified file can be read. This interface is only valid
     ///     for the duration of the method’s execution. The closure is
     ///     only executed if the specified file could be successfully
     ///     opened, otherwise this method will return `nil`. If `body` has a
     ///     return value and the specified file could be opened, this method
     ///     returns the return value of the closure.
-    /// - ->    : R?
+    /// -   Returns:
     ///     The return value of the closure argument, or `nil` if the specified
     ///     file could not be opened.
     public static
@@ -98,15 +82,13 @@ extension System.File.Source
         return try body(&file)
     }
 
-    /// func System.File.Source.read(count:)
-    /// ?:  PNG.Bytestream.Source
-    ///     Reads the specified number of bytes from this file interface.
+    /// Reads the specified number of bytes from this file interface.
     ///
-    ///     This method only returns an array if the exact number of bytes
-    ///     specified could be read. This method advances the file pointer.
-    /// - capacity  : Swift.Int
+    /// This method only returns an array if the exact number of bytes
+    /// specified could be read. This method advances the file pointer.
+    /// -   Parameter capacity:
     ///     The number of bytes to read.
-    /// - ->        : [Swift.UInt8]?
+    /// -   Returns:
     ///     An array containing the read data, or `nil` if the specified
     ///     number of bytes could not be read.
     public
@@ -128,11 +110,10 @@ extension System.File.Source
 
         return buffer
     }
-    /// var System.File.Source.count : Swift.Int? { get }
-    ///     The size of the file, in bytes, or `nil` if the file is not a regular
-    ///     file or a link to a file.
+    /// The size of the file, in bytes, or `nil` if the file is not a regular
+    /// file or a link to a file.
     ///
-    ///     This property queries the file size using `stat`.
+    /// This property queries the file size using `stat`.
     public
     var count:Int?
     {
@@ -181,22 +162,20 @@ extension System.File.Source
 }
 extension System.File.Destination
 {
-    /// static func System.File.Destination.open<R>(path:_:)
-    /// rethrows
-    ///     Calls a closure with an interface for writing to the specified file.
+    /// Calls a closure with an interface for writing to the specified file.
     ///
-    ///     This method automatically closes the file when its closure argument returns.
-    /// - path  : Swift.String
+    /// This method automatically closes the file when its closure argument returns.
+    /// -   Parameter path:
     ///     The path to the file to open.
-    /// - body  : (inout Self) throws -> R
-    ///     A closure with a [`Destination`] parameter representing
+    /// -   Parameter body:
+    ///     A closure with a ``Destination`` parameter representing
     ///     the specified file to which data can be written to. This
     ///     interface is only valid for the duration of the method’s
     ///     execution. The closure is only executed if the specified file could
     ///     be successfully opened, otherwise this method will return `nil`.
     ///     If `body` has a return value and the specified file could be opened,
     ///     this method returns the return value of the closure.
-    /// - ->    : R?
+    /// -   Returns:
     ///     The return value of the closure argument, or `nil` if the specified
     ///     file could not be opened.
     public static
@@ -218,16 +197,14 @@ extension System.File.Destination
         return try body(&file)
     }
 
-    /// func System.File.Destination.write(_:)
-    /// ?:  PNG.Bytestream.Destination
-    ///     Write the bytes in the given array to this file interface.
+    /// Write the bytes in the given array to this file interface.
     ///
-    ///     This method only returns `()` if the entire array argument could
-    ///     be written. This method advances the file pointer.
-    /// - buffer    : [Swift.UInt8]
+    /// This method only returns `()` if the entire array argument could
+    /// be written. This method advances the file pointer.
+    /// -   Parameter buffer:
     ///     The data to write.
-    /// - ->        : Swift.Void?
-    ///     A [`Swift.Void`] tuple if the entire array argument could be written,
+    /// -   Returns:
+    ///     A ``Void`` tuple if the entire array argument could be written,
     ///     or `nil` otherwise.
     public
     func write(_ buffer:[UInt8]) -> Void?
@@ -249,30 +226,25 @@ extension System.File.Destination
 }
 
 // declare conformance (as a formality)
-extension System.File.Source:PNG.Bytestream.Source
+extension System.File.Source:PNG.BytestreamSource
 {
 }
-extension System.File.Destination:PNG.Bytestream.Destination
+extension System.File.Destination:PNG.BytestreamDestination
 {
 }
 
-extension PNG.Data.Rectangular
+extension PNG.Image
 {
-    /// static func PNG.Data.Rectangular.decompress(path:)
-    /// throws
-    ///     Decompresses and decodes a PNG from a file at the given file path.
+    /// Decompresses and decodes a PNG from a file at the given file path.
     ///
-    ///     This interface is only available on MacOS and Linux. The
-    ///     [`decompress(stream:)`] function provides a platform-independent
-    ///     decoding interface.
-    /// - path : Swift.String
+    /// This interface is only available on MacOS and Linux. The
+    /// ``decompress(stream:)`` function provides a platform-independent
+    /// decoding interface.
+    /// -   Parameter path:
     ///     A path to a PNG file.
-    /// - -> : Self?
+    /// -   Returns:
     ///     The decoded image, or `nil` if the file at the given `path` could
     ///     not be opened.
-    /// # [See also](encoding-and-decoding)
-    /// ## (1:encoding-and-decoding)
-    /// ## (1:decoding)
     public static
     func decompress(path:String) throws -> Self?
     {
@@ -281,32 +253,30 @@ extension PNG.Data.Rectangular
             try .decompress(stream: &$0)
         }
     }
-    /// func PNG.Data.Rectangular.compress(path:level:hint:)
-    /// throws
-    ///     Encodes and compresses a PNG to a file at the given file path.
+    /// Encodes and compresses a PNG to a file at the given file path.
     ///
-    ///     Compression `level` `9` is roughly equivalent to *libpng*’s maximum
-    ///     compression setting in terms of compression ratio and encoding speed.
-    ///     The higher levels (`10` through `13`) are very computationally expensive,
-    ///     so they should only be used when optimizing for file size.
+    /// Compression `level` `9` is roughly equivalent to *libpng*’s maximum
+    /// compression setting in terms of compression ratio and encoding speed.
+    /// The higher levels (`10` through `13`) are very computationally expensive,
+    /// so they should only be used when optimizing for file size.
     ///
-    ///     Experimental comparisons between *Swift PNG* and *libpng*’s
-    ///     compression settings can be found on
-    ///     [this page](https://github.com/tayloraswift/swift-png/blob/master/benchmarks).
+    /// Experimental comparisons between *Swift PNG* and *libpng*’s
+    /// compression settings can be found on
+    /// [this page](https://github.com/tayloraswift/swift-png/blob/master/benchmarks).
     ///
-    ///     This interface is only available on MacOS and Linux. The
-    ///     [`compress(stream:level:hint:)`] function provides a platform-independent
-    ///     encoding interface.
-    /// - path : Swift.String
+    /// This interface is only available on MacOS and Linux. The
+    /// ``compress(stream:level:hint:)`` function provides a platform-independent
+    /// encoding interface.
+    /// -   Parameter path:
     ///     A path to save the PNG file at.
-    /// - level : Swift.Int
+    /// -   Parameter level:
     ///     The compression level to use. It should be in the range `0 ... 13`,
     ///     where `13` is the most aggressive setting. The default value is `9`.
     ///
     ///     Setting this parameter to a value less than `0` is the same as
     ///     setting it to `0`. Likewise, setting it to a value greater than `13`
     ///     is the same as setting it to `13`.
-    /// - hint : Swift.Int
+    /// -   Parameter hint:
     ///     A size hint for the emitted ``Chunk/IDAT`` chunks. It should be in
     ///     the range `1 ... 2147483647`. Reasonable settings range from around
     ///     1\ K to 64\ K. The default value is `32768` (2^15^).
@@ -314,12 +284,9 @@ extension PNG.Data.Rectangular
     ///     Setting this parameter to a value less than `1` is the same as setting
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
     ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
-    /// - -> : Swift.Void?
-    ///     A [`Swift.Void`] tuple if the destination file could be opened
+    /// -   Returns:
+    ///     A ``Void`` tuple if the destination file could be opened
     ///     successfully, or `nil` otherwise.
-    /// # [See also](encoding-and-decoding)
-    /// ## (3:encoding-and-decoding)
-    /// ## (1:encoding)
     public
     func compress(path:String, level:Int = 9, hint:Int = 1 << 15) throws -> Void?
     {

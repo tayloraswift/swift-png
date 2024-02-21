@@ -125,7 +125,7 @@ enum Main:TestMain, TestBattery
 
         do
         {
-            guard let baseline:(image:PNG.Data.Rectangular, size:Int) =
+            guard let baseline:(image:PNG.Image, size:Int) =
                 (try System.File.Source.open(path: path.png)
             {
                 (try .decompress(stream: &$0), $0.count!)
@@ -137,7 +137,7 @@ enum Main:TestMain, TestBattery
 
             try baseline.image.compress(path: path.out, level: 9)
 
-            guard let output:(image:PNG.Data.Rectangular, size:Int) =
+            guard let output:(image:PNG.Image, size:Int) =
                 (try System.File.Source.open(path: path.out)
             {
                 (try .decompress(stream: &$0), $0.count!)

@@ -1,35 +1,29 @@
 extension PNG
 {
-    /// struct PNG.Palette
-    ///     An image palette.
+    /// An image palette.
     ///
-    ///     This type models the information stored in a ``Chunk/PLTE`` chunk.
-    ///     This information is used to populate the non-alpha components of the
-    ///     `palette` field in an image color [`Format`], when appropriate.
-    /// # [Parsing and serialization](palette-parsing-and-serialization)
-    /// # [See also](parsed-chunk-types)
-    /// ## (parsed-chunk-types)
-    public
+    /// This type models the information stored in a ``Chunk/PLTE`` chunk.
+    /// This information is used to populate the non-alpha components of the
+    /// `palette` field in an image color ``Format``, when appropriate.
+    @frozen public
     struct Palette
     {
-        /// let PNG.Palette.entries : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
-        ///     The entries in this palette.
+        /// The entries in this palette.
         public
         let entries:[(r:UInt8, g:UInt8, b:UInt8)]
     }
 }
 extension PNG.Palette
 {
-    /// init PNG.Palette.init(entries:pixel:)
-    ///     Creates an image palette.
+    /// Creates an image palette.
     ///
-    ///     This initializer validates the palette information against the given
-    ///     `pixel` format.
-    /// - entries   : [(r:Swift.UInt8, g:Swift.UInt8, b:Swift.UInt8)]
+    /// This initializer validates the palette information against the given
+    /// `pixel` format.
+    /// -   Parameter entries:
     ///     An array of palette entries. This array must be non-empty, and can
-    ///     contain at most `256`, or `1 << pixel.`[`(Format.Pixel).depth`] elements,
+    ///     contain at most `256`, or `1 << pixel.```Format.Pixel/depth`` elements,
     ///     whichever is lower.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format of the image this palette is to be used for.
     ///     If this parameter is a grayscale or grayscale-alpha format, this
     ///     initializer will suffer a precondition failure.
@@ -50,15 +44,12 @@ extension PNG.Palette
 
         self.entries = entries
     }
-    /// init PNG.Palette.init(parsing:pixel:)
-    /// throws
-    ///     Creates an image palette by parsing the given chunk data, interpreting
-    ///     and validating it according to the given `pixel` format.
-    /// - data      : [Swift.UInt8]
+    /// Creates an image palette by parsing the given chunk data, interpreting
+    /// and validating it according to the given `pixel` format.
+    /// -   Parameter data:
     ///     The contents of a ``Chunk/PLTE`` chunk to parse.
-    /// - pixel     : Format.Pixel
+    /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted.
-    /// ## (palette-parsing-and-serialization)
     public
     init(parsing data:[UInt8], pixel:PNG.Format.Pixel) throws
     {
@@ -88,9 +79,7 @@ extension PNG.Palette
             (base:Int) in (r: data[base], g: data[base + 1], b: data[base + 2])
         }
     }
-    /// var PNG.Palette.serialized   : [Swift.UInt8] { get }
-    ///     Encodes this image palette as the contents of a ``Chunk/PLTE`` chunk.
-    /// ## (palette-parsing-and-serialization)
+    /// Encodes this image palette as the contents of a ``Chunk/PLTE`` chunk.
     public
     var serialized:[UInt8]
     {

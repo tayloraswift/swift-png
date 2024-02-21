@@ -49,7 +49,7 @@ import PNG
 func decode(png path:String) throws
 {
     guard
-    let image:PNG.Data.Rectangular = try .decompress(path: path)
+    let image:PNG.Image = try .decompress(path: path)
     else
     {
         // failed to access file from file system
@@ -66,7 +66,7 @@ Encode an image:
 ```swift
 func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) throws
 {
-    let image:PNG.Data.Rectangular = .init(packing: pixels, size: size,
+    let image:PNG.Image = .init(packing: pixels, size: size,
         layout: .init(format: .rgba8(palette: [], fill: nil)))
     try image.compress(path: path, level: 9)
 }
@@ -84,7 +84,7 @@ func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) thro
 
 - ***Batteries included.*** *Swift PNG* comes with [built-in color targets](https://tayloraswift.github.io/swift-png/PNG/Color/) with support for [premultiplied alpha](https://tayloraswift.github.io/swift-png/PNG/RGBA/premultiplied/). [Convolution](https://tayloraswift.github.io/swift-png/PNG/convolve(_:dereference:kernel:)/) and [deconvolution](https://tayloraswift.github.io/swift-png/PNG/deconvolve(_:reference:kernel:)/) helper functions make [implementing custom color targets](examples/#custom-color-targets) a breeze.
 
-    On MacOS and Linux, *Swift PNG* has built-in file system support, allowing you to [compress](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/compress(path:level:hint:)/) or [decompress](https://tayloraswift.github.io/swift-png/PNG/Data/Rectangular/decompress(path:)/) an image, given a filepath, in a single function call. Other platforms can take advantage of *Swift PNG*’s [protocol-oriented IO](https://tayloraswift.github.io/swift-png/PNG/Bytestream/) to implement their own data loading.
+    On MacOS and Linux, *Swift PNG* has built-in file system support, allowing you to [compress](https://tayloraswift.github.io/swift-png/PNG/Image/compress(path:level:hint:)/) or [decompress](https://tayloraswift.github.io/swift-png/PNG/Image/decompress(path:)/) an image, given a filepath, in a single function call. Other platforms can take advantage of *Swift PNG*’s [protocol-oriented IO](https://tayloraswift.github.io/swift-png/PNG/Bytestream/) to implement their own data loading.
 
 - ***First-class iPhone optimization support.*** *Swift PNG* requires no custom setup or third-party plugins to handle [iPhone-optimized](examples/#using-iphone-optimized-images) PNG images. iPhone-optimized images just work, on all platforms. Reproduce [`pngcrush`](https://developer.apple.com/library/archive/qa/qa1681/_index.html)’s output with [bit width-aware alpha premultiplication](https://tayloraswift.github.io/swift-png/PNG/RGBA/premultiplied(as:)/), for seamless integration anywhere in your application stack.
 
