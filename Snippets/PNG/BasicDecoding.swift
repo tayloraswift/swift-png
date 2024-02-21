@@ -53,7 +53,12 @@ else
     fatalError("failed to open file '\(path).png.va'")
 }
 
+//  snippet.V
+
 let v:[UInt8] = image.unpack(as: UInt8.self)
+
+// snippet.end
+
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.v")
 {
