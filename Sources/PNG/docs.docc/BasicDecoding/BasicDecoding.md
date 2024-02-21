@@ -22,7 +22,7 @@ We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](/PNG/VA) b
 
 @Snippet(id: "BasicDecoding", slice: "VA")
 
-@Image(source: "BasicDecoding.png.va", alt: "output png") {
+@Image(source: "BasicDecoding.va.png", alt: "output png") {
 
 > The example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 
@@ -36,7 +36,7 @@ The ``Image/unpack(as:)`` method also has an overload which allows you to unpack
 let v:[UInt8] = image.unpack(as: UInt8.self)
 ```
 
-@Image(source: "BasicDecoding.png.v", alt: "output png") {
+@Image(source: "BasicDecoding.v.png", alt: "output png") {
 
 > the example image, decoded to an grayscale data file, and re-encoded as a png. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
 

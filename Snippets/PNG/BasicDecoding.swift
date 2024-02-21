@@ -38,20 +38,11 @@ let va:[PNG.VA<UInt8>] = image.unpack(as: PNG.VA<UInt8>.self)
 
 // snippet.end
 
-guard
-let _:Void = (System.File.Destination.open(path: "\(path).png.va")
-{
-    guard
-    let _:Void = $0.write(va.flatMap{ [$0.v, $0.a] })
-    else
-    {
-        fatalError("failed to write to file '\(path).png.va'")
-    }
-})
-else
-{
-    fatalError("failed to open file '\(path).png.va'")
-}
+let vaReencoded:PNG.Image = .init(packing: va,
+    size: image.size,
+    layout: .init(format: .va8(fill: nil)),
+    metadata: image.metadata)
+try vaReencoded.compress(path: "\(path).va.png", level: 9)
 
 //  snippet.V
 
@@ -59,17 +50,8 @@ let v:[UInt8] = image.unpack(as: UInt8.self)
 
 // snippet.end
 
-guard
-let _:Void = (System.File.Destination.open(path: "\(path).png.v")
-{
-    guard
-    let _:Void = $0.write(v)
-    else
-    {
-        fatalError("failed to write to file '\(path).png.v'")
-    }
-})
-else
-{
-    fatalError("failed to open file '\(path).png.v'")
-}
+let vReencoded:PNG.Image = .init(packing: v,
+    size: image.size,
+    layout: .init(format: .v8(fill: nil, key: nil)),
+    metadata: image.metadata)
+try vReencoded.compress(path: "\(path).v.png", level: 9)
