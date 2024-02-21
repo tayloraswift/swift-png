@@ -43,7 +43,7 @@ enum Benchmark
         }
     }
 }
-extension Benchmark.Decode.Blob:PNG.Bytestream.Source
+extension Benchmark.Decode.Blob:PNG.BytestreamSource
 {
     static
     func load(path:String) -> Self?

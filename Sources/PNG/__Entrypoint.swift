@@ -66,7 +66,7 @@ extension __Entrypoint
         }
     }
 }
-extension __Entrypoint.Benchmark.Decode.Blob:PNG.Bytestream.Source
+extension __Entrypoint.Benchmark.Decode.Blob:PNG.BytestreamSource
 {
     static
     func load(path:String) -> Self?
@@ -103,7 +103,7 @@ extension __Entrypoint.Benchmark.Decode.Blob:PNG.Bytestream.Source
         self.count = self.buffer.count
     }
 }
-extension __Entrypoint.Benchmark.Encode.Blob:PNG.Bytestream.Destination
+extension __Entrypoint.Benchmark.Encode.Blob:PNG.BytestreamDestination
 {
     mutating
     func write(_ data:[UInt8]) -> Void?

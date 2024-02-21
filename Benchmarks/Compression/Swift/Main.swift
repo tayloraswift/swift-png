@@ -41,7 +41,7 @@ enum Benchmark
         }
     }
 }
-extension Benchmark.Encode.Blob:PNG.Bytestream.Destination
+extension Benchmark.Encode.Blob:PNG.BytestreamDestination
 {
     mutating
     func write(_ data:[UInt8]) -> Void?

@@ -12,7 +12,7 @@ extension System
     }
 }
 
-extension System.Blob:PNG.Bytestream.Source, PNG.Bytestream.Destination
+extension System.Blob:PNG.BytestreamSource, PNG.BytestreamDestination
 {
     init(_ data:[UInt8])
     {
