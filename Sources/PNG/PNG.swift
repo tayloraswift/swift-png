@@ -8,15 +8,21 @@ enum PNG
 {
     static
     let signature:[UInt8] = [137, 80, 78, 71, 13, 10, 26, 10]
-
+}
+extension PNG
+{
     /// A namespace for bytestream utilities.
+    @available(*, deprecated)
     public
     enum Bytestream
     {
+        @available(*, deprecated, renamed: "PNG.BytestreamSource")
         public
-        typealias Source        = _PNGBytestreamSource
+        typealias Source = PNG.BytestreamSource
+
+        @available(*, deprecated, renamed: "PNG.BytestreamDestination")
         public
-        typealias Destination   = _PNGBytestreamDestination
+        typealias Destination = _PNGBytestreamDestination
     }
 }
 extension PNG
