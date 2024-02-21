@@ -1,49 +1,45 @@
 import CRC
 
-/// protocol PNG.Bytestream.Source
-///     A source bytestream.
-///
-///     To implement a custom data source type, conform it to this protocol by
-///     implementing ``Source/read(count:)``. It can
-///     then be used with the library’s core decompression interfaces.
-/// #  [Stream interface](file-io-source-interface)
-/// #  [See also](file-io-protocols, system-file-source)
-/// ## (1:file-io-protocols)
-/// ## (1:lexing-and-formatting)
+extension PNG
+{
+    /// A source bytestream.
+    ///
+    /// To implement a custom data source type, conform it to this protocol by
+    /// implementing ``Source/read(count:)``. It can
+    /// then be used with the library’s core decompression interfaces.
+    public
+    typealias BytestreamSource = _PNGBytestreamSource
+}
+/// The name of this protocol is ``PNG.BytestreamSource``.
 public
 protocol _PNGBytestreamSource
 {
-    /// mutating func PNG.Bytestream.Source.read(count:)
-    /// required
-    ///     Attempts to read and return the given number of bytes from this stream.
+    /// Attempts to read and return the given number of bytes from this stream.
     ///
-    ///     A successful call to this function should affect the bytestream state
-    ///     such that subsequent calls should pick up where the last call left off.
+    /// A successful call to this function should affect the bytestream state
+    /// such that subsequent calls should pick up where the last call left off.
     ///
-    ///     The rest of the library interprets a `nil` return value from this function
-    ///     as indicating end-of-stream.
+    /// The rest of the library interprets a `nil` return value from this function
+    /// as indicating end-of-stream.
     /// -   Parameter count:
     ///     The number of bytes to read.
     /// -   Returns:
     ///     The `count` bytes read, or `nil` if the read attempt failed. This
     ///     method should return `nil` even if any number of bytes less than `count`
     ///     were successfully read.
-    /// ## (file-io-source-interface)
     mutating
     func read(count:Int) -> [UInt8]?
 }
 extension _PNGBytestreamSource
 {
-    /// mutating func PNG.Bytestream.Source.signature()
-    /// throws
-    ///     Lexes the eight PNG signature bytes from this bytestream.
+    /// Lexes the eight PNG signature bytes from this bytestream.
     ///
-    ///     This function expects to read the byte sequence
-    ///     `[137, 80, 78, 71, 13, 10, 26, 10]`. It reports end-of-stream by throwing
-    ///     ``LexingError.truncatedSignature``. To recover on end-of-stream,
-    ///     catch this error case.
+    /// This function expects to read the byte sequence
+    /// `[137, 80, 78, 71, 13, 10, 26, 10]`. It reports end-of-stream by throwing
+    /// ``LexingError.truncatedSignature``. To recover on end-of-stream,
+    /// catch this error case.
     ///
-    ///     This function is the inverse of ``Destination.signature()``.
+    /// This function is the inverse of ``Destination.signature()``.
     public mutating
     func signature() throws
     {
@@ -59,17 +55,15 @@ extension _PNGBytestreamSource
         }
     }
 
-    /// mutating func PNG.Bytestream.Source.chunk()
-    /// throws
-    ///     Lexes a chunk from this bytestream.
+    /// Lexes a chunk from this bytestream.
     ///
-    ///     This function reads a chunk, validating its stored checksum for
-    ///     data integrity. It reports end-of-stream by throwing
-    ///     ``LexingError.truncatedChunkHeader`` or
-    ///     ``LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
-    ///     catch these two error cases.
+    /// This function reads a chunk, validating its stored checksum for
+    /// data integrity. It reports end-of-stream by throwing
+    /// ``LexingError.truncatedChunkHeader`` or
+    /// ``LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
+    /// catch these two error cases.
     ///
-    ///     This function is the inverse of ``Destination.format(type:data:)``.
+    /// This function is the inverse of ``Destination.format(type:data:)``.
     /// -   Returns:
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.
