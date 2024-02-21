@@ -204,7 +204,7 @@ extension System.File.Destination
     /// -   Parameter buffer:
     ///     The data to write.
     /// -   Returns:
-    ///     A ``Swift.Void`` tuple if the entire array argument could be written,
+    ///     A ``Void`` tuple if the entire array argument could be written,
     ///     or `nil` otherwise.
     public
     func write(_ buffer:[UInt8]) -> Void?
@@ -285,7 +285,7 @@ extension PNG.Image
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
     ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
     /// -   Returns:
-    ///     A ``Swift.Void`` tuple if the destination file could be opened
+    ///     A ``Void`` tuple if the destination file could be opened
     ///     successfully, or `nil` otherwise.
     public
     func compress(path:String, level:Int = 9, hint:Int = 1 << 15) throws -> Void?
