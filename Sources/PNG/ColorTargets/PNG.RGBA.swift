@@ -134,7 +134,7 @@ extension PNG.RGBA
     ///
     /// The premultiplied color is obtained by invoking ``premultiply(_:alpha:)``
     /// on ``r``, ``g``, and ``b``, after scaling them to the range of `U`.
-    /// The returned components are then scaled back to the range of ``T``.
+    /// The returned components are then scaled back to the range of `T`.
     /// The rescaling operation also affects the ``a`` component.
     /// -   Parameter _:
     ///     The integer type to perform the premultiplications in. `U.bitWidth`
@@ -180,7 +180,7 @@ extension PNG.RGBA
     ///
     /// The straightened color is obtained by invoking ``straighten(_:alpha:)``
     /// on ``r``, ``g``, and ``b``, after scaling them to the range of `U`.
-    /// The returned components are then scaled back to the range of ``T``.
+    /// The returned components are then scaled back to the range of `T`.
     /// The rescaling operation also affects the ``a`` component.
     /// -   Parameter _:
     ///     The integer type to perform the straightening in. `U.bitWidth`
@@ -229,7 +229,7 @@ extension PNG.RGBA:PNG.Color
     /// pixels of the form (*b*, *g*, *r*, *a*) into RGBA quadruplets (*r*, *g*, *b*, *a*).
     ///
     /// This function will apply chroma keys if present. The unpacked components
-    /// are scaled to fill the range of ``T``, according to the color depth
+    /// are scaled to fill the range of `T`, according to the color depth
     /// computed from the color `format`.
     /// -   Parameter interleaved:
     ///     An image data buffer. It is expected to be obtained from the
@@ -375,7 +375,7 @@ extension PNG.RGBA:PNG.Color
     /// ``b`` components of each RGBA pixel.
     ///
     /// The components in each RGBA pixel are assumed to fill the entire
-    /// range of ``T``.
+    /// range of `T`.
     /// -   Parameter pixels:
     ///     An array of RGBA pixels.
     /// -   Parameter format:

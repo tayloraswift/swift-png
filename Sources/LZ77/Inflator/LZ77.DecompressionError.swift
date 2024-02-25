@@ -22,7 +22,7 @@ extension LZ77
         /// checksum declared in the compressed data stream footer.
         ///
         /// This error should not be confused with
-        /// ``PNG.LexingError.invalidStreamHeaderCheckBits``, nor should it be confused with
+        /// ``StreamHeaderError.invalidCheckBits``, nor should it be confused with
         /// ``PNG.LexingError.invalidChunkChecksum(declared:computed:)``, which refers to the
         /// cyclic redundancy checksum in every PNG chunk.
         case invalidStreamChecksum(declared:UInt32, computed:UInt32)
