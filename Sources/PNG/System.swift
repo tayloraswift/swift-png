@@ -279,11 +279,11 @@ extension PNG.Image
     /// -   Parameter hint:
     ///     A size hint for the emitted ``Chunk/IDAT`` chunks. It should be in
     ///     the range `1 ... 2147483647`. Reasonable settings range from around
-    ///     1\ K to 64\ K. The default value is `32768` (2^15^).
+    ///     1&nbsp;K to 64&nbsp;K. The default value is `32768` (2<sup>5</sup>).
     ///
     ///     Setting this parameter to a value less than `1` is the same as setting
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
-    ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
+    ///     (2<sup>31</sup>&nbsp;–&nbsp;1) is the same as setting it to `2147483647`.
     /// -   Returns:
     ///     A ``Void`` tuple if the destination file could be opened
     ///     successfully, or `nil` otherwise.

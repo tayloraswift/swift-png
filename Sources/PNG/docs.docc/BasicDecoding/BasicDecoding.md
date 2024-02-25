@@ -12,11 +12,9 @@ Learn how to decompress a png file to its rectangular image representation, and 
 @Snippet(id: "BasicDecoding", slice: "RGBA")
 
 @Image(source: "BasicDecoding.png", alt: "output png") {
+    The example image, decoded to an rgba data file, and re-encoded as a png (for display purposes).
 
-The example image, decoded to an rgba data file, and re-encoded as a png (for display purposes).
-
-> source: [wikimedia commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)
-
+    Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)
 }
 
 The element type of the output array, [`PNG.RGBA<UInt8>`](/PNG/RGBA), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
@@ -26,9 +24,7 @@ We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](/PNG/VA) b
 @Snippet(id: "BasicDecoding", slice: "VA")
 
 @Image(source: "BasicDecoding.va.png", alt: "output png") {
-
-> The example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
-
+    The example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 }
 
 The ``PNG/Image/unpack(as:) [7GIAM]`` method is non-mutating, so you can unpack the same image to multiple color targets without having to re-decode the file each time.
@@ -40,9 +36,7 @@ let v:[UInt8] = image.unpack(as: UInt8.self)
 ```
 
 @Image(source: "BasicDecoding.v.png", alt: "output png") {
-
-> the example image, decoded to an grayscale data file, and re-encoded as a png. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
-
+    The example image, decoded to an grayscale data file, and re-encoded as a PNG. it looks the same as the grayscale-alpha output because the original image has no transparent pixels.
 }
 
 The two `unpack(as:)` methods support all Swift integer types that conform to ``FixedWidthInteger`` `&` ``UnsignedInteger``. They have generic specializations for ``UInt8``, ``UInt16``, ``UInt32``, ``UInt64``, and ``UInt``.
