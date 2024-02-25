@@ -2,9 +2,12 @@
 
 Learn how to decompress a png file to its rectangular image representation, and unpack rectangular image data to the built-in rgba, grayscale-alpha, and scalar color targets.
 
-> **Key terms**
+## Key terms
 
--   **color target**
+-   Term **color target**:
+    A color format combined with a fixed precision, such as `RGBA<UInt16>`.
+
+## Worked example
 
 @Snippet(id: "BasicDecoding", slice: "RGBA")
 
@@ -28,9 +31,9 @@ We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](/PNG/VA) b
 
 }
 
-The ``Image/unpack(as:)`` method is non-mutating, so you can unpack the same image to multiple color targets without having to re-decode the file each time.
+The ``PNG/Image/unpack(as:) [7GIAM]`` method is non-mutating, so you can unpack the same image to multiple color targets without having to re-decode the file each time.
 
-The ``Image/unpack(as:)`` method also has an overload which allows you to unpack an image into scalar grayscale samples.
+The ``PNG/Image/unpack(as:) [69N73]`` method also has an overload which allows you to unpack an image into scalar grayscale samples.
 
 ```swift
 let v:[UInt8] = image.unpack(as: UInt8.self)
@@ -46,4 +49,4 @@ The two `unpack(as:)` methods support all Swift integer types that conform to ``
 
 If you unpack an image to an integer type `T` with a bit width different from the color depth of the original image, the samples will be scaled to fill the range `T.min ... T.max`. The scaling is done arithmetically, so if you unpack an 8-bit image to a ``UInt16``-based color target, then samples with the value `255` will become `65535`, not `65280`.
 
-> **warning:** the built-in grayscale color targets do not compute luminance for rgb- and rgba-type images. they simply use the red component as the gray value, and discard the green and blue components. to perform more sophisticated pixel unpacking, [define a custom pixel kernel](CustomColor).
+> warning: the built-in grayscale color targets do not compute luminance for rgb- and rgba-type images. they simply use the red component as the gray value, and discard the green and blue components. to perform more sophisticated pixel unpacking, [define a custom pixel kernel](CustomColor).
