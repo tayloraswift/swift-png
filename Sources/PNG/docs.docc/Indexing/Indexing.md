@@ -48,11 +48,11 @@ We can visualize the gradient using the same APIs we used in the <doc:BasicEncod
     A visualization of the generated gradient.
 }
 
-We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, ``init(packing:size:layout:metadata:indexer:) [7UEEA]``, and pass it a custom [*indexing function*](#st:indexing%20function).
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, ``PNG/Image/init(packing:size:layout:metadata:indexer:) [7UEEA]``, and pass it a custom [*indexing function*](#st:indexing%20function).
 
 @Snippet(id: "Indexing", slice: "PACK_EXAMPLE")
 
-The best way to understand the indexing function is to compare it with the behavior of the ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer. Calling that initializer is equivalent to calling ``init(packing:size:layout:metadata:indexer:) [7UEEA]`` with the following indexing function.
+The best way to understand the indexing function is to compare it with the behavior of the ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer. Calling that initializer is equivalent to calling ``PNG/Image/init(packing:size:layout:metadata:indexer:) [7UEEA]`` with the following indexing function.
 
 ```swift
 {

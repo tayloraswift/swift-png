@@ -5,7 +5,7 @@ extension PNG
     /// A source bytestream.
     ///
     /// To implement a custom data source type, conform it to this protocol by
-    /// implementing ``Source/read(count:)``. It can
+    /// implementing ``_PNGBytestreamSource/read(count:)``. It can
     /// then be used with the library’s core decompression interfaces.
     public
     typealias BytestreamSource = _PNGBytestreamSource
@@ -39,7 +39,7 @@ extension PNG.BytestreamSource
     /// ``PNG/LexingError.truncatedSignature``. To recover on end-of-stream,
     /// catch this error case.
     ///
-    /// This function is the inverse of ``Destination.signature()``.
+    /// This function is the inverse of ``_PNGBytestreamDestination.signature()``.
     public mutating
     func signature() throws
     {
@@ -63,7 +63,7 @@ extension PNG.BytestreamSource
     /// ``PNG/LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
     /// catch these two error cases.
     ///
-    /// This function is the inverse of ``PNG/BytestreamDestination.format(type:data:)``.
+    /// This function is the inverse of ``_PNGBytestreamDestination.format(type:data:)``.
     /// -   Returns:
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.
