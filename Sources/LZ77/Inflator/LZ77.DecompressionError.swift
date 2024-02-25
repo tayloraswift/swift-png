@@ -21,9 +21,10 @@ extension LZ77
         /// The modular redundancy checksum computed on the uncompressed data did not match the
         /// checksum declared in the compressed data stream footer.
         ///
-        /// This error should not be confused with ``invalidStreamHeaderCheckBits``, nor should
-        /// it be confused with ``PNG.LexingError.invalidChunkChecksum(declared:computed:)``,
-        /// which refers to the cyclic redundancy checksum in every PNG chunk.
+        /// This error should not be confused with
+        /// ``PNG.LexingError.invalidStreamHeaderCheckBits``, nor should it be confused with
+        /// ``PNG.LexingError.invalidChunkChecksum(declared:computed:)``, which refers to the
+        /// cyclic redundancy checksum in every PNG chunk.
         case invalidStreamChecksum(declared:UInt32, computed:UInt32)
 
         /// A compressed block had an invalid block type code.

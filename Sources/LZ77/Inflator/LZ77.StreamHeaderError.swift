@@ -18,7 +18,8 @@ extension LZ77
         /// A compressed data stream had invalid header check bits.
         ///
         /// The header check bits should not be confused with the modular redundancy checksum,
-        /// which corresponds to the ``invalidStreamChecksum(declared:computed:)`` error case.
+        /// which corresponds to the
+        /// ``PNG.LexingError.invalidStreamChecksum(declared:computed:)`` error.
         case invalidCheckBits
 
         /// A compressed data stream contains a stream dictionary, which is not allowed in a
