@@ -11,7 +11,7 @@ Learn how to define an image layout, understand the relationship between color f
     An alternative way of storing the image data within the PNG file’s internal representation. See [ADAM7](https://en.wikipedia.org/wiki/Adam7_algorithm).
 
 -   term *color format*:
-    A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of a [`PNG.RGBA<UInt8>`](/PNG/RGBA) pixel array will be lost when encoding in the 8-bit RGB format.
+    A color format is the internal representation that a PNG file uses to store image data. You can encode any color target to any color format, though some combinations can result in information loss. For example, the alpha channel of a [`PNG.RGBA<UInt8>`](PNG/RGBA) pixel array will be lost when encoding in the 8-bit RGB format.
 
 -   term *color depth*:
     The bit width of the color channels in each pixel.
@@ -115,7 +115,7 @@ We can also encode the same pixel data using the grayscale layout we defined ear
 
 @Snippet(id: "BasicEncoding", slice: "SAVE_V")
 
-The built-in [`PNG.RGBA<T>`](/PNG/RGBA) color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
+The built-in [`PNG.RGBA<T>`](PNG/RGBA) color target will discard the green, blue, and alpha channels when encoding to a grayscale format.
 
 @Image(source: "BasicEncoding-color-v.png", alt: "output png") {
     The example image, encoded by *swift png* in the 8-bit grayscale color format.
@@ -125,7 +125,7 @@ Like the ``PNG/Image/unpack(as:) [7GIAM]`` method, the ``PNG/Image/init(packing:
 
 @Snippet(id: "BasicEncoding", slice: "COMPUTE_LUMINANCE")
 
-We can encode it to a file just as we did with the array of [`PNG.RGBA<UInt8>`](/PNG/RGBA) colors:
+We can encode it to a file just as we did with the array of [`PNG.RGBA<UInt8>`](PNG/RGBA) colors:
 
 @Snippet(id: "BasicEncoding", slice: "SAVE_V_LUMINANCE")
 

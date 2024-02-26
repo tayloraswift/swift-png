@@ -56,7 +56,7 @@ We can unpack iPhone-optimized images to any color target. iPhone-optimized imag
 It is often convenient to work in the premultiplied color space, so the library does not straighten the alpha automatically. Of course, it’s also unnecessary to straighten the alpha if you know the image has no transparency.
 
 >   Note:
->   Unpacking BGRA images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. If you trying to unpack grayscale values from an iPhone-optimized image with transparency, unpack it to the [`PNG.VA<T>`](/PNG/VA) color target, and take the gray channel *after* straightening the grayscale-alpha pixels.
+>   Unpacking BGRA images to a scalar target discards the alpha channel, making it impossible to straighten the grayscale pixels. If you trying to unpack grayscale values from an iPhone-optimized image with transparency, unpack it to the [`PNG.VA<T>`](PNG/VA) color target, and take the gray channel *after* straightening the grayscale-alpha pixels.
 
 Depending on your use case, you may not be getting the most out of iPhone-optimized images by unpacking them to a color target. As mentioned previously, the iPhone-optimized format is designed such that the raw, packed image data can be uploaded directly to the graphics hardware. You can access the packed data buffer through the ``PNG/Image.storage`` property.
 

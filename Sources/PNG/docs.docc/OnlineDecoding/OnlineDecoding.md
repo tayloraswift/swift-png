@@ -135,7 +135,7 @@ The next step is to parse the PNG header, and the preceeding ``PNG/Chunk/CgBI`` 
 
 The next step is to process all the chunks up to, but not including, the first ``PNG/Chunk/IDAT`` chunk. The goal is to be able to construct a **decoder context** (``PNG.Context``) by the time we reach the image data, using any ``PNG/Chunk/PLTE``, ``PNG/Chunk/bKGD``, or ``PNG/Chunk/tRNS`` chunks we have encountered in the meantime.
 
-There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a ``PNG/Context`` structure upon encountering the first ``PNG/Chunk/IDAT`` chunk. This reduces the amount of [`Optional<T>`](/Swift/Optional)s we have to deal with. A competent Swift developer should be able to translate it into her preferred pattern.
+There are a great many ways to spell this loop. Here, we have written it with a single-use closure that returns a ``PNG/Context`` structure upon encountering the first ``PNG/Chunk/IDAT`` chunk. This reduces the amount of ``Optional``s we have to deal with. A competent Swift developer should be able to translate it into her preferred pattern.
 
 We declare variables to hold an optional palette (``PNG.Palette``), background (``PNG.Background``), and transparency (``PNG.Transparency``) structure. A ``PNG.Metadata`` structure tracks all other chunk types.
 
