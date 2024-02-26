@@ -566,11 +566,11 @@ extension PNG.Image
     /// -   Parameter hint:
     ///     A size hint for the emitted ``Chunk/IDAT`` chunks. It should be in
     ///     the range `1 ... 2147483647`. Reasonable settings range from around
-    ///     1\ K to 64\ K. The default value is `32768` (2^15^).
+    ///     1&nbsp;K to 64&nbsp;K. The default value is `32768` (2<sup>15</sup>).
     ///
     ///     Setting this parameter to a value less than `1` is the same as setting
     ///     it to `1`. Likewise, setting it to a value greater than `2147483647`
-    ///     (2^31^\ –\ 1) is the same as setting it to `2147483647`.
+    ///     (2<sup>31</sup>&nbsp;–&nbsp;1) is the same as setting it to `2147483647`.
     public
     func compress<Destination>(stream:inout Destination, level:Int = 9, hint:Int = 1 << 15)
         throws
@@ -838,7 +838,7 @@ extension PNG.Image
     /// Unpacks this image to a pixel array, using a custom deindexing function.
     ///
     /// -   Parameter _:
-    ///     A color target type. This type provides the ``Color/unpack(_:of:deindexer:)``
+    ///     A color target type. This type provides the ``_PNGColor/unpack(_:of:deindexer:)``
     ///     implementation used to unpack the image data.
     /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
@@ -910,7 +910,7 @@ extension PNG.Image
     /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``Color/pack(_:as:indexer:)``
+    ///     the image. The `Color` type provides the ``_PNGColor/pack(_:as:indexer:)``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
@@ -999,7 +999,7 @@ extension PNG.Image
     /// Unpacks this image to a pixel array.
     ///
     /// -   Parameter _:
-    ///     A color target type. This type provides the ``Color/unpack(_:of:)``
+    ///     A color target type. This type provides the ``_PNGColor/unpack(_:of:) [4GV17]``
     ///     implementation used to unpack the image data.
     /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
@@ -1016,7 +1016,7 @@ extension PNG.Image
     /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``Color/pack(_:as:)``
+    ///     the image. The `Color` type provides the ``_PNGColor/pack(_:as:) [52RHU]``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
@@ -1074,8 +1074,7 @@ extension PNG.Image
     ///     A scalar pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
     ///     the image. Its length is equal to `size.x` multiplied by `size.y`.
-    @inlinable
-    public
+    @inlinable public
     func unpack<T>(as _:T.Type) -> [T] where T:FixedWidthInteger & UnsignedInteger
     {
         self.unpack(as: T.self)
@@ -1122,8 +1121,7 @@ extension PNG.Image
     ///     An image layout.
     /// -   Parameter metadata:
     ///     A metadata structure. The default value is an empty metadata structure.
-    @inlinable
-    public
+    @inlinable public
     init<T>(packing pixels:[T],
         size:(x:Int, y:Int), layout:PNG.Layout, metadata:PNG.Metadata = .init())
         where T:FixedWidthInteger & UnsignedInteger

@@ -5,7 +5,7 @@ extension PNG
     /// A source bytestream.
     ///
     /// To implement a custom data source type, conform it to this protocol by
-    /// implementing ``Source/read(count:)``. It can
+    /// implementing ``_PNGBytestreamSource/read(count:)``. It can
     /// then be used with the library’s core decompression interfaces.
     public
     typealias BytestreamSource = _PNGBytestreamSource
@@ -30,16 +30,16 @@ protocol _PNGBytestreamSource
     mutating
     func read(count:Int) -> [UInt8]?
 }
-extension _PNGBytestreamSource
+extension PNG.BytestreamSource
 {
     /// Lexes the eight PNG signature bytes from this bytestream.
     ///
     /// This function expects to read the byte sequence
     /// `[137, 80, 78, 71, 13, 10, 26, 10]`. It reports end-of-stream by throwing
-    /// ``LexingError.truncatedSignature``. To recover on end-of-stream,
+    /// ``PNG/LexingError.truncatedSignature``. To recover on end-of-stream,
     /// catch this error case.
     ///
-    /// This function is the inverse of ``Destination.signature()``.
+    /// This function is the inverse of ``_PNGBytestreamDestination.signature()``.
     public mutating
     func signature() throws
     {
@@ -59,11 +59,11 @@ extension _PNGBytestreamSource
     ///
     /// This function reads a chunk, validating its stored checksum for
     /// data integrity. It reports end-of-stream by throwing
-    /// ``LexingError.truncatedChunkHeader`` or
-    /// ``LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
+    /// ``PNG/LexingError.truncatedChunkHeader`` or
+    /// ``PNG/LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
     /// catch these two error cases.
     ///
-    /// This function is the inverse of ``Destination.format(type:data:)``.
+    /// This function is the inverse of ``_PNGBytestreamDestination.format(type:data:)``.
     /// -   Returns:
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.

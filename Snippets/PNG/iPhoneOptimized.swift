@@ -1,3 +1,6 @@
+//
+
+//  snippet.LOAD_EXAMPLE
 import PNG
 
 let path:String = "Sources/PNG/docs.docc/iPhoneOptimized/iPhoneOptimized"
@@ -9,12 +12,17 @@ else
     fatalError("failed to open file '\(path).png'")
 }
 
+//  snippet.INSPECT_FORMAT
 print(image.layout.format)
 
-let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self).map(\.straightened)
+//  snippet.STRAIGHTEN
+let rgba:[PNG.RGBA<UInt8>] = image.unpack(
+    as: PNG.RGBA<UInt8>.self).map(\.straightened)
 
+//  snippet.INSPECT_STORAGE
 print(image.storage[..<16])
 
+//  snippet.REENCODE_RGB
 let standard:PNG.Image = .init(
     packing: rgba,
     size:    image.size,
@@ -22,6 +30,7 @@ let standard:PNG.Image = .init(
 
 try standard.compress(path: "\(path)-rgb8.png")
 
+//  snippet.REENCODE_BGR
 let apple:PNG.Image = .init(
     packing: standard.unpack(as: PNG.RGBA<UInt8>.self).map(\.premultiplied),
     size:    standard.size,

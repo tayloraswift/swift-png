@@ -1,15 +1,13 @@
 import PNG
 
-/// https://commons.wikimedia.org/wiki/File:Alice-in-Wonderland_by-David-Revoy_2010-07-21.jpg
-let path:String = "Sources/PNG/docs.docc/CustomColor/CustomColor"
-
+//  snippet.HSVA_TYPE
 struct HSVA
 {
     var h:UInt32
     var s:UInt16
     var v:UInt8
     var a:UInt8
-
+    //  snippet.end
     init(h:UInt32, s:UInt16, v:UInt8, a:UInt8)
     {
         self.h = h
@@ -17,7 +15,7 @@ struct HSVA
         self.v = v
         self.a = a
     }
-
+    //  snippet.HSVA_CONVERT_FROM_RGBA
     init(r:UInt8, g:UInt8, b:UInt8, a:UInt8)
     {
         let sorted:(min:UInt8, mid:UInt8, max:UInt8)
@@ -49,7 +47,7 @@ struct HSVA
         self.v = sorted.max
         self.a = a
     }
-
+    //  snippet.HSVA_CONVERT_TO_RGBA
     var rgba:PNG.RGBA<UInt8>
     {
         guard self.s > 0, self.v > 0
@@ -78,8 +76,9 @@ struct HSVA
         default: fatalError("unreachable")
         }
     }
+    //  snippet.end
 }
-
+//  snippet.HSVA_CONFORMANCE_SIGNATURES
 extension HSVA:PNG.Color
 {
     typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
@@ -89,6 +88,7 @@ extension HSVA:PNG.Color
         of format:PNG.Format,
         deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) -> [Self]
     {
+        //  snippet.HSVA_CONFORMANCE_INDEXED
         let depth:Int = format.pixel.depth
         switch format
         {
@@ -101,7 +101,7 @@ extension HSVA:PNG.Color
                 (c:(UInt8, UInt8, UInt8, UInt8)) in
                 .init(r: c.0, g: c.1, b: c.2, a: c.3)
             }
-
+        //  snippet.HSVA_CONFORMANCE_V
         case    .v1(fill: _, key: nil),
                 .v2(fill: _, key: nil),
                 .v4(fill: _, key: nil),
@@ -117,6 +117,7 @@ extension HSVA:PNG.Color
                 (v:UInt8, _) in
                 .init(h: 0, s: 0, v: v, a: .max)
             }
+        //  snippet.HSVA_CONFORMANCE_V_KEYED
         case    .v1(fill: _, key: let key?),
                 .v2(fill: _, key: let key?),
                 .v4(fill: _, key: let key?),
@@ -133,6 +134,7 @@ extension HSVA:PNG.Color
                 .init(h: 0, s: 0, v: v, a: k == key ? .min : .max)
             }
 
+        //  snippet.HSVA_CONFORMANCE_REST
         case    .va8(fill: _):
             return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
             {
@@ -204,8 +206,10 @@ extension HSVA:PNG.Color
                 .init(r: c.0, g: c.1, b: c.2, a: c.3)
             }
         }
+        //  snippet.end
     }
 
+    //  snippet.HSVA_CONFORMANCE_PACK
     static
     func pack(_ pixels:[Self],
         as format:PNG.Format,
@@ -293,7 +297,11 @@ extension HSVA:PNG.Color
             }
         }
     }
+    //  snippet.end
 }
+
+//  snippet.LOAD_EXAMPLE
+let path:String = "Sources/PNG/docs.docc/CustomColor/CustomColor"
 
 guard
 let image:PNG.Image = try .decompress(path: "\(path).png")
@@ -304,27 +312,28 @@ else
 
 let hsva:[HSVA] = image.unpack(as: HSVA.self)
 
+//  snippet.SAVE_HUE
 let hue:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: $0.h, s: .max / 2, v: .max, a: $0.a) },
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)
 try hue.compress(path: "\(path)-hue.png")
-
+//  snippet.SAVE_SATURATION
 let saturation:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: 370000, s: $0.s, v: .max, a: $0.a) },
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)
 try saturation.compress(path: "\(path)-saturation.png")
-
+//  snippet.SAVE_VALUE
 let value:PNG.Image = .init(
     packing: hsva.map{ HSVA.init(h: 0, s: 0, v: $0.v, a: $0.a) },
     size: image.size,
     layout: image.layout,
     metadata: image.metadata)
 try value.compress(path: "\(path)-value.png")
-
+//  snippet.SAVE_EXAMPLE
 let new:PNG.Image = .init(packing: hsva,
     size: image.size,
     layout: image.layout,
