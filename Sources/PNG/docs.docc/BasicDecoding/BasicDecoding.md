@@ -17,9 +17,9 @@ Learn how to decompress a png file to its rectangular image representation, and 
     Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ada_Lovelace_portrait.jpg)
 }
 
-The element type of the output array, [`PNG.RGBA<UInt8>`](/PNG/RGBA), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
+The element type of the output array, [`PNG.RGBA<UInt8>`](PNG/RGBA), is called a **color target**. The pixels in the array are arranged in row-major order. The pixel in the top-left corner of the image is the first element of the array.
 
-We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](/PNG/VA) built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
+We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](PNG/VA) built-in color target, which produces an identically-shaped array of grayscale-alpha pixels.
 
 @Snippet(id: "BasicDecoding", slice: "VA")
 

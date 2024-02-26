@@ -77,7 +77,7 @@ The return value of the outer function is an *inner function* of type `(UInt8) -
 
 Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to manipulate indices without re-indexing the entire image.
 
-Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the [`PNG.VA<T>`](/PNG/VA) color target, the inner function recieves `(UInt8, UInt8)` tuples. For the [`PNG.RGBA<T>`](/PNG/RGBA) color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always ``Int``.) In this library, the inner function argument is called a [*palette aggregate*](#st:palette%20aggregate).
+Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the [`PNG.VA<T>`](PNG/VA) color target, the inner function recieves `(UInt8, UInt8)` tuples. For the [`PNG.RGBA<T>`](PNG/RGBA) color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always ``Int``.) In this library, the inner function argument is called a [*palette aggregate*](#st:palette%20aggregate).
 
 Let’s go back to the custom indexing function:
 
