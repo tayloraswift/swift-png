@@ -173,17 +173,19 @@ We can invoke `decodeOnline(stream:overdraw:capture:)` on the stream structure w
 
 @Snippet(id: "OnlineDecoding", slice: "SILENT_MAJORITY")
 
-@Image(source: "OnlineDecoding-0.png")
-@Image(source: "OnlineDecoding-1.png")
-@Image(source: "OnlineDecoding-2.png")
-@Image(source: "OnlineDecoding-3.png")
-@Image(source: "OnlineDecoding-4.png")
-@Image(source: "OnlineDecoding-5.png")
-@Image(source: "OnlineDecoding-6.png")
-@Image(source: "OnlineDecoding-7.png")
-@Image(source: "OnlineDecoding-8.png")
-@Image(source: "OnlineDecoding-9.png")
-@Image(source: "OnlineDecoding-10.png")
+| chunk | image |
+| ----- | ----- |
+| 0     | ![0](OnlineDecoding-0.png) |
+| 1     | ![1](OnlineDecoding-1.png) |
+| 2     | ![2](OnlineDecoding-2.png) |
+| 3     | ![3](OnlineDecoding-3.png) |
+| 4     | ![4](OnlineDecoding-4.png) |
+| 5     | ![5](OnlineDecoding-5.png) |
+| 6     | ![6](OnlineDecoding-6.png) |
+| 7     | ![7](OnlineDecoding-7.png) |
+| 8     | ![8](OnlineDecoding-8.png) |
+| 9     | ![9](OnlineDecoding-9.png) |
+| 10    | ![10](OnlineDecoding-10.png) |
 
 Our example image was a non-interlaced image, so it gets decoded as a sequence of scanlines from top-to-bottom.
 
@@ -197,18 +199,20 @@ We can invoke `decodeOnline(stream:overdraw:capture:)` on the interlaced image a
 
 @Snippet(id: "OnlineDecoding", slice: "PROGRESSIVE")
 
-@Image(source: "OnlineDecoding-progressive-0.png")
-@Image(source: "OnlineDecoding-progressive-1.png")
-@Image(source: "OnlineDecoding-progressive-2.png")
-@Image(source: "OnlineDecoding-progressive-3.png")
-@Image(source: "OnlineDecoding-progressive-4.png")
-@Image(source: "OnlineDecoding-progressive-5.png")
-@Image(source: "OnlineDecoding-progressive-6.png")
-@Image(source: "OnlineDecoding-progressive-7.png")
-@Image(source: "OnlineDecoding-progressive-8.png")
-@Image(source: "OnlineDecoding-progressive-9.png")
-@Image(source: "OnlineDecoding-progressive-10.png")
-@Image(source: "OnlineDecoding-progressive-11.png")
+| chunk | image |
+| ----- | ----- |
+| 0     | ![0](OnlineDecoding-progressive-0.png) |
+| 1     | ![1](OnlineDecoding-progressive-1.png) |
+| 2     | ![2](OnlineDecoding-progressive-2.png) |
+| 3     | ![3](OnlineDecoding-progressive-3.png) |
+| 4     | ![4](OnlineDecoding-progressive-4.png) |
+| 5     | ![5](OnlineDecoding-progressive-5.png) |
+| 6     | ![6](OnlineDecoding-progressive-6.png) |
+| 7     | ![7](OnlineDecoding-progressive-7.png) |
+| 8     | ![8](OnlineDecoding-progressive-8.png) |
+| 9     | ![9](OnlineDecoding-progressive-9.png) |
+| 10    | ![10](OnlineDecoding-progressive-10.png) |
+| 11    | ![11](OnlineDecoding-progressive-11.png) |
 
 If we enable **overdrawing**, *Swift PNG* will pre-fill missing pixels with values from nearby pixels that are currently available. The term *overdrawing* comes from the fact that these pre-filled pixels will be overwritten when their actual contents become available. We can enable overdrawing by setting the `overdraw` parameter to true.
 
@@ -219,17 +223,19 @@ If we enable **overdrawing**, *Swift PNG* will pre-fill missing pixels with valu
 
 When overdrawing is enabled, the intermediate snapshots look somewhat more user-friendly than they do without it.
 
-@Image(source: "OnlineDecoding-progressive-overdrawn-0.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-1.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-2.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-3.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-4.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-5.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-6.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-7.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-8.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-9.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-10.png")
-@Image(source: "OnlineDecoding-progressive-overdrawn-11.png")
+| chunk | image |
+| ----- | ----- |
+| 0     | ![0](OnlineDecoding-progressive-overdrawn-0.png) |
+| 1     | ![1](OnlineDecoding-progressive-overdrawn-1.png) |
+| 2     | ![2](OnlineDecoding-progressive-overdrawn-2.png) |
+| 3     | ![3](OnlineDecoding-progressive-overdrawn-3.png) |
+| 4     | ![4](OnlineDecoding-progressive-overdrawn-4.png) |
+| 5     | ![5](OnlineDecoding-progressive-overdrawn-5.png) |
+| 6     | ![6](OnlineDecoding-progressive-overdrawn-6.png) |
+| 7     | ![7](OnlineDecoding-progressive-overdrawn-7.png) |
+| 8     | ![8](OnlineDecoding-progressive-overdrawn-8.png) |
+| 9     | ![9](OnlineDecoding-progressive-overdrawn-9.png) |
+| 10    | ![10](OnlineDecoding-progressive-overdrawn-10.png) |
+| 11    | ![11](OnlineDecoding-progressive-overdrawn-11.png) |
 
 Overdrawing has no effect if the image is not interlaced.

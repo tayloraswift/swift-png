@@ -15,6 +15,10 @@ Decode, inspect, edit, and encode PNG images.
 -   <doc:OnlineDecoding>
 -   <doc:CustomColor>
 
+### Configuring the library
+
+-   <doc:BuildFlags>
+
 ### Namespaces
 
 -   ``PNG``
