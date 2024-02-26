@@ -1,7 +1,6 @@
 import PNG
 
-let path:String = "Sources/PNG/docs.docc/OnlineDecoding/OnlineDecoding"
-
+//  snippet.STREAM_TYPE
 struct Stream
 {
     private(set)
@@ -9,7 +8,7 @@ struct Stream
         position:Int,
         available:Int
 }
-
+//  snippet.STREAM_CONFORMANCE
 extension Stream:PNG.BytestreamSource
 {
     init(_ data:[UInt8])
@@ -49,6 +48,7 @@ extension Stream:PNG.BytestreamSource
         self.position = position
     }
 }
+//  snippet.BOOTSTRAP
 extension Stream
 {
     init(path:String)
@@ -73,6 +73,10 @@ extension Stream
     }
 }
 
+let path:String = "Sources/PNG/docs.docc/OnlineDecoding/OnlineDecoding"
+var stream:Stream = .init(path: "\(path).png")
+
+//  snippet.WAIT_FUNCTIONS
 func waitSignature(stream:inout Stream) throws
 {
     let position:Int = stream.position
@@ -89,6 +93,7 @@ func waitSignature(stream:inout Stream) throws
         }
     }
 }
+
 func waitChunk(stream:inout Stream) throws -> (type:PNG.Chunk, data:[UInt8])
 {
     let position:Int = stream.position
@@ -105,14 +110,14 @@ func waitChunk(stream:inout Stream) throws -> (type:PNG.Chunk, data:[UInt8])
         }
     }
 }
-
+//  snippet.DECODE_ONLINE
 func decodeOnline(stream:inout Stream,
     overdraw:Bool,
     capture:(PNG.Image) throws -> ()) throws -> PNG.Image
+//  snippet.LEX_SIGNATURE
 {
-    // lex PNG signature bytes
     try waitSignature(stream: &stream)
-    // lex header chunk, and preceeding cgbi chunk, if present
+    //  snippet.LEX_HEADERS
     let (standard, header):(PNG.Standard, PNG.Header) = try
     {
         var chunk:(type:PNG.Chunk, data:[UInt8]) = try waitChunk(stream: &stream)
@@ -134,6 +139,7 @@ func decodeOnline(stream:inout Stream,
         }
     }()
 
+    //  snippet.LEX_WITH_CONTEXT
     var chunk:(type:PNG.Chunk, data:[UInt8]) = try waitChunk(stream: &stream)
 
     var context:PNG.Context = try
@@ -146,6 +152,7 @@ func decodeOnline(stream:inout Stream,
         {
             switch chunk.type
             {
+    //  snippet.LEX_CASES
             case .PLTE:
                 guard
                 case nil = palette,
@@ -187,7 +194,7 @@ func decodeOnline(stream:inout Stream,
             chunk = try waitChunk(stream: &stream)
         }
     }()
-
+    //  snippet.LEX_IDAT
     while chunk.type == .IDAT
     {
         try context.push(data: chunk.data, overdraw: overdraw)
@@ -196,7 +203,7 @@ func decodeOnline(stream:inout Stream,
 
         chunk = try waitChunk(stream: &stream)
     }
-
+    //  snippet.LEX_TRAILERS
     while true
     {
         try context.push(ancillary: chunk)
@@ -207,10 +214,10 @@ func decodeOnline(stream:inout Stream,
         }
         chunk = try stream.chunk()
     }
+    //  snippet.end
 }
 
-var stream:Stream = .init(path: "\(path).png")
-
+//  snippet.SILENT_MAJORITY
 var counter:Int = 0
 let image:PNG.Image = try decodeOnline(stream: &stream, overdraw: false)
 {
@@ -222,11 +229,13 @@ let image:PNG.Image = try decodeOnline(stream: &stream, overdraw: false)
     counter += 1
 }
 
+//  snippet.SAVE_INTERLACED
 let layout:PNG.Layout = .init(format: image.layout.format, interlaced: true)
 let progressive:PNG.Image = image.bindStorage(to: layout)
 
 try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
 
+//  snippet.PROGRESSIVE
 stream = .init(path: "\(path)-progressive.png")
 counter = 0
 let _:PNG.Image = try decodeOnline(stream: &stream, overdraw: false)
@@ -237,6 +246,7 @@ let _:PNG.Image = try decodeOnline(stream: &stream, overdraw: false)
     counter += 1
 }
 
+//  snippet.PROGRESSIVE_OVERDRAW
 stream.reset(position: 0)
 
 counter = 0

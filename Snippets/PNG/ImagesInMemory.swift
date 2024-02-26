@@ -1,6 +1,14 @@
+//  Our basic data type modeling a memory blob is incredibly simple; it consists of a Swift
+//  array containing the data buffer, and a file position pointer in the form of an integer.
+//  Here, we have namespaced it under the libary’s ``System`` namespace to parallel the built-in
+//  file system APIs.
+
+//  snippet.BLOB_TYPE
 import PNG
 
+//  snippet.hide
 let path:String = "Sources/PNG/docs.docc/ImagesInMemory/ImagesInMemory"
+//  snippet.show
 
 extension System
 {
@@ -12,6 +20,7 @@ extension System
     }
 }
 
+//  snippet.BLOB_CONFORMANCE
 extension System.Blob:PNG.BytestreamSource, PNG.BytestreamDestination
 {
     init(_ data:[UInt8])
@@ -45,6 +54,7 @@ extension System.Blob:PNG.BytestreamSource, PNG.BytestreamDestination
     }
 }
 
+//  snippet.BLOB_BOOTSTRAP
 guard
 let data:[UInt8] = (System.File.Source.open(path: "\(path).png")
 {
@@ -63,9 +73,11 @@ else
 }
 
 var blob:System.Blob = .init(data)
-// read from blob
-let image:PNG.Image  = try .decompress(stream: &blob)
-let rgba:[PNG.RGBA<UInt8>]      = image.unpack(as: PNG.RGBA<UInt8>.self)
+//  snippet.READ
+let image:PNG.Image = try .decompress(stream: &blob)
+let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self)
+
+//  snippet.end
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.rgba")
 {
@@ -80,9 +92,11 @@ else
     fatalError("failed to open file '\(path).png.rgba'")
 }
 
-// write to blob
+//  snippet.WRITE
 blob = .init([])
 try image.compress(stream: &blob, level: 13)
+
+//  snippet.SAVE
 guard
 let _:Void = (System.File.Destination.open(path: "\(path).png.png")
 {
