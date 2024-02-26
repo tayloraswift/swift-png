@@ -1,6 +1,10 @@
+//  In this example code, we have loaded pixel data from a raw `.rgba` data file using the
+//  library’s [file system APIs](/PNG/System/File). As previously mentioned, these APIs are only
+//  available on MacOS and Linux.
+
+//  snippet.LOAD_RGBA
 import PNG
 
-/// https://commons.wikimedia.org/wiki/File:Photo_of_a_venetian_mask_in_a_studio_photo_session.jpg
 let path:String = "Sources/PNG/docs.docc/BasicEncoding/BasicEncoding"
 let size:(x:Int, y:Int) = (638, 425)
 
@@ -25,28 +29,38 @@ else
     fatalError("failed to open file '\(path).rgba'")
 }
 
+//  snippet.LAYOUT
+
 let layout:(rgb:PNG.Layout, v:PNG.Layout) =
 (
     rgb:    .init(format: .rgb8(palette: [], fill: nil, key: nil)),
     v:      .init(format:   .v8(             fill: nil, key: nil))
 )
 
+//  snippet.end
+
 do
 {
+    //  snippet.PACK_RGB
     let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.rgb)
+    //  snippet.COMPRESS_RGB
     try image.compress(path: "\(path)-color-rgb.png", level: 9)
-
+    //  snippet.COMPRESS_RGB_LEVELS
     for level:Int in [0, 4, 8, 13]
     {
         try image.compress(path: "\(path)-color-rgb@\(level).png", level: level)
     }
+    //  snippet.end
 }
 do
 {
+    //  snippet.SAVE_V
     let image:PNG.Image  = .init(packing: rgba, size: size, layout: layout.v)
     try image.compress(path: "\(path)-color-v.png", level: 9)
+    //  snippet.end
 }
 
+//  snippet.COMPUTE_LUMINANCE
 let luminance:[UInt8] = rgba.map
 {
     let r:Double = .init($0.r),
@@ -57,11 +71,15 @@ let luminance:[UInt8] = rgba.map
 }
 do
 {
+    //  snippet.SAVE_V_LUMINANCE
     let image:PNG.Image  = .init(packing: luminance, size: size, layout: layout.v)
     try image.compress(path: "\(path)-luminance-v.png", level: 9)
+    //  snippet.end
 }
 do
 {
+    //  snippet.SAVE_RGB_LUMINANCE
     let image:PNG.Image  = .init(packing: luminance, size: size, layout: layout.rgb)
     try image.compress(path: "\(path)-luminance-rgb.png", level: 9)
+    //  snippet.end
 }

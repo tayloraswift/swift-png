@@ -1,3 +1,6 @@
+//
+
+//  snippet.LOAD_EXAMPLE
 import PNG
 
 let path:String = "Sources/PNG/docs.docc/Indexing/Indexing"
@@ -11,6 +14,7 @@ else
 
 let v:[UInt8] = image.unpack(as: UInt8.self)
 
+//  snippet.LERP
 func lerp(
     _ a:(r:Double, g:Double, b:Double),
     _ b:(r:Double, g:Double, b:Double),
@@ -63,11 +67,11 @@ func gradient<T>(_ x:T) -> (r:UInt8, g:UInt8, b:UInt8, a:UInt8)
         a: .max
         )
 }
-
+//  snippet.TABULARIZE
 let gradient:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)] =
     (UInt8.min ... UInt8.max).map(gradient(_:))
 
-// visualize the gradient
+//  snippet.VISUALIZE
 let swatch:[PNG.RGBA<UInt8>] = (0 ..< 16).flatMap
 {
     _ -> [PNG.RGBA<UInt8>] in
@@ -81,19 +85,19 @@ let visualization:PNG.Image = .init(packing: swatch, size: (256, 16),
     layout: .init(format: .rgb8(palette: [], fill: nil, key: nil)))
 try visualization.compress(path: "\(path)-gradient.png")
 
-// encode colorized image
+//  snippet.PACK_EXAMPLE
 let indexed:PNG.Image = .init(packing: v, size: image.size,
     layout:  .init(format: .indexed8(palette: gradient, fill: nil)),
     metadata: image.metadata)
 {
     _ in Int.init(_:)
 }
-
+//  snippet.COMPRESS_EXAMPLE
 try indexed.compress(path: "\(path)-indexed.png")
-
+//  snippet.UNPACK_EXAMPLE
 let indices:[UInt8] = indexed.unpack(as: UInt8.self)
 {
     _ in UInt8.init(_:)
 }
-
+//  snippet.CHECK_EXAMPLE
 print(indices == v)

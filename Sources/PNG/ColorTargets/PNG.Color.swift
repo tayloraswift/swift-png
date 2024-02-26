@@ -26,7 +26,7 @@ protocol _PNGColor<Aggregate>
     /// -   Parameters:
     ///     -   interleaved:
     ///         An image data buffer. It is expected to be obtained from the
-    ///         ``Image/storage`` property of a ``Image`` image.
+    ///         ``PNG/Image/storage`` property of a ``PNG/Image`` image.
     ///     -   format:
     ///         The color format associated with the given data buffer.
     ///         It is expected to be obtained from the the ``PNG/Layout/format`` property of a
