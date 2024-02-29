@@ -1,6 +1,6 @@
 <div align="center">
 
-***`png`***<br>`4.1`
+***`png`***<br>`4.3`
 
 [![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/build.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/build.yml)
 [![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/build-devices.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/build-devices.yml)
@@ -22,7 +22,7 @@ Swift *PNG*’s [documentation](https://swiftinit.org/docs/swift-png/png) is ava
 To use *Swift PNG* in a project, add this descriptor to the `dependencies` list in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/tayloraswift/swift-png", .exact("4.0.3"))
+.package(url: "https://github.com/tayloraswift/swift-png", .exact("4.3.0"))
 ```
 
 ## Basic usage
