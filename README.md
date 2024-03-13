@@ -13,7 +13,7 @@
 
 *Swift PNG* is a Foundation-less, cross-platform framework for decoding, inspecting, editing, and encoding PNG images. The framework is written in pure Swift, and will compile and provide consistent behavior on all Swift platforms. The library also comes with built-in file system support on linux, macOS, and Windows.
 
-Swift *PNG* is [available](LICENSE) under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/). The [example programs](Snippets/) are public domain and can be adapted freely.
+Swift *PNG* is [available](LICENSE) under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0). The [example programs](Snippets/) are public domain and can be adapted freely.
 
 Swift *PNG*’s [documentation](https://swiftinit.org/docs/swift-png/png) is available on Swiftinit!
 
@@ -22,7 +22,7 @@ Swift *PNG*’s [documentation](https://swiftinit.org/docs/swift-png/png) is ava
 To use *Swift PNG* in a project, add this descriptor to the `dependencies` list in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/tayloraswift/swift-png", .exact("4.3.0"))
+.package(url: "https://github.com/tayloraswift/swift-png", .from("4.3.0"))
 ```
 
 ## Basic usage
