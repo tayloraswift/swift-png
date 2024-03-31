@@ -22,7 +22,7 @@ extension PNG
 
         @available(*, deprecated, renamed: "PNG.BytestreamDestination")
         public
-        typealias Destination = _PNGBytestreamDestination
+        typealias Destination = PNG.BytestreamDestination
     }
 }
 extension PNG

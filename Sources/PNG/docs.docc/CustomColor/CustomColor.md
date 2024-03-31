@@ -74,7 +74,7 @@ protocol PNG.Color
 }
 ```
 
-For certain associated ``_PNGColor/Aggregate`` types, the library provides default implementations for ``_PNGColor/unpack(_:of:) [4GV17]`` and ``_PNGColor/pack(_:as:) [52RHU]``, which have behaviors detailed in the <doc:Indexing> tutorial. In such cases, we only need to implement ``_PNGColor/unpack(_:of:deindexer:)`` and ``_PNGColor/pack(_:as:indexer:)``. The specific `Aggregate` types are
+For certain associated ``PNG.Color/Aggregate`` types, the library provides default implementations for ``PNG.Color/unpack(_:of:) [9CTKA]`` and ``PNG.Color/pack(_:as:) [2Y9R9]``, which have behaviors detailed in the <doc:Indexing> tutorial. In such cases, we only need to implement ``PNG.Color/unpack(_:of:deindexer:)`` and ``PNG.Color/pack(_:as:indexer:)``. The specific `Aggregate` types are
 
 - `(UInt8, UInt8)`, and
 - `(UInt8, UInt8, UInt8, UInt8)`.
@@ -160,11 +160,11 @@ The four non-indexed convolution functions perform the following operations:
 
 The reason why some of the pixel kernels receive the original atoms in addition to the intensity values is because their associated color formats (namely, the grayscale, RGB, and BGR formats) require us to do chroma key comparisons, which must be performed in the original atom type.
 
-The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its ``Int`` index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the ``_PNGColor/Aggregate`` types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
+The four indexed convolution functions do basically the same thing, except they obtain the atoms from the given `dereference` function, which in turn gets its ``Int`` index argument from the given data buffer. Generally, you would expect it to get the atoms from the image palette. They are meant to be used with the ``PNG.Color/Aggregate`` types `A`, `(A, A)`, `(A, A, A)`, or `(A, A, A, A)`, respectively. The indexed convolution functions assume the image color depth is the same as the bit width of the atom type, which is why they don’t ask you to supply a color depth argument. None of them pass the original atoms to their pixel kernels, since indexed color formats don’t use chroma keys.
 
 Now, let’s write the implementation for the unpacking function.
 
-First, we set the associated ``_PNGColor/Aggregate`` type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
+First, we set the associated ``PNG.Color/Aggregate`` type to `(UInt8, UInt8, UInt8, UInt8)`. This means that we expect the deindexing function to return four atoms, since we want to use all four components of the RGBA palette entries to compute the HSVA outputs. (This also means that the library will give us a default `deindexer` implementation for free.)
 
 @Snippet(id: "CustomColor", slice: "HSVA_CONFORMANCE_SIGNATURES")
 
