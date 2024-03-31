@@ -78,7 +78,7 @@ Most PNG viewers ignore the `fill` field, and a few ignore the `key` field as we
 
 The non-grayscale color formats include a `palette` field. Setting it to the empty array is analogous to setting `fill` or `key` to nil. For the indexed color formats, a non-empty `palette` is mandatory. For the other formats, it is optional (meaning it can be set to `[]`), and furthermore, ignored by almost all PNG clients, since it only specifies a suggested [posterization](https://en.wikipedia.org/wiki/Posterization) for the image.
 
-To create a rectangular image data instance, use the ``PNG/Image/init(packing:size:layout:metadata:) [619VV]`` initializer. This initializer is the inverse of the ``PNG/Image/unpack(as:) [7GIAM]`` method we used in the <doc:BasicDecoding> tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
+To create a rectangular image data instance, use the ``PNG/Image/init(packing:size:layout:metadata:) [95YD5]`` initializer. This initializer is the inverse of the ``PNG/Image/unpack(as:) [3T47M]`` method we used in the <doc:BasicDecoding> tutorial. Needless to say, the length of the pixel array must equal `size.x * size.y`. The `metadata` argument has a default value, which is an empty metadata record.
 
 @Snippet(id: "BasicEncoding", slice: "PACK_RGB")
 
@@ -121,7 +121,7 @@ The built-in [`PNG.RGBA<T>`](PNG/RGBA) color target will discard the green, blue
     The example image, encoded by *swift png* in the 8-bit grayscale color format.
 }
 
-Like the ``PNG/Image/unpack(as:) [7GIAM]`` method, the ``PNG/Image/init(packing:size:layout:metadata:) [619VV]`` initializer is generic and can take an array of any color target. It also has an overload (``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]``) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array.
+Like the ``PNG/Image/unpack(as:) [3T47M]`` method, the ``PNG/Image/init(packing:size:layout:metadata:) [95YD5]`` initializer is generic and can take an array of any color target. It also has an overload (``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]``) which takes an array of scalars. To demonstrate this use case, we will compute the luminance of our example image (using a standard formula), and store it as a `[UInt8]` array.
 
 @Snippet(id: "BasicEncoding", slice: "COMPUTE_LUMINANCE")
 

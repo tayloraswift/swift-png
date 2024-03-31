@@ -1,34 +1,34 @@
 import CRC
 
+@available(*, deprecated, renamed: "PNG.BytestreamSource")
+public
+typealias _PNGBytestreamSource = PNG.BytestreamSource
+
 extension PNG
 {
     /// A source bytestream.
     ///
-    /// To implement a custom data source type, conform it to this protocol by
-    /// implementing ``_PNGBytestreamSource/read(count:)``. It can
-    /// then be used with the library’s core decompression interfaces.
+    /// To implement a custom data source type, conform it to this protocol by implementing
+    /// ``read(count:)``. It can then be used with the library’s core decompression interfaces.
     public
-    typealias BytestreamSource = _PNGBytestreamSource
-}
-/// The name of this protocol is ``PNG.BytestreamSource``.
-public
-protocol _PNGBytestreamSource
-{
-    /// Attempts to read and return the given number of bytes from this stream.
-    ///
-    /// A successful call to this function should affect the bytestream state
-    /// such that subsequent calls should pick up where the last call left off.
-    ///
-    /// The rest of the library interprets a `nil` return value from this function
-    /// as indicating end-of-stream.
-    /// -   Parameter count:
-    ///     The number of bytes to read.
-    /// -   Returns:
-    ///     The `count` bytes read, or `nil` if the read attempt failed. This
-    ///     method should return `nil` even if any number of bytes less than `count`
-    ///     were successfully read.
-    mutating
-    func read(count:Int) -> [UInt8]?
+    protocol BytestreamSource
+    {
+        /// Attempts to read and return the given number of bytes from this stream.
+        ///
+        /// A successful call to this function should affect the bytestream state
+        /// such that subsequent calls should pick up where the last call left off.
+        ///
+        /// The rest of the library interprets a `nil` return value from this function
+        /// as indicating end-of-stream.
+        /// -   Parameter count:
+        ///     The number of bytes to read.
+        /// -   Returns:
+        ///     The `count` bytes read, or `nil` if the read attempt failed. This
+        ///     method should return `nil` even if any number of bytes less than `count`
+        ///     were successfully read.
+        mutating
+        func read(count:Int) -> [UInt8]?
+    }
 }
 extension PNG.BytestreamSource
 {
@@ -39,7 +39,7 @@ extension PNG.BytestreamSource
     /// ``PNG/LexingError.truncatedSignature``. To recover on end-of-stream,
     /// catch this error case.
     ///
-    /// This function is the inverse of ``_PNGBytestreamDestination.signature()``.
+    /// This function is the inverse of ``PNG.BytestreamDestination.signature()``.
     public mutating
     func signature() throws
     {
@@ -63,7 +63,7 @@ extension PNG.BytestreamSource
     /// ``PNG/LexingError.truncatedChunkBody(expected:)``. To recover on end-of-stream,
     /// catch these two error cases.
     ///
-    /// This function is the inverse of ``_PNGBytestreamDestination.format(type:data:)``.
+    /// This function is the inverse of ``PNG.BytestreamDestination.format(type:data:)``.
     /// -   Returns:
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.

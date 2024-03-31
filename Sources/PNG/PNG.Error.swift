@@ -1,25 +1,34 @@
-/// Functionality common to all library error types.
-public
-protocol _PNGError:Error
+// TODO: replace with `TraceableErrors` from `swift-mongodb`
+extension PNG
 {
-    /// A human-readable namespace for this error type.
-    static
-    var namespace:String
+    /// Functionality common to all library error types.
+    public
+    protocol Error:Swift.Error
     {
-        get
-    }
-    /// A human-readable summary of this error.
-    var message:String
-    {
-        get
-    }
-    /// An optional human-readable string providing additional details
-    /// about this error.
-    var details:String?
-    {
-        get
+        /// A human-readable namespace for this error type.
+        static
+        var namespace:String
+        {
+            get
+        }
+        /// A human-readable summary of this error.
+        var message:String
+        {
+            get
+        }
+        /// An optional human-readable string providing additional details
+        /// about this error.
+        var details:String?
+        {
+            get
+        }
     }
 }
+
+@available(*, deprecated, renamed: "PNG.Error")
+public
+typealias _PNGError = PNG.Error
+
 extension PNG.Error
 {
     /// Halts execution by converting this error into a fatal error.
@@ -28,11 +37,4 @@ extension PNG.Error
     {
         fatalError("\(self)")
     }
-}
-
-// TODO: replace with `TraceableErrors` from `swift-mongodb`
-extension PNG
-{
-    public
-    typealias Error = _PNGError
 }

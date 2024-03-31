@@ -838,7 +838,7 @@ extension PNG.Image
     /// Unpacks this image to a pixel array, using a custom deindexing function.
     ///
     /// -   Parameter _:
-    ///     A color target type. This type provides the ``_PNGColor/unpack(_:of:deindexer:)``
+    ///     A color target type. This type provides the ``PNG.Color/unpack(_:of:deindexer:)``
     ///     implementation used to unpack the image data.
     /// -   Parameter deindexer:
     ///     A function which uses the palette entries in the color ``Layout/format`` to
@@ -910,7 +910,7 @@ extension PNG.Image
     /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``_PNGColor/pack(_:as:indexer:)``
+    ///     the image. The `Color` type provides the ``PNG.Color/pack(_:as:indexer:)``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
@@ -999,7 +999,7 @@ extension PNG.Image
     /// Unpacks this image to a pixel array.
     ///
     /// -   Parameter _:
-    ///     A color target type. This type provides the ``_PNGColor/unpack(_:of:) [4GV17]``
+    ///     A color target type. This type provides the ``PNG.Color/unpack(_:of:) [9CTKA]``
     ///     implementation used to unpack the image data.
     /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
@@ -1016,7 +1016,7 @@ extension PNG.Image
     /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``_PNGColor/pack(_:as:) [52RHU]``
+    ///     the image. The `Color` type provides the ``PNG.Color/pack(_:as:) [2Y9R9]``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an

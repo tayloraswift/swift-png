@@ -1,37 +1,36 @@
 import CRC
 
+@available(*, deprecated, renamed: "PNG.BytestreamDestination")
+public
+typealias _PNGBytestreamDestination = PNG.BytestreamDestination
+
 extension PNG
 {
     /// A destination bytestream.
     ///
-    /// To implement a custom data destination type, conform it to this protocol by
-    /// implementing ``_PNGBytestreamDestination/write(_:)``. It can
-    /// then be used with the library’s core compression interfaces.
+    /// To implement a custom data destination type, conform it to this protocol by implementing
+    /// ``write(_:)``. It can then be used with the library’s core compression interfaces.
     public
-    typealias BytestreamDestination = _PNGBytestreamDestination
+    protocol BytestreamDestination
+    {
+        /// Attempts to write the given bytes to this stream.
+        ///
+        /// A successful call to this function should affect the bytestream state
+        /// such that subsequent calls should pick up where the last call left off.
+        ///
+        /// The rest of the library interprets a `nil` return value from this function
+        /// as indicating a write failure.
+        /// -   Parameter bytes:
+        ///     The bytes to write.
+        /// -   Returns:
+        ///     A ``Void`` tuple, or `nil` if the write attempt failed. This
+        ///     method should return `nil` even if any number of bytes less than
+        ///     `bytes.count` were successfully written.
+        mutating
+        func write(_ buffer:[UInt8]) -> Void?
+    }
 }
-
-/// The name of this protocol is ``PNG.BytestreamDestination``.
-public
-protocol _PNGBytestreamDestination
-{
-    /// Attempts to write the given bytes to this stream.
-    ///
-    /// A successful call to this function should affect the bytestream state
-    /// such that subsequent calls should pick up where the last call left off.
-    ///
-    /// The rest of the library interprets a `nil` return value from this function
-    /// as indicating a write failure.
-    /// -   Parameter bytes:
-    ///     The bytes to write.
-    /// -   Returns:
-    ///     A ``Void`` tuple, or `nil` if the write attempt failed. This
-    ///     method should return `nil` even if any number of bytes less than
-    ///     `bytes.count` were successfully written.
-    mutating
-    func write(_ buffer:[UInt8]) -> Void?
-}
-extension _PNGBytestreamDestination
+extension PNG.BytestreamDestination
 {
     /// Emits the eight PNG signature bytes into this bytestream.
     ///
@@ -39,7 +38,7 @@ extension _PNGBytestreamDestination
     /// `[137, 80, 78, 71, 13, 10, 26, 10]`. It will throw a
     /// ``PNG/FormattingError`` if it fails to write to the bytestream.
     ///
-    /// This function is the inverse of ``_PNGBytestreamSource.signature()``.
+    /// This function is the inverse of ``PNG.BytestreamSource.signature()``.
     public mutating
     func signature() throws
     {
@@ -55,7 +54,7 @@ extension _PNGBytestreamDestination
     /// format it with the appropriate chunk headers and footers. It will throw a
     /// ``PNG/FormattingError`` if it fails to write to the bytestream.
     ///
-    /// This function is the inverse of ``_PNGBytestreamSource.chunk()``.
+    /// This function is the inverse of ``PNG.BytestreamSource.chunk()``.
     /// -   Parameter type:
     ///     The type identifier of the chunk to emit.
     /// -   Parameter data:

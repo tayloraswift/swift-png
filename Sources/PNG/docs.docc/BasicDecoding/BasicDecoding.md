@@ -27,7 +27,7 @@ We could also have unpacked the image pixels to the [`PNG.VA<UInt8>`](PNG/VA) bu
     The example image, decoded to an grayscale-alpha data file, and re-encoded as a png.
 }
 
-The ``PNG/Image/unpack(as:) [7GIAM]`` method is non-mutating, so you can unpack the same image to multiple color targets without having to re-decode the file each time.
+The ``PNG/Image/unpack(as:) [3T47M]`` method is non-mutating, so you can unpack the same image to multiple color targets without having to re-decode the file each time.
 
 The ``PNG/Image/unpack(as:) [69N73]`` method also has an overload which allows you to unpack an image into scalar grayscale samples.
 

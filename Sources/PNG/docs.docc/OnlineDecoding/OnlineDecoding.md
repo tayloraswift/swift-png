@@ -35,7 +35,7 @@ To simulate a file being transferred over a network, we are going to modify the 
 
 @Snippet(id: "OnlineDecoding", slice: "STREAM_TYPE")
 
-Each time we try to ``_PNGBytestreamSource/read(count:)`` from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
+Each time we try to ``PNG.BytestreamSource/read(count:)`` from this stream, it will either return data from the available portion of the buffer, or it will return `nil` and “download” an additional 4 KB of the file. We also allow for rewinding the current file position to an earlier state.
 
 @Snippet(id: "OnlineDecoding", slice: "STREAM_CONFORMANCE")
 
@@ -43,13 +43,13 @@ For the purposes of this tutorial we again populate our mock data stream using t
 
 @Snippet(id: "OnlineDecoding", slice: "BOOTSTRAP")
 
-The key to making this work is understanding that if the ``_PNGBytestreamSource/read(count:)`` call on the stream instance returns `nil`, then one of three library errors will get thrown:
+The key to making this work is understanding that if the ``PNG.BytestreamSource/read(count:)`` call on the stream instance returns `nil`, then one of three library errors will get thrown:
 
 - ``PNG.LexingError.truncatedSignature``
 - ``PNG.LexingError.truncatedChunkHeader``
 - ``PNG.LexingError.truncatedChunkBody(expected:)``
 
-These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The ``_PNGBytestreamSource/signature()`` method lexes the PNG signature bytes from the beginning of a PNG file, and it can throw a ``PNG/LexingError/truncatedSignature`` error. The ``_PNGBytestreamSource/chunk()`` method lexes a PNG chunk, and it can throw a ``PNG/LexingError/truncatedChunkHeader`` or ``PNG/LexingError/truncatedChunkBody(expected:)`` error.
+These errors get thrown from the library’s lexer functions, which lex PNG chunks out of a raw bytestream. There are two lexer functions. The ``PNG.BytestreamSource/signature()`` method lexes the PNG signature bytes from the beginning of a PNG file, and it can throw a ``PNG/LexingError/truncatedSignature`` error. The ``PNG.BytestreamSource/chunk()`` method lexes a PNG chunk, and it can throw a ``PNG/LexingError/truncatedChunkHeader`` or ``PNG/LexingError/truncatedChunkBody(expected:)`` error.
 
 ```swift
 mutating
