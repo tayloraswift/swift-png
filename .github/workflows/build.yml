@@ -8,16 +8,52 @@ on:
 
 jobs:
     macos:
-        runs-on: ${{ matrix.os }}
-        name: ${{ matrix.os }}
+        runs-on: macos-14
+        name: macOS
         strategy:
             matrix:
-                os:
-                    -   macos-14
+                swift:
+                    -   toolchain:  5.10-RELEASE
+                        branch:     swift-5.10-release
+
+        env:
+            SWIFT_TOOLCHAIN_DIRECTORY: >-
+                /Library/Developer/Toolchains/swift-${{ matrix.swift.toolchain }}.xctoolchain
+
         steps:
-            -   uses: actions/checkout@v2
-            #   Blocked on Swift 5.10 support
-            -   if: false
+            -   name: Cache swift toolchains
+                uses: actions/cache@v2
+                with:
+                    path: swift-${{ matrix.swift.toolchain }}.pkg
+                    key: macos:swift:${{ matrix.swift.toolchain }}
+
+            -   name: Cache status
+                id:   cache_status
+                uses: andstor/file-existence-action@v1
+                with:
+                    files: swift-${{ matrix.swift.toolchain }}.pkg
+
+            -   name: Download toolchain
+                if: steps.cache_status.outputs.files_exists == 'false'
+                run:   "curl https://download.swift.org/\
+                        ${{ matrix.swift.branch }}/xcode/\
+                        swift-${{ matrix.swift.toolchain }}/\
+                        swift-${{ matrix.swift.toolchain }}-osx.pkg \
+                        --output swift-${{ matrix.swift.toolchain }}.pkg"
+
+            -   name: Install toolchain
+                run: |
+                    sudo installer -pkg swift-${{ matrix.swift.toolchain }}.pkg -target /
+
+            -   name: Select toolchain
+                run: |
+                    echo "TOOLCHAINS=$(plutil -extract CFBundleIdentifier raw \
+                        $SWIFT_TOOLCHAIN_DIRECTORY/Info.plist)" >> $GITHUB_ENV
+
+            -   name: Checkout repository
+                uses: actions/checkout@v3
+
+            -   name: Run pipeline
                 run: .github/pipeline
 
     linux:
@@ -34,7 +70,7 @@ jobs:
                         branch:     swift-5.10-release
 
         steps:
-            -   uses: actions/checkout@v2
+            -   uses: actions/checkout@v3
 
             -   name: cache swift toolchains
                 uses: actions/cache@v2
