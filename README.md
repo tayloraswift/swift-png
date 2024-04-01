@@ -1,6 +1,6 @@
 <div align="center">
 
-***`png`***<br>`4.3`
+***`png`***<br>`4.4`
 
 [![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/build.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/build.yml)
 [![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/build-devices.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/build-devices.yml)
@@ -13,6 +13,8 @@
 
 *Swift PNG* is a Foundation-less, cross-platform framework for decoding, inspecting, editing, and encoding PNG images. The framework is written in pure Swift, and will compile and provide consistent behavior on all Swift platforms. The library also comes with built-in file system support on linux, macOS, and Windows.
 
+The library is powered by a native Swift *DEFLATE* implementation, which can be used as a [standalone module](https://swiftinit.org/docs/swift-png/lz77).
+
 Swift *PNG* is [available](LICENSE) under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0). The [example programs](Snippets/) are public domain and can be adapted freely.
 
 Swift *PNG*’s [documentation](https://swiftinit.org/docs/swift-png/png) is available on Swiftinit!
@@ -22,7 +24,7 @@ Swift *PNG*’s [documentation](https://swiftinit.org/docs/swift-png/png) is ava
 To use *Swift PNG* in a project, add this descriptor to the `dependencies` list in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/tayloraswift/swift-png", .from("4.3.0"))
+.package(url: "https://github.com/tayloraswift/swift-png", .from("4.4.0"))
 ```
 
 ## Basic usage
