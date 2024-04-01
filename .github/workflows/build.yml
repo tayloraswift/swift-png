@@ -16,8 +16,9 @@ jobs:
                     -   macos-14
         steps:
             -   uses: actions/checkout@v2
-
-            -   run: .github/pipeline
+            #   Blocked on Swift 5.10 support
+            -   if: false
+                run: .github/pipeline
 
     linux:
         runs-on: ${{ matrix.os.runner }}
