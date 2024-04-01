@@ -15,7 +15,9 @@ jobs:
                 device: [ios, tvos, watchos]
         steps:
             -   uses: actions/checkout@v2
-            -   name: build
+            #   Blocked on Swift 5.10 support
+            -   if: false
+                name: build
                 run: |
                     swift --version
                     xcrun xcodebuild -list

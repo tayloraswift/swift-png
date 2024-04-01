@@ -3,7 +3,6 @@
 ***`png`***<br>`4.4`
 
 [![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/build.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/build.yml)
-[![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/build-devices.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/build-devices.yml)
 
 
 [![swift package index versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftayloraswift%2Fswift-png%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/tayloraswift/swift-png)
