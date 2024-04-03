@@ -27,6 +27,40 @@ extension LZ77.DeflatorBuffers
 extension LZ77.DeflatorBuffers.Stream
 {
     mutating
+    func compressBlocks(final:Bool)
+    {
+        guard final
+        else
+        {
+            while let _:Void = self.compress(all: false)
+            {
+                self.writeBlock()
+            }
+
+            return
+        }
+
+        let finalType:LZ77.BlockType
+
+        switch self.input.count
+        {
+        case 3...:
+            while let _:Void = self.compress(all: true)
+            {
+                self.writeBlock()
+            }
+
+            finalType = .dynamic
+
+        //  It does not make sense to perform matching on data that is shorter than 3 bytes.
+        case let count:
+            finalType = .bytes(count: count)
+        }
+
+        self.writeBlock(finalType: finalType)
+    }
+
+    private mutating
     func compress(all:Bool) -> Void?
     {
         //         -3      -2      -1       0       1       2       3       4       5       6
@@ -369,8 +403,41 @@ extension LZ77.DeflatorBuffers.Stream
         return nil
     }
 
+    private mutating
+    func writeBlock(finalType:LZ77.BlockType)
+    {
+        switch finalType
+        {
+        case .dynamic:
+            self.writeBlock(final: true)
+
+        case .fixed:
+            fatalError("unsupported")
+
+        case .bytes(let count):
+            //                    this is an uncompressed block (type = 0)
+            //                   ~v
+            self.output.append(0b00_1, count: 3)
+            //                      ^
+            //                      this is a final block (final = 1)
+            self.output.pad(to: UInt8.self)
+
+            let l:UInt16 = .init(count)
+            let m:UInt16 = ~l
+
+            self.output.append(l, count: 16)
+            self.output.append(m, count: 16)
+
+            for _:Int in 0 ..< count
+            {
+                self.output.append(UInt16.init(self.input.dequeue()), count: 8)
+            }
+        }
+    }
+
+    /// Emits a dynamic (type = 2) DEFLATE block.
     mutating
-    func writeBlock(final:Bool)
+    func writeBlock(final:Bool = false)
     {
         let tree:
         (
@@ -484,7 +551,7 @@ extension LZ77.DeflatorBuffers.Stream
 
         tree.meta = .init(frequencies: frequencies, limit: 7)
 
-        self.writeBlockMetadata(tree: tree.meta,
+        self.writeBlockMetadata(dynamic: tree.meta,
             literals: r,
             distances: d,
             final: final)
@@ -505,8 +572,9 @@ extension LZ77.DeflatorBuffers.Stream
 }
 extension LZ77.DeflatorBuffers.Stream
 {
+    /// Writes metadata for a dynamic (type = 2) DEFLATE block.
     private mutating
-    func writeBlockMetadata(tree:LZ77.HuffmanTree<UInt8>,
+    func writeBlockMetadata(dynamic tree:LZ77.HuffmanTree<UInt8>,
         literals:Int,
         distances:Int,
         final:Bool)
@@ -532,7 +600,7 @@ extension LZ77.DeflatorBuffers.Stream
             $1 = max(4, $0.reversed().drop{ $0 == 0 }.count)
         }
 
-        self.output.append(final ? 0b10_1 : 0b10_0,        count: 3)
+        self.output.append(final ? 0b10_1 : 0b10_0, count: 3)
 
         self.output.append(.init(literals - 257), count: 5)
         self.output.append(.init(distances - 1), count: 5)

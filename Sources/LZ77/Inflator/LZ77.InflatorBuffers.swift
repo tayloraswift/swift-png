@@ -27,7 +27,7 @@ extension LZ77.InflatorBuffers
         switch state
         {
         case .metadata:
-            if  let block:LZ77.BlockType = try self.stream.readBlockMetadata(
+            if  let block:LZ77.BlockShape = try self.stream.readBlockMetadata(
                     into: &self.metadata)
             {
                 #if DUMP_LZ77_BLOCKS
