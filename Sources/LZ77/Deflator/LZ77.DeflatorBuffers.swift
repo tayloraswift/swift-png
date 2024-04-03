@@ -80,7 +80,8 @@ extension LZ77.DeflatorBuffers<LZ77.Format>
 
         self.stream.compressBlocks(final: last)
 
-        guard case .zlib = self.format
+        guard last,
+        case .zlib = self.format
         else
         {
             return
@@ -122,6 +123,12 @@ extension LZ77.DeflatorBuffers<Gzip.Format>
         }
 
         self.stream.compressBlocks(final: last)
+
+        guard last
+        else
+        {
+            return
+        }
 
         let checksum:UInt32 = self.stream.input.checksum()
         let bytes:UInt32 = self.stream.input.integral.bytes
