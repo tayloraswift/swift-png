@@ -436,7 +436,7 @@ extension LZ77.DeflatorBuffers.Stream
     }
 
     /// Emits a dynamic (type = 2) DEFLATE block.
-    mutating
+    private mutating
     func writeBlock(final:Bool = false)
     {
         let tree:
