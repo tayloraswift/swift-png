@@ -56,7 +56,7 @@ extension LZ77.InflatorBuffers.Stream
 extension LZ77.InflatorBuffers.Stream
 {
     mutating
-    func readBlockMetadata(into metadata:inout LZ77.BlockMetadata) throws -> LZ77.BlockType?
+    func readBlockMetadata(into metadata:inout LZ77.BlockMetadata) throws -> LZ77.BlockShape?
     {
         guard self.b + 3 <= self.input.count
         else

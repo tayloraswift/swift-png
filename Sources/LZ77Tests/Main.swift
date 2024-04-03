@@ -10,12 +10,14 @@ enum Main:TestMain
         F14.self,
         Bitstreams.self,
         Matching.self,
+        CompressionMicro.self,
         Compression.self,
     ]
     #else
     static
     let all:[any TestBattery.Type] =
     [
+        CompressionMicro.self,
         Compression.self
     ]
     #endif

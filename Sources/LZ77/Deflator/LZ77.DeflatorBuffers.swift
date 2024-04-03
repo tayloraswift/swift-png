@@ -78,23 +78,17 @@ extension LZ77.DeflatorBuffers<LZ77.Format>
             return
         }
 
-        while let _:Void = self.stream.compress(all: last)
-        {
-            self.stream.writeBlock(final: false)
-        }
-        if  last
-        {
-            self.stream.writeBlock(final: true)
+        self.stream.compressBlocks(final: last)
 
-            if  case .ios = self.format
-            {
-                return
-            }
-            // checksum is written big-endian, which means it has to go into the
-            // bitstream msb-first
-            let checksum:UInt32 = self.stream.input.checksum()
-            self.stream.writeBigEndianUInt32(checksum)
+        guard case .zlib = self.format
+        else
+        {
+            return
         }
+        // checksum is written big-endian, which means it has to go into the
+        // bitstream msb-first
+        let checksum:UInt32 = self.stream.input.checksum()
+        self.stream.writeBigEndianUInt32(checksum)
     }
 }
 //  TODO: this currently only supports one member.
@@ -127,19 +121,12 @@ extension LZ77.DeflatorBuffers<Gzip.Format>
             return
         }
 
-        while let _:Void = self.stream.compress(all: last)
-        {
-            self.stream.writeBlock(final: false)
-        }
-        if  last
-        {
-            self.stream.writeBlock(final: true)
+        self.stream.compressBlocks(final: last)
 
-            let checksum:UInt32 = self.stream.input.checksum()
-            let bytes:UInt32 = self.stream.input.integral.bytes
-            self.stream.writeLittleEndianUInt32(checksum)
-            self.stream.writeLittleEndianUInt32(bytes)
-        }
+        let checksum:UInt32 = self.stream.input.checksum()
+        let bytes:UInt32 = self.stream.input.integral.bytes
+        self.stream.writeLittleEndianUInt32(checksum)
+        self.stream.writeLittleEndianUInt32(bytes)
     }
 }
 extension LZ77.DeflatorBuffers
