@@ -28,6 +28,23 @@ extension Main.CompressionMicro:TestBattery
         {
             Self.roundtrip(bytes: [4, 5, 6], with: tests)
         }
+        if  let tests:TestGroup = tests / "InParts"
+        {
+            var deflator:Gzip.Deflator = .init(level: 13, exponent: 15)
+            deflator.push([1], last: false)
+            deflator.push([2], last: true)
+
+            var archive:[UInt8] = []
+            while let part:[UInt8] = deflator.pull()
+            {
+                archive += part
+            }
+
+            tests.do
+            {
+                tests.expect(try Gzip.extract(from: archive[...]) ..? [1, 2])
+            }
+        }
     }
 
     private static
