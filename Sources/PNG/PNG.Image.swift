@@ -6,6 +6,7 @@ extension PNG
     enum Data
     {
         @available(*, deprecated, renamed: "PNG.Image")
+        public
         typealias Rectangular = PNG.Image
     }
 }
