@@ -1,5 +1,5 @@
 import PNG
-import Testing
+import Testing_
 
 struct _TestFailure:Error
 {

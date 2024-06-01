@@ -1,5 +1,5 @@
 import LZ77
-import Testing
+import Testing_
 
 extension Main
 {
