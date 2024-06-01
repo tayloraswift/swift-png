@@ -1,7 +1,7 @@
 #if DEBUG
 @testable
 import PNG
-import Testing
+import Testing_
 
 extension Main
 {

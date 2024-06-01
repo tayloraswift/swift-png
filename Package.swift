@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package:Package = .init(name: "swift-png",
-    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
+    platforms: [.macOS("13.3"), .iOS("16.4"), .tvOS("16.4"), .watchOS("9.4")],
     products: [
         .library(name: "LZ77", targets: ["LZ77"]),
         .library(name: "PNG", targets: ["PNG"]),
@@ -12,9 +12,9 @@ let package:Package = .init(name: "swift-png",
     ],
     dependencies: [
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
-            from: "0.5.0")),
+            from: "0.6.0")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
-            from: "0.3.4")),
+            from: "0.4.0")),
     ],
     targets: [
         .target(name: "LZ77",
@@ -35,7 +35,7 @@ let package:Package = .init(name: "swift-png",
         .executableTarget(name: "LZ77Tests",
             dependencies: [
                 .target(name: "LZ77"),
-                .product(name: "Testing", package: "swift-grammar"),
+                .product(name: "Testing_", package: "swift-grammar"),
             ],
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
@@ -44,7 +44,7 @@ let package:Package = .init(name: "swift-png",
         .executableTarget(name: "PNGTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing", package: "swift-grammar"),
+                .product(name: "Testing_", package: "swift-grammar"),
             ],
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
@@ -53,7 +53,7 @@ let package:Package = .init(name: "swift-png",
         .executableTarget(name: "PNGIntegrationTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing", package: "swift-grammar"),
+                .product(name: "Testing_", package: "swift-grammar"),
             ],
             exclude: [
                 "PngSuite.LICENSE",
@@ -66,7 +66,7 @@ let package:Package = .init(name: "swift-png",
         .executableTarget(name: "PNGCompressionTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing", package: "swift-grammar"),
+                .product(name: "Testing_", package: "swift-grammar"),
             ]),
 
         .executableTarget(name: "PNGCompressionBenchmarks",

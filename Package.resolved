@@ -1,34 +1,32 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "swift-atomics",
-        "repositoryURL": "https://github.com/apple/swift-atomics.git",
-        "state": {
-          "branch": null,
-          "revision": "cd142fd2f64be2100422d658e7411e39489da985",
-          "version": "1.2.0"
-        }
-      },
-      {
-        "package": "Swift Grammar",
-        "repositoryURL": "https://github.com/tayloraswift/swift-grammar",
-        "state": {
-          "branch": null,
-          "revision": "6db3dd8912fc7acb821021cd96677b2e0eeb09f0",
-          "version": "0.3.4"
-        }
-      },
-      {
-        "package": "swift-hash",
-        "repositoryURL": "https://github.com/tayloraswift/swift-hash",
-        "state": {
-          "branch": null,
-          "revision": "c7ba0cde5eb63042c2196b02b65a770101c1ac11",
-          "version": "0.5.0"
-        }
+  "pins" : [
+    {
+      "identity" : "swift-atomics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-atomics.git",
+      "state" : {
+        "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
+        "version" : "1.2.0"
       }
-    ]
-  },
-  "version": 1
+    },
+    {
+      "identity" : "swift-grammar",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tayloraswift/swift-grammar",
+      "state" : {
+        "revision" : "642d5957896f06b03e35c48fc439488367d3fd21",
+        "version" : "0.4.0"
+      }
+    },
+    {
+      "identity" : "swift-hash",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tayloraswift/swift-hash",
+      "state" : {
+        "revision" : "7798c344afd5a96b689fa9904ad52242a85b5068",
+        "version" : "0.6.0"
+      }
+    }
+  ],
+  "version" : 2
 }
