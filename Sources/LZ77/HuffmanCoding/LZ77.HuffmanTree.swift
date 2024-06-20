@@ -92,7 +92,7 @@ extension LZ77.HuffmanTree where Symbol:BinaryInteger
         let n:Int       = 256 - interior
         var z:Int       = 256 // n
         // finish validating the tree
-        for (i, leaves):(Int, Range<Int>) in levels[8 ..< 15].enumerated()
+        for (i, leaves) in levels[8 ..< 15].enumerated()
         {
             z       += leaves.count << (6 - i)
             interior = 2 * interior - leaves.count
@@ -147,7 +147,7 @@ extension LZ77.HuffmanTree where Symbol:BinaryInteger
         let ranges:[Range<Int>] = .init(unsafeUninitializedCapacity: 15)
         {
             var base:Int = 0
-            for (i, count):(Int, Int) in counts.dropFirst().enumerated()
+            for (i, count) in counts.dropFirst().enumerated()
             {
                 $0[i] = base ..< base + count
                 base += count
