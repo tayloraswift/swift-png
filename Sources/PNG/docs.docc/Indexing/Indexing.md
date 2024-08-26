@@ -48,7 +48,7 @@ We can visualize the gradient using the same APIs we used in the <doc:BasicEncod
     A visualization of the generated gradient.
 }
 
-We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, ``PNG/Image/init(packing:size:layout:metadata:indexer:) [7UEEA]``, and pass it a custom [*indexing function*](#st:indexing%20function).
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, ``PNG/Image/init(packing:size:layout:metadata:indexer:) [7UEEA]``, and pass it a custom [*indexing function*](#st:indexing-function).
 
 @Snippet(id: "Indexing", slice: "PACK_EXAMPLE")
 
@@ -77,7 +77,7 @@ The return value of the outer function is an *inner function* of type `(UInt8) -
 
 Its default implementation [encloses](https://en.wikipedia.org/wiki/Closure_%28computer_programming%29) the dictionary variable, and uses it to look up the palette index of the function’s grayscale sample argument, expanded to RGBA form. If there is no matching palette entry, it returns index `0`. As you might expect, this can be inefficient for some use cases (though not terribly so), so the custom indexing APIs are useful if you want to manipulate indices without re-indexing the entire image.
 
-Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the [`PNG.VA<T>`](PNG/VA) color target, the inner function recieves `(UInt8, UInt8)` tuples. For the [`PNG.RGBA<T>`](PNG/RGBA) color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always ``Int``.) In this library, the inner function argument is called a [*palette aggregate*](#st:palette%20aggregate).
+Depending on the color target, the inner function may take a tuple argument instead of a scalar. For the [`PNG.VA<T>`](PNG/VA) color target, the inner function recieves `(UInt8, UInt8)` tuples. For the [`PNG.RGBA<T>`](PNG/RGBA) color target, it receives `(UInt8, UInt8, UInt8, UInt8)` tuples. (The return type is always ``Int``.) In this library, the inner function argument is called a [*palette aggregate*](#st:palette-aggregate).
 
 Let’s go back to the custom indexing function:
 
