@@ -32,7 +32,7 @@ This tutorial will assume you have the image you want to encode stored as an arr
 
 @Snippet(id: "BasicEncoding", slice: "LOAD_RGBA")
 
-The first step to encoding a PNG file is to define an [*image layout*](#st:image%20layout). Here, we have defined an 8-bit RGB layout, as well as an 8-bit grayscale layout which we will use later.
+The first step to encoding a PNG file is to define an [*image layout*](#st:image-layout). Here, we have defined an 8-bit RGB layout, as well as an 8-bit grayscale layout which we will use later.
 
 @Snippet(id: "BasicEncoding", slice: "LAYOUT")
 
@@ -42,7 +42,7 @@ The signature of the ``PNG.Layout`` initializer is given below:
 init(format:PNG.Format, interlaced:Bool = false)
 ```
 
-The `format` parameter specifies the [*color format*](#st:color%20format) of the layout.
+The `format` parameter specifies the [*color format*](#st:color-format) of the layout.
 
 We can enable [*interlacing*](#st:interlacing) by setting the `interlaced` parameter to `true`. This parameter is `false` by default. There is rarely a good reason to enable it, and it usually hurts the compression ratio, so we have omitted it in this example. We will explore a possible use case for it in the <doc:OnlineDecoding> tutorial.
 
@@ -72,7 +72,7 @@ The library supports all fifteen standard PNG color formats, plus two formats fr
 | ``PNG.Format/rgba8(palette:fill:)``       | RGBA              | 8         | 8           | core      |
 | ``PNG.Format/rgba16(palette:fill:)``      | RGBA              | 16        | 16          | core      |
 
-The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a [*chroma key*](#st:chroma%20key). The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the ``PNG/Format/rgb8(palette:fill:key:)`` format, and ``Int`` indices in the ``PNG/Format/indexed8(palette:fill:)`` format. Indexed images do not support chroma keys, because they contain a full alpha channel.
+The `fill` field specifies a solid background color which some PNG viewers use to display the image. Formats that lack a full alpha channel also have a `key` field, which specifies a [*chroma key*](#st:chroma-key). The type of the `fill` and `key` fields varies depending on the color format. For example, they are `(r:UInt8, g:UInt8, b:UInt8)` tuples in the ``PNG/Format/rgb8(palette:fill:key:)`` format, and ``Int`` indices in the ``PNG/Format/indexed8(palette:fill:)`` format. Indexed images do not support chroma keys, because they contain a full alpha channel.
 
 Most PNG viewers ignore the `fill` field, and a few ignore the `key` field as well. It is common to leave both fields as nil to disable this functionality.
 
@@ -84,7 +84,7 @@ To create a rectangular image data instance, use the ``PNG/Image/init(packing:si
 
 On platforms with built-in file system support, we can compress it to a file using the ``PNG/Image/compress(path:level:hint:)`` method. The `hint` argument provides a size hint for the emitted image data chunks. Its default value is `32768`, which is fine for almost all use cases. We will explore the `hint` parameter in more detail in the <doc:OnlineDecoding> tutorial.
 
-The `level` argument specifies the [*compression level*](#st:compression%20level). Its default value is `9`. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
+The `level` argument specifies the [*compression level*](#st:compression-level). Its default value is `9`. Setting `level` to a value less than `0` is the same as setting it to `0`. Likewise, setting it to a value greater than `13` is the same as setting it to `13`.
 
 Compression level `9` is roughly equivalent to *libpng*’s maximum compression setting in terms of compression ratio and encoding speed. The higher levels (`10` through `13`) are very computationally expensive, so you should only use them if you really need to optimize for file size.
 

@@ -49,7 +49,7 @@ bgra8(palette: [], fill: nil)
 
 The ``PNG/Format/bgra8(palette:fill:)`` format is one of two iPhone-optimized color formats. It is analogous to the ``PNG/Format/rgba8(palette:fill:)`` format. Another possibility is ``PNG/Format/bgr8(palette:fill:key:)``, which lacks an alpha channel, and is analogous to ``PNG/Format/rgb8(palette:fill:key:)``.
 
-We can unpack iPhone-optimized images to any color target. iPhone-optimized images use [*premultiplied alpha*](#st:premultiplied%20alpha). We can convert the pixels back to **straight alpha** using the ``PNG/RGBA.straightened`` or ``PNG/VA.straightened`` computed properties.
+We can unpack iPhone-optimized images to any color target. iPhone-optimized images use [*premultiplied alpha*](#st:premultiplied-alpha). We can convert the pixels back to **straight alpha** using the ``PNG/RGBA.straightened`` or ``PNG/VA.straightened`` computed properties.
 
 @Snippet(id: "iPhoneOptimized", slice: "STRAIGHTEN")
 
