@@ -1,0 +1,63 @@
+# This workflow validates the package’s documentation. Because documentation building involves
+# compiling the package, this also checks that the package itself compiles successfully on each
+# supported platform.
+name: documentation
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
+
+jobs:
+    linux:
+        runs-on: ubuntu-24.04
+        name: Ubuntu 24.04
+
+        steps:
+            -   name: Install Swift
+                uses: tayloraswift/swift-install-action@master
+                with:
+                    swift-prefix: "swift-5.10.1-release/ubuntu2404/swift-5.10.1-RELEASE"
+                    swift-id: "swift-5.10.1-RELEASE-ubuntu24.04"
+
+            -   name: Install Unidoc
+                uses: tayloraswift/swift-unidoc-action@master
+                with:
+                    unidoc-version: "master"
+
+            #   This clobbers everything in the current directory!
+            -   name: Checkout repository
+                uses: actions/checkout@v3
+
+            -   name: Validate documentation
+                run: |
+                    unidoc compile -I .. \
+                    --swift-toolchain $SWIFT_INSTALLATION \
+                    --ci fail-on-errors \
+                    --package-name swift-png
+
+    macos:
+        runs-on: macos-14
+        name: macOS
+
+        strategy:
+            matrix:
+                device: [ios, tvos, watchos]
+        env:
+            DEVELOPER_DIR: "/Applications/Xcode_15.3.app/Contents/Developer"
+
+        steps:
+            -   name: Install Unidoc
+                uses: tayloraswift/swift-unidoc-action@master
+                with:
+                    unidoc-version: "master"
+
+            -   name: Checkout repository
+                uses: actions/checkout@v3
+
+            -   name: Validate documentation
+                run: |
+                    unidoc compile -I .. \
+                    --ci fail-on-errors \
+                    --package-name swift-png
