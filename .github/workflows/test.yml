@@ -29,8 +29,8 @@ jobs:
         strategy:
             matrix:
                 swift:
-                    -   toolchain:  5.10-RELEASE
-                        branch:     swift-5.10-release
+                    -   toolchain:  5.10.1-RELEASE
+                        branch:     swift-5.10.1-release
 
         env:
             SWIFT_TOOLCHAIN_DIRECTORY: >-
@@ -41,7 +41,7 @@ jobs:
                 id:   cache
                 uses: actions/cache@v2
                 with:
-                    path: swift-${{ matrix.swift.toolchain }}.pkg
+                    path: ~/swift-${{ matrix.swift.toolchain }}.pkg
                     key: macos:swift:${{ matrix.swift.toolchain }}
 
             -   name: Download toolchain
@@ -50,11 +50,11 @@ jobs:
                         ${{ matrix.swift.branch }}/xcode/\
                         swift-${{ matrix.swift.toolchain }}/\
                         swift-${{ matrix.swift.toolchain }}-osx.pkg \
-                        --output swift-${{ matrix.swift.toolchain }}.pkg"
+                        --output ~/swift-${{ matrix.swift.toolchain }}.pkg"
 
             -   name: Install toolchain
                 run: |
-                    sudo installer -pkg swift-${{ matrix.swift.toolchain }}.pkg -target /
+                    sudo installer -pkg ~/swift-${{ matrix.swift.toolchain }}.pkg -target /
 
             -   name: Select toolchain
                 run: |
