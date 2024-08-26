@@ -69,8 +69,7 @@ jobs:
 
     devices:
         runs-on: macos-14
-        name: macOS ({{ matrix.device }})
-
+        name: macOS
         strategy:
             matrix:
                 device: [ios, tvos, watchos]
