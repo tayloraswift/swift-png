@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package:Package = .init(name: "swift-png",
-    platforms: [.macOS("13.3"), .iOS("16.4"), .tvOS("16.4"), .watchOS("9.4")],
+    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
     products: [
         .library(name: "LZ77", targets: ["LZ77"]),
         .library(name: "PNG", targets: ["PNG"]),
@@ -11,8 +11,8 @@ let package:Package = .init(name: "swift-png",
         .executable(name: "decompression-benchmark", targets: ["PNGDecompressionBenchmarks"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
-            from: "0.6.0")),
+        .package(url: "https://github.com/stackotter/swift-hash", .upToNextMinor(
+            from: "0.6.3")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
             from: "0.4.0")),
     ],
