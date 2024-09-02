@@ -11,7 +11,7 @@ let package:Package = .init(name: "swift-png",
         .executable(name: "decompression-benchmark", targets: ["PNGDecompressionBenchmarks"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/stackotter/swift-hash", .upToNextMinor(
+        .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
             from: "0.6.3")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
             from: "0.4.0")),

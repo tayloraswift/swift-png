@@ -21,9 +21,9 @@
     {
       "identity" : "swift-hash",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stackotter/swift-hash",
+      "location" : "https://github.com/tayloraswift/swift-hash",
       "state" : {
-        "revision" : "6e9301937718c3c0b2ce6bfd323a210a7490a007",
+        "revision" : "4d70a941b7039358f2ec8565f6c3b53c05f6c6ef",
         "version" : "0.6.3"
       }
     }
