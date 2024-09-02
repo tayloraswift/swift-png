@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tayloraswift/swift-hash",
       "state" : {
-        "revision" : "7798c344afd5a96b689fa9904ad52242a85b5068",
-        "version" : "0.6.0"
+        "revision" : "4d70a941b7039358f2ec8565f6c3b53c05f6c6ef",
+        "version" : "0.6.3"
       }
     }
   ],
