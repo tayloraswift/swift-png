@@ -117,10 +117,19 @@ extension LZ77.InflatorIn
                     count       = data.count
                 }
 
-                for j:Int in 0 ..< count >> 1
+                // in debug mode, the majority of the time spent in the for loop is
+                // spent in the iterator implemenation for Range<Int>. so in debug
+                // mode we use a manual while loop. when first introduced, this change made
+                // LZ77.InflatorIn.rebase(_:pointer:) about 4.5x faster. this change didn't
+                // affect release mode performance at all, so we just use it for both debug
+                // mode and release mode.
+                let iters:Int = count >> 1
+                var j:Int = 0
+                while j < iters
                 {
                     $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 |
                                             .init(start[j << 1    ])
+                    j += 1
                 }
                 let k:Int = i + (count + 1) >> 1
                 if count & 1 != 0

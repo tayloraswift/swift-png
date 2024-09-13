@@ -26,20 +26,26 @@ extension LZ77.MRC32:LZ77.StreamIntegral
     func update(from start:UnsafePointer<UInt8>, count:Int)
     {
         let (q, r):(Int, Int) = count.quotientAndRemainder(dividingBy: 5552)
-        for i:Int in 0 ..< q
+        var i:Int = 0
+        while i < q
         {
-            for j:Int in 5552 * i ..< 5552 * (i + 1)
+            var j:Int = 5552 * i
+            while j < 5552 * (i + 1)
             {
                 self.single &+= .init(start[j])
                 self.double &+= self.single
+                j += 1
             }
             self.single %= 65521
             self.double %= 65521
+            i += 1
         }
-        for j:Int in 5552 * q ..< 5552 * q + r
+        var j:Int = 5552 * q
+        while j < 5552 * q + r
         {
             self.single &+= .init(start[j])
             self.double &+= self.single
+            j += 1
         }
 
         self.single %= 65521

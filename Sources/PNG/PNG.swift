@@ -132,20 +132,17 @@ extension PNG
         }
 
         #if DEBUG
-            // in debug mode this manual UInt8 -> Int16 code makes `paeth` approximately 270x
-            // faster than using either `Int16(x)` or `Int16(bitPattern: UInt16(x))`. without
+            // in debug mode this manual UInt8 -> Int16 code makes `paeth` approximately 7x
+            // faster than using either `Int16(x)` or `Int16(bitPattern: UInt16(x))`. before
             // this, paeth often took up around 10% of the time taken during decoding large images.
             // the regular Int16/UInt16 initialisers aren't specialised in debug mode and end up
             // spending most of their time reading generic metadata and checking stack canaries.
-            @inline(__always)
+            // hand unrolling the calls to this function has minimal effect on debug mode
+            // performance.
             func customUInt8ToInt16(_ x: UInt8) -> Int16
             {
                 let tuple:(UInt8, UInt8) = (x, 0)
-                let unsigned = withUnsafePointer(to: tuple)
-                {
-                    $0.withMemoryRebound(to: UInt16.self, capacity: 1) { $0.pointee }
-                }
-                return Int16(bitPattern: unsigned)
+                return unsafeBitCast(tuple, to: Int16.self)
             }
 
             let v:(Int16, Int16, Int16) =
