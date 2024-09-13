@@ -131,7 +131,37 @@ extension PNG
             return (x ^ mask) + (mask & 1)
         }
 
-        let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
+        #if DEBUG
+            // in debug mode this manual UInt8 -> Int16 code makes `paeth` approximately 270x
+            // faster than using either `Int16(x)` or `Int16(bitPattern: UInt16(x))`. without
+            // this, paeth often took up around 10% of the time taken during decoding large images.
+            // the regular Int16/UInt16 initialisers aren't specialised in debug mode and end up
+            // spending most of their time reading generic metadata and checking stack canaries.
+            @inline(__always)
+            func customUInt8ToInt16(_ x: UInt8) -> Int16
+            {
+                let tuple:(UInt8, UInt8) = (x, 0)
+                let unsigned = withUnsafePointer(to: tuple)
+                {
+                    $0.withMemoryRebound(to: UInt16.self, capacity: 1) { $0.pointee }
+                }
+                return Int16(bitPattern: unsigned)
+            }
+
+            let v:(Int16, Int16, Int16) =
+            (
+                customUInt8ToInt16(a),
+                customUInt8ToInt16(b),
+                customUInt8ToInt16(c)
+            )
+        #else
+            // the debug mode implementation uses unsafe pointer code which the compiler takes
+            // to mean that we want a stack check inserted, even in release mode, so this simple
+            // implementation is better for release mode. note that the stack check insertion
+            // theory is from looking at Godbolt, so the situation may be different on ARM.
+            let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
+        #endif
+
         let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
         let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
 
