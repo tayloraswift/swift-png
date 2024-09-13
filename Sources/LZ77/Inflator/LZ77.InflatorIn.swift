@@ -175,14 +175,24 @@ extension LZ77.InflatorIn
 
             let a:Int = i >> 4,
                 b:Int = i & 0x0f
+
             //    a + 2           a + 1             a
             //      [ : : :x:x:x:x:x|x:x: : : : : : ]
             //             ~~~~~~~~~~~~~^
             //            count = 14, b = 12
             //
             //      →               [ :x:x:x:x:x|x:x]
-            let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a]),
-                mask:UInt32     = ~(UInt32.max &<< count)
+            #if DEBUG
+                // in debug mode this makes a huge different. without it, these integer
+                // conversions took up to 10% of the time spent decoding the PNG. now it's
+                // basically negligible. in release mode there's no issue with the regular
+                // way so we just use that so that the compiler has more semantic information
+                // to go off when optimizing the code.
+                let extended:UInt32 = unsafeBitCast(($0[a], $0[a &+ 1]), to: UInt32.self)
+            #else
+                let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            #endif
+            let mask:UInt32     = ~(UInt32.max &<< count)
             return .init(extended &>> b & mask)
         }
     }
@@ -201,7 +211,16 @@ extension LZ77.InflatorIn
             //      →   [x:x:x:x:x:x|x:x]
             //  creating a uint32 and shifting that is faster than shifting
             //  the two components individually
-            let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            #if DEBUG
+                // in debug mode this makes a huge different. without it, these integer
+                // conversions took up to 10% of the time spent decoding the PNG. now it's
+                // basically negligible. in release mode there's no issue with the regular
+                // way so we just use that so that the compiler has more semantic information
+                // to go off when optimizing the code.
+                let extended:UInt32 = unsafeBitCast(($0[a], $0[a &+ 1]), to: UInt32.self)
+            #else
+                let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            #endif
             return .init(truncatingIfNeeded: extended &>> b)
         }
     }
