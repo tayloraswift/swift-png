@@ -162,12 +162,25 @@ extension PNG
         let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
         let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
 
-        let p:(UInt8, UInt8, UInt8) =
-        (
-            .init(truncatingIfNeeded: (f.1 - f.0) >> 15), // 0x00 if f.0 <= f.1 else 0xff
-            .init(truncatingIfNeeded: (f.2 - f.0) >> 15),
-            .init(truncatingIfNeeded: (f.2 - f.1) >> 15)
-        )
+        let p1:Int16 = (f.1 - f.0) >> 15 // 0x00 if f.0 <= f.1 else 0xff
+        let p2:Int16 = (f.2 - f.0) >> 15
+        let p3:Int16 = (f.2 - f.1) >> 15
+        #if DEBUG
+            // in debug mode this is about 1.85x faster than the built-in way
+            let p:(UInt8, UInt8, UInt8) =
+            (
+                unsafeBitCast(p1, to: (UInt8, UInt8).self).0,
+                unsafeBitCast(p2, to: (UInt8, UInt8).self).0,
+                unsafeBitCast(p3, to: (UInt8, UInt8).self).0
+            )
+        #else
+            let p:(UInt8, UInt8, UInt8) =
+            (
+                .init(truncatingIfNeeded: p1), // 0x00 if f.0 <= f.1 else 0xff
+                .init(truncatingIfNeeded: p2),
+                .init(truncatingIfNeeded: p3)
+            )
+        #endif
 
         return ~(p.0 | p.1) &  a        |
                 (p.0 | p.1) & (b & ~p.2 | c & p.2)
