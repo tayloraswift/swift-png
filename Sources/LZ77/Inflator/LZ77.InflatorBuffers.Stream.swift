@@ -320,10 +320,23 @@ extension LZ77.InflatorBuffers.Stream
                 // (in the low bits bits of a UInt64)
                 // we put it in the low bits so that we can do masking shifts instead
                 // of checked shifts
-                var slug:UInt64 =
-                    .init(self.input[self.b + 32]) << 32 |
-                    .init(self.input[self.b + 16]) << 16 |
-                    .init(first)
+                #if DEBUG
+                    // this hacky integer conversion is quite a bit faster in debug mode
+                    // than the one using the `UInt64` initializer.
+                    let slugTuple:(UInt16, UInt16, UInt16, UInt16) =
+                    (
+                        first,
+                        self.input[self.b + 16],
+                        self.input[self.b + 32],
+                        0
+                    )
+                    var slug:UInt64 = unsafeBitCast(slugTuple, to: UInt64.self)
+                #else
+                    var slug:UInt64 =
+                        .init(self.input[self.b + 32]) << 32 |
+                        .init(self.input[self.b + 16]) << 16 |
+                        .init(first)
+                #endif
                 slug &>>= runliteral.length
 
                 let composite:

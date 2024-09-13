@@ -168,7 +168,25 @@ extension LZ77.InflatorTables
             let offset:Int          = 256 &+
                 MemoryLayout<Composite>.stride &* runliteral.decade
             let composite:Composite = raw.load(fromByteOffset: offset, as: Composite.self)
-            return (extra: .init(composite.extra), base: .init(composite.base))
+            #if DEBUG
+                if MemoryLayout<Int>.stride == 8 {
+                    let extraTuple:(UInt16, UInt16, UInt16, UInt16) = (composite.extra, 0, 0, 0)
+                    let baseTuple:(UInt16, UInt16, UInt16, UInt16) = (composite.base, 0, 0, 0)
+                    return (
+                        extra: unsafeBitCast(extraTuple, to: Int.self),
+                        base: unsafeBitCast(baseTuple, to: Int.self)
+                    )
+                } else {
+                    let extraTuple:(UInt16, UInt16) = (composite.extra, 0)
+                    let baseTuple:(UInt16, UInt16) = (composite.base, 0)
+                    return (
+                        extra: unsafeBitCast(extraTuple, to: Int.self),
+                        base: unsafeBitCast(baseTuple, to: Int.self)
+                    )
+                }
+            #else
+                return (extra: .init(composite.extra), base: .init(composite.base))
+            #endif
         }
     }
     func composite(decade distance:LZ77.Distance) -> (extra:Int, base:Int)
@@ -180,7 +198,25 @@ extension LZ77.InflatorTables
             let offset:Int          = (256 + 32 * MemoryLayout<Composite>.stride) &+
                 MemoryLayout<Composite>.stride &* distance.decade
             let composite:Composite = raw.load(fromByteOffset: offset, as: Composite.self)
-            return (extra: .init(composite.extra), base: .init(composite.base))
+            #if DEBUG
+                if MemoryLayout<Int>.stride == 8 {
+                    let extraTuple:(UInt16, UInt16, UInt16, UInt16) = (composite.extra, 0, 0, 0)
+                    let baseTuple:(UInt16, UInt16, UInt16, UInt16) = (composite.base, 0, 0, 0)
+                    return (
+                        extra: unsafeBitCast(extraTuple, to: Int.self),
+                        base: unsafeBitCast(baseTuple, to: Int.self)
+                    )
+                } else {
+                    let extraTuple:(UInt16, UInt16) = (composite.extra, 0)
+                    let baseTuple:(UInt16, UInt16) = (composite.base, 0)
+                    return (
+                        extra: unsafeBitCast(extraTuple, to: Int.self),
+                        base: unsafeBitCast(baseTuple, to: Int.self)
+                    )
+                }
+            #else
+                return (extra: .init(composite.extra), base: .init(composite.base))
+            #endif
         }
     }
 

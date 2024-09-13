@@ -127,8 +127,19 @@ extension LZ77.InflatorIn
                 var j:Int = 0
                 while j < iters
                 {
-                    $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 |
-                                            .init(start[j << 1    ])
+                    let upper:UInt8 = start[j << 1 | 1]
+                    let lower:UInt8 = start[j << 1    ]
+                    let value:UInt16
+                    #if DEBUG
+                        // in debug mode this hacky integer conversion makes
+                        // LZ77.InflatorIn.rebase(_:pointer:) about 26x faster
+                        let tuple:(UInt8, UInt8) = (lower, upper)
+                        value = unsafeBitCast(tuple, to: UInt16.self)
+                    #else
+                        value = .init(upper) << 8 |
+                                .init(lower)
+                    #endif
+                    $0[i &+ j] = value
                     j += 1
                 }
                 let k:Int = i + (count + 1) >> 1

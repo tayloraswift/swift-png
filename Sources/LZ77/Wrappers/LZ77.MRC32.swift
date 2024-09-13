@@ -32,7 +32,14 @@ extension LZ77.MRC32:LZ77.StreamIntegral
             var j:Int = 5552 * i
             while j < 5552 * (i + 1)
             {
-                self.single &+= .init(start[j])
+                #if DEBUG
+                    // these hacky integer conversions make MRC32.update(from:count:)
+                    // about 9x faster in debug mode.
+                    let singleTuple:(UInt8, UInt8, UInt8, UInt8) = (start[j], 0, 0, 0)
+                    self.single &+= unsafeBitCast(singleTuple, to: UInt32.self)
+                #else
+                    self.single &+= .init(start[j])
+                #endif
                 self.double &+= self.single
                 j += 1
             }
@@ -43,7 +50,12 @@ extension LZ77.MRC32:LZ77.StreamIntegral
         var j:Int = 5552 * q
         while j < 5552 * q + r
         {
-            self.single &+= .init(start[j])
+            #if DEBUG
+                let singleTuple:(UInt8, UInt8, UInt8, UInt8) = (start[j], 0, 0, 0)
+                self.single &+= unsafeBitCast(singleTuple, to: UInt32.self)
+            #else
+                self.single &+= .init(start[j])
+            #endif
             self.double &+= self.single
             j += 1
         }
