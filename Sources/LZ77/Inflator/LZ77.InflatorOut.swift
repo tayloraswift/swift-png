@@ -130,9 +130,12 @@ extension LZ77.InflatorOut
             // cannot use update(from:count:) because the standard library implementation
             // copies from the back to the front if the ranges overlap
             // https://github.com/apple/swift/blob/master/stdlib/public/core/UnsafePointer.swift#L745
-            for current:UnsafeMutablePointer<UInt8> in start ..< start + count
+            var i:Int = 0
+            while i < count
             {
+                let current:UnsafeMutablePointer<UInt8> = start + i
                 current.pointee = (current - offset).pointee
+                i += 1
             }
         }
         self.endIndex &+= count

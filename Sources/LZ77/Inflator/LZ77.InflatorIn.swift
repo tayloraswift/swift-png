@@ -117,10 +117,30 @@ extension LZ77.InflatorIn
                     count       = data.count
                 }
 
-                for j:Int in 0 ..< count >> 1
+                // in debug mode, the majority of the time spent in the for loop is
+                // spent in the iterator implemenation for Range<Int>. so in debug
+                // mode we use a manual while loop. when first introduced, this change made
+                // LZ77.InflatorIn.rebase(_:pointer:) about 4.5x faster. this change didn't
+                // affect release mode performance at all, so we just use it for both debug
+                // mode and release mode.
+                let iters:Int = count >> 1
+                var j:Int = 0
+                while j < iters
                 {
-                    $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 |
-                                            .init(start[j << 1    ])
+                    let upper:UInt8 = start[j << 1 | 1]
+                    let lower:UInt8 = start[j << 1    ]
+                    let value:UInt16
+                    #if DEBUG
+                        // in debug mode this hacky integer conversion makes
+                        // LZ77.InflatorIn.rebase(_:pointer:) about 26x faster
+                        let tuple:(UInt8, UInt8) = (lower, upper)
+                        value = unsafeBitCast(tuple, to: UInt16.self)
+                    #else
+                        value = .init(upper) << 8 |
+                                .init(lower)
+                    #endif
+                    $0[i &+ j] = value
+                    j += 1
                 }
                 let k:Int = i + (count + 1) >> 1
                 if count & 1 != 0
@@ -166,14 +186,24 @@ extension LZ77.InflatorIn
 
             let a:Int = i >> 4,
                 b:Int = i & 0x0f
+
             //    a + 2           a + 1             a
             //      [ : : :x:x:x:x:x|x:x: : : : : : ]
             //             ~~~~~~~~~~~~~^
             //            count = 14, b = 12
             //
             //      →               [ :x:x:x:x:x|x:x]
-            let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a]),
-                mask:UInt32     = ~(UInt32.max &<< count)
+            #if DEBUG
+                // in debug mode this makes a huge different. without it, these integer
+                // conversions took up to 10% of the time spent decoding the PNG. now it's
+                // basically negligible. in release mode there's no issue with the regular
+                // way so we just use that so that the compiler has more semantic information
+                // to go off when optimizing the code.
+                let extended:UInt32 = unsafeBitCast(($0[a], $0[a &+ 1]), to: UInt32.self)
+            #else
+                let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            #endif
+            let mask:UInt32     = ~(UInt32.max &<< count)
             return .init(extended &>> b & mask)
         }
     }
@@ -192,7 +222,16 @@ extension LZ77.InflatorIn
             //      →   [x:x:x:x:x:x|x:x]
             //  creating a uint32 and shifting that is faster than shifting
             //  the two components individually
-            let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            #if DEBUG
+                // in debug mode this makes a huge different. without it, these integer
+                // conversions took up to 10% of the time spent decoding the PNG. now it's
+                // basically negligible. in release mode there's no issue with the regular
+                // way so we just use that so that the compiler has more semantic information
+                // to go off when optimizing the code.
+                let extended:UInt32 = unsafeBitCast(($0[a], $0[a &+ 1]), to: UInt32.self)
+            #else
+                let extended:UInt32 = .init($0[a &+ 1]) << 16 | .init($0[a])
+            #endif
             return .init(truncatingIfNeeded: extended &>> b)
         }
     }

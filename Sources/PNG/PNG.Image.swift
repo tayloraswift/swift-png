@@ -186,65 +186,82 @@ extension PNG.Image
     func assign<C>(scanline:C, at base:(x:Int, y:Int), stride:Int)
         where C:RandomAccessCollection, C.Index == Int, C.Element == UInt8
     {
-        let indices:EnumeratedSequence<StrideTo<Int>> =
-            Swift.stride(from: base.x, to: self.size.x, by: stride).enumerated()
+        // we used to use Swift.stride(...).enumerated() here which was very
+        // elegant but it performed terribly in debug mode. this manual while
+        // loop based approach performs identically in release mode and about
+        // 1.7x faster in debug mode.
+        var i:Int = 0
+        var x:Int = base.x
+        let xEnd:Int = self.size.x
         switch self.layout.format
         {
         // 0 x 1
         case .v1, .indexed1:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int =   i >> 3 &+ scanline.startIndex,
                     b:Int =  ~i & 0b111
                 self.storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0001
+                i += 1
+                x += stride
             }
 
         case .v2, .indexed2:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int =   i >> 2 &+ scanline.startIndex,
                     b:Int = (~i & 0b011) << 1
                 self.storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b0011
+                i += 1
+                x += stride
             }
 
         case .v4, .indexed4:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int =   i >> 1 &+ scanline.startIndex,
                     b:Int = (~i & 0b001) << 2
                 self.storage[base.y &* self.size.x &+ x] = scanline[a] &>> b & 0b1111
+                i += 1
+                x += stride
             }
 
         // 1 x 1
         case .v8, .indexed8:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int = i &+ scanline.startIndex,
                     d:Int = base.y &* self.size.x &+ x
                 self.storage[d] = scanline[a]
+                i += 1
+                x += stride
             }
         // 1 x 2, 2 x 1
         case .va8, .v16:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int = 2 &* i &+ scanline.startIndex,
                     d:Int = 2 &* (base.y &* self.size.x &+ x)
                 self.storage[d     ] = scanline[a     ]
                 self.storage[d &+ 1] = scanline[a &+ 1]
+                i += 1
+                x += stride
             }
         // 1 x 3
         case .rgb8, .bgr8:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int = 3 &* i &+ scanline.startIndex,
                     d:Int = 3 &* (base.y &* self.size.x &+ x)
                 self.storage[d     ] = scanline[a     ]
                 self.storage[d &+ 1] = scanline[a &+ 1]
                 self.storage[d &+ 2] = scanline[a &+ 2]
+                i += 1
+                x += stride
             }
         // 1 x 4, 2 x 2
         case .rgba8, .bgra8, .va16:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int = 4 &* i &+ scanline.startIndex,
                     d:Int = 4 &* (base.y &* self.size.x &+ x)
@@ -252,10 +269,12 @@ extension PNG.Image
                 self.storage[d &+ 1] = scanline[a &+ 1]
                 self.storage[d &+ 2] = scanline[a &+ 2]
                 self.storage[d &+ 3] = scanline[a &+ 3]
+                i += 1
+                x += stride
             }
         // 2 x 3
         case .rgb16:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int = 6 &* i &+ scanline.startIndex,
                     d:Int = 6 &* (base.y &* self.size.x &+ x)
@@ -265,10 +284,12 @@ extension PNG.Image
                 self.storage[d &+ 3] = scanline[a &+ 3]
                 self.storage[d &+ 4] = scanline[a &+ 4]
                 self.storage[d &+ 5] = scanline[a &+ 5]
+                i += 1
+                x += stride
             }
         // 2 x 4
         case .rgba16:
-            for (i, x):(Int, Int) in indices
+            while x < xEnd
             {
                 let a:Int = 8 &* i &+ scanline.startIndex,
                     d:Int = 8 &* (base.y &* self.size.x &+ x)
@@ -280,6 +301,8 @@ extension PNG.Image
                 self.storage[d &+ 5] = scanline[a &+ 5]
                 self.storage[d &+ 6] = scanline[a &+ 6]
                 self.storage[d &+ 7] = scanline[a &+ 7]
+                i += 1
+                x += stride
             }
         }
     }

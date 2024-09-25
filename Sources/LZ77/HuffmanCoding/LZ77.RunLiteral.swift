@@ -27,10 +27,38 @@ extension LZ77.RunLiteral
     }
     var decade:Int
     {
-        .init(self.storage & 0b0000_0000_1111_1111)
+        let value = self.storage & 0b0000_0000_1111_1111
+        #if DEBUG
+            // this hacky integer conversion makes this function about 12x faster in
+            // debug mode. cause of Int, we have to handle both 32-bit and 64-bit
+            // systems separately.
+            if MemoryLayout<Int>.stride == 8 {
+                let tuple:(UInt16, UInt16, UInt16, UInt16) = (value, 0, 0, 0)
+                return unsafeBitCast(tuple, to: Int.self)
+            } else {
+                let tuple:(UInt16, UInt16) = (value, 0)
+                return unsafeBitCast(tuple, to: Int.self)
+            }
+        #else
+            return .init(value)
+        #endif
     }
     var length:Int
     {
-        .init(self.storage >> 12)
+        let value = self.storage >> 12
+        #if DEBUG
+            // this hacky integer conversion makes this function about 27x faster in
+            // debug mode. cause of Int, we have to handle both 32-bit and 64-bit
+            // systems separately.
+            if MemoryLayout<Int>.stride == 8 {
+                let tuple:(UInt16, UInt16, UInt16, UInt16) = (value, 0, 0, 0)
+                return unsafeBitCast(tuple, to: Int.self)
+            } else {
+                let tuple:(UInt16, UInt16) = (value, 0)
+                return unsafeBitCast(tuple, to: Int.self)
+            }
+        #else
+            return .init(value)
+        #endif
     }
 }
