@@ -151,43 +151,54 @@ extension PNG.Decoder
     static
     func defilter(_ line:inout [UInt8], last:[UInt8], delay:Int)
     {
-        let indices:Range<Int> = line.indices.dropFirst()
+        let dataStartIndex = line.startIndex + 1
+        let endIndex = line.endIndex
         switch line[line.startIndex]
         {
         case 0:
             break
 
         case 1: // sub
-            for i:Int in indices.dropFirst(delay)
+            var i:Int = dataStartIndex + delay
+            while i < endIndex
             {
                 line[i] &+= line[i &- delay]
+                i += 1
             }
 
         case 2: // up
-            for i:Int in indices
+            var i:Int = dataStartIndex
+            while i < endIndex
             {
                 line[i] &+= last[i]
+                i += 1
             }
 
         case 3: // average
-            for i:Int in indices.prefix(delay)
+            var i:Int = dataStartIndex
+            while i < dataStartIndex + delay
             {
                 line[i] &+= last[i] >> 1
+                i += 1
             }
-            for i:Int in indices.dropFirst(delay)
+            while i < endIndex
             {
                 let total:UInt16 = .init(line[i &- delay]) &+ .init(last[i])
                 line[i] &+= .init(total >> 1)
+                i += 1
             }
 
         case 4: // paeth
-            for i:Int in indices.prefix(delay)
+            var i:Int = dataStartIndex
+            while i < dataStartIndex + delay
             {
                 line[i] &+= PNG.paeth(0,                last[i], 0)
+                i += 1
             }
-            for i:Int in indices.dropFirst(delay)
+            while i < endIndex
             {
                 line[i] &+= PNG.paeth(line[i &- delay], last[i], last[i &- delay])
+                i += 1
             }
 
         default:

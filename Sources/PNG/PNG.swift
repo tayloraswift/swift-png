@@ -131,16 +131,56 @@ extension PNG
             return (x ^ mask) + (mask & 1)
         }
 
-        let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
+        #if DEBUG
+            // in debug mode this manual UInt8 -> Int16 code makes `paeth` approximately 7x
+            // faster than using either `Int16(x)` or `Int16(bitPattern: UInt16(x))`. before
+            // this, paeth often took up around 10% of the time taken during decoding large images.
+            // the regular Int16/UInt16 initialisers aren't specialised in debug mode and end up
+            // spending most of their time reading generic metadata and checking stack canaries.
+            // hand unrolling the calls to this function has minimal effect on debug mode
+            // performance.
+            func customUInt8ToInt16(_ x: UInt8) -> Int16
+            {
+                let tuple:(UInt8, UInt8) = (x, 0)
+                return unsafeBitCast(tuple, to: Int16.self)
+            }
+
+            let v:(Int16, Int16, Int16) =
+            (
+                customUInt8ToInt16(a),
+                customUInt8ToInt16(b),
+                customUInt8ToInt16(c)
+            )
+        #else
+            // the debug mode implementation uses unsafe pointer code which the compiler takes
+            // to mean that we want a stack check inserted, even in release mode, so this simple
+            // implementation is better for release mode. note that the stack check insertion
+            // theory is from looking at Godbolt, so the situation may be different on ARM.
+            let v:(Int16, Int16, Int16) = (.init(a), .init(b), .init(c))
+        #endif
+
         let d:(Int16, Int16)        = (v.1 - v.2, v.0 - v.2)
         let f:(Int16, Int16, Int16) = (abs(d.0), abs(d.1), abs(d.0 + d.1))
 
-        let p:(UInt8, UInt8, UInt8) =
-        (
-            .init(truncatingIfNeeded: (f.1 - f.0) >> 15), // 0x00 if f.0 <= f.1 else 0xff
-            .init(truncatingIfNeeded: (f.2 - f.0) >> 15),
-            .init(truncatingIfNeeded: (f.2 - f.1) >> 15)
-        )
+        let p1:Int16 = (f.1 - f.0) >> 15 // 0x00 if f.0 <= f.1 else 0xff
+        let p2:Int16 = (f.2 - f.0) >> 15
+        let p3:Int16 = (f.2 - f.1) >> 15
+        #if DEBUG
+            // in debug mode this is about 1.85x faster than the built-in way
+            let p:(UInt8, UInt8, UInt8) =
+            (
+                unsafeBitCast(p1, to: (UInt8, UInt8).self).0,
+                unsafeBitCast(p2, to: (UInt8, UInt8).self).0,
+                unsafeBitCast(p3, to: (UInt8, UInt8).self).0
+            )
+        #else
+            let p:(UInt8, UInt8, UInt8) =
+            (
+                .init(truncatingIfNeeded: p1), // 0x00 if f.0 <= f.1 else 0xff
+                .init(truncatingIfNeeded: p2),
+                .init(truncatingIfNeeded: p3)
+            )
+        #endif
 
         return ~(p.0 | p.1) &  a        |
                 (p.0 | p.1) & (b & ~p.2 | c & p.2)
