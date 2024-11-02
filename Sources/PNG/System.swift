@@ -4,8 +4,10 @@
 
 #if os(macOS) || os(iOS)
     import Darwin
-#elseif os(Linux)
+#elseif canImport(Glibc)
     import Glibc
+#elseif canImport(Musl)
+    import Musl
 #elseif os(Windows)
     #warning("Windows in not oficially supported and is untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)")
     import ucrt
