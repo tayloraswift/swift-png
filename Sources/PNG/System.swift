@@ -2,7 +2,7 @@
 //  License, v. 2.0. If a copy of the MPL was not distributed with this
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#if os(macOS) || os(iOS)
+#if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
@@ -15,7 +15,7 @@
     #warning("unsupported or untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)")
 #endif
 
-#if os(macOS) || os(iOS) || os(Linux) || os(Windows)
+#if canImport(Darwin) || canImport(Glibc) || canImport(Musl) || os(Windows)
 
 /// A namespace for platform-dependent functionality.
 ///
