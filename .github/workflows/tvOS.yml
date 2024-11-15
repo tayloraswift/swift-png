@@ -1,0 +1,14 @@
+name: tvOS
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
+
+jobs:
+    build:
+        uses: tayloraswift/swift-device-action/.github/workflows/build.yml@master
+        with:
+            xcode-scheme: 'PNG'
+            destination: ${{ github.workflow }}

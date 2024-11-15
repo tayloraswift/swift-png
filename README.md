@@ -1,13 +1,9 @@
 <div align="center">
 
-***`png`***<br>`4.4`
+***`png`***
 
-[![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/test.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/test.yml)
-[![ci status](https://github.com/tayloraswift/swift-png/actions/workflows/docs.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/docs.yml)
-
-
-[![swift package index versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftayloraswift%2Fswift-png%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/tayloraswift/swift-png)
-[![swift package index platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftayloraswift%2Fswift-png%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/tayloraswift/swift-png)
+[![Tests](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml)
+[![Documentation](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml)
 
 </div>
 
@@ -18,6 +14,24 @@ The library is powered by a native Swift *DEFLATE* implementation, which can be 
 Swift *PNG* is [available](LICENSE) under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0). The [example programs](Snippets/) are public domain and can be adapted freely.
 
 Swift *PNG*’s [documentation](https://swiftinit.org/docs/swift-png/png) is available on Swiftinit!
+
+
+## Requirements
+
+The swift-png library requires Swift 5.10 or later.
+
+| Platform | Status |
+| -------- | ------ |
+| 🐧 Linux | [![Tests](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
+| 🍏 Darwin | [![Tests](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
+| 🍏 Darwin (iOS) | [![iOS](https://github.com/tayloraswift/swift-png/actions/workflows/iOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/iOS.yml) |
+| 🍏 Darwin (tvOS) | [![tvOS](https://github.com/tayloraswift/swift-png/actions/workflows/tvOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/tvOS.yml) |
+| 🍏 Darwin (visionOS) | [![visionOS](https://github.com/tayloraswift/swift-png/actions/workflows/visionOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/visionOS.yml) |
+| 🍏 Darwin (watchOS) | [![watchOS](https://github.com/tayloraswift/swift-png/actions/workflows/watchOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/watchOS.yml) |
+
+
+[Check deployment minimums](https://swiftinit.org/docs/swift-png#ss:platform-requirements)
+
 
 ## Getting started
 
