@@ -1,8 +1,8 @@
-// swift-tools-version:5.10
+// swift-tools-version:5.8
 import PackageDescription
 
 let package:Package = .init(name: "swift-png",
-    platforms: [.macOS(.v14), .iOS(.v17), .tvOS(.v17), .visionOS(.v1), .watchOS(.v10)],
+    platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
     products: [
         .library(name: "LZ77", targets: ["LZ77"]),
         .library(name: "PNG", targets: ["PNG"]),
@@ -12,7 +12,7 @@ let package:Package = .init(name: "swift-png",
     ],
     dependencies: [
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
-            from: "0.7.0")),
+            from: "0.7.1")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
             from: "0.4.0")),
     ],
