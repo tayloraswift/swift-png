@@ -12,7 +12,7 @@ let package:Package = .init(name: "swift-png",
     ],
     dependencies: [
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
-            from: "0.6.3")),
+            from: "0.7.0")),
         .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
             from: "0.4.0")),
     ],
