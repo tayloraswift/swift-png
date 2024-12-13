@@ -15,8 +15,8 @@ jobs:
             -   name: Install Swift
                 uses: tayloraswift/swift-install-action@master
                 with:
-                    swift-prefix: "swift-6.0.2-release/ubuntu2404/swift-6.0.2-RELEASE"
-                    swift-id: "swift-6.0.2-RELEASE-ubuntu24.04"
+                    swift-prefix: "swift-6.0.3-release/ubuntu2404/swift-6.0.3-RELEASE"
+                    swift-id: "swift-6.0.3-RELEASE-ubuntu24.04"
 
             -   name: Checkout repository
                 uses: actions/checkout@v3
@@ -32,8 +32,8 @@ jobs:
             -   name: Install Swift
                 uses: tayloraswift/swift-install-action@master
                 with:
-                    swift-prefix: "swift-6.0.2-release/xcode/swift-6.0.2-RELEASE"
-                    swift-id: "swift-6.0.2-RELEASE"
+                    swift-prefix: "swift-6.0.3-release/xcode/swift-6.0.3-RELEASE"
+                    swift-id: "swift-6.0.3-RELEASE"
 
             -   name: Checkout repository
                 uses: actions/checkout@v3
