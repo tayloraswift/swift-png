@@ -18,8 +18,8 @@ jobs:
             -   name: Install Swift
                 uses: tayloraswift/swift-install-action@master
                 with:
-                    swift-prefix: "swift-6.0.2-release/ubuntu2404/swift-6.0.2-RELEASE"
-                    swift-id: "swift-6.0.2-RELEASE-ubuntu24.04"
+                    swift-prefix: "swift-6.0.3-release/ubuntu2404/swift-6.0.3-RELEASE"
+                    swift-id: "swift-6.0.3-RELEASE-ubuntu24.04"
 
             -   name: Install Unidoc
                 uses: tayloraswift/swift-unidoc-action@master
