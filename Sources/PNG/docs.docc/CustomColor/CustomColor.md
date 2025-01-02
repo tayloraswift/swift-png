@@ -74,14 +74,14 @@ protocol PNG.Color
 }
 ```
 
-For certain associated ``PNG.Color/Aggregate`` types, the library provides default implementations for ``PNG.Color/unpack(_:of:) [9CTKA]`` and ``PNG.Color/pack(_:as:) [2Y9R9]``, which have behaviors detailed in the <doc:Indexing> tutorial. In such cases, we only need to implement ``PNG.Color/unpack(_:of:deindexer:)`` and ``PNG.Color/pack(_:as:indexer:)``. The specific `Aggregate` types are
+For certain associated ``PNG.Color/Aggregate`` types, the library provides default implementations for ``PNG.Color/unpack(_:of:) [requirement]`` and ``PNG.Color/pack(_:as:) [requirement]``, which have behaviors detailed in the <doc:Indexing> tutorial. In such cases, we only need to implement ``PNG.Color/unpack(_:of:deindexer:)`` and ``PNG.Color/pack(_:as:indexer:)``. The specific `Aggregate` types are
 
 - `(UInt8, UInt8)`, and
 - `(UInt8, UInt8, UInt8, UInt8)`.
 
 In the [indexed color tutorial](doc:Indexing), we saw how they were used by the [`PNG.VA<T>`](PNG/VA) and [`PNG.RGBA<T>`](PNG/RGBA) color targets. (The scalar color targets also use their own `Aggregate` type, ``UInt8``, though this does not go through the ``PNG.Color`` protocol.)
 
-The core idea of a color target is the **pixel kernel**. Pixel kernels convert groups of image data samples into instances of a color target, and vice-versa. In *Swift PNG*, the application of a pixel kernel to an image data buffer is called a **convolution**, and the inverse operation is called a **deconvolution**. The simplest deconvolution is to flatten an array of RGBA pixels to an array of [*r*, *g*, *b*, *a*, *r*, *g*, *b*, *a*, …] samples, and the simplest convolution is to group the elements of such an array into an array of RGBA pixels. Conceptually, this is a Swift ``Sequence/flatMap(_:) [JO2Y]``, and whatever you would call the opposite of a flatmap, respectively. We are allowed to do arbitrary computations in the pixel kernels, which is why we call it a (de)convolution, and not just a flatmap.
+The core idea of a color target is the **pixel kernel**. Pixel kernels convert groups of image data samples into instances of a color target, and vice-versa. In *Swift PNG*, the application of a pixel kernel to an image data buffer is called a **convolution**, and the inverse operation is called a **deconvolution**. The simplest deconvolution is to flatten an array of RGBA pixels to an array of [*r*, *g*, *b*, *a*, *r*, *g*, *b*, *a*, …] samples, and the simplest convolution is to group the elements of such an array into an array of RGBA pixels. Conceptually, this is a Swift ``Sequence/flatMap(_:) ((Self.Element) -> SegmentOfResult)``, and whatever you would call the opposite of a flatmap, respectively. We are allowed to do arbitrary computations in the pixel kernels, which is why we call it a (de)convolution, and not just a flatmap.
 
 Let’s tackle the unpacking operation first. *Swift PNG* provides a set of helper functions to reduce the amount of boilerplate you have to write.
 

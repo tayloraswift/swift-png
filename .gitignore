@@ -2,10 +2,8 @@
 .vscode
 /.build
 /.build.*
-/.entrapta
-/documentation
+/.ssgc
 /*.xcodeproj
-.swiftpm
 /Benchmarks/*.png.png
 /Benchmarks/compression/out/*.png
 /Benchmarks/compression/baseline/main
