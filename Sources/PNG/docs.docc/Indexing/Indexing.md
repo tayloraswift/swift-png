@@ -48,11 +48,11 @@ We can visualize the gradient using the same APIs we used in the <doc:BasicEncod
     A visualization of the generated gradient.
 }
 
-We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, ``PNG/Image/init(packing:size:layout:metadata:indexer:) [7UEEA]``, and pass it a custom [*indexing function*](#st:indexing-function).
+We can create an indexed image by defining an indexed layout, and passing the grayscale samples we obtained earlier to one of the pixel-packing APIs. The ``PNG/Image/init(packing:size:layout:metadata:) ([T], _, _, _)`` initializer will treat the grayscale samples as pixel colors, not indices, and will try to match the pixel colors to entries in the given palette. This is not what we want, so we need to use a variant of that function, ``PNG/Image/init(packing:size:layout:metadata:indexer:) (_, _, _, _, ([(UInt8, UInt8, UInt8, UInt8)]) -> (UInt8) -> Int)``, and pass it a custom [*indexing function*](#st:indexing-function).
 
 @Snippet(id: "Indexing", slice: "PACK_EXAMPLE")
 
-The best way to understand the indexing function is to compare it with the behavior of the ``PNG/Image/init(packing:size:layout:metadata:) [8AEMD]`` initializer. Calling that initializer is equivalent to calling ``PNG/Image/init(packing:size:layout:metadata:indexer:) [7UEEA]`` with the following indexing function.
+The best way to understand the indexing function is to compare it with the behavior of the ``PNG/Image/init(packing:size:layout:metadata:) ([T], _, _, _)`` initializer. Calling that initializer is equivalent to calling ``PNG/Image/init(packing:size:layout:metadata:indexer:) (_, _, _, _, ([(UInt8, UInt8, UInt8, UInt8)]) -> (UInt8) -> Int)`` with the following indexing function.
 
 ```swift
 {
@@ -87,7 +87,7 @@ Let’s go back to the custom indexing function:
 }
 ```
 
-Since we just want to cast the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return the ``Int.init(_:) [4EKVL]`` initializer, which casts the grayscale samples to ``Int``s.
+Since we just want to cast the grayscale samples directly to index values, we don’t need the palette parameter, so we discard it with the `_` binding. We then return ``Int``’s ``SignedInteger/init(_:)`` initializer, which casts the grayscale samples to ``Int``s.
 
 On appropriate platforms, we can encode the image to a file with the ``PNG/Image/compress(path:level:hint:)`` method.
 
@@ -97,7 +97,7 @@ On appropriate platforms, we can encode the image to a file with the ``PNG/Image
     The example image, colorized as an indexed png.
 }
 
-To read back the index values from the indexed image, we can use a custom **deindexing function**, which we pass to ``PNG/Image/unpack(as:deindexer:) [JEO1]``.
+To read back the index values from the indexed image, we can use a custom **deindexing function**, which we pass to ``PNG/Image/unpack(as:deindexer:) (_, ([(UInt8, UInt8, UInt8, UInt8)]) -> (Int) -> UInt8)``.
 
 @Snippet(id: "Indexing", slice: "UNPACK_EXAMPLE")
 
