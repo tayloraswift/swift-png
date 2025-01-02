@@ -1000,8 +1000,9 @@ extension PNG.Image
     /// Unpacks this image to a pixel array.
     ///
     /// -   Parameter _:
-    ///     A color target type. This type provides the ``PNG.Color/unpack(_:of:) [9CTKA]``
-    ///     implementation used to unpack the image data.
+    ///     A color target type. This type provides the
+    ///     ``PNG.Color/unpack(_:of:) [requirement]`` implementation used to unpack the image
+    ///     data.
     /// -   Returns:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
@@ -1017,7 +1018,7 @@ extension PNG.Image
     /// -   Parameter pixels:
     ///     A pixel array. Its elements are arranged in row-major order. The
     ///     first pixel in this array corresponds to the top-left corner of
-    ///     the image. The `Color` type provides the ``PNG.Color/pack(_:as:) [2Y9R9]``
+    ///     the image. The `Color` type provides the ``PNG.Color/pack(_:as:) [requirement]``
     ///     implementation used to pack the image data.
     ///
     ///     The length of this array must match `size.x * size.y`. Passing an
