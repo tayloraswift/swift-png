@@ -4,9 +4,7 @@ swift --version
 swift build
 swift build -c release
 #  Debug-only tests
-swift run -c debug LZ77Tests
-swift run -c debug PNGTests
+swift test -c debug --filter LZ77Tests
+swift test -c debug --filter PNGTests
 #  All tests
-for f in .build/release/*Tests; do
-  $f
-done
+swift test -c release
