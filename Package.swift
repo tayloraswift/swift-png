@@ -50,11 +50,11 @@ let package:Package = .init(name: "swift-png",
                 .define("DEBUG", .when(configuration: .debug))
             ]),
 
-        .executableTarget(name: "PNGIntegrationTests",
+        .testTarget(name: "PNGIntegrationTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing_", package: "swift-grammar"),
             ],
+            path: "Sources/PNGIntegrationTests",
             exclude: [
                 "PngSuite.LICENSE",
                 "PngSuite.README",
