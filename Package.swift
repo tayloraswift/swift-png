@@ -41,11 +41,11 @@ let package:Package = .init(name: "swift-png",
                 .define("DEBUG", .when(configuration: .debug))
             ]),
 
-        .executableTarget(name: "PNGTests",
+        .testTarget(name: "PNGTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing_", package: "swift-grammar"),
             ],
+            path: "Sources/PNGTests",
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ]),
