@@ -13,8 +13,6 @@ let package:Package = .init(name: "swift-png",
     dependencies: [
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
             from: "0.7.1")),
-        .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
-            from: "0.4.0")),
     ],
     targets: [
         .target(name: "LZ77",
