@@ -32,11 +32,11 @@ let package:Package = .init(name: "swift-png",
                 .target(name: "PNG"),
             ]),
 
-        .executableTarget(name: "LZ77Tests",
+        .testTarget(name: "LZ77Tests",
             dependencies: [
                 .target(name: "LZ77"),
-                .product(name: "Testing_", package: "swift-grammar"),
             ],
+            path: "Sources/LZ77Tests",
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ]),
