@@ -7,4 +7,4 @@ swift build -c release
 swift test -c debug --filter LZ77Tests
 swift test -c debug --filter PNGTests
 #  All tests
-swift test -c release
+swift test -c release --no-parallel
