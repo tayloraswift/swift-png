@@ -63,11 +63,11 @@ let package:Package = .init(name: "swift-png",
                 "RGBA/",
             ]),
 
-        .executableTarget(name: "PNGCompressionTests",
+        .testTarget(name: "PNGCompressionTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing_", package: "swift-grammar"),
-            ]),
+            ],
+            path: "Sources/PNGCompressionTests"),
 
         .executableTarget(name: "PNGCompressionBenchmarks",
             dependencies: [
