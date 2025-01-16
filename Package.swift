@@ -13,8 +13,6 @@ let package:Package = .init(name: "swift-png",
     dependencies: [
         .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
             from: "0.7.1")),
-        .package(url: "https://github.com/tayloraswift/swift-grammar", .upToNextMinor(
-            from: "0.4.0")),
     ],
     targets: [
         .target(name: "LZ77",
@@ -32,29 +30,29 @@ let package:Package = .init(name: "swift-png",
                 .target(name: "PNG"),
             ]),
 
-        .executableTarget(name: "LZ77Tests",
+        .testTarget(name: "LZ77Tests",
             dependencies: [
                 .target(name: "LZ77"),
-                .product(name: "Testing_", package: "swift-grammar"),
             ],
+            path: "Sources/LZ77Tests",
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ]),
 
-        .executableTarget(name: "PNGTests",
+        .testTarget(name: "PNGTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing_", package: "swift-grammar"),
             ],
+            path: "Sources/PNGTests",
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ]),
 
-        .executableTarget(name: "PNGIntegrationTests",
+        .testTarget(name: "PNGIntegrationTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing_", package: "swift-grammar"),
             ],
+            path: "Sources/PNGIntegrationTests",
             exclude: [
                 "PngSuite.LICENSE",
                 "PngSuite.README",
@@ -63,11 +61,11 @@ let package:Package = .init(name: "swift-png",
                 "RGBA/",
             ]),
 
-        .executableTarget(name: "PNGCompressionTests",
+        .testTarget(name: "PNGCompressionTests",
             dependencies: [
                 .target(name: "PNG"),
-                .product(name: "Testing_", package: "swift-grammar"),
-            ]),
+            ],
+            path: "Sources/PNGCompressionTests"),
 
         .executableTarget(name: "PNGCompressionBenchmarks",
             dependencies: [
