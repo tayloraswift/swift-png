@@ -1,0 +1,93 @@
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
+
+name: Semantic release
+
+on:
+    pull_request:
+        types:
+            - closed
+        branches:
+            - master
+
+jobs:
+    release:
+        name: Release
+        # ensures this only runs if the PR was actually merged, not just closed unmerged
+        if: github.event.pull_request.merged == true
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        env:
+            # toggle to 'false' to only push the tag and skip creating the GitHub Release
+            CREATE_RELEASE: 'true'
+        outputs:
+            version: ${{ steps.increment.outputs.version }}
+        steps:
+            -   name: ⚡ Checkout repository ⚡
+                uses: actions/checkout@v6
+                with:
+                    # fetch all history so the workflow can find previous tags
+                    fetch-depth: 0
+
+            -   name: ⚡ Parse bump type ⚡
+                id: parse
+                run: |
+                    TITLE="${{ github.event.pull_request.title }}"
+
+                    if [[ "$TITLE" =~ ^\[major\] ]]; then
+                        echo "type=major" >> "$GITHUB_OUTPUT"
+                    elif [[ "$TITLE" =~ ^\[minor\] ]]; then
+                        echo "type=minor" >> "$GITHUB_OUTPUT"
+                    elif [[ "$TITLE" =~ ^\[patch\] ]]; then
+                        echo "type=patch" >> "$GITHUB_OUTPUT"
+                    else
+                        # Handles [none] or any PR title that lacks a recognized specifier
+                        echo "type=none" >> "$GITHUB_OUTPUT"
+                    fi
+
+            -   name: ⚡ Increment version ⚡
+                id: increment
+                if: steps.parse.outputs.type != 'none'
+                run: |
+                    # strip 'v' prefix if present, and sort them as versions
+                    LATEST_VERSION=$(git tag | sed 's/^v//' | sort -V | tail -n 1)
+
+                    if [ -z "$LATEST_VERSION" ]; then
+                        LATEST_VERSION="0.0.0"
+                    fi
+
+                    echo "Current highest version identified: $LATEST_VERSION"
+
+                    IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+
+                    if [ "${{ steps.parse.outputs.type }}" == "major" ]; then
+                        MAJOR=$((MAJOR + 1))
+                        MINOR=0
+                        PATCH=0
+                    elif [ "${{ steps.parse.outputs.type }}" == "minor" ]; then
+                        MINOR=$((MINOR + 1))
+                        PATCH=0
+                    elif [ "${{ steps.parse.outputs.type }}" == "patch" ]; then
+                        PATCH=$((PATCH + 1))
+                    fi
+
+                    NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+                    echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+
+            -   name: ⚡ Create tag ⚡
+                if: steps.parse.outputs.type != 'none'
+                run: |
+                    git config user.name "rarest automation"
+                    git config user.email "automation@noreply.rarestype.com"
+
+                    git tag "${{ steps.increment.outputs.version }}"
+                    git push origin "${{ steps.increment.outputs.version }}"
+
+            -   name: ⚡ Create release ⚡
+                if: steps.parse.outputs.type != 'none' && env.CREATE_RELEASE == 'true'
+                run: |
+                    gh release create "${{ steps.increment.outputs.version }}" \
+                        --title "${{ steps.increment.outputs.version }}" \
+                        --generate-notes
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,28 @@
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
+
+name: Security
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
+
+jobs:
+    emails:
+        name: Check commit emails
+        runs-on: ubuntu-latest
+        steps:
+            -   name: 🔐 Checkout repository 🔐
+                uses: actions/checkout@v6
+                with:
+                    # fetch all history so the workflow can find previous commits
+                    fetch-depth: 0
+
+            -   name: 🔐 Check commits 🔐
+                run: |
+                    insecure_emails=$(git log --format='%ae%n%ce' | grep "@gmail.com" | sort -u)
+                    if [ -n "$insecure_emails" ]; then
+                        echo "❗ Found insecure email addresses in git history!"
+                        exit 1
+                    fi

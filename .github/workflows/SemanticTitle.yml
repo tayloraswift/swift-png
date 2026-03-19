@@ -1,0 +1,25 @@
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
+
+name: Semantic PR title
+
+on:
+    pull_request:
+        types: [opened, edited, synchronize, reopened]
+
+jobs:
+    validate:
+        name: Validate PR title
+        runs-on: ubuntu-latest
+        steps:
+            -   name: 🌟 Check format 🌟
+                env:
+                    TITLE: ${{ github.event.pull_request.title }}
+                run: |
+                    if [[ ! "$TITLE" =~ ^\[(major|minor|patch|none)\]:\ .+ ]]; then
+                        echo "::error::Invalid PR title format!"
+                        echo "Expected format: '[type]: description'"
+                        echo "Valid types: major, minor, patch, none"
+                        echo "Example: '[patch]: blah blah blah'"
+                        exit 1
+                    fi
+                    echo "💘 PR title is valid!"
