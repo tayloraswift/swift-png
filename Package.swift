@@ -11,13 +11,13 @@ let package:Package = .init(name: "swift-png",
         .executable(name: "decompression-benchmark", targets: ["PNGDecompressionBenchmarks"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/tayloraswift/swift-hash", .upToNextMinor(
-            from: "0.7.1")),
+        .package(url: "https://github.com/ordo-one/dollup", from: "1.0.1"),
+        .package(url: "https://github.com/rarestype/h", from: "1.0.1"),
     ],
     targets: [
         .target(name: "LZ77",
             dependencies: [
-                .product(name: "CRC", package: "swift-hash"),
+                .product(name: "CRC", package: "h"),
             ]),
 
         .target(name: "PNG",
