@@ -8,7 +8,7 @@ on:
 
 jobs:
     build:
-        uses: tayloraswift/swift-device-action/.github/workflows/build.yml@master
+        uses: rarestype/swift-device-action/.github/workflows/build.yml@master
         with:
             xcode-scheme: 'PNG'
             destination: ${{ github.workflow }}
