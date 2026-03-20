@@ -1,4 +1,4 @@
-name: tests
+name: Tests
 
 on:
     push:
@@ -7,36 +7,56 @@ on:
         branches: [ master ]
 
 jobs:
+    changes:
+        runs-on: ubuntu-latest
+        name: Assess changes
+        steps:
+            -   name: 💖 Checkout repository 💖
+                uses: actions/checkout@v6
+
+            -   name: 💖 Decide checks 💖
+                uses: tj-actions/changed-files@v47
+                id: changes
+                with:
+                    files_ignore: |
+                        README.md
+                        LICENSE
+                        NOTICE
+                        .mailmap
+                        .gitignore
+                        .github/FUNDING.yml
+        outputs:
+            code_changed: ${{ steps.changes.outputs.any_changed }}
+
     linux:
         runs-on: ubuntu-24.04
         name: Ubuntu 24.04
-
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
-            -   name: Install Swift
-                uses: tayloraswift/swift-install-action@master
+            -   name: 💖 Install Swift 💖
+                uses: rarestype/swift-install-action@master
                 with:
-                    swift-prefix: "swift-6.0.3-release/ubuntu2404/swift-6.0.3-RELEASE"
-                    swift-id: "swift-6.0.3-RELEASE-ubuntu24.04"
+                    swift-prefix: "swift-6.2.4-release/ubuntu2404/swift-6.2.4-RELEASE"
+                    swift-id: "swift-6.2.4-RELEASE-ubuntu24.04"
 
-            -   name: Checkout repository
-                uses: actions/checkout@v3
+            -   name: 💖 Checkout repository 💖
+                uses: actions/checkout@v6
 
-            -   name: Run tests
+            -   name: 💖 Run tests 💖
                 run: Scripts/TestAll
 
     macos:
-        runs-on: macos-15
+        runs-on: macos-26
         name: macOS
-
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
-            -   name: Install Swift
-                uses: tayloraswift/swift-install-action@master
-                with:
-                    swift-prefix: "swift-6.0.3-release/xcode/swift-6.0.3-RELEASE"
-                    swift-id: "swift-6.0.3-RELEASE"
+            -   name: 💖 Checkout repository 💖
+                uses: actions/checkout@v6
 
-            -   name: Checkout repository
-                uses: actions/checkout@v3
+            -   name: 💖 Select Xcode 26.3 💖
+                run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
 
-            -   name: Run tests
+            -   name: 💖 Run tests 💖
                 run: Scripts/TestAll
