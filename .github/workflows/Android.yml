@@ -15,3 +15,5 @@ jobs:
 
             -   name: 💖 Run tests 💖
                 uses: skiptools/swift-android-action@v2
+                with:
+                    copy-files: Sources Tests

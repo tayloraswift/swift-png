@@ -23,6 +23,7 @@ The swift-png library requires Swift 5.10 or later.
 | 🍏 Darwin (tvOS) | [![tvOS](https://github.com/tayloraswift/swift-png/actions/workflows/tvOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/tvOS.yml) |
 | 🍏 Darwin (visionOS) | [![visionOS](https://github.com/tayloraswift/swift-png/actions/workflows/visionOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/visionOS.yml) |
 | 🍏 Darwin (watchOS) | [![watchOS](https://github.com/tayloraswift/swift-png/actions/workflows/watchOS.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/watchOS.yml) |
+| 🤖 Android | [![Android](https://github.com/tayloraswift/swift-png/actions/workflows/Android.yml/badge.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Android.yml) |
 
 
 [Check deployment minimums](https://swiftinit.org/docs/swift-png#ss:platform-requirements)

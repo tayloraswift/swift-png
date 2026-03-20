@@ -1,2 +1,1 @@
-@frozen @usableFromInline enum F14 {
-}
+@frozen @usableFromInline enum F14 {}
