@@ -1,9 +1,6 @@
-extension PNG
-{
+extension PNG {
     /// A parsing error.
-    public
-    enum ParsingError
-    {
+    public enum ParsingError {
         /// An ``Chunk/IHDR`` chunk had the wrong length.
         ///
         /// Header chunks should be exactly `13` bytes long.
@@ -28,7 +25,7 @@ extension PNG
         ///     The PNG standard. This error is only relevant for iphone-optimized
         ///     images, so library-generated instances of this error case always have
         ///     this field set to ``Standard/ios``.
-        case invalidHeaderPixelFormat(PNG.Format.Pixel, standard:PNG.Standard)
+        case invalidHeaderPixelFormat(PNG.Format.Pixel, standard: PNG.Standard)
 
         /// An ``Chunk/IHDR`` chunk had an invalid compression method code.
         ///
@@ -56,14 +53,14 @@ extension PNG
         /// Both size dimensions must be strictly positive.
         /// -   Parameter _:
         ///     The invalid size.
-        case invalidHeaderSize((x:Int, y:Int))
+        case invalidHeaderSize((x: Int, y: Int))
 
 
         /// The parser encountered a ``Chunk/PLTE`` chunk in an image
         /// with a pixel format that forbids it.
         /// -   Parameter pixel:
         ///     The image pixel format.
-        case unexpectedPalette(pixel:PNG.Format.Pixel)
+        case unexpectedPalette(pixel: PNG.Format.Pixel)
 
         /// A ``Chunk/PLTE`` chunk had a length that is not divisible by `3`.
         /// -   Parameter _:
@@ -76,20 +73,20 @@ extension PNG
         /// -   Parameter max:
         ///     The maximum allowed number of palette entries, according to the
         ///     image bit depth.
-        case invalidPaletteCount(Int, max:Int)
+        case invalidPaletteCount(Int, max: Int)
 
         /// The parser encountered a ``Chunk/tRNS`` chunk in an image
         /// with a pixel format that forbids it.
         /// -   Parameter pixel:
         ///     The image pixel format.
-        case unexpectedTransparency(pixel:PNG.Format.Pixel)
+        case unexpectedTransparency(pixel: PNG.Format.Pixel)
 
         /// A ``Chunk/tRNS`` chunk had the wrong length.
         /// -   Parameter _:
         ///     The chunk length.
         /// -   Parameter expected:
         ///     The expected chunk length.
-        case invalidTransparencyChunkLength(Int, expected:Int)
+        case invalidTransparencyChunkLength(Int, expected: Int)
 
         /// A ``Chunk/tRNS`` chunk contained an invalid chroma key sample.
         /// -   Parameter _:
@@ -97,7 +94,7 @@ extension PNG
         /// -   Parameter max:
         ///     The maximum allowed value for a chroma key sample, according to the
         ///     image color depth.
-        case invalidTransparencySample(UInt16, max:UInt16)
+        case invalidTransparencySample(UInt16, max: UInt16)
 
         /// A ``Chunk/tRNS`` chunk contained too many alpha samples.
         /// -   Parameter _:
@@ -105,7 +102,7 @@ extension PNG
         /// -   Parameter max:
         ///     The maximum allowed number of alpha samples, which is equal to
         ///     the number of entries in the image palette.
-        case invalidTransparencyCount(Int, max:Int)
+        case invalidTransparencyCount(Int, max: Int)
 
 
         /// A ``Chunk/bKGD`` chunk had the wrong length.
@@ -113,7 +110,7 @@ extension PNG
         ///     The chunk length.
         /// -   Parameter expected:
         ///     The expected chunk length.
-        case invalidBackgroundChunkLength(Int, expected:Int)
+        case invalidBackgroundChunkLength(Int, expected: Int)
 
         /// A ``Chunk/bKGD`` chunk contained an invalid background sample.
         /// -   Parameter _:
@@ -121,7 +118,7 @@ extension PNG
         /// -   Parameter max:
         ///     The maximum allowed value for a background sample, according to the
         ///     image color depth.
-        case invalidBackgroundSample(UInt16, max:UInt16)
+        case invalidBackgroundSample(UInt16, max: UInt16)
 
         /// A ``Chunk/bKGD`` chunk specified an out-of-range palette index.
         /// -   Parameter _:
@@ -129,14 +126,14 @@ extension PNG
         /// -   Parameter max:
         ///     The maximum allowed index value, which is equal to one less than
         ///     the number of entries in the image palette.
-        case invalidBackgroundIndex(Int, max:Int)
+        case invalidBackgroundIndex(Int, max: Int)
 
         /// A ``Chunk/hIST`` chunk had the wrong length.
         /// -   Parameter _:
         ///     The chunk length.
         /// -   Parameter expected:
         ///     The expected chunk length.
-        case invalidHistogramChunkLength(Int, expected:Int)
+        case invalidHistogramChunkLength(Int, expected: Int)
 
         /// A ``Chunk/gAMA`` chunk had the wrong length.
         ///
@@ -171,7 +168,7 @@ extension PNG
         ///     The chunk length.
         /// -   Parameter expected:
         ///     The expected chunk length.
-        case invalidSignificantBitsChunkLength(Int, expected:Int)
+        case invalidSignificantBitsChunkLength(Int, expected: Int)
 
         /// An ``Chunk/sBIT`` chunk specified an invalid precision value.
         /// -   Parameter _:
@@ -179,14 +176,14 @@ extension PNG
         /// -   Parameter max:
         ///     The maximum allowed precision value, which is equal to the image
         ///     color depth.
-        case invalidSignificantBitsPrecision(Int, max:Int)
+        case invalidSignificantBitsPrecision(Int, max: Int)
 
         /// An ``Chunk/iCCP`` chunk had an invalid length.
         /// -   Parameter _:
         ///     The chunk length.
         /// -   Parameter min:
         ///     The minimum expected chunk length.
-        case invalidColorProfileChunkLength(Int, min:Int)
+        case invalidColorProfileChunkLength(Int, min: Int)
 
         /// An ``Chunk/iCCP`` chunk had an invalid profile name.
         /// -   Parameter _:
@@ -224,7 +221,7 @@ extension PNG
         ///     The chunk length.
         /// -   Parameter min:
         ///     The minimum expected chunk length.
-        case invalidSuggestedPaletteChunkLength(Int, min:Int)
+        case invalidSuggestedPaletteChunkLength(Int, min: Int)
 
         /// An ``Chunk/sPLT`` chunk had an invalid palette name.
         /// -   Parameter _:
@@ -238,7 +235,7 @@ extension PNG
         ///     The length of the palette data.
         /// -   Parameter stride:
         ///     The expected stride of the palette entries.
-        case invalidSuggestedPaletteDataLength(Int, stride:Int)
+        case invalidSuggestedPaletteDataLength(Int, stride: Int)
 
         /// An ``Chunk/sPLT`` chunk had an invalid depth code.
         ///
@@ -271,7 +268,14 @@ extension PNG
         ///     The specified minute.
         /// -   Parameter second:
         ///     The specified second.
-        case invalidTimeModifiedTime(year:Int, month:Int, day:Int, hour:Int, minute:Int, second:Int)
+        case invalidTimeModifiedTime(
+            year: Int,
+            month: Int,
+            day: Int,
+            hour: Int,
+            minute: Int,
+            second: Int
+        )
 
         /// A ``Chunk/tEXt``, ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk
         /// had an invalid english keyword.
@@ -286,7 +290,7 @@ extension PNG
         ///     The chunk length.
         /// -   Parameter min:
         ///     The minimum expected chunk length.
-        case invalidTextChunkLength(Int, min:Int)
+        case invalidTextChunkLength(Int, min: Int)
 
         /// An ``Chunk/iTXt`` chunk had an invalid compression code.
         ///
@@ -319,40 +323,34 @@ extension PNG
         case incompleteTextCompressedDatastream
     }
 }
-extension PNG.ParsingError:PNG.Error
-{
+extension PNG.ParsingError: PNG.Error {
     /// The string `"parsing error"`.
-    public static
-    var namespace:String
-    {
+    public static var namespace: String {
         "parsing error"
     }
 
-    private
-    var scope:Any.Type
-    {
-        switch self
-        {
+    private var scope: Any.Type {
+        switch self {
         case    .invalidHeaderChunkLength,
-                .invalidHeaderPixelFormatCode,
-                .invalidHeaderPixelFormat,
-                .invalidHeaderCompressionMethodCode,
-                .invalidHeaderFilterCode,
-                .invalidHeaderInterlacingCode,
-                .invalidHeaderSize:
+            .invalidHeaderPixelFormatCode,
+            .invalidHeaderPixelFormat,
+            .invalidHeaderCompressionMethodCode,
+            .invalidHeaderFilterCode,
+            .invalidHeaderInterlacingCode,
+            .invalidHeaderSize:
             return PNG.Header.self
         case    .unexpectedPalette,
-                .invalidPaletteChunkLength,
-                .invalidPaletteCount:
+            .invalidPaletteChunkLength,
+            .invalidPaletteCount:
             return PNG.Palette.self
         case    .unexpectedTransparency,
-                .invalidTransparencyChunkLength,
-                .invalidTransparencySample,
-                .invalidTransparencyCount:
+            .invalidTransparencyChunkLength,
+            .invalidTransparencySample,
+            .invalidTransparencyCount:
             return PNG.Transparency.self
         case    .invalidBackgroundChunkLength,
-                .invalidBackgroundSample,
-                .invalidBackgroundIndex:
+            .invalidBackgroundSample,
+            .invalidBackgroundIndex:
             return PNG.Background.self
         case    .invalidHistogramChunkLength:
             return PNG.Histogram.self
@@ -361,71 +359,68 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidChromaticityChunkLength:
             return PNG.Chromaticity.self
         case    .invalidColorRenderingChunkLength,
-                .invalidColorRenderingCode:
+            .invalidColorRenderingCode:
             return PNG.ColorRendering.self
         case    .invalidSignificantBitsChunkLength,
-                .invalidSignificantBitsPrecision:
+            .invalidSignificantBitsPrecision:
             return PNG.SignificantBits.self
         case    .invalidColorProfileChunkLength,
-                .invalidColorProfileName,
-                .invalidColorProfileCompressionMethodCode,
-                .incompleteColorProfileCompressedDatastream:
+            .invalidColorProfileName,
+            .invalidColorProfileCompressionMethodCode,
+            .incompleteColorProfileCompressedDatastream:
             return PNG.ColorProfile.self
         case    .invalidPhysicalDimensionsChunkLength,
-                .invalidPhysicalDimensionsDensityUnitCode:
+            .invalidPhysicalDimensionsDensityUnitCode:
             return PNG.PhysicalDimensions.self
         case    .invalidSuggestedPaletteChunkLength,
-                .invalidSuggestedPaletteDataLength,
-                .invalidSuggestedPaletteName,
-                .invalidSuggestedPaletteFrequency,
-                .invalidSuggestedPaletteDepthCode:
+            .invalidSuggestedPaletteDataLength,
+            .invalidSuggestedPaletteName,
+            .invalidSuggestedPaletteFrequency,
+            .invalidSuggestedPaletteDepthCode:
             return PNG.SuggestedPalette.self
         case    .invalidTimeModifiedChunkLength,
-                .invalidTimeModifiedTime:
+            .invalidTimeModifiedTime:
             return PNG.TimeModified.self
         case    .invalidTextChunkLength,
-                .invalidTextEnglishKeyword,
-                .invalidTextCompressionCode,
-                .invalidTextCompressionMethodCode,
-                .invalidTextLanguageTag,
-                .invalidTextLocalizedKeyword,
-                .incompleteTextCompressedDatastream:
+            .invalidTextEnglishKeyword,
+            .invalidTextCompressionCode,
+            .invalidTextCompressionMethodCode,
+            .invalidTextLanguageTag,
+            .invalidTextLocalizedKeyword,
+            .incompleteTextCompressedDatastream:
             return PNG.Text.self
         }
     }
-    public
-    var message:String
-    {
-        let text:String
-        switch self
-        {
+    public var message: String {
+        let text: String
+        switch self {
         case    .invalidHeaderChunkLength,
-                .invalidPaletteChunkLength,
-                .invalidTransparencyChunkLength,
-                .invalidBackgroundChunkLength,
-                .invalidHistogramChunkLength,
-                .invalidGammaChunkLength,
-                .invalidChromaticityChunkLength,
-                .invalidColorRenderingChunkLength,
-                .invalidColorProfileChunkLength,
-                .invalidSignificantBitsChunkLength,
-                .invalidPhysicalDimensionsChunkLength,
-                .invalidSuggestedPaletteChunkLength,
-                .invalidSuggestedPaletteDataLength,
-                .invalidTimeModifiedChunkLength,
-                .invalidTextChunkLength:
+            .invalidPaletteChunkLength,
+            .invalidTransparencyChunkLength,
+            .invalidBackgroundChunkLength,
+            .invalidHistogramChunkLength,
+            .invalidGammaChunkLength,
+            .invalidChromaticityChunkLength,
+            .invalidColorRenderingChunkLength,
+            .invalidColorProfileChunkLength,
+            .invalidSignificantBitsChunkLength,
+            .invalidPhysicalDimensionsChunkLength,
+            .invalidSuggestedPaletteChunkLength,
+            .invalidSuggestedPaletteDataLength,
+            .invalidTimeModifiedChunkLength,
+            .invalidTextChunkLength:
             text = "invalid chunk length"
 
         case    .invalidHeaderPixelFormatCode,
-                .invalidHeaderCompressionMethodCode,
-                .invalidHeaderFilterCode,
-                .invalidHeaderInterlacingCode,
-                .invalidColorRenderingCode,
-                .invalidPhysicalDimensionsDensityUnitCode,
-                .invalidColorProfileCompressionMethodCode,
-                .invalidSuggestedPaletteDepthCode,
-                .invalidTextCompressionMethodCode,
-                .invalidTextCompressionCode:
+            .invalidHeaderCompressionMethodCode,
+            .invalidHeaderFilterCode,
+            .invalidHeaderInterlacingCode,
+            .invalidColorRenderingCode,
+            .invalidPhysicalDimensionsDensityUnitCode,
+            .invalidColorProfileCompressionMethodCode,
+            .invalidSuggestedPaletteDepthCode,
+            .invalidTextCompressionMethodCode,
+            .invalidTextCompressionCode:
             text = "invalid flag code"
 
         case    .invalidHeaderPixelFormat:
@@ -434,15 +429,15 @@ extension PNG.ParsingError:PNG.Error
             text = "invalid image size"
 
         case    .unexpectedPalette,
-                .unexpectedTransparency:
+            .unexpectedTransparency:
             text = "unexpected chunk"
 
         case    .invalidPaletteCount,
-                .invalidTransparencyCount:
+            .invalidTransparencyCount:
             text = "invalid count"
 
         case    .invalidTransparencySample,
-                .invalidBackgroundSample:
+            .invalidBackgroundSample:
             text = "invalid sample"
         case    .invalidBackgroundIndex:
             text = "invalid index"
@@ -451,19 +446,19 @@ extension PNG.ParsingError:PNG.Error
             text = "invalid precision"
 
         case    .invalidColorProfileName,
-                .invalidSuggestedPaletteName:
+            .invalidSuggestedPaletteName:
             text = "invalid name"
 
         case    .invalidSuggestedPaletteFrequency:
             text = "invalid frequency"
 
         case    .incompleteColorProfileCompressedDatastream,
-                .incompleteTextCompressedDatastream:
+            .incompleteTextCompressedDatastream:
             text = "content field does not contain a full compressed data stream"
         case    .invalidTimeModifiedTime:
             text = "invalid time"
         case    .invalidTextEnglishKeyword,
-                .invalidTextLocalizedKeyword:
+            .invalidTextLocalizedKeyword:
             text = "invalid keyword"
         case    .invalidTextLanguageTag:
             text = "invalid language tag"
@@ -472,24 +467,20 @@ extension PNG.ParsingError:PNG.Error
         return "(\(self.scope)) \(text)"
     }
 
-    public
-    var details:String?
-    {
-        func plural(bytes count:Int) -> String
-        {
+    public var details: String? {
+        func plural(bytes count: Int) -> String {
             count == 1 ? "1 byte" : "\(count) bytes"
         }
 
-        switch self
-        {
+        switch self {
         case    .invalidHeaderChunkLength           (let bytes):
             return "chunk is \(plural(bytes: bytes)), expected 13 bytes"
         case    .invalidPaletteChunkLength          (let bytes):
             return "chunk length (\(bytes)) must be divisible by 3"
         case    .invalidTransparencyChunkLength     (let bytes, expected: let expected),
-                .invalidBackgroundChunkLength       (let bytes, expected: let expected),
-                .invalidHistogramChunkLength        (let bytes, expected: let expected),
-                .invalidSignificantBitsChunkLength  (let bytes, expected: let expected):
+            .invalidBackgroundChunkLength       (let bytes, expected: let expected),
+            .invalidHistogramChunkLength        (let bytes, expected: let expected),
+            .invalidSignificantBitsChunkLength  (let bytes, expected: let expected):
             return "chunk is \(plural(bytes: bytes)), expected \(plural(bytes: expected))"
         case    .invalidGammaChunkLength            (let bytes):
             return "chunk is \(plural(bytes: bytes)), expected 4 bytes"
@@ -503,12 +494,14 @@ extension PNG.ParsingError:PNG.Error
             return "chunk is \(plural(bytes: bytes)), expected 7 bytes"
 
         case    .invalidColorProfileChunkLength     (let bytes, min: let min),
-                .invalidSuggestedPaletteChunkLength (let bytes, min: let min),
-                .invalidTextChunkLength             (let bytes, min: let min):
+            .invalidSuggestedPaletteChunkLength (let bytes, min: let min),
+            .invalidTextChunkLength             (let bytes, min: let min):
             return "chunk is \(plural(bytes: bytes)), expected at least \(plural(bytes: min))"
 
         case .invalidSuggestedPaletteDataLength(let bytes, stride: let stride):
-            return "palette data length (\(plural(bytes: bytes))) must be divisible by \(stride)"
+            return """
+            palette data length (\(plural(bytes: bytes))) must be divisible by \(stride)
+            """
 
         case    .invalidHeaderPixelFormatCode(let code):
             return "\(code) is not a valid pixel format code"
@@ -527,8 +520,8 @@ extension PNG.ParsingError:PNG.Error
         case    .invalidSuggestedPaletteDepthCode(let code):
             return "(\(code)) is not a valid suggested palette depth code"
         case    .invalidHeaderCompressionMethodCode(let code),
-                .invalidColorProfileCompressionMethodCode(let code),
-                .invalidTextCompressionMethodCode(let code):
+            .invalidColorProfileCompressionMethodCode(let code),
+            .invalidTextCompressionMethodCode(let code):
             return "(\(code)) is not a valid compression method code"
 
         case    .invalidHeaderSize(let size):
@@ -540,22 +533,29 @@ extension PNG.ParsingError:PNG.Error
             return "number of palette entries (\(count)) must be in the range 1 ... \(max)"
 
         case    .unexpectedTransparency(pixel: let pixel):
-            switch pixel
-            {
+            switch pixel {
             case .indexed1, .indexed2, .indexed4, .indexed8:
-                return "transparency for pixel format `\(pixel)` requires a previously-defined image palette"
+                return """
+                transparency for pixel format `\(
+                    pixel
+                )` requires a previously-defined image palette
+                """
             default:
                 return "transparency not allowed for pixel format `\(pixel)`"
             }
         case    .invalidTransparencySample(let sample, max: let max):
             return "chroma key sample (\(sample)) must be in the range 0 ... \(max)"
         case    .invalidTransparencyCount(let count, max: let max):
-            return "number of alpha samples (\(count)) exceeds number of palette entries (\(max))"
+            return """
+            number of alpha samples (\(count)) exceeds number of palette entries (\(max))
+            """
 
         case    .invalidBackgroundSample(let sample, max: let max):
             return "background sample (\(sample)) must be in the range 0 ... \(max)"
         case    .invalidBackgroundIndex(let index, max: let max):
-            return "background index (\(index)) is out of range for palette of length \(max + 1)"
+            return """
+            background index (\(index)) is out of range for palette of length \(max + 1)
+            """
 
         case    .invalidSignificantBitsPrecision(let precision, max: let max):
             return "precision (\(precision)) must be in the range 1 ... \(max)"
@@ -563,20 +563,25 @@ extension PNG.ParsingError:PNG.Error
 
 
         case    .incompleteColorProfileCompressedDatastream,
-                .incompleteTextCompressedDatastream:
+            .incompleteTextCompressedDatastream:
             return nil
 
         case    .invalidSuggestedPaletteFrequency:
             return "frequency values must appear in descending order"
 
         case    .invalidTimeModifiedTime(
-            year:   let year,
-            month:  let month,
-            day:    let day,
-            hour:   let hour,
-            minute: let minute,
-            second: let second):
-            return "\((year: year, month: month, day: day, hour: hour, minute: minute, second: second)) is not a valid time stamp"
+                year: let year,
+                month: let month,
+                day: let day,
+                hour: let hour,
+                minute: let minute,
+                second: let second
+            ):
+            return """
+            \(
+                (year: year, month: month, day: day, hour: hour, minute: minute, second: second)
+            ) is not a valid time stamp
+            """
 
         case    .invalidColorProfileName(nil):
             return "color profile name must be a null-terminated string"

@@ -1,27 +1,17 @@
-extension LZ77
-{
-    @frozen @usableFromInline
-    struct DeflatorWindow
-    {
-        private
-        var storage:ManagedBuffer<Void, Element>
-        private
-        var head:F14.HashTable
+extension LZ77 {
+    @frozen @usableFromInline struct DeflatorWindow {
+        private var storage: ManagedBuffer<Void, Element>
+        private var head: F14.HashTable
 
-        private(set)
-        var endIndex:Int // absolute index
-        private
-        var w:UInt32,
-            v:UInt32
+        private(set) var endIndex: Int // absolute index
+        private var w: UInt32,
+        v: UInt32
 
-        private
-        let mask:Int
+        private let mask: Int
     }
 }
-extension LZ77.DeflatorWindow
-{
-    init(exponent:Int)
-    {
+extension LZ77.DeflatorWindow {
+    init(exponent: Int) {
         self.endIndex   = -3
         self.w          = 0
         self.v          = 0
@@ -31,33 +21,24 @@ extension LZ77.DeflatorWindow
         self.head       = .init(exponent: exponent)
     }
 
-    private
-    subscript(modular:Int) -> Element
-    {
-        get
-        {
-            self.storage.withUnsafeMutablePointerToElements
-            {
+    private subscript(modular: Int) -> Element {
+        get {
+            self.storage.withUnsafeMutablePointerToElements {
                 $0[modular]
             }
         }
-        set(value)
-        {
-            self.storage.withUnsafeMutablePointerToElements
-            {
+        set(value) {
+            self.storage.withUnsafeMutablePointerToElements {
                 $0[modular] = value
             }
         }
     }
 
-    var literal:UInt8
-    {
+    var literal: UInt8 {
         .init(self.v >> 24)
     }
 
-    mutating
-    func initialize(with v:UInt8)
-    {
+    mutating func initialize(with v: UInt8) {
         assert(self.endIndex < 0)
         // we don’t need to update `self.w` because `self.mask` is always at
         // least 255.
@@ -74,20 +55,17 @@ extension LZ77.DeflatorWindow
     }
 
     @discardableResult
-    mutating
-    func update(with v:UInt8) -> (index:Int, next:UInt16?)
-    {
+    mutating func update(with v: UInt8) -> (index: Int, next: UInt16?) {
         assert(self.endIndex >= 0)
 
-        let a:Int       =  self.endIndex       & self.mask,
-            b:Int       = (self.endIndex &+ 3) & self.mask
-        let w:UInt8     =  self[b].value
+        let a: Int       =  self.endIndex       & self.mask,
+        b: Int       = (self.endIndex &+ 3) & self.mask
+        let w: UInt8     =  self[b].value
 
         self.w = self.w << 8 | .init(w)
         self.v = self.v << 8 | .init(v)
 
-        if self.endIndex > self.mask
-        {
+        if self.endIndex > self.mask {
             //               01..11  10..00  10..01  10..10  10..11
             //  ╴╴╴╴╴╴╴╴┬───────┬───────┰───────┬───────┬───────┬───────┬╶╶╶╶╶╶╶╶
             //          ╎       ╎       ┃  w.3  ╎  w.2  ╎  w.1  ╎  w.0  │
@@ -101,8 +79,8 @@ extension LZ77.DeflatorWindow
             // it has not already been overwritten with a more recent position.
             self.head.remove(key: self.w, value: .init(a))
         }
-        let next:UInt16?    =
-            self.head.update(key: self.v, value: .init(a))
+        let next: UInt16?    =
+        self.head.update(key: self.v, value: .init(a))
         self[a]             = .init(next: next, value: self.literal)
 
         self.endIndex += 1
@@ -112,70 +90,60 @@ extension LZ77.DeflatorWindow
         return (a, next)
     }
 
-    func match(from head:(index:Int, next:UInt16?),
-        lookahead:LZ77.DeflatorIn<some LZ77.StreamIntegral>,
-        attempts:Int,
-        goal:Int) -> (run:Int, distance:Int)?
-    {
-        var best:(run:Int, distance:Int) = (run: 5, distance: 1)
-        self.match(from: head, lookahead: lookahead, attempts: attempts, goal: goal)
-        {
-            (run:Int, distance:Int) in
-            if best.run < run
-            {
+    func match(
+        from head: (index: Int, next: UInt16?),
+        lookahead: LZ77.DeflatorIn<some LZ77.StreamIntegral>,
+        attempts: Int,
+        goal: Int
+    ) -> (run: Int, distance: Int)? {
+        var best: (run: Int, distance: Int) = (run: 5, distance: 1)
+        self.match(from: head, lookahead: lookahead, attempts: attempts, goal: goal) {
+            (run: Int, distance: Int) in
+            if best.run < run {
                 best = (run: run, distance: distance)
             }
         }
         return best.run > 5 ? best : nil
     }
 
-    func match(from head:(index:Int, next:UInt16?),
-        lookahead:LZ77.DeflatorIn<some LZ77.StreamIntegral>,
-        attempts:Int,
-        goal:Int,
-        delegate:(_ run:Int, _ distance:Int) -> ())
-    {
-        lookahead.withUnsafePointer
-        {
-            (v:UnsafePointer<UInt8>) in
+    func match(
+        from head: (index: Int, next: UInt16?),
+        lookahead: LZ77.DeflatorIn<some LZ77.StreamIntegral>,
+        attempts: Int,
+        goal: Int,
+        delegate: (_ run: Int, _ distance: Int) -> ()
+    ) {
+        lookahead.withUnsafePointer {
+            (v: UnsafePointer<UInt8>) in
 
-            self.storage.withUnsafeMutablePointerToElements
-            {
-                (w:UnsafeMutablePointer<Element>) in
+            self.storage.withUnsafeMutablePointerToElements {
+                (w: UnsafeMutablePointer<Element>) in
 
-                guard let next:UInt16 = head.next
-                else
-                {
+                guard let next: UInt16 = head.next else {
                     return
                 }
 
-                let limit:Int       = min(lookahead.count + 4, 258)
+                let limit: Int       = min(lookahead.count + 4, 258)
 
-                let mask:Int        = self.mask
-                var current:Int     = .init(next)
-                var distance:Int    = (head.index &- current) & mask
-                var remaining:Int   = attempts
-                while true
-                {
-                    var run:Int = 4
+                let mask: Int        = self.mask
+                var current: Int     = .init(next)
+                var distance: Int    = (head.index &- current) & mask
+                var remaining: Int   = attempts
+                while true {
+                    var run: Int = 4
                     scan:
-                    do
-                    {
-                        let a:Int = min(distance, limit)
-                        while run < a
-                        {
-                            let i:Int = (current &+ run) & mask
-                            guard w[i].value == v[run]
-                            else
-                            {
+                    do {
+                        let a: Int = min(distance, limit)
+                        while run < a {
+                            let i: Int = (current &+ run) & mask
+                            guard w[i].value == v[run] else {
                                 break scan
                             }
                             run += 1
                         }
 
-                        var i:Int = max(0, 4 - distance)
-                        while run < limit, v[i] == v[run]
-                        {
+                        var i: Int = max(0, 4 - distance)
+                        while run < limit, v[i] == v[run] {
                             i   += 1
                             run += 1
                         }
@@ -185,25 +153,19 @@ extension LZ77.DeflatorWindow
 
                     remaining -= 1
 
-                    guard remaining > 0, goal > run
-                    else
-                    {
+                    guard remaining > 0, goal > run else {
                         break
                     }
 
-                    guard let next:UInt16 = self[current].next
-                    else
-                    {
+                    guard let next: UInt16 = self[current].next else {
                         break
                     }
 
-                    let previous:Int    = current
+                    let previous: Int    = current
                     current             = .init(next)
                     distance           += (previous &- current) & mask
 
-                    guard distance < mask
-                    else
-                    {
+                    guard distance < mask else {
                         break
                     }
                 }

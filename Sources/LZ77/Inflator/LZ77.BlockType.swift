@@ -1,9 +1,7 @@
-extension LZ77
-{
-    enum BlockType
-    {
+extension LZ77 {
+    enum BlockType {
         case dynamic
         case fixed
-        case bytes(count:Int)
+        case bytes(count: Int)
     }
 }

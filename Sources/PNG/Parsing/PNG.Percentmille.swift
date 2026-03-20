@@ -1,19 +1,14 @@
-extension PNG
-{
+extension PNG {
     /// A rational percentmille value.
-    public
-    struct Percentmille:AdditiveArithmetic, ExpressibleByIntegerLiteral
-    {
+    public struct Percentmille: AdditiveArithmetic, ExpressibleByIntegerLiteral {
         /// The numerator of this percentmille value.
         ///
         /// The numerical value of this percentmille instance is this integer
         /// divided by `100000`.
-        public
-        var points:Int
+        public var points: Int
 
         /// A percentmille value of zero.
-        public static
-        let zero:Self = 0
+        public static let zero: Self = 0
 
         /// Creates a percentmille value with the given numerator.
         ///
@@ -21,9 +16,7 @@ extension PNG
         /// numerator divided by `100000`.
         /// -   Parameter points:
         ///     The numerator.
-        public
-        init<T>(_ points:T) where T:BinaryInteger
-        {
+        public init<T>(_ points: T) where T: BinaryInteger {
             self.points = .init(points)
         }
 
@@ -35,9 +28,7 @@ extension PNG
         /// of a rational value.
         /// -   Parameter integerLiteral:
         ///     The integer literal.
-        public
-        init(integerLiteral:Int)
-        {
+        public init(integerLiteral: Int) {
             self.init(integerLiteral)
         }
 
@@ -48,9 +39,7 @@ extension PNG
         ///     The second value to add.
         /// -   Returns:
         ///     The sum of the two given percentmille values.
-        public static
-        func + (lhs:Self, rhs:Self) -> Self
-        {
+        public static func + (lhs: Self, rhs: Self) -> Self {
             .init(lhs.points + rhs.points)
         }
         /// Adds two percentmille values and stores the result in the
@@ -59,9 +48,7 @@ extension PNG
         ///     The first value to add.
         /// -   Parameter rhs:
         ///     The second value to add.
-        public static
-        func += (lhs:inout Self, rhs:Self)
-        {
+        public static func += (lhs: inout Self, rhs: Self) {
             lhs.points += rhs.points
         }
         /// Subtracts one percentmille value from another and produces their
@@ -72,9 +59,7 @@ extension PNG
         ///     The value to subtract from `lhs`.
         /// -   Returns:
         ///     The difference of the two given percentmille values.
-        public static
-        func - (lhs:Self, rhs:Self) -> Self
-        {
+        public static func - (lhs: Self, rhs: Self) -> Self {
             .init(lhs.points - rhs.points)
         }
         /// Subtracts one percentmille value from another and stores the
@@ -83,18 +68,13 @@ extension PNG
         ///     A percentmille value.
         /// -   Parameter rhs:
         ///     The value to subtract from `lhs`.
-        public static
-        func -= (lhs:inout Self, rhs:Self)
-        {
+        public static func -= (lhs: inout Self, rhs: Self) {
             lhs.points -= rhs.points
         }
     }
 }
-extension PNG.Percentmille:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.Percentmille: CustomStringConvertible {
+    public var description: String {
         "\(self.points) / 100000"
     }
 }

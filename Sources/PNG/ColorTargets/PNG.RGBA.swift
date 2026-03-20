@@ -1,31 +1,21 @@
-extension PNG.RGBA:Sendable where T:Sendable
-{
+extension PNG.RGBA: Sendable where T: Sendable {
 }
-extension PNG
-{
+extension PNG {
     /// An RGBA color target.
     ///
     /// This type is a built-in color target.
-    @frozen
-    public
-    struct RGBA<T>:Hashable where T:FixedWidthInteger & UnsignedInteger
-    {
+    @frozen public struct RGBA<T>: Hashable where T: FixedWidthInteger & UnsignedInteger {
         /// The red component of this color.
-        public
-        var r:T
+        public var r: T
         /// The green component of this color.
-        public
-        var g:T
+        public var g: T
         /// The blue component of this color.
-        public
-        var b:T
+        public var b: T
         /// The alpha component of this color.
-        public
-        var a:T
+        public var a: T
     }
 }
-extension PNG.RGBA
-{
+extension PNG.RGBA {
     /// Creates an opaque, monochromatic RGBA color.
     ///
     /// The ``r``, ``g``, and ``b`` components will be set to `value`,
@@ -33,10 +23,7 @@ extension PNG.RGBA
     ///
     /// -   Parameter value:
     ///     A gray value.
-    @inlinable
-    public
-    init(_ value:T)
-    {
+    @inlinable public init(_ value: T) {
         self.init(value, value, value, T.max)
     }
     /// Creates a monochromatic RGBA color.
@@ -47,10 +34,7 @@ extension PNG.RGBA
     ///     A gray value.
     /// -   Parameter alpha:
     ///     An alpha value.
-    @inlinable
-    public
-    init(_ value:T, _ alpha:T)
-    {
+    @inlinable public init(_ value: T, _ alpha: T) {
         self.init(value, value, value, alpha)
     }
     /// Creates an opaque RGBA color.
@@ -63,10 +47,7 @@ extension PNG.RGBA
     ///     A green value.
     /// -   Parameter blue:
     ///     A blue value.
-    @inlinable
-    public
-    init(_ red:T, _ green:T, _ blue:T)
-    {
+    @inlinable public init(_ red: T, _ green: T, _ blue: T) {
         self.init(red, green, blue, T.max)
     }
     /// Creates an RGBA color.
@@ -81,10 +62,7 @@ extension PNG.RGBA
     ///     A blue value.
     /// -   Parameter alpha:
     ///     An alpha value.
-    @inlinable
-    public
-    init(_ red:T, _ green:T, _ blue:T, _ alpha:T)
-    {
+    @inlinable public init(_ red: T, _ green: T, _ blue: T, _ alpha: T) {
         self.r = red
         self.g = green
         self.b = blue
@@ -97,18 +75,12 @@ extension PNG.RGBA
     /// the ``VA/v`` and ``VA/a`` components of `va`.
     /// -   Parameter va:
     ///     A grayscale-alpha color.
-    @inlinable
-    public
-    init(_ va:PNG.VA<T>)
-    {
+    @inlinable public init(_ va: PNG.VA<T>) {
         self.init(va.v, va.a)
     }
     /// The grayscale-alpha color obtained by discarding the green and blue
     /// components of this color.
-    @inlinable
-    public
-    var va:PNG.VA<T>
-    {
+    @inlinable public var va: PNG.VA<T> {
         .init(self.r, self.a)
     }
     /// The color obtained by premultiplying the red, green, and blue
@@ -116,14 +88,13 @@ extension PNG.RGBA
     ///
     /// The premultiplied color is obtained by invoking ``premultiply(_:alpha:)``
     /// on ``r``, ``g``, and ``b``.
-    @inlinable
-    public
-    var premultiplied:Self
-    {
-        .init(  PNG.premultiply(self.r, alpha: self.a),
-                PNG.premultiply(self.g, alpha: self.a),
-                PNG.premultiply(self.b, alpha: self.a),
-                self.a)
+    @inlinable public var premultiplied: Self {
+        .init(
+            PNG.premultiply(self.r, alpha: self.a),
+            PNG.premultiply(self.g, alpha: self.a),
+            PNG.premultiply(self.b, alpha: self.a),
+            self.a
+        )
     }
     /// The color obtained by premultiplying the red, green, and blue
     /// components of this color with its alpha channel, performing the
@@ -141,20 +112,19 @@ extension PNG.RGBA
     ///     must be less than `T.bitWidth`.
     /// -   Returns:
     ///     The premultiplied color.
-    @inlinable
-    public
-    func premultiplied<U>(as _:U.Type) -> Self
-        where U:FixedWidthInteger & UnsignedInteger
-    {
-        precondition(T.bitWidth > U.bitWidth,
-            "cannot premultiply alpha in higher-precision than original color")
-        let shift:Int   = T.bitWidth - U.bitWidth
-        let q:T         = T.max / T.max >> shift
-        let a:U         = .init(self.a >> shift)
+    @inlinable public func premultiplied<U>(as _: U.Type) -> Self
+        where U: FixedWidthInteger & UnsignedInteger {
+        precondition(
+            T.bitWidth > U.bitWidth,
+            "cannot premultiply alpha in higher-precision than original color"
+        )
+        let shift: Int   = T.bitWidth - U.bitWidth
+        let q: T         = T.max / T.max >> shift
+        let a: U         = .init(self.a >> shift)
 
-        let r:T = T.init(PNG.premultiply(U.init(self.r >> shift), alpha: a)) * q,
-            g:T = T.init(PNG.premultiply(U.init(self.g >> shift), alpha: a)) * q,
-            b:T = T.init(PNG.premultiply(U.init(self.b >> shift), alpha: a)) * q
+        let r: T = T.init(PNG.premultiply(U.init(self.r >> shift), alpha: a)) * q,
+        g: T = T.init(PNG.premultiply(U.init(self.g >> shift), alpha: a)) * q,
+        b: T = T.init(PNG.premultiply(U.init(self.b >> shift), alpha: a)) * q
         return .init(r, g, b, T.init(a) * q)
     }
     /// The color obtained by straightening the red, green, and blue
@@ -162,14 +132,13 @@ extension PNG.RGBA
     ///
     /// The straightened color is obtained by invoking ``straighten(_:alpha:)``
     /// on ``r``, ``g``, and ``b``.
-    @inlinable
-    public
-    var straightened:Self
-    {
-        .init(  PNG.straighten(self.r, alpha: self.a),
-                PNG.straighten(self.g, alpha: self.a),
-                PNG.straighten(self.b, alpha: self.a),
-                self.a)
+    @inlinable public var straightened: Self {
+        .init(
+            PNG.straighten(self.r, alpha: self.a),
+            PNG.straighten(self.g, alpha: self.a),
+            PNG.straighten(self.b, alpha: self.a),
+            self.a
+        )
     }
     /// The color obtained by straightening the red, green, and blue
     /// components of this color according to its alpha channel, performing the
@@ -187,29 +156,26 @@ extension PNG.RGBA
     ///     must be less than `T.bitWidth`.
     /// -   Returns:
     ///     The straightened color.
-    @inlinable
-    public
-    func straightened<U>(as _:U.Type) -> Self
-        where U:FixedWidthInteger & UnsignedInteger
-    {
-        precondition(T.bitWidth > U.bitWidth,
-            "cannot straighten alpha in higher-precision than original color")
+    @inlinable public func straightened<U>(as _: U.Type) -> Self
+        where U: FixedWidthInteger & UnsignedInteger {
+        precondition(
+            T.bitWidth > U.bitWidth,
+            "cannot straighten alpha in higher-precision than original color"
+        )
 
-        let shift:Int   = T.bitWidth - U.bitWidth
-        let q:T         = T.max / T.max >> shift
-        let a:U         = .init(self.a >> shift)
+        let shift: Int   = T.bitWidth - U.bitWidth
+        let q: T         = T.max / T.max >> shift
+        let a: U         = .init(self.a >> shift)
 
-        let r:T = T.init(PNG.straighten(U.init(self.r >> shift), alpha: a)) * q,
-            g:T = T.init(PNG.straighten(U.init(self.g >> shift), alpha: a)) * q,
-            b:T = T.init(PNG.straighten(U.init(self.b >> shift), alpha: a)) * q
+        let r: T = T.init(PNG.straighten(U.init(self.r >> shift), alpha: a)) * q,
+        g: T = T.init(PNG.straighten(U.init(self.g >> shift), alpha: a)) * q,
+        b: T = T.init(PNG.straighten(U.init(self.b >> shift), alpha: a)) * q
         return .init(r, g, b, T.init(a) * q)
     }
 }
-extension PNG.RGBA:PNG.Color
-{
+extension PNG.RGBA: PNG.Color {
     /// Palette aggregates are (*red*, *green*, *blue*, *alpha*) quadruplets.
-    public
-    typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
+    public typealias Aggregate = (UInt8, UInt8, UInt8, UInt8)
 
     /// Unpacks an image data storage buffer to an array of RGBA pixels.
     ///
@@ -255,111 +221,107 @@ extension PNG.RGBA:PNG.Color
     @_specialize(where T == UInt32)
     @_specialize(where T == UInt64)
     @_specialize(where T == UInt)
-    public static
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format,
-        deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate)
-        -> [Self]
-    {
-        let depth:Int = format.pixel.depth
-        switch format
-        {
+    public static func unpack(
+        _ interleaved: [UInt8], of format: PNG.Format,
+        deindexer: ([(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) -> (Int) -> Aggregate
+    )
+    -> [Self] {
+        let depth: Int = format.pixel.depth
+        switch format {
         case    .indexed1(palette: let palette, fill: _),
-                .indexed2(palette: let palette, fill: _),
-                .indexed4(palette: let palette, fill: _),
-                .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(interleaved, dereference: deindexer(palette))
-            {
-                (c) in .init(c.0, c.1, c.2, c.3)
+            .indexed2(palette: let palette, fill: _),
+            .indexed4(palette: let palette, fill: _),
+            .indexed8(palette: let palette, fill: _):
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) {
+                (c) in
+                .init(c.0, c.1, c.2, c.3)
             }
 
         case    .v1(fill: _, key: nil),
-                .v2(fill: _, key: nil),
-                .v4(fill: _, key: nil),
-                .v8(fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:T, _) in .init(c)
+            .v2(fill: _, key: nil),
+            .v4(fill: _, key: nil),
+            .v8(fill: _, key: nil):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: T, _) in
+                .init(c)
             }
         case    .v16(fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
-            {
-                (c:T, _) in .init(c)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
+                (c: T, _) in
+                .init(c)
             }
         case    .v1(fill: _, key: let key?),
-                .v2(fill: _, key: let key?),
-                .v4(fill: _, key: let key?),
-                .v8(fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:T, k:UInt8 )     in .init(c, k == key ? .min : .max)
+            .v2(fill: _, key: let key?),
+            .v4(fill: _, key: let key?),
+            .v8(fill: _, key: let key?):
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: T, k: UInt8 )     in
+                .init(c, k == key ? .min : .max)
             }
         case    .v16(fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
-            {
-                (c:T, k:UInt16)     in .init(c, k == key ? .min : .max)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
+                (c: T, k: UInt16)     in
+                .init(c, k == key ? .min : .max)
             }
 
         case    .va8(fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T))          in .init(c.0, c.1)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T))          in
+                .init(c.0, c.1)
             }
         case    .va16(fill: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
-            {
-                (c:(T, T))          in .init(c.0, c.1)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
+                (c: (T, T))          in
+                .init(c.0, c.1)
             }
 
         case    .bgr8(palette: _, fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T, T), _)    in .init(c.2, c.1, c.0)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T, T), _)    in
+                .init(c.2, c.1, c.0)
             }
         case    .bgr8(palette: _, fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T, T), k:(UInt8,  UInt8,  UInt8 )) in
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T, T), k: (UInt8,  UInt8,  UInt8 )) in
                 .init(c.2, c.1, c.0, k == key ? .min : .max)
             }
 
         case    .rgb8(palette: _, fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T, T), _)    in .init(c.0, c.1, c.2)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T, T), _)    in
+                .init(c.0, c.1, c.2)
             }
         case    .rgb16(palette: _, fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
-            {
-                (c:(T, T, T), _)    in .init(c.0, c.1, c.2)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
+                (c: (T, T, T), _)    in
+                .init(c.0, c.1, c.2)
             }
         case    .rgb8(palette: _, fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T, T), k:(UInt8,  UInt8,  UInt8 )) in
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T, T), k: (UInt8,  UInt8,  UInt8 )) in
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
         case    .rgb16(palette: _, fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
-            {
-                (c:(T, T, T), k:(UInt16, UInt16, UInt16)) in
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
+                (c: (T, T, T), k: (UInt16, UInt16, UInt16)) in
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
 
         case    .bgra8(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T, T, T)) in .init(c.2, c.1, c.0, c.3)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T, T, T)) in
+                .init(c.2, c.1, c.0, c.3)
             }
 
         case    .rgba8(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth)
-            {
-                (c:(T, T, T, T)) in .init(c.0, c.1, c.2, c.3)
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
+                (c: (T, T, T, T)) in
+                .init(c.0, c.1, c.2, c.3)
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth)
-            {
-                (c:(T, T, T, T)) in .init(c.0, c.1, c.2, c.3)
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
+                (c: (T, T, T, T)) in
+                .init(c.0, c.1, c.2, c.3)
             }
         }
     }
@@ -405,74 +367,73 @@ extension PNG.RGBA:PNG.Color
     @_specialize(where T == UInt32)
     @_specialize(where T == UInt64)
     @_specialize(where T == UInt)
-    public static
-    func pack(_ pixels:[Self], as format:PNG.Format,
-        indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int)
-        -> [UInt8]
-    {
-        let depth:Int = format.pixel.depth
-        switch format
-        {
+    public static func pack(
+        _ pixels: [Self], as format: PNG.Format,
+        indexer: ([(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) -> (Aggregate) -> Int
+    )
+    -> [UInt8] {
+        let depth: Int = format.pixel.depth
+        switch format {
         case    .indexed1(palette: let palette, fill: _),
-                .indexed2(palette: let palette, fill: _),
-                .indexed4(palette: let palette, fill: _),
-                .indexed8(palette: let palette, fill: _):
-            return PNG.deconvolve(pixels, reference: indexer(palette))
-            {
-                (c) in (c.r, c.g, c.b, c.a)
+            .indexed2(palette: let palette, fill: _),
+            .indexed4(palette: let palette, fill: _),
+            .indexed8(palette: let palette, fill: _):
+            return PNG.deconvolve(pixels, reference: indexer(palette)) {
+                (c) in
+                (c.r, c.g, c.b, c.a)
             }
 
         case    .v1(fill: _, key: _),
-                .v2(fill: _, key: _),
-                .v4(fill: _, key: _),
-                .v8(fill: _, key: _):
+            .v2(fill: _, key: _),
+            .v4(fill: _, key: _),
+            .v8(fill: _, key: _):
             return PNG.deconvolve(pixels, as: UInt8.self,  depth: depth, kernel: \.r)
         case    .v16(fill: _, key: _):
             return PNG.deconvolve(pixels, as: UInt16.self, depth: depth, kernel: \.r)
 
         case    .va8(fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
-            {
-                (c) in (c.r, c.a)
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
+                (c) in
+                (c.r, c.a)
             }
         case    .va16(fill: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
-            {
-                (c) in (c.r, c.a)
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
+                (c) in
+                (c.r, c.a)
             }
 
         case    .bgr8(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
-            {
-                (c) in (c.b, c.g, c.r)
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
+                (c) in
+                (c.b, c.g, c.r)
             }
 
         case    .rgb8(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
-            {
-                (c) in (c.r, c.g, c.b)
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
+                (c) in
+                (c.r, c.g, c.b)
             }
         case    .rgb16(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
-            {
-                (c) in (c.r, c.g, c.b)
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
+                (c) in
+                (c.r, c.g, c.b)
             }
 
         case    .bgra8(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
-            {
-                (c) in (c.b, c.g, c.r, c.a)
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
+                (c) in
+                (c.b, c.g, c.r, c.a)
             }
 
         case    .rgba8(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth)
-            {
-                (c) in (c.r, c.g, c.b, c.a)
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
+                (c) in
+                (c.r, c.g, c.b, c.a)
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth)
-            {
-                (c) in (c.r, c.g, c.b, c.a)
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
+                (c) in
+                (c.r, c.g, c.b, c.a)
             }
         }
     }

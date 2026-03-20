@@ -1,17 +1,13 @@
 @available(*, deprecated, renamed: "PNG.Color")
-public
-typealias _PNGColor = PNG.Color
+public typealias _PNGColor = PNG.Color
 
-extension PNG
-{
+extension PNG {
     /// A color target.
     ///
     /// The library provides two built-in color targets, ``PNG.VA`` and ``PNG.RGBA``. A worked
     /// example of how to implement a custom color target can be found in the <doc:CustomColor>
     /// tutorial.
-    public
-    protocol Color<Aggregate>
-    {
+    public protocol Color<Aggregate> {
         /// A palette aggregate type.
         ///
         /// This type is the return type of a dereferencing function produced by a
@@ -41,10 +37,11 @@ extension PNG
         /// -   Returns:
         ///     A pixel array containing instances of this color target. The pixels
         ///     should appear in the same order as they do in the image data buffer.
-        static
-        func unpack(_ interleaved:[UInt8],
-            of format:PNG.Format,
-            deindexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Int) -> Aggregate) -> [Self]
+        static func unpack(
+            _ interleaved: [UInt8],
+            of format: PNG.Format,
+            deindexer: ([(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) -> (Int) -> Aggregate
+        ) -> [Self]
 
         /// Packs an array of this color target to an image data storage buffer,
         /// using a custom indexing function.
@@ -74,10 +71,11 @@ extension PNG
         /// When the library uses an implementation of this function to construct
         /// a ``PNG/Image`` image, this data buffer will be stored in
         /// its ``PNG/Image/storage`` property.
-        static
-        func pack(_ pixels:[Self],
-            as format:PNG.Format,
-            indexer:([(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) -> (Aggregate) -> Int) -> [UInt8]
+        static func pack(
+            _ pixels: [Self],
+            as format: PNG.Format,
+            indexer: ([(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) -> (Aggregate) -> Int
+        ) -> [UInt8]
 
         /// Unpacks an image data storage buffer to an array of this color target.
         ///
@@ -106,8 +104,7 @@ extension PNG
         /// -   Returns:
         ///     A pixel array containing instances of this color target. The pixels
         ///     should appear in the same order as they do in the image data buffer.
-        static
-        func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
+        static func unpack(_ interleaved: [UInt8], of format: PNG.Format) -> [Self]
 
         /// Packs an array of this color target to an image data storage buffer.
         ///
@@ -150,79 +147,76 @@ extension PNG
         ///     When the library uses an implementation of this function to construct
         ///     a ``PNG/Image`` image, this data buffer will be stored in
         ///     its ``PNG/Image/storage`` property.
-        static
-        func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8]
+        static func pack(_ pixels: [Self], as format: PNG.Format) -> [UInt8]
     }
 }
 
 // default-indexer implementations
-extension PNG.Color<(UInt8, UInt8)>
-{
-    @inlinable
-    public static
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
-    {
-        self.unpack(interleaved, of: format)
-        {
-            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in
+extension PNG.Color<(UInt8, UInt8)> {
+    @inlinable public static func unpack(
+        _ interleaved: [UInt8],
+        of format: PNG.Format
+    ) -> [Self] {
+        self.unpack(interleaved, of: format) {
+            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             {
-                (i:Int) in (palette[i].r, palette[i].a)
+                (i: Int) in
+                (palette[i].r, palette[i].a)
             }
         }
     }
-    @inlinable
-    public static
-    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8]
-    {
+    @inlinable public static func pack(_ pixels: [Self], as format: PNG.Format) -> [UInt8] {
         // behavior: create hash table for palette lookup. if a color is not in
         // the palette, return entry 0
-        Self.pack(pixels, as: format)
-        {
-            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in
+        Self.pack(pixels, as: format) {
+            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             // currently blocked by the issue discussed at
             // https://github.com/apple/swift/pull/28833
             // as a workaround, we box the UInt8s into an RGBA<UInt8> struct
-            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues:
-                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
-            return
-                {
-                    (c:(v:UInt8, a:UInt8)) in
-                    lookup[.init(c.v, c.v, c.v, c.a), default: 0]
-                }
+            let lookup: [PNG.RGBA<UInt8>: Int] = .init(
+                uniqueKeysWithValues: zip(
+                    palette.map{ .init($0.r, $0.g, $0.b, $0.a) },
+                    palette.indices
+                )
+            )
+            return {
+                (c: (v: UInt8, a: UInt8)) in
+                lookup[.init(c.v, c.v, c.v, c.a), default: 0]
+            }
         }
     }
 }
-extension PNG.Color<(UInt8, UInt8, UInt8, UInt8)>
-{
-    @inlinable public static
-    func unpack(_ interleaved:[UInt8], of format:PNG.Format) -> [Self]
-    {
-        self.unpack(interleaved, of: format)
-        {
-            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in
+extension PNG.Color<(UInt8, UInt8, UInt8, UInt8)> {
+    @inlinable public static func unpack(
+        _ interleaved: [UInt8],
+        of format: PNG.Format
+    ) -> [Self] {
+        self.unpack(interleaved, of: format) {
+            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             {
-                (i:Int) in palette[i]
+                (i: Int) in
+                palette[i]
             }
         }
     }
-    @inlinable public static
-    func pack(_ pixels:[Self], as format:PNG.Format) -> [UInt8]
-    {
+    @inlinable public static func pack(_ pixels: [Self], as format: PNG.Format) -> [UInt8] {
         // behavior: create hash table for palette lookup. if a color is not in
         // the palette, return entry 0
-        Self.pack(pixels, as: format)
-        {
-            (palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)]) in
+        Self.pack(pixels, as: format) {
+            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             // currently blocked by the issue discussed at
             // https://github.com/apple/swift/pull/28833
             // as a workaround, we box the UInt8s into an RGBA<UInt8> struct
-            let lookup:[PNG.RGBA<UInt8>: Int] = .init(uniqueKeysWithValues:
-                zip(palette.map{ .init($0.r, $0.g, $0.b, $0.a) }, palette.indices))
-            return
-                {
-                    (c:(r:UInt8, g:UInt8, b:UInt8, a:UInt8)) in
-                    lookup[.init(c.r, c.g, c.b, c.a), default: 0]
-                }
+            let lookup: [PNG.RGBA<UInt8>: Int] = .init(
+                uniqueKeysWithValues: zip(
+                    palette.map{ .init($0.r, $0.g, $0.b, $0.a) },
+                    palette.indices
+                )
+            )
+            return {
+                (c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) in
+                lookup[.init(c.r, c.g, c.b, c.a), default: 0]
+            }
         }
     }
 }

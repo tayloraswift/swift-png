@@ -1,5 +1,4 @@
-extension PNG.Format
-{
+extension PNG.Format {
     /// A pixel format.
     ///
     /// A pixel format specifies the color model and bit depth used by an
@@ -10,9 +9,7 @@ extension PNG.Format
     ///
     /// The pixel format associated with a color format can be accessed
     /// through the ``Format/pixel`` instance property.
-    @frozen public
-    enum Pixel
-    {
+    @frozen public enum Pixel {
         /// Pixels are stored as 1-bit grayscale values.
         ///
         /// An image with this pixel format has a bit depth and a color
@@ -104,19 +101,14 @@ extension PNG.Format
         case rgba16
     }
 }
-extension PNG.Format.Pixel
-{
+extension PNG.Format.Pixel {
     /// Indicates whether an image with this pixel format contains more than one
     /// non-alpha color component.
     ///
     /// This property is `true` for all RGB, RGBA, and indexed pixel formats,
     /// and `false` otherwise.
-    @inlinable
-    public
-    var hasColor:Bool
-    {
-        switch self
-        {
+    @inlinable public var hasColor: Bool {
+        switch self {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
             return false
         case .rgb8, .rgb16, .indexed1, .indexed2, .indexed4, .indexed8, .rgba8, .rgba16:
@@ -130,12 +122,8 @@ extension PNG.Format.Pixel
     /// and `false` otherwise. Note that indexed pixel formats are not
     /// considered transparent pixel formats, even though images using them
     /// can contain per-pixel alpha information.
-    @inlinable
-    public
-    var hasAlpha:Bool
-    {
-        switch self
-        {
+    @inlinable public var hasAlpha: Bool {
+        switch self {
         case .v1, .v2, .v4, .v8, .v16, .rgb8, .rgb16,
             .indexed1, .indexed2, .indexed4, .indexed8:
             return false
@@ -144,9 +132,7 @@ extension PNG.Format.Pixel
         }
     }
 
-    @inlinable
-    var volume:Int
-    {
+    @inlinable var volume: Int {
         self.depth * self.channels
     }
 
@@ -165,12 +151,8 @@ extension PNG.Format.Pixel
     /// This property returns `3` for all RGB pixel formats.
     ///
     /// This property returns `4` for all RGBA pixel formats.
-    @inlinable
-    public
-    var channels:Int
-    {
-        switch self
-        {
+    @inlinable public var channels: Int {
+        switch self {
         case .v1, .v2, .v4, .v8, .v16,
             .indexed1, .indexed2, .indexed4, .indexed8:     return 1
         case .va8,   .va16:                                 return 2
@@ -196,12 +178,8 @@ extension PNG.Format.Pixel
     ///
     /// This property returns `16` for the ``v16``, ``va16``,
     /// ``rgb16``, and ``rgba16`` pixel formats.
-    @inlinable
-    public
-    var depth:Int
-    {
-        switch self
-        {
+    @inlinable public var depth: Int {
+        switch self {
         case    .v1,          .indexed1:                    return  1
         case    .v2,          .indexed2:                    return  2
         case    .v4,          .indexed4:                    return  4
@@ -210,10 +188,8 @@ extension PNG.Format.Pixel
         }
     }
 
-    var code:(depth:UInt8, type:UInt8)
-    {
-        switch self
-        {
+    var code: (depth: UInt8, type: UInt8) {
+        switch self {
         case .v1:        return ( 1, 0)
         case .v2:        return ( 2, 0)
         case .v4:        return ( 4, 0)
@@ -236,11 +212,8 @@ extension PNG.Format.Pixel
         }
     }
 
-    static
-    func recognize(code:(depth:UInt8, type:UInt8)) -> Self?
-    {
-        switch code
-        {
+    static func recognize(code: (depth: UInt8, type: UInt8)) -> Self? {
+        switch code {
         case ( 1, 0):   return .v1
         case ( 2, 0):   return .v2
         case ( 4, 0):   return .v4

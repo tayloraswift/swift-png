@@ -1,18 +1,14 @@
-extension PNG
-{
+extension PNG {
     /// An image header.
     ///
     /// This type models the information stored in a ``Chunk/IHDR`` chunk.
-    public
-    struct Header
-    {
+    public struct Header {
         /// The size of an image, measured in pixels.
-        public
-        let size:(x:Int, y:Int),
+        public let size: (x: Int, y: Int),
         /// The pixel format of an image.
-            pixel:Format.Pixel,
+        pixel: Format.Pixel,
         /// Indicates whether an image uses interlacing.
-            interlaced:Bool
+        interlaced: Bool
 
         /// Creates an image header.
         ///
@@ -34,23 +30,20 @@ extension PNG
         ///     If `standard` is ``Standard/ios``, then the `pixel` format
         ///     must be either ``Format.Pixel/rgb8`` or ``Format.Pixel/rgba8``.
         ///     Otherwise, this initializer will suffer a precondition failure.
-        public
-        init(size:(x:Int, y:Int),
-            pixel:Format.Pixel,
-            interlaced:Bool,
-            standard:PNG.Standard)
-        {
-            guard size.x > 0, size.y > 0
-            else
-            {
+        public init(
+            size: (x: Int, y: Int),
+            pixel: Format.Pixel,
+            interlaced: Bool,
+            standard: PNG.Standard
+        ) {
+            guard size.x > 0, size.y > 0 else {
                 PNG.ParsingError.invalidHeaderSize(size).fatal
             }
             // iphone-optimized PNG can only have pixel type rgb8 or rgb16
-            switch (standard, pixel)
-            {
+            switch (standard, pixel) {
             case    (.common, _):   break
             case    (.ios, .rgb8),
-                    (.ios, .rgba8): break
+                (.ios, .rgba8): break
             default:
                 PNG.ParsingError.invalidHeaderPixelFormat(pixel, standard: standard).fatal
             }
@@ -60,8 +53,7 @@ extension PNG
         }
     }
 }
-extension PNG.Header
-{
+extension PNG.Header {
     /// Creates an image header by parsing the given chunk data, interpreting it
     /// according to the given PNG `standard`.
     /// -   Parameter data:
@@ -69,27 +61,20 @@ extension PNG.Header
     /// -   Parameter standard:
     ///     Specifies if the header should be interpreted as a standard PNG header,
     ///     or an iphone-optimized PNG header.
-    public
-    init(parsing data:[UInt8], standard:PNG.Standard) throws
-    {
-        guard data.count == 13
-        else
-        {
+    public init(parsing data: [UInt8], standard: PNG.Standard) throws {
+        guard data.count == 13 else {
             throw PNG.ParsingError.invalidHeaderChunkLength(data.count)
         }
 
-        guard let pixel:PNG.Format.Pixel = .recognize(code: (data[8], data[9]))
-        else
-        {
+        guard let pixel: PNG.Format.Pixel = .recognize(code: (data[8], data[9])) else {
             throw PNG.ParsingError.invalidHeaderPixelFormatCode((data[8], data[9]))
         }
 
         // iphone-optimized PNG can only have pixel type rgb8 or rgb16
-        switch (standard, pixel)
-        {
+        switch (standard, pixel) {
         case    (.common, _):   break
         case    (.ios, .rgb8),
-                (.ios, .rgba8): break
+            (.ios, .rgba8): break
         default:
             throw PNG.ParsingError.invalidHeaderPixelFormat(pixel, standard: standard)
         }
@@ -97,19 +82,14 @@ extension PNG.Header
         self.pixel = pixel
 
         // validate other fields
-        guard data[10] == 0
-        else
-        {
+        guard data[10] == 0 else {
             throw PNG.ParsingError.invalidHeaderCompressionMethodCode(data[10])
         }
-        guard data[11] == 0
-        else
-        {
+        guard data[11] == 0 else {
             throw PNG.ParsingError.invalidHeaderFilterCode(data[11])
         }
 
-        switch data[12]
-        {
+        switch data[12] {
         case 0:
             self.interlaced = false
         case 1:
@@ -121,19 +101,14 @@ extension PNG.Header
         self.size.x = data.load(bigEndian: UInt32.self, as: Int.self, at: 0)
         self.size.y = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
         // validate size
-        guard self.size.x > 0, self.size.y > 0
-        else
-        {
+        guard self.size.x > 0, self.size.y > 0 else {
             throw PNG.ParsingError.invalidHeaderSize(self.size)
         }
     }
 
     /// Encodes this image header as the contents of an ``Chunk/IHDR`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        .init(unsafeUninitializedCapacity: 13)
-        {
+    public var serialized: [UInt8] {
+        .init(unsafeUninitializedCapacity: 13) {
             $0.store(self.size.x, asBigEndian: UInt32.self, at: 0)
             $0.store(self.size.y, asBigEndian: UInt32.self, at: 4)
             ($0[8], $0[9])  = self.pixel.code

@@ -1,11 +1,8 @@
-extension LZ77
-{
-    struct DeflatorDicing
-    {
-        typealias Element = (weight:Int, node:Node)
+extension LZ77 {
+    struct DeflatorDicing {
+        typealias Element = (weight: Int, node: Node)
 
-        private
-        let memo:[Element]
+        private let memo: [Element]
     }
 }
 /* extension LZ77.Deflator.Dicing

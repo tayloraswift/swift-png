@@ -1,9 +1,6 @@
-extension PNG
-{
+extension PNG {
     /// A lexing error.
-    public
-    enum LexingError
-    {
+    public enum LexingError {
         /// The lexer encountered end-of-stream while reading signature
         /// bytes from a bytestream.
         case truncatedSignature
@@ -21,7 +18,7 @@ extension PNG
         /// from a bytestream.
         /// -   Parameter expected:
         ///     The number of bytes the lexer expected to read.
-        case truncatedChunkBody(expected:Int)
+        case truncatedChunkBody(expected: Int)
         /// The lexer read a chunk with an invalid type identifier code.
         /// -   Parameter _:
         ///     The invalid type identifier code.
@@ -32,22 +29,16 @@ extension PNG
         ///     The checksum declared in the chunk footer.
         /// -   Parameter computed:
         ///     The checksum computed by the lexer.
-        case invalidChunkChecksum(declared:UInt32, computed:UInt32)
+        case invalidChunkChecksum(declared: UInt32, computed: UInt32)
     }
 }
-extension PNG.LexingError:PNG.Error
-{
+extension PNG.LexingError: PNG.Error {
     /// The string `"lexing error"`.
-    public static
-    var namespace:String
-    {
+    public static var namespace: String {
         "lexing error"
     }
-    public
-    var message:String
-    {
-        switch self
-        {
+    public var message: String {
+        switch self {
         case .invalidSignature:
             return "invalid png signature bytes"
         case .truncatedSignature:
@@ -62,23 +53,25 @@ extension PNG.LexingError:PNG.Error
             return "invalid chunk checksum"
         }
     }
-    public
-    var details:String?
-    {
-        switch self
-        {
+    public var details: String? {
+        switch self {
         case .invalidSignature(let declared):
-            return "signature \(declared) does not match expected png signature \(PNG.signature)"
+            return """
+            signature \(declared) does not match expected png signature \(PNG.signature)
+            """
         case .truncatedSignature, .truncatedChunkHeader, .truncatedChunkBody:
             return nil
         case .invalidChunkTypeCode(let name):
-            let string:String = withUnsafeBytes(of: name.bigEndian)
-            {
+            let string: String = withUnsafeBytes(of: name.bigEndian) {
                 .init(decoding: $0, as: Unicode.ASCII.self)
             }
             return "type specifier '\(string)' is not a valid chunk type"
         case .invalidChunkChecksum(declared: let declared, computed: let computed):
-            return "computed crc-32 checksum (\(computed)) does not match declared checksum (\(declared))"
+            return """
+            computed crc-32 checksum (\(computed)) does not match declared checksum (\(
+                declared
+            ))
+            """
         }
     }
 }

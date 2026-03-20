@@ -3,33 +3,39 @@
 //  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #if canImport(Darwin)
-    import Darwin
+import Darwin
 #elseif canImport(Glibc)
-    import Glibc
+import Glibc
 #elseif canImport(Android)
-    import Android
+import Android
 #elseif canImport(Musl)
-    import Musl
+import Musl
 #elseif os(Windows)
-    #warning("Windows in not oficially supported and is untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)")
-    import ucrt
+#warning(
+    """
+    Windows in not oficially supported and is untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)
+    """
+)
+import ucrt
 #else
-    #warning("unsupported or untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)")
+#warning(
+    """
+    unsupported or untested platform (please open an issue at https://github.com/tayloraswift/swift-png/issues)
+    """
+)
 #endif
 
-#if canImport(Darwin) || canImport(Glibc) || canImport(Android) || canImport(Musl) || os(Windows)
+#if canImport(Darwin) || canImport(Glibc) || canImport(Android) || canImport(Musl) || os(
+    Windows
+)
 
 /// A namespace for platform-dependent functionality.
 ///
 /// These APIs are only available on MacOS and Linux. The rest of the
 /// framework is pure Swift and supports all Swift platforms.
-public
-enum System
-{
+public enum System {
     /// A namespace for file IO functionality.
-    public
-    enum File
-    {
+    public enum File {
         #if os(Android)
         typealias Descriptor = OpaquePointer
         #else
@@ -37,24 +43,17 @@ enum System
         #endif
 
         /// A type for reading data from files on disk.
-        public
-        struct Source
-        {
-            private
-            let descriptor:Descriptor
+        public struct Source {
+            private let descriptor: Descriptor
         }
 
         /// A type for writing data to files on disk.
-        public
-        struct Destination
-        {
-            private
-            let descriptor:Descriptor
+        public struct Destination {
+            private let descriptor: Descriptor
         }
     }
 }
-extension System.File.Source
-{
+extension System.File.Source {
     /// Calls a closure with an interface for reading from the specified file.
     ///
     /// This method automatically closes the file when its closure argument returns.
@@ -71,19 +70,13 @@ extension System.File.Source
     /// -   Returns:
     ///     The return value of the closure argument, or `nil` if the specified
     ///     file could not be opened.
-    public static
-    func open<R>(path:String, _ body:(inout Self) throws -> R)
-        rethrows -> R?
-    {
-        guard let descriptor:System.File.Descriptor = fopen(path, "rb")
-        else
-        {
+    public static func open<R>(path: String, _ body: (inout Self) throws -> R) rethrows -> R? {
+        guard let descriptor: System.File.Descriptor = fopen(path, "rb") else {
             return nil
         }
 
-        var file:Self = .init(descriptor: descriptor)
-        defer
-        {
+        var file: Self = .init(descriptor: descriptor)
+        defer {
             fclose(file.descriptor)
         }
 
@@ -99,25 +92,22 @@ extension System.File.Source
     /// -   Returns:
     ///     An array containing the read data, or `nil` if the specified
     ///     number of bytes could not be read.
-    public
-    func read(count capacity:Int) -> [UInt8]?
-    {
-        let buffer:[UInt8] = .init(unsafeUninitializedCapacity: capacity)
-        {
-            (buffer:inout UnsafeMutableBufferPointer<UInt8>, count:inout Int) in
+    public func read(count capacity: Int) -> [UInt8]? {
+        let buffer: [UInt8] = .init(unsafeUninitializedCapacity: capacity) {
+            (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             #if os(Android)
             let baseAddress = buffer.baseAddress!
             #else
             let baseAddress = buffer.baseAddress
             #endif
-            count = fread(baseAddress, MemoryLayout<UInt8>.stride,
-                capacity, self.descriptor)
+            count = fread(
+                baseAddress, MemoryLayout<UInt8>.stride,
+                capacity, self.descriptor
+            )
         }
 
-        guard buffer.count == capacity
-        else
-        {
+        guard buffer.count == capacity else {
             return nil
         }
 
@@ -127,42 +117,33 @@ extension System.File.Source
     /// file or a link to a file.
     ///
     /// This property queries the file size using `stat`.
-    public
-    var count:Int?
-    {
-        let descriptor:Int32 = fileno(self.descriptor)
-        guard descriptor != -1
-        else
-        {
+    public var count: Int? {
+        let descriptor: Int32 = fileno(self.descriptor)
+        guard descriptor != -1 else {
             return nil
         }
 
-        guard let status:stat =
-        ({
-            var status:stat = .init()
-            guard fstat(descriptor, &status) == 0
-            else
+        guard let status: stat = (
             {
-                return nil
-            }
-            return status
-        }())
-        else
-        {
+                var status: stat = .init()
+                guard fstat(descriptor, &status) == 0 else {
+                    return nil
+                }
+                return status
+            }()
+        ) else {
             return nil
         }
 
         #if os(Windows)
-        switch Int32.init(status.st_mode) & S_IFMT
-        {
+        switch Int32.init(status.st_mode) & S_IFMT {
         case S_IFREG:
             break
         default:
             return nil
         }
         #else
-        switch status.st_mode & S_IFMT
-        {
+        switch status.st_mode & S_IFMT {
         case S_IFREG, S_IFLNK:
             break
         default:
@@ -173,8 +154,7 @@ extension System.File.Source
         return Int.init(status.st_size)
     }
 }
-extension System.File.Destination
-{
+extension System.File.Destination {
     /// Calls a closure with an interface for writing to the specified file.
     ///
     /// This method automatically closes the file when its closure argument returns.
@@ -191,19 +171,13 @@ extension System.File.Destination
     /// -   Returns:
     ///     The return value of the closure argument, or `nil` if the specified
     ///     file could not be opened.
-    public static
-    func open<R>(path:String, _ body:(inout Self) throws -> R)
-        rethrows -> R?
-    {
-        guard let descriptor:System.File.Descriptor = fopen(path, "wb")
-        else
-        {
+    public static func open<R>(path: String, _ body: (inout Self) throws -> R) rethrows -> R? {
+        guard let descriptor: System.File.Descriptor = fopen(path, "wb") else {
             return nil
         }
 
-        var file:Self = .init(descriptor: descriptor)
-        defer
-        {
+        var file: Self = .init(descriptor: descriptor)
+        defer {
             fclose(file.descriptor)
         }
 
@@ -219,23 +193,20 @@ extension System.File.Destination
     /// -   Returns:
     ///     A ``Void`` tuple if the entire array argument could be written,
     ///     or `nil` otherwise.
-    public
-    func write(_ buffer:[UInt8]) -> Void?
-    {
-        let count:Int = buffer.withUnsafeBufferPointer
-        {
+    public func write(_ buffer: [UInt8]) -> Void? {
+        let count: Int = buffer.withUnsafeBufferPointer {
             #if os(Android)
             let baseAddress = $0.baseAddress!
             #else
             let baseAddress = $0.baseAddress
             #endif
-            return fwrite(baseAddress, MemoryLayout<UInt8>.stride,
-                $0.count, self.descriptor)
+            return fwrite(
+                baseAddress, MemoryLayout<UInt8>.stride,
+                $0.count, self.descriptor
+            )
         }
 
-        guard count == buffer.count
-        else
-        {
+        guard count == buffer.count else {
             return nil
         }
 
@@ -244,15 +215,12 @@ extension System.File.Destination
 }
 
 // declare conformance (as a formality)
-extension System.File.Source:PNG.BytestreamSource
-{
+extension System.File.Source: PNG.BytestreamSource {
 }
-extension System.File.Destination:PNG.BytestreamDestination
-{
+extension System.File.Destination: PNG.BytestreamDestination {
 }
 
-extension PNG.Image
-{
+extension PNG.Image {
     /// Decompresses and decodes a PNG from a file at the given file path.
     ///
     /// This interface is only available on MacOS and Linux. The
@@ -263,11 +231,8 @@ extension PNG.Image
     /// -   Returns:
     ///     The decoded image, or `nil` if the file at the given `path` could
     ///     not be opened.
-    public static
-    func decompress(path:String) throws -> Self?
-    {
-        try System.File.Source.open(path: path)
-        {
+    public static func decompress(path: String) throws -> Self? {
+        try System.File.Source.open(path: path) {
             try .decompress(stream: &$0)
         }
     }
@@ -305,11 +270,8 @@ extension PNG.Image
     /// -   Returns:
     ///     A ``Void`` tuple if the destination file could be opened
     ///     successfully, or `nil` otherwise.
-    public
-    func compress(path:String, level:Int = 9, hint:Int = 1 << 15) throws -> Void?
-    {
-        try System.File.Destination.open(path: path)
-        {
+    public func compress(path: String, level: Int = 9, hint: Int = 1 << 15) throws -> Void? {
+        try System.File.Destination.open(path: path) {
             try self.compress(stream: &$0, level: level, hint: hint)
         }
     }

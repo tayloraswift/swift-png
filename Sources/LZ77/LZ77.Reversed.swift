@@ -1,21 +1,14 @@
-extension LZ77
-{
-    enum Reversed
-    {
+extension LZ77 {
+    enum Reversed {
         // these are only used by the deflator in deflate.swift,, the inflator
         // reads these values from the Semistatic table, for memory locality
-        static
-        subscript<T>(byte:T) -> T where T:BinaryInteger
-        {
-            self.table.withUnsafeBufferPointer
-            {
+        static subscript<T>(byte: T) -> T where T: BinaryInteger {
+            self.table.withUnsafeBufferPointer {
                 .init($0[.init(byte)])
             }
         }
 
-        static
-        let table:[UInt8] =
-        [
+        static let table: [UInt8] = [
             0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0,
             0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
             0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8,

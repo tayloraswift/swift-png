@@ -1,5 +1,4 @@
-extension LZ77
-{
+extension LZ77 {
     /// A decompression error.
     ///
     /// ## Topics
@@ -15,9 +14,7 @@ extension LZ77
     /// -   ``invalidHuffmanCodelengthSequence``
     /// -   ``invalidHuffmanTable``
     /// -   ``invalidStringReference``
-    public
-    enum DecompressionError:Error, Equatable, Sendable
-    {
+    public enum DecompressionError: Error, Equatable, Sendable {
         /// The modular redundancy checksum computed on the uncompressed data did not match the
         /// checksum declared in the compressed data stream footer.
         ///
@@ -25,7 +22,7 @@ extension LZ77
         /// ``StreamHeaderError.invalidCheckBits``, nor should it be confused with
         /// ``PNG.LexingError.invalidChunkChecksum(declared:computed:)``, which refers to the
         /// cyclic redundancy checksum in every PNG chunk.
-        case invalidStreamChecksum(declared:UInt32, computed:UInt32)
+        case invalidStreamChecksum(declared: UInt32, computed: UInt32)
 
         /// A compressed block had an invalid block type code.
         ///

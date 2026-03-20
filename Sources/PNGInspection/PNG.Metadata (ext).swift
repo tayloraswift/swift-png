@@ -1,10 +1,7 @@
 import PNG
 
-extension PNG.Metadata:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.Metadata: CustomStringConvertible {
+    public var description: String {
         [
             // singletons
             [
@@ -19,8 +16,7 @@ extension PNG.Metadata:CustomStringConvertible
             ].compactMap{ $0 },
             self.suggestedPalettes.map      (\.description),
             self.text.map                   (\.description),
-            self.application.map
-            {
+            self.application.map {
                 """
                 <unknown> (\($0.type))
                 {

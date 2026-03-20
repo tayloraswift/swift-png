@@ -1,42 +1,28 @@
-extension PNG
-{
+extension PNG {
     /// The metadata in a PNG image.
-    public
-    struct Metadata
-    {
+    public struct Metadata {
         /// The image modification time.
-        public
-        var time:TimeModified?
+        public var time: TimeModified?
         /// The image chromaticity.
-        public
-        var chromaticity:Chromaticity?
+        public var chromaticity: Chromaticity?
         /// The image color profile.
-        public
-        var colorProfile:ColorProfile?
+        public var colorProfile: ColorProfile?
         /// The image color rendering mode.
-        public
-        var colorRendering:ColorRendering?
+        public var colorRendering: ColorRendering?
         /// The image gamma.
-        public
-        var gamma:Gamma?
+        public var gamma: Gamma?
         /// The frequency histogram of the image palette.
-        public
-        var histogram:Histogram?
+        public var histogram: Histogram?
         /// The physical dimensions of the image.
-        public
-        var physicalDimensions:PhysicalDimensions?
+        public var physicalDimensions: PhysicalDimensions?
         /// The image color precision.
-        public
-        var significantBits:SignificantBits?
+        public var significantBits: SignificantBits?
         /// The suggested palettes of the image.
-        public
-        var suggestedPalettes:[SuggestedPalette]
+        public var suggestedPalettes: [SuggestedPalette]
         /// The text comments in the image.
-        public
-        var text:[Text]
+        public var text: [Text]
         /// An array containing any unparsed application-specific chunks in the image.
-        public
-        var application:[(type:Chunk, data:[UInt8])]
+        public var application: [(type: Chunk, data: [UInt8])]
 
         /// Creates a metadata structure.
         ///
@@ -66,19 +52,19 @@ extension PNG
         ///
         /// This array is allowed to contain public PNG chunks, though it is recommended to use
         /// the library’s strongly-typed interfaces instead for such chunks.
-        public
-        init(time:PNG.TimeModified? = nil,
-            chromaticity:PNG.Chromaticity? = nil,
-            colorProfile:PNG.ColorProfile? = nil,
-            colorRendering:PNG.ColorRendering? = nil,
-            gamma:PNG.Gamma? = nil,
-            histogram:PNG.Histogram? = nil,
-            physicalDimensions:PNG.PhysicalDimensions? = nil,
-            significantBits:PNG.SignificantBits? = nil,
-            suggestedPalettes:[PNG.SuggestedPalette] = [],
-            text:[PNG.Text] = [],
-            application:[(type:PNG.Chunk, data:[UInt8])] = [])
-        {
+        public init(
+            time: PNG.TimeModified? = nil,
+            chromaticity: PNG.Chromaticity? = nil,
+            colorProfile: PNG.ColorProfile? = nil,
+            colorRendering: PNG.ColorRendering? = nil,
+            gamma: PNG.Gamma? = nil,
+            histogram: PNG.Histogram? = nil,
+            physicalDimensions: PNG.PhysicalDimensions? = nil,
+            significantBits: PNG.SignificantBits? = nil,
+            suggestedPalettes: [PNG.SuggestedPalette] = [],
+            text: [PNG.Text] = [],
+            application: [(type: PNG.Chunk, data: [UInt8])] = []
+        ) {
             self.time               = time
             self.chromaticity       = chromaticity
             self.colorProfile       = colorProfile
@@ -93,15 +79,12 @@ extension PNG
         }
     }
 }
-extension PNG.Metadata
-{
-    static
-    func unique<T>(assign type:PNG.Chunk, to destination:inout T?,
-        parser:() throws -> T) throws
-    {
-        guard destination == nil
-        else
-        {
+extension PNG.Metadata {
+    static func unique<T>(
+        assign type: PNG.Chunk, to destination: inout T?,
+        parser: () throws -> T
+    ) throws {
+        guard destination == nil else {
             throw PNG.DecodingError.duplicate(chunk: type)
         }
         destination = try parser()
@@ -147,19 +130,16 @@ extension PNG.Metadata
     ///         variable. Client applications are expected to initialize it to `nil`,
     ///         and should not overwrite it between subsequent calls while processing
     ///         the same image.
-    public mutating
-    func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8]),
-        pixel:PNG.Format.Pixel, palette:PNG.Palette?,
-        background:inout PNG.Background?,
-        transparency:inout PNG.Transparency?) throws
-    {
-        switch chunk.type
-        {
+    public mutating func push(
+        ancillary chunk: (type: PNG.Chunk, data: [UInt8]),
+        pixel: PNG.Format.Pixel, palette: PNG.Palette?,
+        background: inout PNG.Background?,
+        transparency: inout PNG.Transparency?
+    ) throws {
+        switch chunk.type {
         // check before-palette chunk ordering
         case .cHRM, .gAMA, .sRGB, .iCCP, .sBIT:
-            guard palette == nil
-            else
-            {
+            guard palette == nil else {
                 throw PNG.DecodingError.unexpected(chunk: chunk.type, after: .PLTE)
             }
         // check that chunk is not a critical chunk
@@ -172,64 +152,51 @@ extension PNG.Metadata
             break
         }
 
-        switch chunk.type
-        {
+        switch chunk.type {
         case .bKGD:
-            try Self.unique(assign: chunk.type, to: &background)
-            {
+            try Self.unique(assign: chunk.type, to: &background) {
                 try .init(parsing: chunk.data, pixel: pixel, palette: palette)
             }
         case .tRNS:
-            try Self.unique(assign: chunk.type, to: &transparency)
-            {
+            try Self.unique(assign: chunk.type, to: &transparency) {
                 try .init(parsing: chunk.data, pixel: pixel, palette: palette)
             }
 
         case .hIST:
-            guard let palette:PNG.Palette = palette
-            else
-            {
+            guard let palette: PNG.Palette = palette else {
                 throw PNG.DecodingError.required(chunk: .PLTE, before: .hIST)
             }
-            try Self.unique(assign: chunk.type, to: &self.histogram)
-            {
+            try Self.unique(assign: chunk.type, to: &self.histogram) {
                 try .init(parsing: chunk.data, palette: palette)
             }
 
         case .cHRM:
-            try Self.unique(assign: chunk.type, to: &self.chromaticity)
-            {
+            try Self.unique(assign: chunk.type, to: &self.chromaticity) {
                 try .init(parsing: chunk.data)
             }
         case .gAMA:
-            try Self.unique(assign: chunk.type, to: &self.gamma)
-            {
+            try Self.unique(assign: chunk.type, to: &self.gamma) {
                 try .init(parsing: chunk.data)
             }
         case .sRGB:
-            try Self.unique(assign: chunk.type, to: &self.colorRendering)
-            {
+            try Self.unique(assign: chunk.type, to: &self.colorRendering) {
                 try .init(parsing: chunk.data)
             }
         case .iCCP:
-            try Self.unique(assign: chunk.type, to: &self.colorProfile)
-            {
+            try Self.unique(assign: chunk.type, to: &self.colorProfile) {
                 try .init(parsing: chunk.data)
             }
         case .sBIT:
-            try Self.unique(assign: chunk.type, to: &self.significantBits)
-            {
+            try Self.unique(assign: chunk.type, to: &self.significantBits) {
                 try .init(parsing: chunk.data, pixel: pixel)
             }
 
         case .pHYs:
-            try Self.unique(assign: chunk.type, to: &self.physicalDimensions)
-            {
+            try Self.unique(assign: chunk.type, to: &self.physicalDimensions) {
                 try .init(parsing: chunk.data)
             }
         case .tIME:
-            try Self.unique(assign: chunk.type, to: &self.time)
-            {
+            try Self.unique(assign: chunk.type, to: &self.time) {
                 try .init(parsing: chunk.data)
             }
 

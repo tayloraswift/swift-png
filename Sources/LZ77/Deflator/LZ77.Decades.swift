@@ -1,30 +1,22 @@
-extension LZ77
-{
-    enum Decades
-    {
-        static
-        subscript(run run:Int) -> UInt8
-        {
+extension LZ77 {
+    enum Decades {
+        static subscript(run run: Int) -> UInt8 {
             assert(3 ...   258 ~= run)
             return Self.table[run - 3]
         }
-        static
-        subscript(distance distance:Int) -> UInt8
-        {
+        static subscript(distance distance: Int) -> UInt8 {
             assert(1 ... 32768 ~= distance)
             return distance <= 256 ?
-                Self.table[256 | (distance - 1)     ] :
-                Self.table[512 | (distance - 1) >> 7]
+            Self.table[256 | (distance - 1)     ] :
+            Self.table[512 | (distance - 1) >> 7]
         }
 
-        private static
-        let table:[UInt8] =
-        [
+        private static let table: [UInt8] = [
             // length codes
             // 257 ... 264
-             1,  2,  3,  4,  5,  6,  7,  8,
+            1,  2,  3,  4,  5,  6,  7,  8,
             // 265 ... 268
-             9,  9, 10, 10, 11, 11, 12, 12,
+            9,  9, 10, 10, 11, 11, 12, 12,
             // 269 ... 272
             13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16,
             // 273 ... 274
@@ -50,13 +42,13 @@ extension LZ77
             28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 29,
             // distance codes
             // 0 ... 3
-             0,  1,  2,  3,
+            0,  1,  2,  3,
             // 4 ... 5
-             4,  4,  5,  5,
+            4,  4,  5,  5,
             // 6 ... 7
-             6,  6,  6,  6,  7,  7,  7,  7,
+            6,  6,  6,  6,  7,  7,  7,  7,
             // 8 ... 9
-             8,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9,
+            8,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9,
             // 10 ... 11
             10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
             11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
@@ -77,7 +69,7 @@ extension LZ77
             15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
             15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
             // ~~~ 7-bit fold ~~~
-             0,  0, // padding, to simplify index calculation
+            0,  0, // padding, to simplify index calculation
             16, 17,
             18, 18, 19, 19,
             20, 20, 20, 20, 21, 21, 21, 21,

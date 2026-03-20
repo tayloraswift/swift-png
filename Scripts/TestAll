@@ -1,6 +1,10 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
 swift --version
+swift package dollup --allow-writing-to-package-directory
+git diff --exit-code
+
 swift build
 swift build -c release
 #  Debug-only tests

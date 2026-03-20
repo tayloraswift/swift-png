@@ -1,5 +1,4 @@
-extension PNG
-{
+extension PNG {
     /// A background descriptor.
     ///
     /// This type models the information stored in a ``Chunk/bKGD`` chunk.
@@ -8,16 +7,12 @@ extension PNG
     ///
     /// The value of this descriptor is stored in the ``PNG.Background/case``
     /// property, after validation.
-    public
-    struct Background
-    {
+    public struct Background {
         /// The value of this background descriptor.
-        public
-        let `case`:Case
+        public let `case`: Case
     }
 }
-extension PNG.Background
-{
+extension PNG.Background {
     /// Creates a background descriptor.
     ///
     /// This initializer validates the background information against the
@@ -49,52 +44,38 @@ extension PNG.Background
     ///
     ///     If `case` is a ``Case/v(_:)`` or ``Case/rgb(_:)`` case,
     ///     this parameter is ignored.
-    public
-    init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?)
-    {
-        switch pixel
-        {
+    public init(case: Case, pixel: PNG.Format.Pixel, palette: PNG.Palette?) {
+        switch pixel {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-            guard case .v(let v) = `case`
-            else
-            {
+            guard case .v(let v) = `case` else {
                 fatalError("expected background of case `v` for pixel format `\(pixel)`")
             }
-            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
-            guard v <= max
-            else
-            {
+            let max: UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            guard v <= max else {
                 PNG.ParsingError.invalidBackgroundSample(v, max: max).fatal
             }
 
         case .rgb8, .rgb16, .rgba8, .rgba16:
-            guard case .rgb(let (r, g, b)) = `case`
-            else
-            {
+            guard case .rgb(let (r, g, b)) = `case` else {
                 fatalError("expected background of case `v` for pixel format `\(pixel)`")
             }
-            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
-            guard r <= max, g <= max, b <= max
-            else
-            {
+            let max: UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            guard r <= max, g <= max, b <= max else {
                 PNG.ParsingError.invalidBackgroundSample(Swift.max(r, g, b), max: max).fatal
             }
 
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette
-            else
-            {
+            guard let palette: PNG.Palette = palette else {
                 PNG.DecodingError.required(chunk: .PLTE, before: .bKGD).fatal
             }
-            guard case .palette(index: let index) = `case`
-            else
-            {
+            guard case .palette(index: let index) = `case` else {
                 fatalError("expected background of case `palette` for pixel format `\(pixel)`")
             }
-            guard index < palette.entries.count
-            else
-            {
-                PNG.ParsingError.invalidBackgroundIndex(index, max: palette.entries.count - 1).fatal
+            guard index < palette.entries.count else {
+                PNG.ParsingError.invalidBackgroundIndex(
+                    index,
+                    max: palette.entries.count - 1
+                ).fatal
             }
         }
 
@@ -115,85 +96,66 @@ extension PNG.Background
     /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against, if
     ///     applicable.
-    public
-    init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
-    {
-        switch pixel
-        {
+    public init(parsing data: [UInt8], pixel: PNG.Format.Pixel, palette: PNG.Palette?) throws {
+        switch pixel {
         case .v1, .v2, .v4, .v8, .v16, .va8, .va16:
-            guard data.count == 2
-            else
-            {
+            guard data.count == 2 else {
                 throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 2)
             }
 
-            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
-            let v:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-            guard v <= max
-            else
-            {
+            let max: UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let v: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+            guard v <= max else {
                 throw PNG.ParsingError.invalidBackgroundSample(v, max: max)
             }
             self.case = .v(v)
 
         case .rgb8, .rgb16, .rgba8, .rgba16:
-            guard data.count == 6
-            else
-            {
+            guard data.count == 6 else {
                 throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 6)
             }
 
-            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
-            let r:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
-                g:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
-                b:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-            guard r <= max, g <= max, b <= max
-            else
-            {
+            let max: UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let r: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
+            g: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
+            b: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+            guard r <= max, g <= max, b <= max else {
                 throw PNG.ParsingError.invalidBackgroundSample(Swift.max(r, g, b), max: max)
             }
             self.case = .rgb((r, g, b))
 
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette
-            else
-            {
+            guard let palette: PNG.Palette = palette else {
                 throw PNG.DecodingError.required(chunk: .PLTE, before: .bKGD)
             }
-            guard data.count == 1
-            else
-            {
+            guard data.count == 1 else {
                 throw PNG.ParsingError.invalidBackgroundChunkLength(data.count, expected: 1)
             }
-            let index:Int = .init(data[0])
-            guard index < palette.entries.count
-            else
-            {
-                throw PNG.ParsingError.invalidBackgroundIndex(index, max: palette.entries.count - 1)
+            let index: Int = .init(data[0])
+            guard index < palette.entries.count else {
+                throw PNG.ParsingError.invalidBackgroundIndex(
+                    index,
+                    max: palette.entries.count - 1
+                )
             }
             self.case = .palette(index: index)
         }
     }
     /// Encodes this background descriptor as the contents of a
     /// ``Chunk/bKGD`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        switch self.case
-        {
+    public var serialized: [UInt8] {
+        switch self.case {
         case .palette(index: let i):
             return [.init(i)]
         case .rgb(let c):
-            return .init(unsafeUninitializedCapacity: 6)
-            {
+            return .init(unsafeUninitializedCapacity: 6) {
                 $0.store(c.r, asBigEndian: UInt16.self, at: 0)
                 $0.store(c.g, asBigEndian: UInt16.self, at: 2)
                 $0.store(c.b, asBigEndian: UInt16.self, at: 4)
                 $1 = $0.count
             }
         case .v(let v):
-            return .init(unsafeUninitializedCapacity: 2)
-            {
+            return .init(unsafeUninitializedCapacity: 2) {
                 $0.store(v, asBigEndian: UInt16.self, at: 0)
                 $1 = $0.count
             }

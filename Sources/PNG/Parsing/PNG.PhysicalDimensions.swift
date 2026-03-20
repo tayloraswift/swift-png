@@ -1,15 +1,10 @@
-extension PNG
-{
+extension PNG {
     /// A physical dimensions descriptor.
     ///
     /// This type models the information stored in a ``Chunk/pHYs`` chunk.
-    public
-    struct PhysicalDimensions
-    {
+    public struct PhysicalDimensions {
         /// A unit of measurement.
-        public
-        enum Unit
-        {
+        public enum Unit {
             /// The meter.
             ///
             /// For conversion purposes, one inch is assumed to equal exactly
@@ -21,8 +16,7 @@ extension PNG
         ///
         /// If `unit` is `nil`, the pixel density is unknown,
         /// and the `x` and `y` values specify the pixel aspect ratio only.
-        public
-        let density:(x:Int, y:Int, unit:Unit?)
+        public let density: (x: Int, y: Int, unit: Unit?)
 
         /// Creates a physical dimensions descriptor.
         /// -   Parameter density:
@@ -31,32 +25,24 @@ extension PNG
         ///
         ///     If `unit` is `nil`, the pixel density is unknown,
         ///     and the `x` and `y` values specify the pixel aspect ratio only.
-        public
-        init(density:(x:Int, y:Int, unit:Unit?))
-        {
+        public init(density: (x: Int, y: Int, unit: Unit?)) {
             self.density = density
         }
     }
 }
-extension PNG.PhysicalDimensions
-{
+extension PNG.PhysicalDimensions {
     /// Creates a physical dimensions descriptor by parsing the given chunk data.
     /// -   Parameter data:
     ///     The contents of a ``Chunk/pHYs`` chunk to parse.
-    public
-    init(parsing data:[UInt8]) throws
-    {
-        guard data.count == 9
-        else
-        {
+    public init(parsing data: [UInt8]) throws {
+        guard data.count == 9 else {
             throw PNG.ParsingError.invalidPhysicalDimensionsChunkLength(data.count)
         }
 
         self.density.x = data.load(bigEndian: UInt32.self, as: Int.self, at: 0)
         self.density.y = data.load(bigEndian: UInt32.self, as: Int.self, at: 4)
 
-        switch data[8]
-        {
+        switch data[8] {
         case 0:     self.density.unit = nil
         case 1:     self.density.unit = .meter
         case let code:
@@ -64,16 +50,12 @@ extension PNG.PhysicalDimensions
         }
     }
     /// Encodes this physical dimensions descriptor as the contents of a ``Chunk/pHYs`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        .init(unsafeUninitializedCapacity: 9)
-        {
-            $0.store(self.density.x, asBigEndian: UInt32.self, at:  0)
-            $0.store(self.density.y, asBigEndian: UInt32.self, at:  4)
+    public var serialized: [UInt8] {
+        .init(unsafeUninitializedCapacity: 9) {
+            $0.store(self.density.x, asBigEndian: UInt32.self, at: 0)
+            $0.store(self.density.y, asBigEndian: UInt32.self, at: 4)
 
-            switch self.density.unit
-            {
+            switch self.density.unit {
             case nil:       $0[8] = 0
             case .meter?:   $0[8] = 1
             }
@@ -81,15 +63,14 @@ extension PNG.PhysicalDimensions
         }
     }
 }
-extension PNG.PhysicalDimensions:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.PhysicalDimensions: CustomStringConvertible {
+    public var description: String {
         """
         PNG.\(Self.self) (\(PNG.Chunk.pHYs))
         {
-            density     : (x: \(self.density.x), y: \(self.density.y)) \(self.density.unit.map{ "/ \($0)" } ?? "(no units)")
+            density     : (x: \(self.density.x), y: \(self.density.y)) \(
+            self.density.unit.map{ "/ \($0)" } ?? "(no units)"
+        )
         }
         """
     }

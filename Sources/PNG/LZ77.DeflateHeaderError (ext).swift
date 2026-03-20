@@ -1,20 +1,14 @@
 import LZ77
 
-extension LZ77.StreamHeaderError:PNG.Error
-{
+extension LZ77.StreamHeaderError: PNG.Error {
     /// The string `"Stream header error"`.
-    public static
-    var namespace:String
-    {
+    public static var namespace: String {
         "Stream header error"
     }
 
     /// A human-readable summary of this error.
-    public
-    var message:String
-    {
-        switch self
-        {
+    public var message: String {
+        switch self {
         case .invalidCompressionMethod:
             "invalid rfc-1950 stream compression method code"
         case .invalidWindowSize:
@@ -26,11 +20,8 @@ extension LZ77.StreamHeaderError:PNG.Error
         }
     }
     /// An optional human-readable string providing additional details about this error.
-    public
-    var details:String?
-    {
-        switch self
-        {
+    public var details: String? {
+        switch self {
         case .invalidCompressionMethod(let code):
             "(\(code)) is not a valid compression method code"
         case .invalidWindowSize(exponent: let exponent):
