@@ -1,7 +1,8 @@
 // swift-tools-version:5.8
 import PackageDescription
 
-let package:Package = .init(name: "swift-png",
+let package: Package = .init(
+    name: "swift-png",
     platforms: [.macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v6)],
     products: [
         .library(name: "LZ77", targets: ["LZ77"]),
@@ -15,40 +16,51 @@ let package:Package = .init(name: "swift-png",
         .package(url: "https://github.com/rarestype/h", from: "1.0.1"),
     ],
     targets: [
-        .target(name: "LZ77",
+        .target(
+            name: "LZ77",
             dependencies: [
                 .product(name: "CRC", package: "h"),
-            ]),
+            ]
+        ),
 
-        .target(name: "PNG",
+        .target(
+            name: "PNG",
             dependencies: [
                 .target(name: "LZ77"),
-            ]),
+            ]
+        ),
 
-        .target(name: "PNGInspection",
+        .target(
+            name: "PNGInspection",
             dependencies: [
                 .target(name: "PNG"),
-            ]),
+            ]
+        ),
 
-        .testTarget(name: "LZ77Tests",
+        .testTarget(
+            name: "LZ77Tests",
             dependencies: [
                 .target(name: "LZ77"),
             ],
             path: "Sources/LZ77Tests",
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
-            ]),
+            ]
+        ),
 
-        .testTarget(name: "PNGTests",
+        .testTarget(
+            name: "PNGTests",
             dependencies: [
                 .target(name: "PNG"),
             ],
             path: "Sources/PNGTests",
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
-            ]),
+            ]
+        ),
 
-        .testTarget(name: "PNGIntegrationTests",
+        .testTarget(
+            name: "PNGIntegrationTests",
             dependencies: [
                 .target(name: "PNG"),
             ],
@@ -59,33 +71,39 @@ let package:Package = .init(name: "swift-png",
                 "Inputs/",
                 "Outputs/",
                 "RGBA/",
-            ]),
+            ]
+        ),
 
-        .testTarget(name: "PNGCompressionTests",
+        .testTarget(
+            name: "PNGCompressionTests",
             dependencies: [
                 .target(name: "PNG"),
             ],
-            path: "Sources/PNGCompressionTests"),
+            path: "Sources/PNGCompressionTests"
+        ),
 
-        .executableTarget(name: "PNGCompressionBenchmarks",
+        .executableTarget(
+            name: "PNGCompressionBenchmarks",
             dependencies: [
                 .target(name: "PNG"),
             ],
-            path: "Benchmarks/Compression/Swift"),
+            path: "Benchmarks/Compression/Swift"
+        ),
 
-        .executableTarget(name: "PNGDecompressionBenchmarks",
+        .executableTarget(
+            name: "PNGDecompressionBenchmarks",
             dependencies: [
                 .target(name: "PNG"),
             ],
-            path: "Benchmarks/Decompression/Swift"),
+            path: "Benchmarks/Decompression/Swift"
+        ),
     ],
     swiftLanguageVersions: [.v5]
 )
 
-for target:PackageDescription.Target in package.targets
-{
+for target: PackageDescription.Target in package.targets {
     {
-        var settings:[PackageDescription.SwiftSetting] = $0 ?? []
+        var settings: [PackageDescription.SwiftSetting] = $0 ?? []
 
         settings.append(.enableUpcomingFeature("BareSlashRegexLiterals"))
         settings.append(.enableUpcomingFeature("ConciseMagicFile"))

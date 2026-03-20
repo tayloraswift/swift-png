@@ -1,5 +1,4 @@
-extension PNG
-{
+extension PNG {
     /// A color format.
     ///
     /// This color format enumeration combines two sets of PNG color formats.
@@ -15,9 +14,7 @@ extension PNG
     ///
     /// Color format validation takes place when initializing a ``Layout`` instance,
     /// which stores the color format in a ``Image`` image.
-    @frozen public
-    enum Format
-    {
+    @frozen public enum Format {
         /// A 1-bit grayscale color format.
         ///
         /// This color format has a ``pixel`` format of ``Pixel/v1``.
@@ -28,7 +25,7 @@ extension PNG
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible. The sample is
         ///     unscaled, and must be in the range `0 ... 1`.
-        case v1(fill:UInt8?, key:UInt8?)
+        case v1(fill: UInt8?, key: UInt8?)
         /// A 2-bit grayscale color format.
         ///
         /// This color format has a ``pixel`` format of ``Pixel/v2``.
@@ -39,7 +36,7 @@ extension PNG
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible. The sample is
         ///     unscaled, and must be in the range `0 ... 3`.
-        case v2(fill:UInt8?, key:UInt8?)
+        case v2(fill: UInt8?, key: UInt8?)
 
         /// A 4-bit grayscale color format.
         ///
@@ -51,7 +48,7 @@ extension PNG
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible. The sample is
         ///     unscaled, and must be in the range `0 ... 15`.
-        case v4(fill:UInt8?, key:UInt8?)
+        case v4(fill: UInt8?, key: UInt8?)
 
         /// An 8-bit grayscale color format.
         ///
@@ -61,7 +58,7 @@ extension PNG
         /// -   Parameter key:
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible.
-        case v8(fill:UInt8?, key:UInt8?)
+        case v8(fill: UInt8?, key: UInt8?)
 
         /// A 16-bit grayscale color format.
         ///
@@ -71,7 +68,7 @@ extension PNG
         /// -   Parameter key:
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible.
-        case v16(fill:UInt16?, key:UInt16?)
+        case v16(fill: UInt16?, key: UInt16?)
 
         /// An 8-bit BGR color format.
         ///
@@ -88,9 +85,11 @@ extension PNG
         /// -   Parameter key:
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible.
-        case bgr8(palette:[(b:UInt8, g:UInt8, r:UInt8)],
-            fill:(b:UInt8, g:UInt8, r:UInt8 )?,
-            key:(b:UInt8, g:UInt8, r:UInt8 )?)
+        case bgr8(
+            palette: [(b: UInt8, g: UInt8, r: UInt8)],
+            fill: (b: UInt8, g: UInt8, r: UInt8 )?,
+            key: (b: UInt8, g: UInt8, r: UInt8 )?
+        )
 
         /// An 8-bit RGB color format.
         ///
@@ -106,9 +105,11 @@ extension PNG
         /// -   Parameter key:
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible.
-        case rgb8(palette:[(r:UInt8, g:UInt8, b:UInt8)],
-            fill:(r:UInt8, g:UInt8, b:UInt8 )?,
-            key:(r:UInt8, g:UInt8, b:UInt8)?)
+        case rgb8(
+            palette: [(r: UInt8, g: UInt8, b: UInt8)],
+            fill: (r: UInt8, g: UInt8, b: UInt8 )?,
+            key: (r: UInt8, g: UInt8, b: UInt8)?
+        )
 
         /// A 16-bit RGB color format.
         ///
@@ -125,9 +126,11 @@ extension PNG
         /// -   Parameter key:
         ///     An optional chroma key. If present, pixels matching it
         ///     will be displayed as transparent, if possible.
-        case rgb16(palette:[(r:UInt8, g:UInt8, b:UInt8)],
-            fill:(r:UInt16, g:UInt16, b:UInt16)?,
-            key:(r:UInt16, g:UInt16, b:UInt16)?)
+        case rgb16(
+            palette: [(r: UInt8, g: UInt8, b: UInt8)],
+            fill: (r: UInt16, g: UInt16, b: UInt16)?,
+            key: (r: UInt16, g: UInt16, b: UInt16)?
+        )
 
         /// A 1-bit indexed color format.
         ///
@@ -140,7 +143,7 @@ extension PNG
         ///     must be within the index range of the `palette` array.
         ///
         ///     Most PNG viewers ignore this field.
-        case indexed1(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:Int?)
+        case indexed1(palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)], fill: Int?)
 
         /// A 2-bit indexed color format.
         ///
@@ -153,7 +156,7 @@ extension PNG
         ///     must be within the index range of the `palette` array.
         ///
         ///     Most PNG viewers ignore this field.
-        case indexed2(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:Int?)
+        case indexed2(palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)], fill: Int?)
 
         /// A 4-bit indexed color format.
         ///
@@ -166,7 +169,7 @@ extension PNG
         ///     must be within the index range of the `palette` array.
         ///
         ///     Most PNG viewers ignore this field.
-        case indexed4(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:Int?)
+        case indexed4(palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)], fill: Int?)
 
         /// An 8-bit indexed color format.
         ///
@@ -179,21 +182,21 @@ extension PNG
         ///     must be within the index range of the `palette` array.
         ///
         ///     Most PNG viewers ignore this field.
-        case indexed8(palette:[(r:UInt8, g:UInt8, b:UInt8, a:UInt8)], fill:Int?)
+        case indexed8(palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)], fill: Int?)
 
         /// An 8-bit grayscale-alpha color format.
         ///
         /// This color format has a ``pixel`` format of ``Pixel/va8``.
         /// -   Parameter fill:
         ///     An optional background color. Most PNG viewers ignore this field.
-        case va8(fill:UInt8?)
+        case va8(fill: UInt8?)
 
         /// A 16-bit grayscale-alpha color format.
         ///
         /// This color format has a ``pixel`` format of ``Pixel/va16``.
         /// -   Parameter fill:
         ///     An optional background color. Most PNG viewers ignore this field.
-        case va16(fill:UInt16?)
+        case va16(fill: UInt16?)
 
         /// An 8-bit BGRA color format.
         ///
@@ -207,7 +210,10 @@ extension PNG
         ///     ``SuggestedPalette``.
         /// -   Parameter fill:
         ///     An optional background color. Most PNG viewers ignore this field.
-        case bgra8(palette:[(b:UInt8, g:UInt8, r:UInt8)], fill:(b:UInt8, g:UInt8, r:UInt8 )?)
+        case bgra8(
+            palette: [(b: UInt8, g: UInt8, r: UInt8)],
+            fill: (b: UInt8, g: UInt8, r: UInt8 )?
+        )
 
         /// An 8-bit RGBA color format.
         ///
@@ -220,7 +226,10 @@ extension PNG
         ///     ``SuggestedPalette``.
         /// -   Parameter fill:
         ///     An optional background color. Most PNG viewers ignore this field.
-        case rgba8(palette:[(r:UInt8, g:UInt8, b:UInt8)], fill:(r:UInt8, g:UInt8, b:UInt8 )?)
+        case rgba8(
+            palette: [(r: UInt8, g: UInt8, b: UInt8)],
+            fill: (r: UInt8, g: UInt8, b: UInt8 )?
+        )
 
         /// A 16-bit RGBA color format.
         ///
@@ -234,21 +243,20 @@ extension PNG
         ///     ``SuggestedPalette``.
         /// -   Parameter fill:
         ///     An optional background color. Most PNG viewers ignore this field.
-        case rgba16(palette:[(r:UInt8, g:UInt8, b:UInt8)], fill:(r:UInt16, g:UInt16, b:UInt16)?)
+        case rgba16(
+            palette: [(r: UInt8, g: UInt8, b: UInt8)],
+            fill: (r: UInt16, g: UInt16, b: UInt16)?
+        )
     }
 }
-extension PNG.Format
-{
+extension PNG.Format {
     // can’t use these in the enum cases because they are `internal` only
-    typealias RGB<T>  = (r:T, g:T, b:T)
-    typealias RGBA<T> = (r:T, g:T, b:T, a:T)
+    typealias RGB<T>  = (r: T, g: T, b: T)
+    typealias RGBA<T> = (r: T, g: T, b: T, a: T)
 
     /// The pixel format used by an image with this color format.
-    @inlinable public
-    var pixel:Pixel
-    {
-        switch self
-        {
+    @inlinable public var pixel: Pixel {
+        switch self {
         case .v1:       return .v1
         case .v2:       return .v2
         case .v4:       return .v4
@@ -271,30 +279,26 @@ extension PNG.Format
 
     // enum case constructors can’t perform validation, so we need to check
     // the range of the sample values with this function.
-    func validate() -> Self
-    {
-        let max:(sample:UInt16, count:Int, index:Int)
+    func validate() -> Self {
+        let max: (sample: UInt16, count: Int, index: Int)
         max.sample  = .max >> (UInt16.bitWidth - self.pixel.depth)
         max.count   = 1    <<                min(self.pixel.depth, 8)
         // palette cannot contain more entries than bit depth allows
-        switch self
-        {
+        switch self {
         case    .bgr8    (palette: let palette, fill: _, key: _),
-                .bgra8   (palette: let palette, fill: _):
+            .bgra8   (palette: let palette, fill: _):
             max.index = palette.count - 1
         case
-                .rgb8    (palette: let palette, fill: _, key: _),
-                .rgb16   (palette: let palette, fill: _, key: _),
-                .rgba8   (palette: let palette, fill: _),
-                .rgba16  (palette: let palette, fill: _):
+            .rgb8    (palette: let palette, fill: _, key: _),
+            .rgb16   (palette: let palette, fill: _, key: _),
+            .rgba8   (palette: let palette, fill: _),
+            .rgba16  (palette: let palette, fill: _):
             max.index = palette.count - 1
         case    .indexed1(palette: let palette, fill: _),
-                .indexed2(palette: let palette, fill: _),
-                .indexed4(palette: let palette, fill: _),
-                .indexed8(palette: let palette, fill: _):
-            guard !palette.isEmpty
-            else
-            {
+            .indexed2(palette: let palette, fill: _),
+            .indexed4(palette: let palette, fill: _),
+            .indexed8(palette: let palette, fill: _):
+            guard !palette.isEmpty else {
                 PNG.ParsingError.invalidPaletteCount(0, max: max.count).fatal
             }
             max.index = palette.count - 1
@@ -302,45 +306,35 @@ extension PNG.Format
             max.index =                -1
         }
 
-        guard max.index < max.count
-        else
-        {
+        guard max.index < max.count else {
             PNG.ParsingError.invalidPaletteCount(max.index + 1, max: max.count).fatal
         }
 
-        switch self
-        {
+        switch self {
         case    .v1(fill: let fill?, key: _),
-                .v2(fill: let fill?, key: _),
-                .v4(fill: let fill?, key: _):
-            let fill:UInt16 = .init(fill)
-            guard fill <= max.sample
-            else
-            {
+            .v2(fill: let fill?, key: _),
+            .v4(fill: let fill?, key: _):
+            let fill: UInt16 = .init(fill)
+            guard fill <= max.sample else {
                 PNG.ParsingError.invalidBackgroundSample(fill, max: max.sample).fatal
             }
         case    .indexed1(palette: _, fill: let i?),
-                .indexed2(palette: _, fill: let i?),
-                .indexed4(palette: _, fill: let i?),
-                .indexed8(palette: _, fill: let i?):
-            guard i <= max.index
-            else
-            {
+            .indexed2(palette: _, fill: let i?),
+            .indexed4(palette: _, fill: let i?),
+            .indexed8(palette: _, fill: let i?):
+            guard i <= max.index else {
                 PNG.ParsingError.invalidBackgroundIndex(i, max: max.index).fatal
             }
         default:
             break
         }
 
-        switch self
-        {
+        switch self {
         case    .v1(fill: _?, key: let key?),
-                .v2(fill: _?, key: let key?),
-                .v4(fill: _?, key: let key?):
-            let key:UInt16 = .init(key)
-            guard key <= max.sample
-            else
-            {
+            .v2(fill: _?, key: let key?),
+            .v4(fill: _?, key: let key?):
+            let key: UInt16 = .init(key)
+            guard key <= max.sample else {
                 PNG.ParsingError.invalidTransparencySample(key, max: max.sample).fatal
             }
         default:
@@ -352,39 +346,33 @@ extension PNG.Format
 
     // this function assumes all inputs have been validated for consistency,
     // except for the presence of the palette argument itself.
-    static
-    func recognize(standard:PNG.Standard, pixel:PNG.Format.Pixel,
-        palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?)
-        -> Self?
-    {
-        let format:Self
-        switch pixel
-        {
+    static func recognize(
+        standard: PNG.Standard, pixel: PNG.Format.Pixel,
+        palette: PNG.Palette?, background: PNG.Background?, transparency: PNG.Transparency?
+    )
+    -> Self? {
+        let format: Self
+        switch pixel {
         case .v1, .v2, .v4, .v8, .v16:
-            guard palette == nil
-            else
-            {
+            guard palette == nil else {
                 PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
             }
-            let f:UInt16?,
-                k:UInt16?
-            switch background?.case
-            {
+            let f: UInt16?,
+            k: UInt16?
+            switch background?.case {
             case .v(let v)?:    f = v
             case nil:           f = nil
             default:
                 fatalError("expected background of case `v` for pixel format `\(pixel)`")
             }
-            switch transparency?.case
-            {
+            switch transparency?.case {
             case .v(let v)?:    k = v
             case nil:           k = nil
             default:
                 fatalError("expected transparency of case `v` for pixel format `\(pixel)`")
             }
 
-            switch pixel
-            {
+            switch pixel {
             case .v1:
                 format = .v1(fill: f.map(UInt8.init(_:)), key: k.map(UInt8.init(_:)))
             case .v2:
@@ -400,34 +388,35 @@ extension PNG.Format
             }
 
         case .rgb8, .rgb16:
-            let palette:[RGB<UInt8>] = palette?.entries ?? []
-            let f:RGB<UInt16>?,
-                k:RGB<UInt16>?
-            switch background?.case
-            {
+            let palette: [RGB<UInt8>] = palette?.entries ?? []
+            let f: RGB<UInt16>?,
+            k: RGB<UInt16>?
+            switch background?.case {
             case .rgb(let c)?:  f = c
             case nil:           f = nil
             default:
                 fatalError("expected background of case `rgb` for pixel format `\(pixel)`")
             }
-            switch transparency?.case
-            {
+            switch transparency?.case {
             case .rgb(let c)?:  k = c
             case nil:           k = nil
             default:
                 fatalError("expected transparency of case `rgb` for pixel format `\(pixel)`")
             }
 
-            switch (standard, pixel)
-            {
+            switch (standard, pixel) {
             case (.common,  .rgb8):
-                format = .rgb8(palette: palette,
+                format = .rgb8(
+                    palette: palette,
                     fill: f.map{ (.init($0.r), .init($0.g), .init($0.b)) },
-                    key:  k.map{ (.init($0.r), .init($0.g), .init($0.b)) })
+                    key: k.map{ (.init($0.r), .init($0.g), .init($0.b)) }
+                )
             case (.ios,     .rgb8):
-                format = .bgr8(palette: palette.map{ ($0.b, $0.g, $0.r) },
+                format = .bgr8(
+                    palette: palette.map{ ($0.b, $0.g, $0.r) },
                     fill: f.map{ (.init($0.b), .init($0.g), .init($0.r)) },
-                    key:  k.map{ (.init($0.b), .init($0.g), .init($0.r)) })
+                    key: k.map{ (.init($0.b), .init($0.g), .init($0.r)) }
+                )
             case (_,        .rgb16):
                 format = .rgb16(palette: palette, fill: f, key: k)
             default:
@@ -435,41 +424,38 @@ extension PNG.Format
             }
 
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let solid:PNG.Palette = palette
-            else
-            {
+            guard let solid: PNG.Palette = palette else {
                 return nil
             }
-            let f:Int?
-            switch background?.case
-            {
+            let f: Int?
+            switch background?.case {
             case .palette(let i):   f = i
             case nil:               f = nil
             default:
                 fatalError("expected background of case `palette` for pixel format `\(pixel)`")
             }
 
-            let palette:[RGBA<UInt8>]
-            switch transparency?.case
-            {
+            let palette: [RGBA<UInt8>]
+            switch transparency?.case {
             case nil:
                 palette =          solid.entries.map        { (  $0.r,   $0.g,   $0.b, .max) }
             case .palette(let alpha):
-                guard alpha.count <= solid.entries.count
-                else
-                {
-                    PNG.ParsingError.invalidTransparencyCount(alpha.count,
-                        max: solid.entries.count).fatal
+                guard alpha.count <= solid.entries.count else {
+                    PNG.ParsingError.invalidTransparencyCount(
+                        alpha.count,
+                        max: solid.entries.count
+                    ).fatal
                 }
 
                 palette =      zip(solid.entries, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } +
-                    solid.entries.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
+                solid.entries.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
             default:
-                fatalError("expected transparency of case `palette` for pixel format `\(pixel)`")
+                fatalError(
+                    "expected transparency of case `palette` for pixel format `\(pixel)`"
+                )
             }
 
-            switch pixel
-            {
+            switch pixel {
             case .indexed1:
                 format = .indexed1(palette: palette, fill: f)
             case .indexed2:
@@ -483,28 +469,22 @@ extension PNG.Format
             }
 
         case .va8, .va16:
-            guard palette == nil
-            else
-            {
+            guard palette == nil else {
                 PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
             }
-            guard transparency == nil
-            else
-            {
+            guard transparency == nil else {
                 PNG.ParsingError.unexpectedTransparency(pixel: pixel).fatal
             }
 
-            let f:UInt16?
-            switch background?.case
-            {
+            let f: UInt16?
+            switch background?.case {
             case .v(let v)?:    f = v
             case nil:           f = nil
             default:
                 fatalError("expected background of case `v` for pixel format `\(pixel)`")
             }
 
-            switch pixel
-            {
+            switch pixel {
             case .va8:
                 format = .va8( fill: f.map(UInt8.init(_:)))
             case .va16:
@@ -514,30 +494,30 @@ extension PNG.Format
             }
 
         case .rgba8, .rgba16:
-            guard transparency == nil
-            else
-            {
+            guard transparency == nil else {
                 PNG.ParsingError.unexpectedTransparency(pixel: pixel).fatal
             }
 
-            let palette:[RGB<UInt8>] = palette?.entries ?? []
-            let f:RGB<UInt16>?
-            switch background?.case
-            {
+            let palette: [RGB<UInt8>] = palette?.entries ?? []
+            let f: RGB<UInt16>?
+            switch background?.case {
             case .rgb(let c)?:  f = c
             case nil:           f = nil
             default:
                 fatalError("expected background of case `rgb` for pixel format `\(pixel)`")
             }
 
-            switch (standard, pixel)
-            {
+            switch (standard, pixel) {
             case (.common,  .rgba8):
-                format = .rgba8(palette: palette,
-                    fill: f.map{ (.init($0.r), .init($0.g), .init($0.b)) })
+                format = .rgba8(
+                    palette: palette,
+                    fill: f.map{ (.init($0.r), .init($0.g), .init($0.b)) }
+                )
             case (.ios,     .rgba8):
-                format = .bgra8(palette: palette.map{ ($0.b, $0.g, $0.r) },
-                    fill: f.map{ (.init($0.b), .init($0.g), .init($0.r)) })
+                format = .bgra8(
+                    palette: palette.map{ ($0.b, $0.g, $0.r) },
+                    fill: f.map{ (.init($0.b), .init($0.g), .init($0.r)) }
+                )
             case (_,        .rgba16):
                 format = .rgba16(palette: palette, fill: f)
             default:

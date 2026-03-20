@@ -47,17 +47,14 @@ Decode an image:
 
 ```swift
 import PNG
-func decode(png path:String) throws
-{
+func decode(png path: String) throws {
     guard
-    let image:PNG.Image = try .decompress(path: path)
-    else
-    {
+    let image: PNG.Image = try .decompress(path: path) else {
         // failed to access file from file system
     }
 
-    let rgba:[PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self),
-        size:(x:Int, y:Int)    = image.size
+    let rgba: [PNG.RGBA<UInt8>] = image.unpack(as: PNG.RGBA<UInt8>.self),
+        size:(x:Int, y:Int) = image.size
     // ...
 }
 ```
@@ -65,10 +62,12 @@ func decode(png path:String) throws
 Encode an image:
 
 ```swift
-func encode(png path:String, size:(x:Int, y:Int), pixels:[PNG.RGBA<UInt8>]) throws
-{
-    let image:PNG.Image = .init(packing: pixels, size: size,
-        layout: .init(format: .rgba8(palette: [], fill: nil)))
+func encode(png path: String, size: (x:Int, y:Int), pixels: [PNG.RGBA<UInt8>]) throws {
+    let image: PNG.Image = .init(
+        packing: pixels,
+        size: size,
+        layout: .init(format: .rgba8(palette: [], fill: nil))
+    )
     try image.compress(path: path, level: 9)
 }
 ```

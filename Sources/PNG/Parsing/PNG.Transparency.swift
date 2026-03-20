@@ -1,5 +1,4 @@
-extension PNG
-{
+extension PNG {
     /// A transparency descriptor.
     ///
     /// This type models the information stored in a ``Chunk/tRNS`` chunk.
@@ -8,16 +7,12 @@ extension PNG
     ///
     /// The value of this descriptor is stored in the ``PNG.Transparency/case``
     /// property, after validation.
-    public
-    struct Transparency
-    {
+    public struct Transparency {
         /// The value of this transparency descriptor.
-        public
-        let `case`:Case
+        public let `case`: Case
     }
 }
-extension PNG.Transparency
-{
+extension PNG.Transparency {
     /// Creates a transparency descriptor.
     ///
     /// This initializer validates the transparency information against the
@@ -52,53 +47,41 @@ extension PNG.Transparency
     ///
     ///     If `case` is a ``Case/v(key:)`` or ``Case/rgb(key:)`` case,
     ///     this parameter is ignored.
-    public
-    init(case:Case, pixel:PNG.Format.Pixel, palette:PNG.Palette?)
-    {
-        switch pixel
-        {
+    public init(case: Case, pixel: PNG.Format.Pixel, palette: PNG.Palette?) {
+        switch pixel {
         case .v1, .v2, .v4, .v8, .v16:
-            guard case .v(key: let v) = `case`
-            else
-            {
+            guard case .v(key: let v) = `case` else {
                 fatalError("expected transparency of case `v` for pixel format `\(pixel)`")
             }
 
-            let max:UInt16 = .max >> (UInt16.bitWidth - pixel.depth)
-            guard v <= max
-            else
-            {
+            let max: UInt16 = .max >> (UInt16.bitWidth - pixel.depth)
+            guard v <= max else {
                 PNG.ParsingError.invalidTransparencySample(v, max: max).fatal
             }
 
         case .rgb8, .rgb16:
-            guard case .rgb(key: let (r, g, b)) = `case`
-            else
-            {
+            guard case .rgb(key: let (r, g, b)) = `case` else {
                 fatalError("expected transparency of case `rgb` for pixel format `\(pixel)`")
             }
-            let max:UInt16 = .max >> (UInt16.bitWidth - pixel.depth)
-            guard r <= max, g <= max, b <= max
-            else
-            {
+            let max: UInt16 = .max >> (UInt16.bitWidth - pixel.depth)
+            guard r <= max, g <= max, b <= max else {
                 PNG.ParsingError.invalidTransparencySample(Swift.max(r, g, b), max: max).fatal
             }
 
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette
-            else
-            {
+            guard let palette: PNG.Palette = palette else {
                 PNG.DecodingError.required(chunk: .PLTE, before: .tRNS).fatal
             }
-            guard case .palette(alpha: let alpha) = `case`
-            else
-            {
-                fatalError("expected transparency of case `palette` for pixel format `\(pixel)`")
+            guard case .palette(alpha: let alpha) = `case` else {
+                fatalError(
+                    "expected transparency of case `palette` for pixel format `\(pixel)`"
+                )
             }
-            guard alpha.count <= palette.entries.count
-            else
-            {
-                PNG.ParsingError.invalidTransparencyCount(alpha.count, max: palette.entries.count).fatal
+            guard alpha.count <= palette.entries.count else {
+                PNG.ParsingError.invalidTransparencyCount(
+                    alpha.count,
+                    max: palette.entries.count
+                ).fatal
             }
 
         case .va8, .va16, .rgba8, .rgba16:
@@ -122,55 +105,43 @@ extension PNG.Transparency
     /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against, if
     ///     applicable.
-    public
-    init(parsing data:[UInt8], pixel:PNG.Format.Pixel, palette:PNG.Palette?) throws
-    {
-        switch pixel
-        {
+    public init(parsing data: [UInt8], pixel: PNG.Format.Pixel, palette: PNG.Palette?) throws {
+        switch pixel {
         case .v1, .v2, .v4, .v8, .v16:
-            guard data.count == 2
-            else
-            {
+            guard data.count == 2 else {
                 throw PNG.ParsingError.invalidTransparencyChunkLength(data.count, expected: 2)
             }
 
-            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
-            let v:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
-            guard v <= max
-            else
-            {
+            let max: UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let v: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0)
+            guard v <= max else {
                 throw PNG.ParsingError.invalidTransparencySample(v, max: max)
             }
             self.case =  .v(key: v)
 
         case .rgb8, .rgb16:
-            guard data.count == 6
-            else
-            {
+            guard data.count == 6 else {
                 throw PNG.ParsingError.invalidTransparencyChunkLength(data.count, expected: 6)
             }
 
-            let max:UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
-            let r:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
-                g:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
-                b:UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
-            guard r <= max, g <= max, b <= max
-            else
-            {
+            let max: UInt16  = .max >> (UInt16.bitWidth - pixel.depth)
+            let r: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 0),
+            g: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 2),
+            b: UInt16    = data.load(bigEndian: UInt16.self, as: UInt16.self, at: 4)
+            guard r <= max, g <= max, b <= max else {
                 throw PNG.ParsingError.invalidTransparencySample(Swift.max(r, g, b), max: max)
             }
             self.case =  .rgb(key: (r, g, b))
 
         case .indexed1, .indexed2, .indexed4, .indexed8:
-            guard let palette:PNG.Palette = palette
-            else
-            {
+            guard let palette: PNG.Palette = palette else {
                 throw PNG.DecodingError.required(chunk: .PLTE, before: .tRNS)
             }
-            guard data.count <= palette.entries.count
-            else
-            {
-                throw PNG.ParsingError.invalidTransparencyCount(data.count, max: palette.entries.count)
+            guard data.count <= palette.entries.count else {
+                throw PNG.ParsingError.invalidTransparencyCount(
+                    data.count,
+                    max: palette.entries.count
+                )
             }
             self.case =  .palette(alpha: data)
 
@@ -179,28 +150,22 @@ extension PNG.Transparency
         }
     }
     /// Encodes this transparency descriptor as the contents of a ``Chunk/tRNS`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        switch self.case
-        {
+    public var serialized: [UInt8] {
+        switch self.case {
         case .palette(alpha: let alpha):
-            return .init(unsafeUninitializedCapacity: alpha.count)
-            {
+            return .init(unsafeUninitializedCapacity: alpha.count) {
                 $0.baseAddress?.update(from: alpha, count: $0.count)
                 $1 = $0.count
             }
         case .rgb(key: let c):
-            return .init(unsafeUninitializedCapacity: 6)
-            {
+            return .init(unsafeUninitializedCapacity: 6) {
                 $0.store(c.r, asBigEndian: UInt16.self, at: 0)
                 $0.store(c.g, asBigEndian: UInt16.self, at: 2)
                 $0.store(c.b, asBigEndian: UInt16.self, at: 4)
                 $1 = $0.count
             }
         case .v(key: let v):
-            return .init(unsafeUninitializedCapacity: 2)
-            {
+            return .init(unsafeUninitializedCapacity: 2) {
                 $0.store(v, asBigEndian: UInt16.self, at: 0)
                 $1 = $0.count
             }

@@ -1,179 +1,147 @@
 import PNG
 import Testing
 
-@Suite
-enum Roundtripping
-{
+@Suite enum Roundtripping {
     @Test(arguments: Self.basic)
-    static func DecodeBasic(_ name:String) throws
-    {
+    static func DecodeBasic(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.interlaced)
-    static func DecodeInterlaced(_ name:String) throws
-    {
+    static func DecodeInterlaced(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.oddSizes)
-    static func DecodeOddSizes(_ name:String) throws
-    {
+    static func DecodeOddSizes(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.backgrounds)
-    static func DecodeBackgrounds(_ name:String) throws
-    {
+    static func DecodeBackgrounds(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.transparency)
-    static func DecodeTransparency(_ name:String) throws
-    {
+    static func DecodeTransparency(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.gamma)
-    static func DecodeGamma(_ name:String) throws
-    {
+    static func DecodeGamma(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.filters)
-    static func DecodeFilters(_ name:String) throws
-    {
+    static func DecodeFilters(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.palettes)
-    static func DecodePalettes(_ name:String) throws
-    {
+    static func DecodePalettes(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.ancillary)
-    static func DecodeAncillary(_ name:String) throws
-    {
+    static func DecodeAncillary(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.chunkOrdering)
-    static func DecodeChunkOrdering(_ name:String) throws
-    {
+    static func DecodeChunkOrdering(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.lz77)
-    static func DecodeLZ77(_ name:String) throws
-    {
+    static func DecodeLZ77(_ name: String) throws {
         try Self.decode(name, subdirectory: "Common")
     }
 
     @Test(arguments: Self.iOS)
-    static func DecodeiPhoneOptimized(_ name:String) throws
-    {
+    static func DecodeiPhoneOptimized(_ name: String) throws {
         try Self.decode(name, subdirectory: "iOS")
     }
 
 
     @Test(arguments: Self.basic, [4, 7, 10])
-    static func EncodeBasic(_ name:String, _ level:Int) throws
-    {
+    static func EncodeBasic(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.interlaced, [4, 7, 10])
-    static func EncodeInterlaced(_ name:String, _ level:Int) throws
-    {
+    static func EncodeInterlaced(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.oddSizes, [4, 7, 10])
-    static func EncodeOddSizes(_ name:String, _ level:Int) throws
-    {
+    static func EncodeOddSizes(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.backgrounds, [4, 7, 10])
-    static func EncodeBackgrounds(_ name:String, _ level:Int) throws
-    {
+    static func EncodeBackgrounds(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.transparency, [4, 7, 10])
-    static func EncodeTransparency(_ name:String, _ level:Int) throws
-    {
+    static func EncodeTransparency(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.gamma, [4, 7, 10])
-    static func EncodeGamma(_ name:String, _ level:Int) throws
-    {
+    static func EncodeGamma(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.filters, [4, 7, 10])
-    static func EncodeFilters(_ name:String, _ level:Int) throws
-    {
+    static func EncodeFilters(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.palettes, [4, 7, 10])
-    static func EncodePalettes(_ name:String, _ level:Int) throws
-    {
+    static func EncodePalettes(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.ancillary, [4, 7, 10])
-    static func EncodeAncillary(_ name:String, _ level:Int) throws
-    {
+    static func EncodeAncillary(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.chunkOrdering, [4, 7, 10])
-    static func EncodeChunkOrdering(_ name:String, _ level:Int) throws
-    {
+    static func EncodeChunkOrdering(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.lz77, [4, 7, 10])
-    static func EncodeLZ77(_ name:String, _ level:Int) throws
-    {
+    static func EncodeLZ77(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "Common", level: level)
     }
 
     @Test(arguments: Self.iOS, [13])
-    static func EncodeiPhoneOptimized(_ name:String, _ level:Int) throws
-    {
+    static func EncodeiPhoneOptimized(_ name: String, _ level: Int) throws {
         try Self.encode(name, subdirectory: "iOS", level: level)
     }
 }
-extension Roundtripping
-{
-    private
-    static func decode(_ name:String, subdirectory:String) throws
-    {
-        try Self.decode(path:
-            (
+extension Roundtripping {
+    private static func decode(_ name: String, subdirectory: String) throws {
+        try Self.decode(
+            path: (
                 "Sources/PNGIntegrationTests/Inputs/\(subdirectory)/\(name).png",
                 "Sources/PNGIntegrationTests/RGBA/\(name).png.rgba"
             ),
-            premultiplied: subdirectory == "iOS")
+            premultiplied: subdirectory == "iOS"
+        )
     }
 
-    private
-    static func decode(path:(in:String, rgba:String), premultiplied:Bool) throws
-    {
+    private static func decode(path: (in: String, rgba: String), premultiplied: Bool) throws {
         guard
-        let rectangular:PNG.Image = try .decompress(path: path.in)
-        else
-        {
+        let rectangular: PNG.Image = try .decompress(path: path.in) else {
             Issue.record("failed to open file '\(path.in)'")
             return
         }
 
-        let image:[PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
+        let image: [PNG.RGBA<UInt16>] = rectangular.unpack(as: PNG.RGBA<UInt16>.self)
 
         // if !Global.options.contains(.compact)
         // {
@@ -183,82 +151,68 @@ extension Roundtripping
         // }
 
         guard
-        let result:[PNG.RGBA<UInt16>]? = (System.File.Source.open(path: path.rgba)
-        {
-            let pixels:Int = rectangular.size.x * rectangular.size.y,
-                bytes:Int  = pixels * MemoryLayout<PNG.RGBA<UInt16>>.stride
+        let result: [PNG.RGBA<UInt16>]? = (
+            System.File.Source.open(path: path.rgba) {
+                let pixels: Int = rectangular.size.x * rectangular.size.y,
+                bytes: Int  = pixels * MemoryLayout<PNG.RGBA<UInt16>>.stride
 
-            guard
-            let data:[UInt8] = $0.read(count: bytes)
-            else
-            {
-                return nil
-            }
-
-            return (0 ..< pixels).map
-            {
-                let r:UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3),
-                    g:UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3 | 2),
-                    b:UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3 | 4),
-                    a:UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3 | 6)
-
-                let pixel:PNG.RGBA<UInt16> = .init(r, g, b, a)
-                // have to manually premultiply since the CgBI formula does the
-                // multiplication in 8-bit precision
-                if  premultiplied
-                {
-                    return pixel.premultiplied(as: UInt8.self)
+                guard
+                let data: [UInt8] = $0.read(count: bytes) else {
+                    return nil
                 }
-                else
-                {
-                    return pixel
+
+                return (0 ..< pixels).map {
+                    let r: UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3),
+                    g: UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3 | 2),
+                    b: UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3 | 4),
+                    a: UInt16 = data.load(littleEndian: UInt16.self, at: $0 << 3 | 6)
+
+                    let pixel: PNG.RGBA<UInt16> = .init(r, g, b, a)
+                    // have to manually premultiply since the CgBI formula does the
+                    // multiplication in 8-bit precision
+                    if  premultiplied {
+                        return pixel.premultiplied(as: UInt8.self)
+                    } else {
+                        return pixel
+                    }
                 }
             }
-        })
-        else
-        {
+        ) else {
             Issue.record("failed to open file '\(path.rgba)'")
             return
         }
 
-        guard let reference:[PNG.RGBA<UInt16>] = result
-        else
-        {
+        guard let reference: [PNG.RGBA<UInt16>] = result else {
             Issue.record("failed to read file '\(path.rgba)'")
             return
         }
 
-        for (i, pair):(Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
-            zip(image, reference).enumerated()
-        {
+        for (i, pair): (Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
+            zip(image, reference).enumerated() {
             #expect(pair.0 == pair.1, "mismatch in pixel \(i)")
         }
     }
 }
-extension Roundtripping
-{
-    private
-    static func encode(_ name:String, subdirectory:String, level:Int) throws
-    {
-        try Self.encode(path:
-            (
+extension Roundtripping {
+    private static func encode(_ name: String, subdirectory: String, level: Int) throws {
+        try Self.encode(
+            path: (
                 "Sources/PNGIntegrationTests/Inputs/\(subdirectory)/\(name).png",
                 "Sources/PNGIntegrationTests/RGBA/\(name).png.rgba",
                 "Sources/PNGIntegrationTests/Outputs/\(subdirectory)/\(name).png"
             ),
             level: level,
-            premultiplied: subdirectory == "iOS")
+            premultiplied: subdirectory == "iOS"
+        )
     }
 
-    private
-    static func encode(path:(in:String, rgba:String, out:String),
-        level:Int,
-        premultiplied:Bool) throws
-    {
+    private static func encode(
+        path: (in: String, rgba: String, out: String),
+        level: Int,
+        premultiplied: Bool
+    ) throws {
         guard
-        let rectangular:PNG.Image = try .decompress(path: path.in)
-        else
-        {
+        let rectangular: PNG.Image = try .decompress(path: path.in) else {
             Issue.record("failed to open file '\(path.in)'")
             return
         }
@@ -267,10 +221,8 @@ extension Roundtripping
         try Self.decode(path: (in: path.out, rgba: path.rgba), premultiplied: premultiplied)
     }
 }
-extension Roundtripping
-{
-    private
-    static let basic:[String] = [
+extension Roundtripping {
+    private static let basic: [String] = [
         "PngSuite",
 
         "basn0g01",
@@ -290,8 +242,7 @@ extension Roundtripping
         "basn6a16"
     ]
 
-    private
-    static let interlaced:[String] = [
+    private static let interlaced: [String] = [
         "basi0g01",
         "basi0g02",
         "basi0g04",
@@ -309,8 +260,7 @@ extension Roundtripping
         "basi6a16"
     ]
 
-    private
-    static let oddSizes:[String] = [
+    private static let oddSizes: [String] = [
         "s01i3p01",
         "s01n3p01",
         "s02i3p01",
@@ -349,8 +299,7 @@ extension Roundtripping
         "s40n3p04"
     ]
 
-    private
-    static let backgrounds:[String] = [
+    private static let backgrounds: [String] = [
         "bgai4a08",
         "bgai4a16",
         "bgan6a08",
@@ -361,8 +310,7 @@ extension Roundtripping
         "bgyn6a16"
     ]
 
-    private
-    static let transparency:[String] = [
+    private static let transparency: [String] = [
         "tbbn0g04",
         "tbbn2c16",
         "tbbn3p08",
@@ -379,8 +327,7 @@ extension Roundtripping
         "tp1n3p08"
     ]
 
-    private
-    static let gamma:[String] = [
+    private static let gamma: [String] = [
         "g03n0g16",
         "g03n2c08",
         "g03n3p04",
@@ -401,8 +348,7 @@ extension Roundtripping
         "g25n3p04"
     ]
 
-    private
-    static let filters:[String] = [
+    private static let filters: [String] = [
         "f00n0g08",
         "f00n2c08",
         "f01n0g08",
@@ -416,8 +362,7 @@ extension Roundtripping
         "f99n0g04"
     ]
 
-    private
-    static let palettes:[String] = [
+    private static let palettes: [String] = [
         "pp0n2c16",
         "pp0n6a08",
         "ps1n0g08",
@@ -426,8 +371,7 @@ extension Roundtripping
         "ps2n2c16"
     ]
 
-    private
-    static let ancillary:[String] = [
+    private static let ancillary: [String] = [
         "ccwn2c08",
         "ccwn3p08",
         "cdfn2c08",
@@ -455,8 +399,7 @@ extension Roundtripping
         "ctzn0g04"
     ]
 
-    private
-    static let chunkOrdering:[String] = [
+    private static let chunkOrdering: [String] = [
         "oi1n0g16",
         "oi1n2c16",
         "oi2n0g16",
@@ -467,16 +410,14 @@ extension Roundtripping
         "oi9n2c16"
     ]
 
-    private
-    static let lz77:[String] = [
+    private static let lz77: [String] = [
         "z00n2c08",
         "z03n2c08",
         "z06n2c08",
         "z09n2c08"
     ]
 
-    private
-    static let iOS:[String] = [
+    private static let iOS: [String] = [
         "PngSuite",
         "basi2c08",
         "basi6a08",

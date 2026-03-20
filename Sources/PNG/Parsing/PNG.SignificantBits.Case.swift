@@ -1,9 +1,6 @@
-extension PNG.SignificantBits
-{
+extension PNG.SignificantBits {
     /// A color precision case. This is a separate type for validation purposes.
-    @frozen public
-    enum Case
-    {
+    @frozen public enum Case {
         /// A color precision descriptor for a grayscale image.
         /// -   Parameter _:
         ///     The number of significant bits in each grayscale sample.
@@ -18,7 +15,7 @@ extension PNG.SignificantBits
         ///
         ///     Both precision values must be greater than zero, and neither
         ///     can be greater than the color depth of the image color format.
-        case va((v:Int, a:Int))
+        case va((v: Int, a: Int))
         /// A color precision descriptor for an RGB, BGR, or indexed image.
         /// -   Parameter _:
         ///     The number of significant bits in each red, green, and blue
@@ -37,7 +34,7 @@ extension PNG.SignificantBits
         ///
         ///     Each precision value must be greater than zero, and none of them
         ///     can be greater than the color depth of the image color format.
-        case rgb((r:Int, g:Int, b:Int))
+        case rgb((r: Int, g: Int, b: Int))
         /// A color precision descriptor for an RGBA or BGRA image.
         /// -   Parameter _:
         ///     The number of significant bits in each red, green, blue, and alpha
@@ -50,6 +47,6 @@ extension PNG.SignificantBits
         ///
         ///     Each precision value must be greater than zero, and none of them
         ///     can be greater than the color depth of the image color format.
-        case rgba((r:Int, g:Int, b:Int, a:Int))
+        case rgba((r: Int, g: Int, b: Int, a: Int))
     }
 }

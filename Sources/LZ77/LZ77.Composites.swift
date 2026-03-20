@@ -1,23 +1,15 @@
-extension LZ77
-{
-    enum Composites
-    {
+extension LZ77 {
+    enum Composites {
         // these are only used by the deflator in deflate.swift,, the inflator
         // reads these values from the Semistatic table, for memory locality
-        static
-        subscript(run decade:UInt8) -> (extra:UInt16, base:UInt16)
-        {
+        static subscript(run decade: UInt8) -> (extra: UInt16, base: UInt16) {
             return Self.table[.init(decade)]
         }
-        static
-        subscript(distance decade:UInt8) -> (extra:UInt16, base:UInt16)
-        {
+        static subscript(distance decade: UInt8) -> (extra: UInt16, base: UInt16) {
             return Self.table[.init(32 | decade)]
         }
 
-        static
-        let table:[(extra:UInt16, base:UInt16)] =
-        [
+        static let table: [(extra: UInt16, base: UInt16)] = [
             // front-padding, which allows us to use a bitmask to
             // get the decade index
             (0,   0),

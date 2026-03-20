@@ -1,10 +1,9 @@
 import PNG
 import Testing
 
-@Suite
-enum Compression
-{
-    @Test(arguments: [
+@Suite enum Compression {
+    @Test(
+        arguments: [
             "v8-monochrome-photographic",
             "v8-monochrome-nonphotographic",
             "v16-monochrome-photographic",
@@ -33,40 +32,34 @@ enum Compression
             "rgba16-color-photographic",
             "rgba16-monochrome-nonphotographic",
             "rgba16-color-nonphotographic",
-        ])
-    static func Encode(_ name:String) throws
-    {
-        let path:(png:String, out:String) =
-        (
+        ]
+    ) static func Encode(_ name: String) throws {
+        let path: (png: String, out: String) = (
             "Tests/Baselines/\(name).png",
             "Tests/Outputs/\(name).png"
         )
 
-        guard let baseline:(image:PNG.Image, size:Int) =
-            (try System.File.Source.open(path: path.png)
-        {
-            (try .decompress(stream: &$0), $0.count!)
-        })
-        else
-        {
+        guard let baseline: (image: PNG.Image, size: Int) = (
+            try System.File.Source.open(path: path.png) {
+                (try .decompress(stream: &$0), $0.count!)
+            }
+        ) else {
             Issue.record("failed to open file '\(path.png)'")
             return
         }
 
         try baseline.image.compress(path: path.out, level: 9)
 
-        guard let output:(image:PNG.Image, size:Int) =
-            (try System.File.Source.open(path: path.out)
-        {
-            (try .decompress(stream: &$0), $0.count!)
-        })
-        else
-        {
+        guard let output: (image: PNG.Image, size: Int) = (
+            try System.File.Source.open(path: path.out) {
+                (try .decompress(stream: &$0), $0.count!)
+            }
+        ) else {
             Issue.record("failed to open file '\(path.out)'")
             return
         }
 
-        let pixels:[PNG.RGBA<UInt16>] = baseline.image.unpack(as: PNG.RGBA<UInt16>.self)
+        let pixels: [PNG.RGBA<UInt16>] = baseline.image.unpack(as: PNG.RGBA<UInt16>.self)
 
         print()
         print(name)
@@ -76,9 +69,8 @@ enum Compression
             ratio: \(Double.init(output.size) / Double.init(baseline.size))
             """)
 
-        for (i, pair):(Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
-            zip(output.image.unpack(as: PNG.RGBA<UInt16>.self), pixels).enumerated()
-        {
+        for (i, pair): (Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
+            zip(output.image.unpack(as: PNG.RGBA<UInt16>.self), pixels).enumerated() {
             #expect(pair.0 == pair.1, "mismatch in pixel \(i)")
         }
     }

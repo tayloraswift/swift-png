@@ -1,17 +1,11 @@
-extension F14
-{
+extension F14 {
     /// A simple `(UInt32) -> UInt16` hashmap based on F14.
-    @frozen @usableFromInline
-    struct HashTable
-    {
-        private
-        var storage:ManagedBuffer<Void, UInt8>
-        private
-        var mask:Int
+    @frozen @usableFromInline struct HashTable {
+        private var storage: ManagedBuffer<Void, UInt8>
+        private var mask: Int
     }
 }
-extension F14.HashTable
-{
+extension F14.HashTable {
     //  memory layout:
     //
     //   +0 ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┐
@@ -37,47 +31,39 @@ extension F14.HashTable
     //  vector, because it’s not always efficient to extract a UInt16 from a
     //  vector register, and the first 64B of the district should be in the
     //  cache already anyway.
-    init(exponent:Int)
-    {
+    init(exponent: Int) {
         assert(MemoryLayout<F14.District.Row>.stride == 8)
         // to ensure a power-of-two number of districts, we size the table so
         // that there is an average of 8 key-value pairs per district, implying
         // a load factor of ~57 percent.
-        let districts:Int = 1 << (exponent - 3)
+        let districts: Int = 1 << (exponent - 3)
         // allocate with additional bytes to allow for alignment to 128-byte
         // cache boundaries
         self.storage    = .create(minimumCapacity: districts << 7 + 0x80){ _ in () }
         self.mask       = (districts &- 1) << 7
         // initialize memory to zero
-        self.withUnsafeMutableAlignedBytes
-        {
-            (buffer:UnsafeMutableRawPointer) -> () in
+        self.withUnsafeMutableAlignedBytes {
+            (buffer: UnsafeMutableRawPointer) -> () in
             buffer.initializeMemory(as: UInt8.self, repeating: 0, count: districts << 7)
         }
     }
 
-    func find(_ key:UInt32) -> UInt16?
-    {
-        self.withUnsafeMutableAlignedBytes
-        {
-            (buffer:UnsafeMutableRawPointer) -> UInt16? in
+    func find(_ key: UInt32) -> UInt16? {
+        self.withUnsafeMutableAlignedBytes {
+            (buffer: UnsafeMutableRawPointer) -> UInt16? in
 
-            let hash:F14.Hash = .init(key)
+            let hash: F14.Hash = .init(key)
 
-            let tag:UInt8 = hash.tag
-            let start:F14.District.Index = hash.startIndex(mask: self.mask)
-            var current:F14.District.Index = start
-            repeat
-            {
-                let district:F14.District = buffer + current,
-                    tagged:UInt16 = district.header.find(tag)
+            let tag: UInt8 = hash.tag
+            let start: F14.District.Index = hash.startIndex(mask: self.mask)
+            var current: F14.District.Index = start
+            repeat {
+                let district: F14.District = buffer + current,
+                tagged: UInt16 = district.header.find(tag)
 
-                var i:Int = tagged.trailingZeroBitCount
-                while i < 14
-                {
-                    guard district[i].key == key
-                    else
-                    {
+                var i: Int = tagged.trailingZeroBitCount
+                while i < 14 {
+                    guard district[i].key == key else {
                         // the 7-bit tags matched, but the full key did not.
                         // go to the next matching 7-bit tag.
                         i += 1 + (tagged &>> (i + 1)).trailingZeroBitCount
@@ -87,8 +73,7 @@ extension F14.HashTable
                     return district[i].value
                 }
 
-                if district.displaced == 0
-                {
+                if district.displaced == 0 {
                     // key was not found, and there have been no additional
                     // keys displaced from this district. the key is not
                     // in the dictionary.
@@ -101,8 +86,7 @@ extension F14.HashTable
                 // of districts. this means every district will get visited
                 // eventually, should the probing go on long enough.
                 current = hash.index(after: current, mask: self.mask)
-            }
-            while current != start
+            } while current != start
             // displacement counts indicated the existence of displaced keys,
             // but all districts have been searched, so the key is not in the
             // dictionary. (extremely unlikely.)
@@ -110,35 +94,27 @@ extension F14.HashTable
         }
     }
 
-    func remove(key:UInt32, value:UInt16)
-    {
-        self.withUnsafeMutableAlignedBytes
-        {
-            (buffer:UnsafeMutableRawPointer) in
+    func remove(key: UInt32, value: UInt16) {
+        self.withUnsafeMutableAlignedBytes {
+            (buffer: UnsafeMutableRawPointer) in
 
-            let hash:F14.Hash = .init(key)
+            let hash: F14.Hash = .init(key)
 
-            let tag:UInt8 = hash.tag,
-                start:F14.District.Index = hash.startIndex(mask: self.mask)
-            var current:F14.District.Index = start
-            repeat
-            {
-                let district:F14.District = buffer + current,
-                    tagged:UInt16 = district.header.find(tag)
+            let tag: UInt8 = hash.tag,
+            start: F14.District.Index = hash.startIndex(mask: self.mask)
+            var current: F14.District.Index = start
+            repeat {
+                let district: F14.District = buffer + current,
+                tagged: UInt16 = district.header.find(tag)
 
-                var i:Int = tagged.trailingZeroBitCount
-                while i < 14
-                {
-                    guard district[i].key == key
-                    else
-                    {
+                var i: Int = tagged.trailingZeroBitCount
+                while i < 14 {
+                    guard district[i].key == key else {
                         i += 1 + (tagged &>> (i + 1)).trailingZeroBitCount
                         continue
                     }
 
-                    guard district[i].value == value
-                    else
-                    {
+                    guard district[i].value == value else {
                         // key was found, but value does not match.
                         // do nothing.
                         return
@@ -150,65 +126,54 @@ extension F14.HashTable
 
                     // roll down the displacement counts up to, but not
                     // including the deletion point.
-                    while current != start
-                    {
+                    while current != start {
                         current = hash.index(before: current, mask: self.mask)
                         (buffer + current).displaced -= 1
                     }
                     return
                 }
 
-                if district.displaced == 0
-                {
+                if district.displaced == 0 {
                     return
                 }
 
                 current = hash.index(after: current, mask: self.mask)
-            }
-            while current != start
+            } while current != start
         }
     }
 
     @discardableResult
-    func update(key:UInt32, value:UInt16) -> UInt16?
-    {
-        self.withUnsafeMutableAlignedBytes
-        {
-            (buffer:UnsafeMutableRawPointer) in
+    func update(key: UInt32, value: UInt16) -> UInt16? {
+        self.withUnsafeMutableAlignedBytes {
+            (buffer: UnsafeMutableRawPointer) in
 
-            let hash:F14.Hash = .init(key)
+            let hash: F14.Hash = .init(key)
 
-            let tag:UInt8 = hash.tag,
-                start:F14.District.Index = hash.startIndex(mask: self.mask)
-            var current:F14.District.Index = start
-            repeat
-            {
-                let district:F14.District = buffer + current,
-                    tagged:UInt16 = district.header.find(tag)
+            let tag: UInt8 = hash.tag,
+            start: F14.District.Index = hash.startIndex(mask: self.mask)
+            var current: F14.District.Index = start
+            repeat {
+                let district: F14.District = buffer + current,
+                tagged: UInt16 = district.header.find(tag)
 
-                var i:Int = tagged.trailingZeroBitCount
-                while i < 14
-                {
-                    guard district[i].key == key
-                    else
-                    {
+                var i: Int = tagged.trailingZeroBitCount
+                while i < 14 {
+                    guard district[i].key == key else {
                         i += 1 + (tagged &>> (i + 1)).trailingZeroBitCount
                         continue
                     }
 
                     // key was found. update the value and return the old value
-                    let old:UInt16      = district[i].value
+                    let old: UInt16      = district[i].value
                     district[i].value   = value
                     return old
                 }
 
                 // key was not found. check for an empty slot
-                let available:UInt16 = district.header.find(0)
+                let available: UInt16 = district.header.find(0)
 
-                let j:Int = available.trailingZeroBitCount
-                guard j < 14
-                else
-                {
+                let j: Int = available.trailingZeroBitCount
+                guard j < 14 else {
                     // no matching key, or empty slot. maybe there is one in the
                     // next district over.
                     current = hash.index(after: current, mask: self.mask)
@@ -224,30 +189,24 @@ extension F14.HashTable
 
                 // print("insert(district: \(current.offset), slot: \(j))")
 
-                let insertion:F14.District.Index = current
-                var displaced:UInt16 = district.displaced
-                while displaced > 0
-                {
+                let insertion: F14.District.Index = current
+                var displaced: UInt16 = district.displaced
+                while displaced > 0 {
                     current = hash.index(after: current, mask: self.mask)
 
-                    guard current != start
-                    else
-                    {
+                    guard current != start else {
                         // displacement counts indicated the existence of displaced keys,
                         // but all districts have been searched, so no duplicate key is
                         // in the dictionary. (extremely unlikely.)
                         break
                     }
 
-                    let district:F14.District = buffer + current,
-                        tagged:UInt16 = district.header.find(tag)
+                    let district: F14.District = buffer + current,
+                    tagged: UInt16 = district.header.find(tag)
 
-                    var i:Int = tagged.trailingZeroBitCount
-                    while i < 14
-                    {
-                        guard district[i].key == key
-                        else
-                        {
+                    var i: Int = tagged.trailingZeroBitCount
+                    while i < 14 {
+                        guard district[i].key == key else {
                             i += 1 + (tagged &>> (i + 1)).trailingZeroBitCount
                             continue
                         }
@@ -256,12 +215,10 @@ extension F14.HashTable
                         // displacement counts starting from the insertion point
                         // up to (but not including) the deletion point
                         district.tags[i] = 0
-                        repeat
-                        {
+                        repeat {
                             current = hash.index(before: current, mask: self.mask)
                             (buffer + current).displaced -= 1
-                        }
-                        while current != insertion
+                        } while current != insertion
 
                         return district[i].value
                     }
@@ -273,15 +230,13 @@ extension F14.HashTable
                 // all the displacement counts up to (but not including)
                 // the insertion point.
                 current = insertion
-                while current != start
-                {
+                while current != start {
                     current = hash.index(before: current, mask: self.mask)
                     (buffer + current).displaced += 1
                 }
 
                 return nil
-            }
-            while current != start
+            } while current != start
 
             // dictionary has more empty slots than it will ever use (32K),
             // so it should be impossible to get here
@@ -289,18 +244,16 @@ extension F14.HashTable
         }
     }
 
-    private
-    func withUnsafeMutableAlignedBytes<R>(
-        _ body:(UnsafeMutableRawPointer) throws -> R) rethrows -> R
-    {
-        try self.storage.withUnsafeMutablePointerToElements
-        {
-            (allocation:UnsafeMutablePointer<UInt8>) -> R in
+    private func withUnsafeMutableAlignedBytes<R>(
+        _ body: (UnsafeMutableRawPointer) throws -> R
+    ) rethrows -> R {
+        try self.storage.withUnsafeMutablePointerToElements {
+            (allocation: UnsafeMutablePointer<UInt8>) -> R in
 
             // can use ! here because a null pointer bitpattern is impossible here
-            let aligned:Int = (.init(bitPattern: allocation) &+ 0x7f) & ~0x7f
-            let buffer:UnsafeMutableRawPointer =
-                UnsafeMutableRawPointer.init(bitPattern: aligned)!
+            let aligned: Int = (.init(bitPattern: allocation) &+ 0x7f) & ~0x7f
+            let buffer: UnsafeMutableRawPointer =
+            UnsafeMutableRawPointer.init(bitPattern: aligned)!
             return try body(buffer)
         }
     }

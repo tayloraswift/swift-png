@@ -1,20 +1,15 @@
-extension PNG
-{
+extension PNG {
     /// An image palette.
     ///
     /// This type models the information stored in a ``Chunk/PLTE`` chunk.
     /// This information is used to populate the non-alpha components of the
     /// `palette` field in an image color ``Format``, when appropriate.
-    @frozen public
-    struct Palette
-    {
+    @frozen public struct Palette {
         /// The entries in this palette.
-        public
-        let entries:[(r:UInt8, g:UInt8, b:UInt8)]
+        public let entries: [(r: UInt8, g: UInt8, b: UInt8)]
     }
 }
-extension PNG.Palette
-{
+extension PNG.Palette {
     /// Creates an image palette.
     ///
     /// This initializer validates the palette information against the given
@@ -27,18 +22,12 @@ extension PNG.Palette
     ///     The pixel format of the image this palette is to be used for.
     ///     If this parameter is a grayscale or grayscale-alpha format, this
     ///     initializer will suffer a precondition failure.
-    public
-    init(entries:[(r:UInt8, g:UInt8, b:UInt8)], pixel:PNG.Format.Pixel)
-    {
-        guard pixel.hasColor
-        else
-        {
+    public init(entries: [(r: UInt8, g: UInt8, b: UInt8)], pixel: PNG.Format.Pixel) {
+        guard pixel.hasColor else {
             PNG.ParsingError.unexpectedPalette(pixel: pixel).fatal
         }
-        let max:Int = 1 << Swift.min(pixel.depth, 8)
-        guard 1 ... max ~= entries.count
-        else
-        {
+        let max: Int = 1 << Swift.min(pixel.depth, 8)
+        guard 1 ... max ~= entries.count else {
             PNG.ParsingError.invalidPaletteCount(entries.count, max: max).fatal
         }
 
@@ -50,44 +39,32 @@ extension PNG.Palette
     ///     The contents of a ``Chunk/PLTE`` chunk to parse.
     /// -   Parameter pixel:
     ///     The pixel format specifying how the chunk data is to be interpreted.
-    public
-    init(parsing data:[UInt8], pixel:PNG.Format.Pixel) throws
-    {
-        guard pixel.hasColor
-        else
-        {
+    public init(parsing data: [UInt8], pixel: PNG.Format.Pixel) throws {
+        guard pixel.hasColor else {
             throw PNG.ParsingError.unexpectedPalette(pixel: pixel)
         }
 
-        let (count, remainder):(Int, Int) = data.count.quotientAndRemainder(dividingBy: 3)
-        guard remainder == 0
-        else
-        {
+        let (count, remainder): (Int, Int) = data.count.quotientAndRemainder(dividingBy: 3)
+        guard remainder == 0 else {
             throw PNG.ParsingError.invalidPaletteChunkLength(data.count)
         }
 
         // check number of palette entries
-        let max:Int = 1 << Swift.min(pixel.depth, 8)
-        guard 1 ... max ~= count
-        else
-        {
+        let max: Int = 1 << Swift.min(pixel.depth, 8)
+        guard 1 ... max ~= count else {
             throw PNG.ParsingError.invalidPaletteCount(count, max: max)
         }
 
-        self.entries = stride(from: data.startIndex, to: data.endIndex, by: 3).map
-        {
-            (base:Int) in (r: data[base], g: data[base + 1], b: data[base + 2])
+        self.entries = stride(from: data.startIndex, to: data.endIndex, by: 3).map {
+            (base: Int) in
+            (r: data[base], g: data[base + 1], b: data[base + 2])
         }
     }
     /// Encodes this image palette as the contents of a ``Chunk/PLTE`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        .init(unsafeUninitializedCapacity: 3 * self.entries.count)
-        {
-            for (i, c):(Int, (r:UInt8, g:UInt8, b:UInt8)) in
-                zip(stride(from: $0.startIndex, to: $0.endIndex, by: 3), self.entries)
-            {
+    public var serialized: [UInt8] {
+        .init(unsafeUninitializedCapacity: 3 * self.entries.count) {
+            for (i, c): (Int, (r: UInt8, g: UInt8, b: UInt8)) in
+                zip(stride(from: $0.startIndex, to: $0.endIndex, by: 3), self.entries) {
                 $0[i    ] = c.r
                 $0[i + 1] = c.g
                 $0[i + 2] = c.b

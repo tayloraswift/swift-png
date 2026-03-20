@@ -1,20 +1,15 @@
 import LZ77
 
-extension PNG
-{
+extension PNG {
     /// An embedded color profile.
     ///
     /// This type models the information stored in an ``Chunk/iCCP`` chunk.
-    public
-    struct ColorProfile
-    {
+    public struct ColorProfile {
         /// The name of this profile.
-        public
-        let name:String
+        public let name: String
         /// The uncompressed [ICC](http://www.color.org/index.xalter) color
         /// profile data.
-        public
-        let profile:[UInt8]
+        public let profile: [UInt8]
 
         /// Creates a color profile.
         /// -   Parameter name:
@@ -28,12 +23,8 @@ extension PNG
         ///     The uncompressed [ICC](http://www.color.org/index.xalter) color
         ///     profile data. The data will be compressed when this color profile
         ///     is ``serialized`` into an ``Chunk/iCCP`` chunk.
-        public
-        init(name:String, profile:[UInt8])
-        {
-            guard PNG.Text.validate(name: name.unicodeScalars)
-            else
-            {
+        public init(name: String, profile: [UInt8]) {
+            guard PNG.Text.validate(name: name.unicodeScalars) else {
                 PNG.ParsingError.invalidColorProfileName(name).fatal
             }
 
@@ -42,73 +33,57 @@ extension PNG
         }
     }
 }
-extension PNG.ColorProfile
-{
+extension PNG.ColorProfile {
     /// Creates a color profile by parsing the given chunk data.
     /// -   Parameter data:
     ///     The contents of an ``Chunk/iCCP`` chunk to parse.
-    public
-    init(parsing data:[UInt8]) throws
-    {
+    public init(parsing data: [UInt8]) throws {
         //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┐
         //  │    name    │ 0 │ M │        profile         │
         //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶ ╶┘
         //               k  k+1 k+2
-        let k:Int
+        let k: Int
 
-        (self.name, k) = try PNG.Text.name(parsing: data[...])
-        {
+        (self.name, k) = try PNG.Text.name(parsing: data[...]) {
             PNG.ParsingError.invalidColorProfileName($0)
         }
 
         // assert existence of method byte
-        guard k + 1 < data.endIndex
-        else
-        {
+        guard k + 1 < data.endIndex else {
             throw PNG.ParsingError.invalidColorProfileChunkLength(data.count, min: k + 2)
         }
 
-        guard data[k + 1] == 0
-        else
-        {
+        guard data[k + 1] == 0 else {
             throw PNG.ParsingError.invalidColorProfileCompressionMethodCode(data[k + 1])
         }
 
-        var inflator:LZ77.Inflator = .init()
-        guard case nil = try inflator.push(data.dropFirst(k + 2))
-        else
-        {
+        var inflator: LZ77.Inflator = .init()
+        guard case nil = try inflator.push(data.dropFirst(k + 2)) else {
             throw PNG.ParsingError.incompleteColorProfileCompressedDatastream
         }
 
         self.profile = inflator.pull()
     }
     /// Encodes this color profile as the contents of an ``Chunk/iCCP`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        var data:[UInt8] = []
+    public var serialized: [UInt8] {
+        var data: [UInt8] = []
         data.reserveCapacity(2 + self.name.count)
 
         data.append(contentsOf: self.name.unicodeScalars.map{ .init($0.value) })
         data.append(0)
         data.append(0) // compression method
 
-        var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
-            deflator.push(self.profile[...], last: true)
-        while let segment:[UInt8] = deflator.pull()
-        {
+        var deflator: LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
+        deflator.push(self.profile[...], last: true)
+        while let segment: [UInt8] = deflator.pull() {
             data.append(contentsOf: segment)
         }
 
         return data
     }
 }
-extension PNG.ColorProfile:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.ColorProfile: CustomStringConvertible {
+    public var description: String {
         """
         PNG.\(Self.self) (\(PNG.Chunk.iCCP))
         {

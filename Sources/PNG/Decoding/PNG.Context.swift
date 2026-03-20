@@ -1,23 +1,17 @@
-extension PNG
-{
+extension PNG {
     /// A decoding context.
     ///
     /// This type provides support for custom decoding schemes. You can
     /// work through an example of its usage in the
     /// [online decoding tutorial](https://github.com/tayloraswift/swift-png/tree/master/examples#online-decoding).
-    public
-    struct Context
-    {
+    public struct Context {
         /// The current image state.
-        public private(set)
-        var image:PNG.Image
+        public private(set) var image: PNG.Image
 
-        private
-        var decoder:PNG.Decoder
+        private var decoder: PNG.Decoder
     }
 }
-extension PNG.Context
-{
+extension PNG.Context {
     /// Creates a fresh decoding context.
     ///
     /// It is expected that client applications will initialize a decoding
@@ -52,22 +46,21 @@ extension PNG.Context
     ///     to access the image while it is in a partially-decoded state.
     ///
     ///     The default value is `true`.
-    public
-    init?(standard:PNG.Standard, header:PNG.Header,
-        palette:PNG.Palette?, background:PNG.Background?, transparency:PNG.Transparency?,
-        metadata:PNG.Metadata,
-        uninitialized:Bool = true)
-    {
-        guard let image:PNG.Image = PNG.Image.init(
-            standard:       standard,
-            header:         header,
-            palette:        palette,
-            background:     background,
-            transparency:   transparency,
-            metadata:       metadata,
-            uninitialized:  uninitialized)
-        else
-        {
+    public init?(
+        standard: PNG.Standard, header: PNG.Header,
+        palette: PNG.Palette?, background: PNG.Background?, transparency: PNG.Transparency?,
+        metadata: PNG.Metadata,
+        uninitialized: Bool = true
+    ) {
+        guard let image: PNG.Image = PNG.Image.init(
+            standard: standard,
+            header: header,
+            palette: palette,
+            background: background,
+            transparency: transparency,
+            metadata: metadata,
+            uninitialized: uninitialized
+        ) else {
             return nil
         }
 
@@ -84,21 +77,19 @@ extension PNG.Context
     ///     effect for ``Layout/interlaced`` images.
     ///
     ///     The default value is `false`.
-    public mutating
-    func push(data:[UInt8], overdraw:Bool = false) throws
-    {
-        try self.decoder.push(data, size: self.image.size,
+    public mutating func push(data: [UInt8], overdraw: Bool = false) throws {
+        try self.decoder.push(
+            data, size: self.image.size,
             pixel: self.image.layout.format.pixel,
-            delegate: overdraw ?
-        {
-            let s:(x:Int, y:Int) = ($1.x == 0 ? 0 : 1, $1.y & 0b111 == 0 ? 0 : 1)
-            self.image.assign(scanline: $0, at: $1, stride: $2.x)
-            self.image.overdraw(            at: $1, brush: ($2.x >> s.x, $2.y >> s.y))
-        }
-        :
-        {
-            self.image.assign(scanline: $0, at: $1, stride: $2.x)
-        })
+            delegate: overdraw ? {
+                let s: (x: Int, y: Int) = ($1.x == 0 ? 0 : 1, $1.y & 0b111 == 0 ? 0 : 1)
+                self.image.assign(scanline: $0, at: $1, stride: $2.x)
+                self.image.overdraw(            at: $1, brush: ($2.x >> s.x, $2.y >> s.y))
+            }
+                : {
+                self.image.assign(scanline: $0, at: $1, stride: $2.x)
+            }
+        )
     }
     /// Parses an ancillary chunk appearing after the last ``Chunk/IDAT``
     /// chunk, and adds it to the ``image`` ``Image/metadata``.
@@ -117,14 +108,10 @@ extension PNG.Context
     ///     or a private application data chunk type.
     ///
     ///     All other chunk types will `throw` appropriate errors.
-    public mutating
-    func push(ancillary chunk:(type:PNG.Chunk, data:[UInt8])) throws
-    {
-        switch chunk.type
-        {
+    public mutating func push(ancillary chunk: (type: PNG.Chunk, data: [UInt8])) throws {
+        switch chunk.type {
         case .tIME:
-            try PNG.Metadata.unique(assign: chunk.type, to: &self.image.metadata.time)
-            {
+            try PNG.Metadata.unique(assign: chunk.type, to: &self.image.metadata.time) {
                 try .init(parsing: chunk.data)
             }
         case .iTXt:
@@ -135,9 +122,7 @@ extension PNG.Context
             .cHRM, .gAMA, .sRGB, .iCCP, .sBIT, .pHYs, .sPLT, .IDAT:
             throw PNG.DecodingError.unexpected(chunk: chunk.type, after: .IDAT)
         case .IEND:
-            guard self.decoder.continue == nil
-            else
-            {
+            guard self.decoder.continue == nil else {
                 throw PNG.DecodingError.incompleteImageDataCompressedDatastream
             }
         default:

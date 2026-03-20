@@ -1,14 +1,11 @@
 import LZ77
 
-extension PNG
-{
+extension PNG {
     /// A text comment.
     ///
     /// This type models the information stored in a ``Chunk/tEXt``,
     /// ``Chunk/zTXt``, or ``Chunk/iTXt`` chunk.
-    public
-    struct Text
-    {
+    public struct Text {
         /// Indicates if the text is (or is to be) stored in compressed or
         /// uncompressed form within a PNG file.
         ///
@@ -16,21 +13,18 @@ extension PNG
         /// ``Chunk/zTXt`` chunk, and `false` if it was a ``Chunk/tEXt``
         /// chunk. If the original chunk was an ``Chunk/iTXt`` chunk,
         /// this flag can be either `true` or `false`.
-        public
-        let compressed:Bool
+        public let compressed: Bool
         /// A keyword tag, in english, and possibly a non-english language.
         ///
         /// If the text is in english, the `localized` keyword is the empty string `""`.
-        public
-        let keyword:(english:String, localized:String),
+        public let keyword: (english: String, localized: String),
         /// An array representing an [rfc-1766](https://www.ietf.org/rfc/rfc1766.txt)
         /// language tag, where each element is a language subtag.
         ///
         /// If this array is empty, then the language is unspecified.
-            language:[String]
+        language: [String]
         /// The text content.
-        public
-        let content:String
+        public let content: String
 
         /// Creates a text comment.
         /// -   Parameter compressed:
@@ -61,25 +55,18 @@ extension PNG
         /// -   Parameter content:
         ///     The text content. There are no restrictions on it. It is allowed
         ///     (but not recommended) to contain null characters.
-        public
-        init(compressed:Bool, keyword:(english:String, localized:String),
-            language:[String], content:String)
-        {
-            guard Self.validate(name: keyword.english.unicodeScalars)
-            else
-            {
+        public init(
+            compressed: Bool, keyword: (english: String, localized: String),
+            language: [String], content: String
+        ) {
+            guard Self.validate(name: keyword.english.unicodeScalars) else {
                 PNG.ParsingError.invalidTextEnglishKeyword(keyword.english).fatal
             }
-            guard (keyword.localized.unicodeScalars.allSatisfy{ $0 != "\u{0}" })
-            else
-            {
+            guard (keyword.localized.unicodeScalars.allSatisfy{ $0 != "\u{0}" }) else {
                 fatalError("localized keyword must not contain any null characters")
             }
-            for tag:String in language
-            {
-                guard Self.validate(language: tag.unicodeScalars)
-                else
-                {
+            for tag: String in language {
+                guard Self.validate(language: tag.unicodeScalars) else {
                     PNG.ParsingError.invalidTextLanguageTag(tag).fatal
                 }
             }
@@ -91,8 +78,7 @@ extension PNG
         }
     }
 }
-extension PNG.Text
-{
+extension PNG.Text {
     /// Creates a text comment by parsing the given chunk data, interpreting
     /// it either as a unicode text chunk, or a latin-1 text chunk.
     /// -   Parameter data:
@@ -106,61 +92,47 @@ extension PNG.Text
     ///
     ///     If this flag is set to `false`, the text is assumed to be in english,
     ///     and the ``language`` tag will be set to `["en"]`.
-    public
-    init(parsing data:[UInt8], unicode:Bool = true) throws
-    {
+    public init(parsing data: [UInt8], unicode: Bool = true) throws {
         //  ┌ ╶ ╶ ╶ ╶ ╶ ╶┬───┬───┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┬───┬ ╶ ╶ ╶ ╶ ╶ ╶┐
         //  │   keyword  │ 0 │ C │ M │  language  │ 0 │   keyword  │ 0 │    text    │
         //  └ ╶ ╶ ╶ ╶ ╶ ╶┴───┴───┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┴───┴ ╶ ╶ ╶ ╶ ╶ ╶┘
         //               k  k+1 k+2 k+3           l  l+1           m  m+1
-        let k:Int
-        (self.keyword.english, k) = try Self.name(parsing: data[...])
-        {
+        let k: Int
+        (self.keyword.english, k) = try Self.name(parsing: data[...]) {
             PNG.ParsingError.invalidTextEnglishKeyword($0)
         }
 
         // parse iTXt chunk
-        if unicode
-        {
+        if unicode {
             // assert existence of compression flag and method bytes
-            guard k + 2 < data.endIndex
-            else
-            {
+            guard k + 2 < data.endIndex else {
                 throw PNG.ParsingError.invalidTextChunkLength(data.count, min: k + 3)
             }
 
-            let l:Int
+            let l: Int
             // language can be empty, in which case it is unknown
-            (self.language, l) = try Self.language(parsing: data[(k + 3)...])
-            {
+            (self.language, l) = try Self.language(parsing: data[(k + 3)...]) {
                 PNG.ParsingError.invalidTextLanguageTag($0)
             }
 
-            guard let m:Int = data[(l + 1)...].firstIndex(of: 0)
-            else
-            {
+            guard let m: Int = data[(l + 1)...].firstIndex(of: 0) else {
                 throw PNG.ParsingError.invalidTextLocalizedKeyword
             }
 
-            let localized:String    = .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
+            let localized: String    = .init(decoding: data[l + 1 ..< m], as: Unicode.UTF8.self)
             self.keyword.localized  = self.keyword.english == localized ? "" : localized
 
-            let uncompressed:ArraySlice<UInt8>
-            switch data[k + 1]
-            {
+            let uncompressed: ArraySlice<UInt8>
+            switch data[k + 1] {
             case 0:
                 uncompressed    = data[(m + 1)...]
                 self.compressed = false
             case 1:
-                guard data[k + 2] == 0
-                else
-                {
+                guard data[k + 2] == 0 else {
                     throw PNG.ParsingError.invalidTextCompressionMethodCode(data[k + 2])
                 }
-                var inflator:LZ77.Inflator = .init()
-                guard case nil = try inflator.push(data[(m + 1)...])
-                else
-                {
+                var inflator: LZ77.Inflator = .init()
+                guard case nil = try inflator.push(data[(m + 1)...]) else {
                     throw PNG.ParsingError.incompleteTextCompressedDatastream
                 }
                 uncompressed    = inflator.pull()[...]
@@ -172,25 +144,19 @@ extension PNG.Text
             self.content = .init(decoding: uncompressed, as: Unicode.UTF8.self)
         }
         // parse tEXt/zTXt chunk
-        else
-        {
+        else {
             self.keyword.localized  = ""
             self.language           = ["en"]
             // if the next byte is also null, the chunk uses compression
-            let uncompressed:ArraySlice<UInt8>
-            if k + 1 < data.endIndex, data[k + 1] == 0
-            {
-                var inflator:LZ77.Inflator = .init()
-                guard case nil = try inflator.push(data[(k + 2)...])
-                else
-                {
+            let uncompressed: ArraySlice<UInt8>
+            if k + 1 < data.endIndex, data[k + 1] == 0 {
+                var inflator: LZ77.Inflator = .init()
+                guard case nil = try inflator.push(data[(k + 2)...]) else {
                     throw PNG.ParsingError.incompleteTextCompressedDatastream
                 }
                 uncompressed    = inflator.pull()[...]
                 self.compressed = true
-            }
-            else
-            {
+            } else {
                 uncompressed    = data[(k + 1)...]
                 self.compressed = false
             }
@@ -199,48 +165,35 @@ extension PNG.Text
         }
     }
 
-    static
-    func name<E>(parsing data:ArraySlice<UInt8>, else error:(String?) -> E) throws
-        -> (name:String, offset:Int)
-        where E:Swift.Error
-    {
-        guard let offset:Int = data.firstIndex(of: 0)
-        else
-        {
+    static func name<E>(parsing data: ArraySlice<UInt8>, else error: (String?) -> E) throws
+    -> (name: String, offset: Int)
+        where E: Swift.Error {
+        guard let offset: Int = data.firstIndex(of: 0) else {
             throw error(nil)
         }
 
-        let scalars:LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> =
-            data[..<offset].lazy.map(Unicode.Scalar.init(_:))
+        let scalars: LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> =
+        data[..<offset].lazy.map(Unicode.Scalar.init(_:))
 
-        let name:String = .init(scalars.map(Character.init(_:)))
-        guard Self.validate(name: scalars)
-        else
-        {
+        let name: String = .init(scalars.map(Character.init(_:)))
+        guard Self.validate(name: scalars) else {
             throw error(name)
         }
 
         return (name, offset)
     }
-    static
-    func validate<C>(name scalars:C) -> Bool
-        where C:Collection, C.Element == Unicode.Scalar
-    {
+    static func validate<C>(name scalars: C) -> Bool
+        where C: Collection, C.Element == Unicode.Scalar {
         // `count` in range `1 ... 80`
-        guard var previous:Unicode.Scalar = scalars.first, scalars.count <= 80
-        else
-        {
+        guard var previous: Unicode.Scalar = scalars.first, scalars.count <= 80 else {
             return false
         }
 
-        for scalar:Unicode.Scalar in scalars
-        {
+        for scalar: Unicode.Scalar in scalars {
             guard   "\u{20}" ... "\u{7d}" ~= scalar ||
-                    "\u{a1}" ... "\u{ff}" ~= scalar,
-                    // no multiple spaces, also checks for no leading spaces
-                    (previous, scalar) != (" ", " ")
-            else
-            {
+            "\u{a1}" ... "\u{ff}" ~= scalar,
+            // no multiple spaces, also checks for no leading spaces
+            (previous, scalar) != (" ", " ") else {
                 return false
             }
 
@@ -250,34 +203,28 @@ extension PNG.Text
         return previous != " "
     }
 
-    private static
-    func language<E>(parsing data:ArraySlice<UInt8>, else error:(String?) -> E) throws
-        -> (language:[String], offset:Int)
-        where E:Swift.Error
-    {
-        guard let offset:Int = data.firstIndex(of: 0)
-        else
-        {
+    private static func language<E>(
+        parsing data: ArraySlice<UInt8>,
+        else error: (String?) -> E
+    ) throws
+    -> (language: [String], offset: Int)
+        where E: Swift.Error {
+        guard let offset: Int = data.firstIndex(of: 0) else {
             throw error(nil)
         }
 
         // check for empty language tag
-        guard offset > data.startIndex
-        else
-        {
+        guard offset > data.startIndex else {
             return ([], offset)
         }
 
         // split on '-'
-        let language:[String] =
-            try data[..<offset].split(separator: 0x2d, omittingEmptySubsequences: false).map
-        {
-            let scalars:LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> =
-                $0.lazy.map(Unicode.Scalar.init(_:))
-            let tag:String = .init(scalars.map(Character.init(_:)))
-            guard Self.validate(language: scalars)
-            else
-            {
+        let language: [String] =
+        try data[..<offset].split(separator: 0x2d, omittingEmptySubsequences: false).map {
+            let scalars: LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> =
+            $0.lazy.map(Unicode.Scalar.init(_:))
+            let tag: String = .init(scalars.map(Character.init(_:)))
+            guard Self.validate(language: scalars) else {
                 throw error(tag)
             }
 
@@ -287,13 +234,9 @@ extension PNG.Text
 
         return (language, offset)
     }
-    private static
-    func validate<C>(language scalars:C) -> Bool
-        where C:Collection, C.Element == Unicode.Scalar
-    {
-        guard 1 ... 8 ~= scalars.count
-        else
-        {
+    private static func validate<C>(language scalars: C) -> Bool
+        where C: Collection, C.Element == Unicode.Scalar {
+        guard 1 ... 8 ~= scalars.count else {
             return false
         }
 
@@ -305,54 +248,45 @@ extension PNG.Text
     /// chunk, regardless of the type of the original chunk, if it was parsed
     /// from raw chunk data. It is the opinion of the library that the
     /// latin-1 chunk types ``Chunk/tEXt`` and ``Chunk/zTXt`` are deprecated.
-    public
-    var serialized:[UInt8]
-    {
-        let size:Int = 5 +
-            self.keyword.english.count                      +
-            self.keyword.localized.count                    +
-            self.language.reduce(0){ $0 + $1.count + 1 }    +
-            self.content.utf8.count
+    public var serialized: [UInt8] {
+        let size: Int = 5 +
+        self.keyword.english.count                      +
+        self.keyword.localized.count                    +
+        self.language.reduce(0){ $0 + $1.count + 1 }    +
+        self.content.utf8.count
 
-        var data:[UInt8] = []
+        var data: [UInt8] = []
         data.reserveCapacity(size)
         data.append(contentsOf: self.keyword.english.unicodeScalars.map{ .init($0.value) })
         data.append(0)
         data.append(self.compressed ? 1 : 0)
         data.append(0) // compression method
-        data.append(contentsOf: self.language.map
-        {
-            $0.unicodeScalars.map{ .init($0.value) }
-        }.joined(separator: [0x2d]))
+        data.append(
+            contentsOf: self.language.map {
+                $0.unicodeScalars.map{ .init($0.value) }
+            }.joined(separator: [0x2d])
+        )
         data.append(0)
-        if self.keyword.localized != self.keyword.english
-        {
+        if self.keyword.localized != self.keyword.english {
             data.append(contentsOf: self.keyword.localized.utf8)
         }
         data.append(0)
 
-        if self.compressed
-        {
-            var deflator:LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
-                deflator.push(.init(self.content.utf8), last: true)
-            while let segment:[UInt8] = deflator.pull()
-            {
+        if self.compressed {
+            var deflator: LZ77.Deflator = .init(level: 13, exponent: 15, hint: 4096)
+            deflator.push(.init(self.content.utf8), last: true)
+            while let segment: [UInt8] = deflator.pull() {
                 data.append(contentsOf: segment)
             }
-        }
-        else
-        {
+        } else {
             data.append(contentsOf: self.content.utf8)
         }
 
         return data
     }
 }
-extension PNG.Text:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.Text: CustomStringConvertible {
+    public var description: String {
         """
         PNG.\(Self.self) (\(PNG.Chunk.tEXt) | \(PNG.Chunk.zTXt) | \(PNG.Chunk.iTXt))
         {

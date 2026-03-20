@@ -1,18 +1,14 @@
 import CRC
 
 @available(*, deprecated, renamed: "PNG.BytestreamSource")
-public
-typealias _PNGBytestreamSource = PNG.BytestreamSource
+public typealias _PNGBytestreamSource = PNG.BytestreamSource
 
-extension PNG
-{
+extension PNG {
     /// A source bytestream.
     ///
     /// To implement a custom data source type, conform it to this protocol by implementing
     /// ``read(count:)``. It can then be used with the library’s core decompression interfaces.
-    public
-    protocol BytestreamSource
-    {
+    public protocol BytestreamSource {
         /// Attempts to read and return the given number of bytes from this stream.
         ///
         /// A successful call to this function should affect the bytestream state
@@ -26,12 +22,10 @@ extension PNG
         ///     The `count` bytes read, or `nil` if the read attempt failed. This
         ///     method should return `nil` even if any number of bytes less than `count`
         ///     were successfully read.
-        mutating
-        func read(count:Int) -> [UInt8]?
+        mutating func read(count: Int) -> [UInt8]?
     }
 }
-extension PNG.BytestreamSource
-{
+extension PNG.BytestreamSource {
     /// Lexes the eight PNG signature bytes from this bytestream.
     ///
     /// This function expects to read the byte sequence
@@ -40,17 +34,11 @@ extension PNG.BytestreamSource
     /// catch this error case.
     ///
     /// This function is the inverse of ``PNG.BytestreamDestination.signature()``.
-    public mutating
-    func signature() throws
-    {
-        guard let bytes:[UInt8] = self.read(count: PNG.signature.count)
-        else
-        {
+    public mutating func signature() throws {
+        guard let bytes: [UInt8] = self.read(count: PNG.signature.count) else {
             throw PNG.LexingError.truncatedSignature
         }
-        guard bytes == PNG.signature
-        else
-        {
+        guard bytes == PNG.signature else {
             throw PNG.LexingError.invalidSignature(bytes)
         }
     }
@@ -67,41 +55,33 @@ extension PNG.BytestreamSource
     /// -   Returns:
     ///     The type identifier, and contents of the lexed chunk. The chunk
     ///     contents do not include the checksum footer.
-    public mutating
-    func chunk() throws -> (type:PNG.Chunk, data:[UInt8])
-    {
-        guard let header:[UInt8] = self.read(count: 8)
-        else
-        {
+    public mutating func chunk() throws -> (type: PNG.Chunk, data: [UInt8]) {
+        guard let header: [UInt8] = self.read(count: 8) else {
             throw PNG.LexingError.truncatedChunkHeader
         }
 
-        let length:Int  = header.prefix(4).load(bigEndian: UInt32.self, as:  Int.self),
-            name:UInt32 = header.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self)
+        let length: Int  = header.prefix(4).load(bigEndian: UInt32.self, as: Int.self),
+        name: UInt32 = header.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self)
 
-        guard let type:PNG.Chunk = PNG.Chunk.init(validating: name)
-        else
-        {
+        guard let type: PNG.Chunk = PNG.Chunk.init(validating: name) else {
             throw PNG.LexingError.invalidChunkTypeCode(name)
         }
-        let bytes:Int = length + MemoryLayout<UInt32>.size
-        guard var data:[UInt8] = self.read(count: bytes)
-        else
-        {
+        let bytes: Int = length + MemoryLayout<UInt32>.size
+        guard var data: [UInt8] = self.read(count: bytes) else {
             throw PNG.LexingError.truncatedChunkBody(expected: bytes)
         }
 
-        let declared:CRC32 = .init(
-            checksum: data.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self))
+        let declared: CRC32 = .init(
+            checksum: data.suffix(4).load(bigEndian: UInt32.self, as: UInt32.self)
+        )
         data.removeLast(4)
-        let computed:CRC32 = .init(hashing: header.suffix(4)).updated(with: data)
+        let computed: CRC32 = .init(hashing: header.suffix(4)).updated(with: data)
 
-        guard declared == computed
-        else
-        {
+        guard declared == computed else {
             throw PNG.LexingError.invalidChunkChecksum(
                 declared: declared.checksum,
-                computed: computed.checksum)
+                computed: computed.checksum
+            )
         }
 
         return (type, data)

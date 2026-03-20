@@ -1,21 +1,16 @@
-extension PNG
-{
+extension PNG {
     /// A palette frequency histogram.
     ///
     /// This type models the information stored in a ``Chunk/hIST`` chunk.
-    public
-    struct Histogram
-    {
+    public struct Histogram {
         /// The frequency values of this histogram.
         ///
         /// The *i*th frequency value corresponds to the *i*th entry in the
         /// image palette.
-        public
-        let frequencies:[UInt16]
+        public let frequencies: [UInt16]
     }
 }
-extension PNG.Histogram
-{
+extension PNG.Histogram {
     /// Creates a palette histogram.
     ///
     /// This initializer validates the background information against the
@@ -28,13 +23,17 @@ extension PNG.Histogram
     ///     failure.
     /// -   Parameter palette:
     ///     The image palette this histogram provides frequency information for.
-    public
-    init(frequencies:[UInt16], palette:PNG.Palette)
-    {
-        guard frequencies.count == palette.entries.count
-        else
-        {
-            fatalError("number of histogram entries (\(frequencies.count)) must match number of palette entries (\(palette.entries.count))")
+    public init(frequencies: [UInt16], palette: PNG.Palette) {
+        guard frequencies.count == palette.entries.count else {
+            fatalError(
+                """
+                number of histogram entries (\(
+                    frequencies.count
+                )) must match number of palette entries (\(
+                    palette.entries.count
+                ))
+                """
+            )
         }
 
         self.frequencies = frequencies
@@ -45,40 +44,30 @@ extension PNG.Histogram
     ///     The contents of a ``Chunk/hIST`` chunk to parse.
     /// -   Parameter palette:
     ///     The image palette the chunk data is to be validated against.
-    public
-    init(parsing data:[UInt8], palette:PNG.Palette) throws
-    {
-        guard data.count == 2 * palette.entries.count
-        else
-        {
-            throw PNG.ParsingError.invalidHistogramChunkLength(data.count,
-                expected: 2 * palette.entries.count)
+    public init(parsing data: [UInt8], palette: PNG.Palette) throws {
+        guard data.count == 2 * palette.entries.count else {
+            throw PNG.ParsingError.invalidHistogramChunkLength(
+                data.count,
+                expected: 2 * palette.entries.count
+            )
         }
-        self.frequencies = (0 ..< data.count >> 1).map
-        {
+        self.frequencies = (0 ..< data.count >> 1).map {
             data.load(bigEndian: UInt16.self, as: UInt16.self, at: $0 << 1)
         }
     }
     /// Encodes this histogram as the contents of a
     /// ``Chunk/hIST`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        .init(unsafeUninitializedCapacity: 2 * self.frequencies.count)
-        {
-            for (i, frequency):(Int, UInt16) in self.frequencies.enumerated()
-            {
+    public var serialized: [UInt8] {
+        .init(unsafeUninitializedCapacity: 2 * self.frequencies.count) {
+            for (i, frequency): (Int, UInt16) in self.frequencies.enumerated() {
                 $0.store(frequency, asBigEndian: UInt16.self, at: i << 1)
             }
             $1 = 2 * self.frequencies.count
         }
     }
 }
-extension PNG.Histogram:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.Histogram: CustomStringConvertible {
+    public var description: String {
         """
         PNG.\(Self.self) (\(PNG.Chunk.hIST))
         {

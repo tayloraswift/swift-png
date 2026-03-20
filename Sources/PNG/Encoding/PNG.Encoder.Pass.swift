@@ -1,7 +1,5 @@
-extension PNG.Encoder
-{
-    enum Pass
-    {
+extension PNG.Encoder {
+    enum Pass {
         case subimage(Int)
         case image
     }

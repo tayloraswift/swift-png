@@ -1,18 +1,14 @@
 import CRC
 
 @available(*, deprecated, renamed: "PNG.BytestreamDestination")
-public
-typealias _PNGBytestreamDestination = PNG.BytestreamDestination
+public typealias _PNGBytestreamDestination = PNG.BytestreamDestination
 
-extension PNG
-{
+extension PNG {
     /// A destination bytestream.
     ///
     /// To implement a custom data destination type, conform it to this protocol by implementing
     /// ``write(_:)``. It can then be used with the library’s core compression interfaces.
-    public
-    protocol BytestreamDestination
-    {
+    public protocol BytestreamDestination {
         /// Attempts to write the given bytes to this stream.
         ///
         /// A successful call to this function should affect the bytestream state
@@ -26,12 +22,10 @@ extension PNG
         ///     A ``Void`` tuple, or `nil` if the write attempt failed. This
         ///     method should return `nil` even if any number of bytes less than
         ///     `bytes.count` were successfully written.
-        mutating
-        func write(_ buffer:[UInt8]) -> Void?
+        mutating func write(_ buffer: [UInt8]) -> Void?
     }
 }
-extension PNG.BytestreamDestination
-{
+extension PNG.BytestreamDestination {
     /// Emits the eight PNG signature bytes into this bytestream.
     ///
     /// This function emits the constant byte sequence
@@ -39,12 +33,8 @@ extension PNG.BytestreamDestination
     /// ``PNG/FormattingError`` if it fails to write to the bytestream.
     ///
     /// This function is the inverse of ``PNG.BytestreamSource.signature()``.
-    public mutating
-    func signature() throws
-    {
-        guard let _:Void = self.write(PNG.signature)
-        else
-        {
+    public mutating func signature() throws {
+        guard let _: Void = self.write(PNG.signature) else {
             throw PNG.FormattingError.invalidDestination
         }
     }
@@ -62,27 +52,21 @@ extension PNG.BytestreamDestination
     ///     footer, as this function computes and appends it automatically.
     ///
     ///     The default value is `[]`.
-    public mutating
-    func format(type:PNG.Chunk, data:[UInt8] = []) throws
-    {
-        let header:[UInt8] = .init(unsafeUninitializedCapacity: 8)
-        {
+    public mutating func format(type: PNG.Chunk, data: [UInt8] = []) throws {
+        let header: [UInt8] = .init(unsafeUninitializedCapacity: 8) {
             $0.store(data.count, asBigEndian: UInt32.self, at: 0)
             $0.store(type.name,  asBigEndian: UInt32.self, at: 4)
             $1 = 8
         }
-        let footer:[UInt8] = .init(unsafeUninitializedCapacity: 4)
-        {
-            let crc:CRC32 = .init(hashing: header.suffix(4)).updated(with: data)
+        let footer: [UInt8] = .init(unsafeUninitializedCapacity: 4) {
+            let crc: CRC32 = .init(hashing: header.suffix(4)).updated(with: data)
             $0.store(crc.checksum, asBigEndian: UInt32.self)
             $1 = 4
         }
 
-        guard   let _:Void = self.write(header),
-                let _:Void = self.write(data),
-                let _:Void = self.write(footer)
-        else
-        {
+        guard   let _: Void = self.write(header),
+        let _: Void = self.write(data),
+        let _: Void = self.write(footer) else {
             throw PNG.FormattingError.invalidDestination
         }
     }

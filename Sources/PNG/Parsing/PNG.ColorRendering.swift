@@ -1,13 +1,10 @@
-extension PNG
-{
+extension PNG {
     /// A color rendering mode.
     ///
     /// This type models the information stored in an ``Chunk/sRGB`` chunk.
     /// It is not recommended for the same image to include both a `ColorRendering`
     /// mode and a ``ColorProfile``.
-    public
-    enum ColorRendering
-    {
+    public enum ColorRendering {
         /// The perceptual rendering mode.
         case perceptual
         /// The relative colorimetric rendering mode.
@@ -18,22 +15,16 @@ extension PNG
         case absolute
     }
 }
-extension PNG.ColorRendering
-{
+extension PNG.ColorRendering {
     /// Creates a color rendering mode by parsing the given chunk data.
     /// -   Parameter data:
     ///     The contents of an ``Chunk/sRGB`` chunk to parse.
-    public
-    init(parsing data:[UInt8]) throws
-    {
-        guard data.count == 1
-        else
-        {
+    public init(parsing data: [UInt8]) throws {
+        guard data.count == 1 else {
             throw PNG.ParsingError.invalidColorRenderingChunkLength(data.count)
         }
 
-        switch data[0]
-        {
+        switch data[0] {
         case 0:     self = .perceptual
         case 1:     self = .relative
         case 2:     self = .saturation
@@ -43,11 +34,8 @@ extension PNG.ColorRendering
         }
     }
     /// Encodes this color rendering mode as the contents of an ``Chunk/sRGB`` chunk.
-    public
-    var serialized:[UInt8]
-    {
-        switch self
-        {
+    public var serialized: [UInt8] {
+        switch self {
         case .perceptual:   return [0]
         case .relative:     return [1]
         case .saturation:   return [2]
@@ -55,11 +43,8 @@ extension PNG.ColorRendering
         }
     }
 }
-extension PNG.ColorRendering:CustomStringConvertible
-{
-    public
-    var description:String
-    {
+extension PNG.ColorRendering: CustomStringConvertible {
+    public var description: String {
         """
         PNG.\(Self.self) (\(PNG.Chunk.sRGB))
         {

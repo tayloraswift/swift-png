@@ -1,19 +1,13 @@
 import LZ77
 
-extension LZ77.DecompressionError:PNG.Error
-{
+extension LZ77.DecompressionError: PNG.Error {
     /// The string `"Decompression error"`.
-    public static
-    var namespace:String
-    {
+    public static var namespace: String {
         "Decompression error"
     }
     /// A human-readable summary of this error.
-    public
-    var message:String
-    {
-        switch self
-        {
+    public var message: String {
+        switch self {
         case .invalidStreamChecksum:
             return "invalid rfc-1950 checksum"
         case .invalidBlockTypeCode:
@@ -33,11 +27,8 @@ extension LZ77.DecompressionError:PNG.Error
         }
     }
     /// An optional human-readable string providing additional details about this error.
-    public
-    var details:String?
-    {
-        switch self
-        {
+    public var details: String? {
+        switch self {
         case .invalidHuffmanCodelengthHuffmanTable:
             nil
         case .invalidHuffmanCodelengthSequence:

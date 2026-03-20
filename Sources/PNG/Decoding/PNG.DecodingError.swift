@@ -1,9 +1,6 @@
-extension PNG
-{
+extension PNG {
     /// A decoding error.
-    public
-    enum DecodingError
-    {
+    public enum DecodingError {
         /// The decoder encountered a chunk of a type that requires a
         /// previously encountered chunk of a particular type.
         /// -   Parameter chunk:
@@ -25,9 +22,9 @@ extension PNG
         ///     The type of the encountered chunk.
         /// -   Parameter after:
         ///     The type of the preceeding chunk that precludes the encountered chunk.
-        case required(chunk:PNG.Chunk, before:PNG.Chunk)
-        case duplicate(chunk:PNG.Chunk)
-        case unexpected(chunk:PNG.Chunk, after:PNG.Chunk)
+        case required(chunk: PNG.Chunk, before: PNG.Chunk)
+        case duplicate(chunk: PNG.Chunk)
+        case unexpected(chunk: PNG.Chunk, after: PNG.Chunk)
 
         /// The decoder finished processing the last ``Chunk/IDAT`` chunk
         /// before the compressed image data stream was properly terminated.
@@ -44,26 +41,24 @@ extension PNG
         case extraneousImageData
     }
 }
-extension PNG.DecodingError:PNG.Error
-{
+extension PNG.DecodingError: PNG.Error {
     /// The string `"decoding error"`.
-    public static
-    var namespace:String
-    {
+    public static var namespace: String {
         "decoding error"
     }
     /// A human-readable summary of this error.
-    public
-    var message:String
-    {
-        switch self
-        {
+    public var message: String {
+        switch self {
         case .incompleteImageDataCompressedDatastream:
             return "image data chunks do not contain a full compressed data stream"
         case .extraneousImageDataCompressedData:
-            return "image contains trailing image data chunks that are not part of the compressed data stream"
+            return """
+            image contains trailing image data chunks that are not part of the compressed data stream
+            """
         case .extraneousImageData:
-            return "compressed image data stream produces more uncompressed image data than expected"
+            return """
+            compressed image data stream produces more uncompressed image data than expected
+            """
         case .duplicate:
             return "duplicate chunk"
         case .required, .unexpected:
@@ -72,17 +67,18 @@ extension PNG.DecodingError:PNG.Error
     }
     /// An optional human-readable string providing additional details
     /// about this error.
-    public
-    var details:String?
-    {
-        switch self
-        {
+    public var details: String? {
+        switch self {
         case    .incompleteImageDataCompressedDatastream,
-                .extraneousImageDataCompressedData,
-                .extraneousImageData:
+            .extraneousImageDataCompressedData,
+            .extraneousImageData:
             return nil
         case    .required(chunk: let previous, before: let chunk):
-            return "chunk of type '\(chunk)' requires a previously encountered chunk of type '\(previous)'"
+            return """
+            chunk of type '\(chunk)' requires a previously encountered chunk of type '\(
+                previous
+            )'
+            """
         case    .duplicate(chunk: let chunk):
             return "chunk of type '\(chunk)' can only appear once"
         case    .unexpected(chunk: .IDAT, after: .IDAT):
