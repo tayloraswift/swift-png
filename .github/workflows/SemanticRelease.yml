@@ -31,9 +31,11 @@ jobs:
 
             -   name: ⚡ Parse bump type ⚡
                 id: parse
+                env:
+                    # note: do not interpolate PR title using standard bash double quotes, it
+                    # can contain backticks
+                    TITLE: ${{ github.event.pull_request.title }}
                 run: |
-                    TITLE="${{ github.event.pull_request.title }}"
-
                     if [[ "$TITLE" =~ ^\[major\] ]]; then
                         echo "type=major" >> "$GITHUB_OUTPUT"
                     elif [[ "$TITLE" =~ ^\[minor\] ]]; then
