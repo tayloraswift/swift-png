@@ -12,10 +12,35 @@ on:
         branches: [ master ]
 
 jobs:
+    changes:
+        runs-on: ubuntu-latest
+        name: Assess changes
+        steps:
+            -   name: 🤍 Checkout repository 🤍
+                uses: actions/checkout@v6
+                with:
+                    # need to fetch the preceding commit
+                    fetch-depth: 2
+
+            -   name: 🤍 Decide checks 🤍
+                uses: tj-actions/changed-files@v47
+                id: changes
+                with:
+                    files_ignore: |
+                        README.md
+                        LICENSE
+                        NOTICE
+                        .mailmap
+                        .gitignore
+                        .github/FUNDING.yml
+        outputs:
+            code_changed: ${{ steps.changes.outputs.any_changed }}
+
     linux:
         runs-on: ubuntu-24.04
         name: Ubuntu 24.04
-
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
             -   name: 🤍 Install Swift 🤍
                 uses: rarestype/swift-install-action@master
@@ -40,6 +65,8 @@ jobs:
     macos:
         runs-on: macos-26
         name: macOS
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
             -   name: 🤍 Install Unidoc 🤍
                 uses: rarestype/unidoc-action@master
