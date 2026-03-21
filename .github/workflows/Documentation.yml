@@ -1,3 +1,5 @@
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
+
 # This workflow validates the package’s documentation. Because documentation building involves
 # compiling the package, this also checks that the package itself compiles successfully on each
 # supported platform.
@@ -30,10 +32,10 @@ jobs:
 
             -   name: 🤍 Validate documentation 🤍
                 run: |
-                    unidoc compile \
-                    --swift-toolchain $SWIFT_INSTALLATION \
+                    unidoc build \
                     --ci fail-on-errors \
-                    --project-path .
+                    --project-path . \
+                    --swift-toolchain $SWIFT_INSTALLATION
 
     macos:
         runs-on: macos-26
