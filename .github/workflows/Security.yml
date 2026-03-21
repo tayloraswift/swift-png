@@ -21,8 +21,28 @@ jobs:
 
             -   name: 🔐 Check commits 🔐
                 run: |
-                    insecure_emails=$(git log --format='%ae%n%ce' | grep "@gmail.com" | sort -u)
+                    blacklisted_domains=(
+                        "@gmail\.com"
+                        "@yahoo\.com"
+                        "@hotmail\.com"
+                        "@outlook\.com"
+                        "@aol\.com"
+                        "@icloud\.com"
+                        "@sasktel\.net"
+                    )
+                    blacklist_pattern=$(IFS="|"; echo "${blacklisted_domains[*]}")
+
+                    insecure_emails=$(git log --format='%ae%n%ce' | grep -E -i "$blacklist_pattern" | sort -u)
                     if [ -n "$insecure_emails" ]; then
-                        echo "❗ Found insecure email addresses in git history!"
+                        echo "❗ Found insecure email addresses in git history"
                         exit 1
                     fi
+
+                    if [ -f .mailmap ]; then
+                        insecure_emails_mailmap=$(grep -E -i "$blacklist_pattern" .mailmap | sort -u)
+                        if [ -n "$insecure_emails_mailmap" ]; then
+                            echo "❗ Found insecure email addresses in .mailmap"
+                            exit 1
+                        fi
+                    fi
+
