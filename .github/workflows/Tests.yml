@@ -28,7 +28,7 @@ jobs:
         outputs:
             code_changed: ${{ steps.changes.outputs.any_changed }}
 
-    linux:
+    Linux:
         runs-on: ubuntu-24.04
         name: Ubuntu 24.04
         needs: changes
@@ -46,9 +46,12 @@ jobs:
             -   name: 💖 Run tests 💖
                 run: Scripts/TestAll
 
-    macos:
+            -   name: 💖 Update badge 💖
+                uses: rarestype/rarestbadge@v1
+                if: always()
+
+    macOS:
         runs-on: macos-26
-        name: macOS
         needs: changes
         if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
@@ -60,3 +63,55 @@ jobs:
 
             -   name: 💖 Run tests 💖
                 run: Scripts/TestAll
+
+            -   name: 💖 Update badge 💖
+                uses: rarestype/rarestbadge@v1
+                if: always()
+    iOS:
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
+        with:
+            xcode-scheme: 'PNG'
+            destination: iOS
+
+    tvOS:
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
+        with:
+            xcode-scheme: 'PNG'
+            destination: tvOS
+
+    visionOS:
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
+        with:
+            xcode-scheme: 'PNG'
+            destination: visionOS
+
+    watchOS:
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
+        with:
+            xcode-scheme: 'PNG'
+            destination: watchOS
+
+    Android:
+        needs: changes
+        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        runs-on: ubuntu-latest
+        steps:
+            -   name: 💖 Checkout repository 💖
+                uses: actions/checkout@v6
+
+            -   name: 💖 Run tests 💖
+                uses: skiptools/swift-android-action@v2
+                with:
+                    copy-files: Sources Tests
+
+            -   name: 💖 Update badge 💖
+                uses: rarestype/rarestbadge@v1
+                if: always()
