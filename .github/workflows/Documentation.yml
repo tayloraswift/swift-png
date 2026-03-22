@@ -36,7 +36,7 @@ jobs:
         outputs:
             code_changed: ${{ steps.changes.outputs.any_changed }}
 
-    linux:
+    Linux:
         runs-on: ubuntu-24.04
         name: Ubuntu 24.04
         needs: changes
@@ -62,9 +62,12 @@ jobs:
                     --project-path . \
                     --swift-toolchain $SWIFT_INSTALLATION
 
-    macos:
+            -   name: 🤍 Update badge 🤍
+                uses: rarestype/rarestbadge@v1
+                if: always()
+
+    macOS:
         runs-on: macos-26
-        name: macOS
         needs: changes
         if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
@@ -82,3 +85,7 @@ jobs:
                     unidoc build \
                     --ci fail-on-errors \
                     --project-path .
+
+            -   name: 🤍 Update badge 🤍
+                uses: rarestype/rarestbadge@v1
+                if: always()
