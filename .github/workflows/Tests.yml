@@ -67,37 +67,19 @@ jobs:
             -   name: 💖 Update badge 💖
                 uses: rarestype/rarestbadge@v1
                 if: always()
-    iOS:
-        needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
-        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
-        with:
-            xcode-scheme: 'PNG'
-            destination: iOS
 
-    tvOS:
+    macOS-devices:
+        strategy:
+            matrix:
+                destination: [iOS, tvOS, visionOS, watchOS]
         needs: changes
         if: ${{ needs.changes.outputs.code_changed == 'true' }}
-        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
+        name: ${{ matrix.destination }}
+        uses: rarestype/swift-device-action/.github/workflows/build.yml@v1
         with:
             xcode-scheme: 'PNG'
-            destination: tvOS
-
-    visionOS:
-        needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
-        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
-        with:
-            xcode-scheme: 'PNG'
-            destination: visionOS
-
-    watchOS:
-        needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
-        uses: rarestype/swift-device-action/.github/workflows/build.yml@badges
-        with:
-            xcode-scheme: 'PNG'
-            destination: watchOS
+            destination: ${{ matrix.destination }}
+            publish-badge: true
 
     Android:
         needs: changes

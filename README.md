@@ -14,17 +14,15 @@ a portable, Foundation-free library for decoding, inspecting, editing, and encod
 
 The swift-png library requires Swift 5.10 or later.
 
-| Platform | Status |
-| -------- | ------ |
-| 💬 Documentation | [![Documentation](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Documentation/Linux/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml) |
-| 💬 Documentation | [![Documentation](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Documentation/macOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml) |
-| 🐧 Linux | [![Tests](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/Linux/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
-| 🍏 Darwin | [![Tests](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/macOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
-| 🍏 Darwin (iOS) | [![iOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/iOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/iOS.yml) |
-| 🍏 Darwin (tvOS) | [![tvOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/tvOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/tvOS.yml) |
-| 🍏 Darwin (visionOS) | [![visionOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/visionOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/visionOS.yml) |
-| 🍏 Darwin (watchOS) | [![watchOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/watchOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/watchOS.yml) |
-| 🤖 Android | [![Android](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/Android/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Android.yml) |
+| Platform | Build | 💬 Documentation |
+| -------- | ------ | ------ |
+| 🐧 Linux | [![Tests](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/Linux/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) | [![Documentation](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Documentation/Linux/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml) |
+| 🍏 Darwin | [![Tests](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/macOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) | [![Documentation](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Documentation/macOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml) |
+| 🍏 Darwin (iOS) | [![iOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/iOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
+| 🍏 Darwin (tvOS) | [![tvOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/tvOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
+| 🍏 Darwin (visionOS) | [![visionOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/visionOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
+| 🍏 Darwin (watchOS) | [![watchOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/watchOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
+| 🤖 Android | [![Android](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/Android/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
 
 
 [Check deployment minimums](https://swiftinit.org/docs/swift-png#ss:platform-requirements)
