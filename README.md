@@ -14,6 +14,7 @@ a portable, Foundation-free library for decoding, inspecting, editing, and encod
 
 The swift-png library requires Swift 5.10 or later.
 
+<!-- DO NOT EDIT BELOW! AUTOSYNC CONTENT [STATUS TABLE] -->
 | Platform | Build |
 | -------- | ------|
 | 💬 Documentation | [![Documentation](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Documentation/_all/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml)
@@ -24,7 +25,7 @@ The swift-png library requires Swift 5.10 or later.
 | 🍏 Darwin (visionOS) | [![visionOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/visionOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
 | 🍏 Darwin (watchOS) | [![watchOS](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Build/watchOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
 | 🤖 Android | [![Android](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/Android/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
-
+<!-- DO NOT EDIT ABOVE! AUTOSYNC CONTENT [STATUS TABLE] -->
 
 [Check deployment minimums](https://swiftinit.org/docs/swift-png#ss:platform-requirements)
 
