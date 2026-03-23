@@ -1,0 +1,29 @@
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
+
+name: Documentation upload
+
+permissions:
+    contents: write
+on:
+    workflow_run:
+        workflows: ["Documentation"]
+        types:
+            - completed
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: 🤍 Mirror workflow status 🤍
+                run: |
+                    if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
+                        echo "The main workflow failed or was cancelled."
+                        exit 1
+                    fi
+
+            -   name: 🤍 Publish workflow badge 🤍
+                uses: rarestype/rarestbadge@v1
+                if: always()
+                with:
+                    badge: Documentation/_all
+                    title: Documentation
