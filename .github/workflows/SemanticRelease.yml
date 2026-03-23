@@ -2,6 +2,8 @@
 
 name: Semantic release
 
+permissions:
+    contents: write
 on:
     pull_request:
         types:
@@ -15,8 +17,6 @@ jobs:
         # ensures this only runs if the PR was actually merged, not just closed unmerged
         if: github.event.pull_request.merged == true
         runs-on: ubuntu-latest
-        permissions:
-            contents: write
         env:
             # toggle to 'false' to only push the tag and skip creating the GitHub Release
             CREATE_RELEASE: 'true'
