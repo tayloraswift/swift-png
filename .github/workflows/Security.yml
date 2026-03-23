@@ -32,7 +32,7 @@ jobs:
                     )
                     blacklist_pattern=$(IFS="|"; echo "${blacklisted_domains[*]}")
 
-                    insecure_emails=$(git log --format='%ae%n%ce' | grep -E -i "$blacklist_pattern" | sort -u)
+                    insecure_emails=$(git log --format='%ae%n%ce' | sort -u | grep -E -i "$blacklist_pattern" || true)
                     if [ -n "$insecure_emails" ]; then
                         echo "❗ Found insecure email addresses in git history"
                         exit 1
