@@ -81,7 +81,7 @@ jobs:
         with:
             xcode-scheme: 'PNG'
             destination: ${{ matrix.destination }}
-            publish-badge: true
+            badge-namespace: ${{ github.workflow }}
 
     Android:
         needs: changes
