@@ -4,6 +4,8 @@ name: Documentation upload
 
 permissions:
     contents: write
+    actions: read
+
 on:
     workflow_run:
         workflows: ["Documentation"]
@@ -15,15 +17,28 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: 🤍 Mirror workflow status 🤍
+                id: status
                 run: |
                     if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
                         echo "The main workflow failed or was cancelled."
                         exit 1
                     fi
 
+                    ALL_SUCCESS=$(gh api "${{ github.event.workflow_run.jobs_url }}" \
+                        --jq 'all(.jobs[]; .conclusion == "success")')
+
+                    if [[ "$ALL_SUCCESS" != true ]]; then
+                        echo "not updating badge because one or more build jobs were skipped"
+                        echo "skipped=true" >> "$GITHUB_OUTPUT"
+                    else
+                        echo "skipped=false" >> "$GITHUB_OUTPUT"
+                    fi
+                env:
+                    GH_TOKEN: ${{ github.token }}
+
             -   name: 🤍 Publish workflow badge 🤍
                 uses: rarestype/rarestbadge@v1
-                if: always()
+                if: always() && steps.status.outputs.skipped != 'true'
                 with:
                     badge: Documentation/_all
                     title: Documentation
