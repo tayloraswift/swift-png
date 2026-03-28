@@ -37,10 +37,10 @@ jobs:
         if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
             -   name: 💖 Install Swift 💖
-                uses: rarestype/swift-install-action@master
+                uses: rarestype/swift-install-action@v1
                 with:
-                    swift-prefix: "swift-6.2.4-release/ubuntu2404/swift-6.2.4-RELEASE"
-                    swift-id: "swift-6.2.4-RELEASE-ubuntu24.04"
+                    swift-prefix: "swift-6.3-release/ubuntu2404/swift-6.3-RELEASE"
+                    swift-id: "swift-6.3-RELEASE-ubuntu24.04"
 
             -   name: 💖 Checkout repository 💖
                 uses: actions/checkout@v6
@@ -60,8 +60,8 @@ jobs:
             -   name: 💖 Checkout repository 💖
                 uses: actions/checkout@v6
 
-            -   name: 💖 Select Xcode 26.3 💖
-                run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+            -   name: 💖 Select Xcode 26.4 💖
+                run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
 
             -   name: 💖 Run tests 💖
                 run: Scripts/TestAll
