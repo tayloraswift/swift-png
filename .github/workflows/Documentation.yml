@@ -35,6 +35,10 @@ jobs:
                         .mailmap
                         .gitignore
                         .github/FUNDING.yml
+                        .github/workflows/Deploy.yml
+                        .github/workflows/Security.yml
+                        .github/workflows/SemanticRelease.yml
+                        .github/workflows/SemanticTitle.yml
         outputs:
             code_changed: ${{ steps.changes.outputs.any_changed }}
 
@@ -45,13 +49,12 @@ jobs:
         if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
             -   name: 🤍 Install Swift 🤍
-                uses: rarestype/swift-install-action@master
+                uses: rarestype/swift-install-action@v1
                 with:
-                    swift-prefix: "swift-6.2.4-release/ubuntu2404/swift-6.2.4-RELEASE"
-                    swift-id: "swift-6.2.4-RELEASE-ubuntu24.04"
+                    swift-release: 6.3-RELEASE
 
             -   name: 🤍 Install Unidoc 🤍
-                uses: rarestype/unidoc-action@master
+                uses: rarestype/unidoc-action@v1
 
             #   This clobbers everything in the current directory!
             -   name: 🤍 Checkout repository 🤍
@@ -74,13 +77,13 @@ jobs:
         if: ${{ needs.changes.outputs.code_changed == 'true' }}
         steps:
             -   name: 🤍 Install Unidoc 🤍
-                uses: rarestype/unidoc-action@master
+                uses: rarestype/unidoc-action@v1
 
             -   name: 🤍 Checkout repository 🤍
                 uses: actions/checkout@v6
 
-            -   name: 🤍 Select Xcode 26.3 🤍
-                run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+            -   name: 🤍 Select Xcode 26.4 🤍
+                run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
 
             -   name: 🤍 Validate documentation 🤍
                 run: |
