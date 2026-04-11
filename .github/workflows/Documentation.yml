@@ -46,7 +46,7 @@ jobs:
         runs-on: ubuntu-24.04
         name: Ubuntu 24.04
         needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        if: needs.changes.outputs.code_changed == 'true'
         steps:
             -   name: 🤍 Install Swift 🤍
                 uses: rarestype/swift-install-action@v1
@@ -74,7 +74,7 @@ jobs:
     macOS:
         runs-on: macos-26
         needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        if: needs.changes.outputs.code_changed == 'true'
         steps:
             -   name: 🤍 Install Unidoc 🤍
                 uses: rarestype/unidoc-action@v1
