@@ -78,7 +78,7 @@ jobs:
             -   release
 
         if: needs.release.outputs.type != 'none'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         env:
             # toggle to 'false' to only push the tag and skip creating the GitHub Release
             CREATE_RELEASE: 'true'
@@ -86,13 +86,38 @@ jobs:
             -   name: ⚡ Checkout repository ⚡
                 uses: actions/checkout@v6
 
-            -   name: ⚡ Create tag ⚡
+            -   name: ⚡ Install rarestcheck tool ⚡
+                uses: rarestype/r2-install-action@v1
+                with:
+                    archive: rarestcheck.tar.gz
+
+            -   name: ⚡ Configure git ⚡
                 run: |
                     git config user.name "rarest automation"
                     git config user.email "automation@noreply.rarestype.com"
 
+            -   name: ⚡ Run README hook ⚡
+                run: |
+                    if [ -f README.md ]; then
+                        rarestcheck README.md \
+                            --repo ${{ github.repository }} \
+                            --version ${{ needs.release.outputs.version }}
+
+                        git add README.md
+                    fi
+
+            -   name: ⚡ Create tag ⚡
+                run: |
+                    # if the pre-release script modified anything but the README, abort release
+                    git diff --exit-code
+
+                    git commit \
+                        --allow-empty \
+                        -m "[release]: ${{ needs.release.outputs.version }}"
+
                     git tag "${{ needs.release.outputs.version }}"
                     git push origin "${{ needs.release.outputs.version }}"
+                    git push
 
             -   name: ⚡ Create release ⚡
                 if: env.CREATE_RELEASE == 'true'
