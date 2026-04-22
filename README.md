@@ -16,7 +16,7 @@ The swift-png library requires Swift 5.10 or later.
 
 <!-- DO NOT EDIT BELOW! AUTOSYNC CONTENT [STATUS TABLE] -->
 | Platform | Status |
-| -------- | ------|
+| -------- | ------ |
 | 💬 Documentation | [![Status](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Documentation/_all/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Documentation.yml) |
 | 🐧 Linux | [![Status](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/Linux/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
 | 🍏 Darwin | [![Status](https://raw.githubusercontent.com/tayloraswift/swift-png/refs/badges/ci/Tests/macOS/status.svg)](https://github.com/tayloraswift/swift-png/actions/workflows/Tests.yml) |
