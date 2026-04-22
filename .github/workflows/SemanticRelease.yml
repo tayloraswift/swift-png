@@ -99,7 +99,7 @@ jobs:
             -   name: ⚡ Run README hook ⚡
                 run: |
                     if [ -f README.md ]; then
-                        rarestcheck README.md \
+                        rarestcheck sync-readme README.md \
                             --repo ${{ github.repository }} \
                             --version ${{ needs.release.outputs.version }}
 
