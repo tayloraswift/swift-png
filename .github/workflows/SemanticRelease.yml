@@ -89,6 +89,7 @@ jobs:
             -   name: ⚡ Install rarestcheck tool ⚡
                 uses: rarestype/r2-install-action@v1
                 with:
+                    project: rarestcheck
                     archive: rarestcheck.tar.gz
 
             -   name: ⚡ Configure git ⚡
