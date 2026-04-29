@@ -89,6 +89,7 @@ jobs:
             -   name: ⚡ Install rarestcheck tool ⚡
                 uses: rarestype/r2-install-action@v1
                 with:
+                    tracker: rarestype/rarestcheck
                     project: rarestcheck
                     archive: rarestcheck.tar.gz
 
