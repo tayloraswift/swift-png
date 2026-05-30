@@ -51,7 +51,7 @@ jobs:
             -   name: 🤍 Install Swift 🤍
                 uses: rarestype/swift-install-action@v1
                 with:
-                    swift-release: 6.3.1-RELEASE
+                    swift-release: 6.3.2-RELEASE
 
             -   name: 🤍 Install Unidoc 🤍
                 uses: rarestype/unidoc-action@v1
@@ -82,8 +82,8 @@ jobs:
             -   name: 🤍 Checkout repository 🤍
                 uses: actions/checkout@v6
 
-            -   name: 🤍 Select Xcode 26.4 🤍
-                run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
+            -   name: 🤍 Select Xcode 26.5 🤍
+                run: sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
 
             -   name: 🤍 Validate documentation 🤍
                 run: |
