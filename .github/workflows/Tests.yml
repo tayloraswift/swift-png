@@ -20,13 +20,7 @@ jobs:
                 uses: tj-actions/changed-files@v47
                 id: changes
                 with:
-                    files_ignore: |
-                        README.md
-                        LICENSE
-                        NOTICE
-                        .mailmap
-                        .gitignore
-                        .github/FUNDING.yml
+                    files_ignore_from_source_file: .github/autosync/Skip.txt
         outputs:
             code_changed: ${{ steps.changes.outputs.any_changed }}
 
@@ -34,13 +28,12 @@ jobs:
         runs-on: ubuntu-24.04
         name: Ubuntu 24.04
         needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        if: needs.changes.outputs.code_changed == 'true'
         steps:
             -   name: 💖 Install Swift 💖
                 uses: rarestype/swift-install-action@v1
                 with:
-                    swift-prefix: "swift-6.3.3-release/ubuntu2404/swift-6.3.3-RELEASE"
-                    swift-id: "swift-6.3.3-RELEASE-ubuntu24.04"
+                    swift-release: 6.3.3-RELEASE
 
             -   name: 💖 Checkout repository 💖
                 uses: actions/checkout@v6
@@ -55,7 +48,7 @@ jobs:
     macOS:
         runs-on: macos-26
         needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        if: needs.changes.outputs.code_changed == 'true'
         steps:
             -   name: 💖 Checkout repository 💖
                 uses: actions/checkout@v6
@@ -75,7 +68,7 @@ jobs:
             matrix:
                 destination: [iOS, tvOS, visionOS, watchOS]
         needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        if: needs.changes.outputs.code_changed == 'true'
         name: ${{ matrix.destination }}
         uses: rarestype/swift-device-action/.github/workflows/build.yml@v1
         with:
@@ -85,7 +78,7 @@ jobs:
 
     Android:
         needs: changes
-        if: ${{ needs.changes.outputs.code_changed == 'true' }}
+        if: needs.changes.outputs.code_changed == 'true'
         runs-on: ubuntu-latest
         steps:
             -   name: 💖 Checkout repository 💖
