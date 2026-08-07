@@ -1,0 +1,12 @@
+AGENTS.md
+README.md
+LICENSE
+NOTICE
+.mailmap
+.gitignore
+.github/tools/**
+.github/FUNDING.yml
+.github/workflows/Deploy.yml
+.github/workflows/Security.yml
+.github/workflows/SemanticRelease.yml
+.github/workflows/SemanticTitle.yml

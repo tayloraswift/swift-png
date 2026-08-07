@@ -28,17 +28,7 @@ jobs:
                 uses: tj-actions/changed-files@v47
                 id: changes
                 with:
-                    files_ignore: |
-                        README.md
-                        LICENSE
-                        NOTICE
-                        .mailmap
-                        .gitignore
-                        .github/FUNDING.yml
-                        .github/workflows/Deploy.yml
-                        .github/workflows/Security.yml
-                        .github/workflows/SemanticRelease.yml
-                        .github/workflows/SemanticTitle.yml
+                    files_ignore_from_source_file: .github/autosync/SkipDocumentation.txt
         outputs:
             code_changed: ${{ steps.changes.outputs.any_changed }}
 
