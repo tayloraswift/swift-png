@@ -8,7 +8,7 @@ Always use unicode curly quotes (`“”`, `‘’`) when writing English prose,
 
 ## Swift coding style and conventions
 
-Please familiarize yourself with, and adhere to, our [institutional Swift style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/Swift.md).
+Please familiarize yourself with, and adhere to, our [institutional Swift style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/Swift.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/Swift.md)).
 
 Read the markdown content directly using your URL reader tool, or check if `/tmp/swift_style_guide.md` exists. If not cached, fetch and save it locally to `/tmp/swift_style_guide.md`.
 
