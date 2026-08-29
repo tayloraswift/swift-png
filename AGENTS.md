@@ -17,7 +17,7 @@ Read the markdown content directly using your URL reader tool, or check if `/tmp
 
 Avoid grepping for identifiers when working on Swift code, it is error-prone and not recommended when working in a language that uses extensive overloading. Instead, build the project (to obtain the build index) and leverage sourcekit-lsp.
 
-To perform semantic symbol lookup, go-to-definition, hover type resolution, or reference searching across the Swift codebase, use the included [`lsp_query.py`](.github/tools/lsp_query.py) script:
+To perform semantic symbol lookup, go-to-definition, hover type resolution, reference searching, or macro expansion across the Swift codebase, use the included [`lsp_query.py`](.github/tools/lsp_query.py) script:
 
 ### Using `lsp_query.py`
 
@@ -43,4 +43,10 @@ To perform semantic symbol lookup, go-to-definition, hover type resolution, or r
 
 ```bash
 .github/tools/lsp_query.py references <path/to/file.swift> <line> <column>
+```
+
+#### Expand macro
+
+```bash
+.github/tools/lsp_query.py expand <path/to/file.swift> [<line> <column>]
 ```
