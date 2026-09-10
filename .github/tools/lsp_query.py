@@ -1,5 +1,5 @@
-#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
 #!/usr/bin/env python3
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
 """
 SourceKit-LSP Helper Script for Swift Symbol Resolution and Macro Expansion.
 Provides CLI access to workspace symbols, definitions, hover type info, references, and macro expansion.
