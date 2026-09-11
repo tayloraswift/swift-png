@@ -1,11 +1,4 @@
 <!-- ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣ -->
-## English writing style
-
-When producing summaries, design docs, or any other English prose, use Wikipedia-style sentence casing, including in headings. The first letter in a sentence is capitalized, except if it begins a word which is always left uncapitalized (as in “eBay”).
-
-Always use unicode curly quotes (`“”`, `‘’`) when writing English prose, including code comments.
-
-
 ## Swift coding style and conventions
 
 Please familiarize yourself with, and adhere to, our [institutional Swift style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/Swift.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/Swift.md)).
@@ -50,3 +43,11 @@ To perform semantic symbol lookup, go-to-definition, hover type resolution, refe
 ```bash
 .github/tools/lsp_query.py expand <path/to/file.swift> [<line> <column>]
 ```
+
+## English writing style
+
+When producing summaries, design docs, or any other English prose, use Wikipedia-style sentence casing, including in headings. The first letter in a sentence is capitalized, unless it begins a word which is always left uncapitalized (as in “eBay”).
+
+Always use unicode curly quotes (`“”`, `‘’`) when writing English prose, including code comments.
+
+If you are writing long-form prose (such as tutorials, articles, and design docs), please consult and follow our [English style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/English.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/English.md)). As with the Swift style guide, you should cache it locally to `/tmp/english_style_guide.md`.
