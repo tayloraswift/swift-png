@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
 """
-SourceKit-LSP Helper Script for Swift Symbol Resolution and Macro Expansion.
+SourceKit-LSP helper script for Swift symbol resolution and macro expansion.
 Provides CLI access to workspace symbols, definitions, hover type info, references, and macro expansion.
 """
 
@@ -12,12 +12,28 @@ import subprocess
 import shutil
 import argparse
 import re
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Set
 
 def find_sourcekit_lsp() -> str:
     path = shutil.which("sourcekit-lsp")
     if path:
         return path
+
+    if sys.platform == "darwin" or shutil.which("xcrun"):
+        try:
+            res = subprocess.run(
+                ["xcrun", "--find", "sourcekit-lsp"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.returncode == 0:
+                xcrun_path = res.stdout.strip()
+                if os.path.exists(xcrun_path):
+                    return xcrun_path
+        except Exception:
+            pass
+
     default_path = "/opt/swift/usr/bin/sourcekit-lsp"
     if os.path.exists(default_path):
         return default_path
@@ -31,9 +47,10 @@ class LSPClient:
             [self.binary],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
         self.req_id = 0
+        self._opened_files: Set[str] = set()
         self._initialize()
 
     def _send(self, method: str, params: Optional[Dict[str, Any]] = None) -> int:
@@ -41,9 +58,9 @@ class LSPClient:
         payload = {"jsonrpc": "2.0", "id": self.req_id, "method": method}
         if params is not None:
             payload["params"] = params
-        body = json.dumps(payload)
-        msg = f"Content-Length: {len(body)}\r\n\r\n{body}"
-        self.proc.stdin.write(msg.encode("utf-8"))
+        body_bytes = json.dumps(payload).encode("utf-8")
+        header = f"Content-Length: {len(body_bytes)}\r\n\r\n".encode("ascii")
+        self.proc.stdin.write(header + body_bytes)
         self.proc.stdin.flush()
         return self.req_id
 
@@ -51,9 +68,9 @@ class LSPClient:
         payload = {"jsonrpc": "2.0", "method": method}
         if params is not None:
             payload["params"] = params
-        body = json.dumps(payload)
-        msg = f"Content-Length: {len(body)}\r\n\r\n{body}"
-        self.proc.stdin.write(msg.encode("utf-8"))
+        body_bytes = json.dumps(payload).encode("utf-8")
+        header = f"Content-Length: {len(body_bytes)}\r\n\r\n".encode("ascii")
+        self.proc.stdin.write(header + body_bytes)
         self.proc.stdin.flush()
 
     def _read_response(self, target_id: int) -> Optional[Dict[str, Any]]:
@@ -113,6 +130,8 @@ class LSPClient:
         self._notify("initialized", {})
 
     def _ensure_open(self, abs_path: str):
+        if abs_path in self._opened_files:
+            return
         if os.path.exists(abs_path):
             try:
                 with open(abs_path, "r", encoding="utf-8") as f:
@@ -128,6 +147,7 @@ class LSPClient:
                         }
                     },
                 )
+                self._opened_files.add(abs_path)
             except Exception:
                 pass
 
@@ -243,18 +263,22 @@ class LSPClient:
             if actions:
                 for action in actions:
                     title = action.get("title", "")
-                    if "expand" in title.lower() or "macro" in title.lower():
+                    title_lower = title.lower()
+                    if ("expand" in title_lower and "inline" not in title_lower) or "expand macro" in title_lower:
                         if "edit" in action:
                             res = self._extract_expansions_from_edit(action["edit"], title, line)
                             if res:
                                 return res
                         if "command" in action:
-                            cmd_req = self._send("workspace/executeCommand", action["command"])
-                            cmd_res = self._read_response(cmd_req)
-                            if cmd_res:
-                                res = self._extract_expansions_from_edit(cmd_res, title, line)
-                                if res:
-                                    return res
+                            cmd = action["command"]
+                            cmd_name = cmd.get("command", "") if isinstance(cmd, dict) else ""
+                            if "expand" in cmd_name.lower() or "expand" in title_lower:
+                                cmd_req = self._send("workspace/executeCommand", cmd)
+                                cmd_res = self._read_response(cmd_req)
+                                if cmd_res:
+                                    res = self._extract_expansions_from_edit(cmd_res, title, line)
+                                    if res:
+                                        return res
 
             # Try expand.macro.command directly
             req_id = self._send(
@@ -417,6 +441,10 @@ class LSPClient:
                     self.proc.wait(timeout=1)
                 except subprocess.TimeoutExpired:
                     self.proc.kill()
+                    try:
+                        self.proc.wait(timeout=1)
+                    except Exception:
+                        pass
 
 def main():
     parser = argparse.ArgumentParser(description="Query sourcekit-lsp for Swift symbols and macro expansion")
