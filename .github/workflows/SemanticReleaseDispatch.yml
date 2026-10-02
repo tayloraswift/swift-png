@@ -1,0 +1,46 @@
+#  ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣
+
+name: Semantic release dispatch
+
+on:
+    pull_request:
+        types:
+            - closed
+        branches:
+            - master
+
+jobs:
+    dispatch:
+        name: Dispatch release
+        # ensures this only runs if the PR was actually merged,
+        # and has a recognized bump specifier
+        if: >-
+            github.event.pull_request.merged == true &&
+            (
+                startsWith(github.event.pull_request.title, '[major]') ||
+                startsWith(github.event.pull_request.title, '[minor]') ||
+                startsWith(github.event.pull_request.title, '[patch]')
+            )
+        runs-on: ubuntu-latest
+        steps:
+            -   name: ⚡ Parse bump type ⚡
+                env:
+                    TITLE: ${{ github.event.pull_request.title }}
+                run: |
+                    if [[ "$TITLE" =~ ^\[major\] ]]; then
+                        echo "major" > "${{ runner.temp }}/bump.txt"
+                    elif [[ "$TITLE" =~ ^\[minor\] ]]; then
+                        echo "minor" > "${{ runner.temp }}/bump.txt"
+                    elif [[ "$TITLE" =~ ^\[patch\] ]]; then
+                        echo "patch" > "${{ runner.temp }}/bump.txt"
+                    else
+                        echo "::error::Invalid bump prefix in title: '$TITLE'" >&2
+                        exit 1
+                    fi
+
+            -   name: ⚡ Upload bump artifact ⚡
+                uses: actions/upload-artifact@v4
+                with:
+                    name: bump-metadata
+                    path: ${{ runner.temp }}/bump.txt
+                    retention-days: 14

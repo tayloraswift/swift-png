@@ -2,23 +2,27 @@
 
 name: Semantic release
 
+concurrency:
+    group: semantic-release
+    cancel-in-progress: false
+
 permissions:
     contents: write
+    actions: read
 on:
-    pull_request_target:
+    workflow_run:
+        workflows:
+            - Semantic release dispatch
         types:
-            - closed
-        branches:
-            - master
+            - completed
 
 jobs:
     release:
         name: Release
-        # ensures this only runs if the PR was actually merged, not just closed unmerged
-        if: github.event.pull_request.merged == true
+        # ensures this only runs if the dispatch workflow completed successfully
+        if: github.event.workflow_run.conclusion == 'success'
         runs-on: ubuntu-latest
         outputs:
-            type: ${{ steps.parse.outputs.type }}
             version: ${{ steps.increment.outputs.version }}
         steps:
             -   name: ⚡ Checkout repository ⚡
@@ -27,29 +31,22 @@ jobs:
                     # fetch all history so the workflow can find previous tags
                     fetch-depth: 0
 
-            -   name: ⚡ Parse bump type ⚡
-                id: parse
-                env:
-                    # note: do not interpolate PR title using standard bash double quotes, it
-                    # can contain backticks
-                    TITLE: ${{ github.event.pull_request.title }}
-                run: |
-                    if [[ "$TITLE" =~ ^\[major\] ]]; then
-                        echo "type=major" >> "$GITHUB_OUTPUT"
-                    elif [[ "$TITLE" =~ ^\[minor\] ]]; then
-                        echo "type=minor" >> "$GITHUB_OUTPUT"
-                    elif [[ "$TITLE" =~ ^\[patch\] ]]; then
-                        echo "type=patch" >> "$GITHUB_OUTPUT"
-                    else
-                        # Handles [none] or any PR title that lacks a recognized specifier
-                        echo "type=none" >> "$GITHUB_OUTPUT"
-                    fi
+            -   name: ⚡ Download bump metadata ⚡
+                uses: actions/download-artifact@v4
+                with:
+                    name: bump-metadata
+                    path: ${{ runner.temp }}
+                    run-id: ${{ github.event.workflow_run.id }}
+                    github-token: ${{ secrets.GITHUB_TOKEN }}
 
             -   name: ⚡ Increment version ⚡
                 id: increment
-                if: steps.parse.outputs.type != 'none'
                 run: |
-                    LATEST_VERSION=$(git tag | sed -E -n 's/^v//; /^[0-9]+\.[0-9]+\.[0-9]+$/p' | sort -V | tail -n 1)
+                    BUMP_TYPE=$(cat "${{ runner.temp }}/bump.txt")
+
+                    LATEST_VERSION=$(git tag | \
+                        sed -E -n 's/^v//; /^[0-9]+\.[0-9]+\.[0-9]+$/p' | \
+                        sort -V | tail -n 1)
 
                     if [ -z "$LATEST_VERSION" ]; then
                         LATEST_VERSION="0.0.0"
@@ -59,15 +56,18 @@ jobs:
 
                     IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
 
-                    if [ "${{ steps.parse.outputs.type }}" == "major" ]; then
+                    if [ "$BUMP_TYPE" == "major" ]; then
                         MAJOR=$((MAJOR + 1))
                         MINOR=0
                         PATCH=0
-                    elif [ "${{ steps.parse.outputs.type }}" == "minor" ]; then
+                    elif [ "$BUMP_TYPE" == "minor" ]; then
                         MINOR=$((MINOR + 1))
                         PATCH=0
-                    elif [ "${{ steps.parse.outputs.type }}" == "patch" ]; then
+                    elif [ "$BUMP_TYPE" == "patch" ]; then
                         PATCH=$((PATCH + 1))
+                    else
+                        echo "::error::Unrecognized bump type: '$BUMP_TYPE'" >&2
+                        exit 1
                     fi
 
                     NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
@@ -77,7 +77,6 @@ jobs:
         needs:
             -   release
 
-        if: needs.release.outputs.type != 'none'
         runs-on: ubuntu-24.04-arm
         env:
             # toggle to 'false' to only push the tag and skip creating the GitHub Release
