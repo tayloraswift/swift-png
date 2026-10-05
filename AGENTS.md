@@ -44,10 +44,24 @@ To perform semantic symbol lookup, go-to-definition, hover type resolution, refe
 .github/tools/lsp_query.py expand <path/to/file.swift> [<line> <column>]
 ```
 
+If you do choose to use `grep` (for example, when searching for strings that are not Swift symbols), make sure to exclude build directories (such as `.build`, `.build.wasm`, etc.) and package caches (such as `node_modules`) as `grep` traversal through these can be very slow. Alternatively, use `git grep` to only search through tracked files.
+
+
 ## English writing style
 
 When producing summaries, design docs, or any other English prose, use Wikipedia-style sentence casing, including in headings. The first letter in a sentence is capitalized, unless it begins a word which is always left uncapitalized (as in “eBay”).
 
 Always use unicode curly quotes (`“”`, `‘’`) when writing English prose, including code comments.
 
+### Commit messages
+
+Commit messages should be brief, uncapitalized sentences or sentence fragments, and should not end with a period. Do not prefix commit messages with emoji or prepend “structured” labels such as `fix:`, `feature:`, `modernize:`, et cetera.
+
+### Long-form prose
+
 If you are writing long-form prose (such as tutorials, articles, and design docs), please consult and follow our [English style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/English.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/English.md)). As with the Swift style guide, you should cache it locally to `/tmp/english_style_guide.md`.
+
+
+## Repository-specific instructions
+
+Before working in this repository, read `CONTRIBUTORS.md` if it exists. If present, this file will contain repository-specific guidance that supplements these global instructions.
