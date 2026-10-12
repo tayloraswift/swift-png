@@ -12,7 +12,15 @@ import subprocess
 import shutil
 import argparse
 import re
+import threading
 from typing import Dict, Any, Optional, List, Set
+
+# JSON-RPC error code returned when a server does not implement a request.
+METHOD_NOT_FOUND = -32601
+
+# Exit status for index-backed queries that ran without an up-to-date index. The results are
+# still printed, but they may be stale or incomplete.
+EXIT_UNSYNCHRONIZED = 3
 
 def find_sourcekit_lsp() -> str:
     path = shutil.which("sourcekit-lsp")
@@ -40,8 +48,9 @@ def find_sourcekit_lsp() -> str:
     raise RuntimeError("sourcekit-lsp binary not found.")
 
 class LSPClient:
-    def __init__(self, root_dir: str):
+    def __init__(self, root_dir: str, verbose: bool = False):
         self.root_dir = os.path.abspath(root_dir)
+        self.verbose = verbose
         self.binary = find_sourcekit_lsp()
         self.proc = subprocess.Popen(
             [self.binary],
@@ -51,6 +60,13 @@ class LSPClient:
         )
         self.req_id = 0
         self._opened_files: Set[str] = set()
+        # Replies are read by a single background thread, so that waiting for one can time
+        # out without leaving a blocked read behind to race the next one.
+        self._replies: Dict[int, Dict[str, Any]] = {}
+        self._replies_changed = threading.Condition()
+        self._closed = False
+        self._reader = threading.Thread(target=self._read_messages, daemon=True)
+        self._reader.start()
         self._initialize()
 
     def _send(self, method: str, params: Optional[Dict[str, Any]] = None) -> int:
@@ -74,22 +90,50 @@ class LSPClient:
         self.proc.stdin.flush()
 
     def _read_response(self, target_id: int) -> Optional[Dict[str, Any]]:
-        while True:
-            line = self.proc.stdout.readline().decode("utf-8", errors="ignore")
-            if not line:
-                return None
-            if line.startswith("Content-Length:"):
-                length = int(line.split(":")[1].strip())
-                # Read until double newline
-                while line.strip() != "":
-                    line = self.proc.stdout.readline().decode("utf-8", errors="ignore")
-                body = self.proc.stdout.read(length).decode("utf-8", errors="ignore")
-                data = json.loads(body)
-                if data.get("id") == target_id:
-                    if "error" in data:
-                        print(f"LSP Error: {data['error']}", file=sys.stderr)
-                        return None
-                    return data.get("result")
+        reply = self._read_reply(target_id)
+        if reply is None:
+            return None
+        if "error" in reply:
+            print(f"LSP Error: {reply['error']}", file=sys.stderr)
+            return None
+        return reply.get("result")
+
+    def _read_reply(
+        self, target_id: int, timeout: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Returns the reply to the request with the given id, or None if the server exits, or
+        if `timeout` seconds elapse first.
+        """
+        with self._replies_changed:
+            self._replies_changed.wait_for(
+                lambda: target_id in self._replies or self._closed, timeout=timeout
+            )
+            return self._replies.pop(target_id, None)
+
+    def _read_messages(self):
+        try:
+            while True:
+                line = self.proc.stdout.readline().decode("utf-8", errors="ignore")
+                if not line:
+                    return
+                if line.startswith("Content-Length:"):
+                    length = int(line.split(":")[1].strip())
+                    # Read until double newline
+                    while line.strip() != "":
+                        line = self.proc.stdout.readline().decode("utf-8", errors="ignore")
+                    body = self.proc.stdout.read(length).decode("utf-8", errors="ignore")
+                    data = json.loads(body)
+                    # Only replies carry an id without a method; notifications and requests
+                    # from the server are ignored.
+                    if "id" in data and "method" not in data:
+                        with self._replies_changed:
+                            self._replies[data["id"]] = data
+                            self._replies_changed.notify_all()
+        finally:
+            with self._replies_changed:
+                self._closed = True
+                self._replies_changed.notify_all()
 
     def _initialize(self):
         req_id = self._send(
@@ -128,6 +172,38 @@ class LSPClient:
         )
         self._read_response(req_id)
         self._notify("initialized", {})
+
+    def synchronize(self, timeout: float) -> bool:
+        """
+        Waits up to `timeout` seconds for sourcekit-lsp to finish background indexing, and
+        returns true if it did. Without this, index-backed queries race the indexer, and the
+        process exits (killing the indexer) before it finishes, so they return stale or empty
+        results for recently changed code.
+        """
+        if self.verbose:
+            print("Waiting for sourcekit-lsp to finish indexing...", file=sys.stderr)
+
+        # Newer servers namespace the request; older ones only know the original name.
+        for method in ("sourcekit/workspace/synchronize", "workspace/synchronize"):
+            req_id = self._send(method, {"index": True})
+            reply = self._read_reply(req_id, timeout=timeout)
+            if reply is None:
+                print(
+                    f"warning: indexing did not finish within {timeout:g} seconds",
+                    file=sys.stderr,
+                )
+                return False
+            if "error" not in reply:
+                return True
+            if reply["error"].get("code") != METHOD_NOT_FOUND:
+                print(
+                    f"warning: could not wait for indexing: {reply['error']}",
+                    file=sys.stderr,
+                )
+                return False
+
+        print("warning: this sourcekit-lsp cannot wait for indexing", file=sys.stderr)
+        return False
 
     def _ensure_open(self, abs_path: str):
         if abs_path in self._opened_files:
@@ -430,7 +506,8 @@ class LSPClient:
     def close(self):
         try:
             req_id = self._send("shutdown")
-            self._read_response(req_id)
+            # The server may still be busy, for example after indexing timed out.
+            self._read_reply(req_id, timeout=5)
             self._notify("exit")
         except Exception:
             pass
@@ -447,8 +524,24 @@ class LSPClient:
                         pass
 
 def main():
-    parser = argparse.ArgumentParser(description="Query sourcekit-lsp for Swift symbols and macro expansion")
+    parser = argparse.ArgumentParser(
+        description="Query sourcekit-lsp for Swift symbols and macro expansion",
+        epilog=(
+            "The symbol, definition, and references commands wait for indexing to finish "
+            "first. If they cannot, they still print their results, but warn and exit with "
+            f"status {EXIT_UNSYNCHRONIZED}, because the results may be stale or incomplete."
+        ),
+    )
     parser.add_argument("--dir", default=os.getcwd(), help="Workspace root directory")
+    parser.add_argument(
+        "--index-timeout",
+        type=float,
+        default=600,
+        help="Seconds to wait for indexing before querying anyway (default: 600)",
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Report progress on standard error"
+    )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     # symbol subcommand
@@ -481,8 +574,13 @@ def main():
 
     args = parser.parse_args()
 
-    client = LSPClient(root_dir=args.dir)
+    client = LSPClient(root_dir=args.dir, verbose=args.verbose)
+    synchronized = True
     try:
+        # Hover and macro expansion only need the open file, so they do not wait.
+        if args.subcommand in ("symbol", "definition", "references"):
+            synchronized = client.synchronize(timeout=args.index_timeout)
+
         if args.subcommand == "symbol":
             res = client.query_workspace_symbols(args.query)
         elif args.subcommand == "definition":
@@ -498,6 +596,14 @@ def main():
         print(json.dumps(res, indent=2))
     finally:
         client.close()
+
+    if not synchronized:
+        print(
+            f"warning: '{args.subcommand}' ran without an up-to-date index, so its results "
+            "may be stale or incomplete",
+            file=sys.stderr,
+        )
+        sys.exit(EXIT_UNSYNCHRONIZED)
 
 if __name__ == "__main__":
     main()
