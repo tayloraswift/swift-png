@@ -29,10 +29,17 @@ jobs:
                         "@aol\.com"
                         "@icloud\.com"
                         "@sasktel\.net"
+                        "@anthropic\.com"
+                        "@openai\.com"
+                        "@alibabacloud\.com"
+                        "@alibaba-inc\.com"
+                        "@google\.com"
+                        "google-labs-jules\[bot\]@"
                     )
                     blacklist_pattern=$(IFS="|"; echo "${blacklisted_domains[*]}")
 
-                    insecure_emails=$(git log --format='%ae%n%ce' | sort -u | grep -E -i "$blacklist_pattern" || true)
+                    # co-author trailers count too, because GitHub attributes the commit to every address in them
+                    insecure_emails=$(git log --format='%ae%n%ce%n%(trailers:valueonly)' | sort -u | grep -E -i "$blacklist_pattern" || true)
                     if [ -n "$insecure_emails" ]; then
                         echo "❗ Found insecure email addresses in git history"
                         exit 1
