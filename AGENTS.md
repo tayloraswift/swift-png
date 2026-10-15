@@ -62,6 +62,17 @@ Commit messages should be brief, uncapitalized sentences or sentence fragments, 
 If you are writing long-form prose (such as tutorials, articles, and design docs), please consult and follow our [English style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/English.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/English.md)). As with the Swift style guide, you should cache it locally to `/tmp/english_style_guide.md`.
 
 
+## Git branches
+
+When you create a branch from a remote branch, always pass `--no-track`:
+
+```bash
+git switch --no-track -c my-feature origin/master
+```
+
+Without it, Git sets the new branch’s upstream to the branch it started from, such as `origin/master`, or a teammate’s branch that you are stacking a PR on. Editors that “publish” or “sync” a branch push to its upstream, so your commits land on that branch instead of a new one. Push a new branch under its own name with `git push -u origin my-feature`.
+
+
 ## Repository-specific instructions
 
 Before working in this repository, read `CONTRIBUTORS.md` if it exists. If present, this file will contain repository-specific guidance that supplements these global instructions.
