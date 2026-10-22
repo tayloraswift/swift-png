@@ -58,7 +58,10 @@ class LSPClient:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
-        self.req_id = 0
+        self._req_id = 0
+        self._stdin_lock = threading.Lock()
+        self._shown_documents: List[str] = []
+        self._shown_documents_lock = threading.Lock()
         self._opened_files: Set[str] = set()
         # Replies are read by a single background thread, so that waiting for one can time
         # out without leaving a blocked read behind to race the next one.
@@ -69,25 +72,27 @@ class LSPClient:
         self._reader.start()
         self._initialize()
 
-    def _send(self, method: str, params: Optional[Dict[str, Any]] = None) -> int:
-        self.req_id += 1
-        payload = {"jsonrpc": "2.0", "id": self.req_id, "method": method}
-        if params is not None:
-            payload["params"] = params
+    def _send_payload(self, payload: Dict[str, Any]):
         body_bytes = json.dumps(payload).encode("utf-8")
         header = f"Content-Length: {len(body_bytes)}\r\n\r\n".encode("ascii")
-        self.proc.stdin.write(header + body_bytes)
-        self.proc.stdin.flush()
-        return self.req_id
+        with self._stdin_lock:
+            self.proc.stdin.write(header + body_bytes)
+            self.proc.stdin.flush()
+
+    def _send(self, method: str, params: Optional[Dict[str, Any]] = None) -> int:
+        self._req_id += 1
+        req_id = self._req_id
+        payload = {"jsonrpc": "2.0", "id": req_id, "method": method}
+        if params is not None:
+            payload["params"] = params
+        self._send_payload(payload)
+        return req_id
 
     def _notify(self, method: str, params: Optional[Dict[str, Any]] = None):
         payload = {"jsonrpc": "2.0", "method": method}
         if params is not None:
             payload["params"] = params
-        body_bytes = json.dumps(payload).encode("utf-8")
-        header = f"Content-Length: {len(body_bytes)}\r\n\r\n".encode("ascii")
-        self.proc.stdin.write(header + body_bytes)
-        self.proc.stdin.flush()
+        self._send_payload(payload)
 
     def _read_response(self, target_id: int) -> Optional[Dict[str, Any]]:
         reply = self._read_reply(target_id)
@@ -124,9 +129,20 @@ class LSPClient:
                         line = self.proc.stdout.readline().decode("utf-8", errors="ignore")
                     body = self.proc.stdout.read(length).decode("utf-8", errors="ignore")
                     data = json.loads(body)
+                    # Handle server-to-client requests, specifically window/showDocument
+                    if data.get("method") == "window/showDocument":
+                        uri = data.get("params", {}).get("uri")
+                        if uri:
+                            with self._shown_documents_lock:
+                                self._shown_documents.append(uri)
+                        req_id = data.get("id")
+                        if req_id is not None:
+                            self._send_payload(
+                                {"jsonrpc": "2.0", "id": req_id, "result": {"success": True}}
+                            )
                     # Only replies carry an id without a method; notifications and requests
                     # from the server are ignored.
-                    if "id" in data and "method" not in data:
+                    elif "id" in data and "method" not in data:
                         with self._replies_changed:
                             self._replies[data["id"]] = data
                             self._replies_changed.notify_all()
@@ -142,6 +158,9 @@ class LSPClient:
                 "processId": os.getpid(),
                 "rootUri": f"file://{self.root_dir}",
                 "capabilities": {
+                    "window": {
+                        "showDocument": {"support": True},
+                    },
                     "workspace": {
                         "symbol": {"dynamicRegistration": False},
                         "executeCommand": {"dynamicRegistration": False},
@@ -304,6 +323,32 @@ class LSPClient:
             })
         return expansions
 
+    def _extract_expansions_from_shown_documents(
+        self, header: str, line: Optional[int]
+    ) -> Optional[List[Dict[str, Any]]]:
+        import urllib.parse
+
+        with self._shown_documents_lock:
+            uris = list(self._shown_documents)
+        expansions = []
+        for uri in uris:
+            parsed = urllib.parse.urlparse(uri)
+            doc_path = urllib.parse.unquote(parsed.path)
+            if os.path.exists(doc_path):
+                try:
+                    with open(doc_path, "r", encoding="utf-8") as f:
+                        text = f.read()
+                    if text.strip():
+                        expansions.append({
+                            "header": header or "Macro Expansion",
+                            "expansion": text.strip(),
+                            "line": line,
+                            "type": "lsp_show_document",
+                        })
+                except Exception:
+                    pass
+        return expansions if expansions else None
+
     @staticmethod
     def _dedup_expansions(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         dedup = []
@@ -324,6 +369,9 @@ class LSPClient:
 
         # 1. Try LSP codeAction / executeCommand if position is provided
         if line is not None and col is not None:
+            with self._shown_documents_lock:
+                self._shown_documents.clear()
+
             req_id = self._send(
                 "textDocument/codeAction",
                 {
@@ -355,6 +403,9 @@ class LSPClient:
                                     res = self._extract_expansions_from_edit(cmd_res, title, line)
                                     if res:
                                         return res
+                                res = self._extract_expansions_from_shown_documents(title, line)
+                                if res:
+                                    return res
 
             # Try expand.macro.command directly
             req_id = self._send(
@@ -374,6 +425,9 @@ class LSPClient:
                 res = self._extract_expansions_from_edit(cmd_res, "Expand Macro", line)
                 if res:
                     return res
+            res = self._extract_expansions_from_shown_documents("Expand Macro", line)
+            if res:
+                return res
 
         # 2. Extract macro expansions via compiler frontend
         return self._dump_macro_expansions(abs_path, line)
@@ -405,7 +459,7 @@ class LSPClient:
         except Exception:
             pass
 
-        cmd = ["swift", "build", "--skip-update"]
+        cmd = ["swift", "build", "--skip-update", "--build-system", "native"]
         if "/Tests/" in abs_path or abs_path.endswith("Tests.swift"):
             cmd.append("--build-tests")
         cmd.extend(["-Xswiftc", "-Xfrontend", "-Xswiftc", "-dump-macro-expansions"])
