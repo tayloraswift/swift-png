@@ -20,4 +20,14 @@ import Testing
 
         #expect(try Gzip.extract(from: archive[...]) == [1, 2])
     }
+
+    @Test static func ZlibDeflator() {
+        var deflator: LZ77.Deflator = .init(format: .zlib, level: 7, hint: 128 << 10)
+        deflator.push([1, 2, 3][...], last: true)
+        var count: Int = 0
+        while let part: [UInt8] = deflator.pull() {
+            count += part.count
+        }
+        #expect(count == 19)
+    }
 }
