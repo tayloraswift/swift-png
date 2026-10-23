@@ -87,6 +87,8 @@ jobs:
             -   name: 💖 Run tests 💖
                 uses: skiptools/swift-android-action@v2
                 with:
+                    free-disk-space: true
+                    swift-configuration: release
                     copy-files: Sources Tests
 
             -   name: 💖 Update badge 💖
