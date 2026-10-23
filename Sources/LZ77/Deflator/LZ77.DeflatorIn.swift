@@ -9,7 +9,7 @@ extension LZ77 {
 
         init() {
             var capacity: Int = 0
-            self.storage = .create(minimumCapacity: 0) {
+            self.storage = .create(minimumCapacity: 4) {
                 capacity = $0.capacity
             }
             // self.startIndex     = 0
