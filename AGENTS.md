@@ -1,7 +1,7 @@
 <!-- ❣❣❣  DO NOT EDIT  ❣  THIS FILE IS AUTOMATICALLY SYNCED  ❣  DO NOT EDIT  ❣❣❣ -->
 ## Swift coding style and conventions
 
-Please familiarize yourself with, and adhere to, our [institutional Swift style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/Swift.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/Swift.md)).
+Please familiarize yourself with, and adhere to, our [institutional Swift style guide](https://raw.githubusercontent.com/rarestype/dollup/master/Agent/Swift.md) ([web link for humans](https://github.com/rarestype/dollup/blob/master/Agent/Swift.md)).
 
 Read the markdown content directly using your URL reader tool, or check if `/tmp/swift_style_guide.md` exists. If not cached, fetch and save it locally to `/tmp/swift_style_guide.md`.
 
@@ -59,7 +59,7 @@ Commit messages should be brief, uncapitalized sentences or sentence fragments, 
 
 ### Long-form prose
 
-If you are writing long-form prose (such as tutorials, articles, and design docs), please consult and follow our [English style guide](https://raw.githubusercontent.com/tayloraswift/dollup/master/Agent/English.md) ([web link for humans](https://github.com/tayloraswift/dollup/blob/master/Agent/English.md)). As with the Swift style guide, you should cache it locally to `/tmp/english_style_guide.md`.
+If you are writing long-form prose (such as tutorials, articles, and design docs), please consult and follow our [English style guide](https://raw.githubusercontent.com/rarestype/dollup/master/Agent/English.md) ([web link for humans](https://github.com/rarestype/dollup/blob/master/Agent/English.md)). As with the Swift style guide, you should cache it locally to `/tmp/english_style_guide.md`.
 
 
 ## Git branches
