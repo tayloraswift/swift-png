@@ -84,6 +84,9 @@ jobs:
         steps:
             -   name: ⚡ Checkout repository ⚡
                 uses: actions/checkout@v6
+                with:
+                    # fetch all history so the release commit can be merged into the branch
+                    fetch-depth: 0
 
             -   name: ⚡ Install rarestcheck tool ⚡
                 uses: rarestype/r2-install-action@v1
@@ -108,17 +111,39 @@ jobs:
                     fi
 
             -   name: ⚡ Create tag ⚡
+                env:
+                    VERSION: ${{ needs.release.outputs.version }}
+                    BRANCH: ${{ github.ref_name }}
                 run: |
                     # if the pre-release script modified anything but the README, abort release
                     git diff --exit-code
 
-                    git commit \
-                        --allow-empty \
-                        -m "[release]: ${{ needs.release.outputs.version }}"
+                    # the tag marks the commit that was deployed, plus its README update
+                    git commit --allow-empty -m "[release]: $VERSION"
+                    git tag "$VERSION"
 
-                    git tag "${{ needs.release.outputs.version }}"
-                    git push origin "${{ needs.release.outputs.version }}"
-                    git push
+                    # pull requests may have merged while the release was deploying, so the
+                    # release commit is merged into the branch if it can’t fast-forward. the
+                    # tag and the branch are pushed atomically, so neither lands without the
+                    # other, and a push that loses a race fetches the branch and tries again.
+                    for attempt in 1 2 3 4 5; do
+                        git fetch origin "$BRANCH"
+                        if git merge-base --is-ancestor FETCH_HEAD "$VERSION"; then
+                            git checkout --detach "$VERSION"
+                        else
+                            git checkout --detach FETCH_HEAD
+                            # the release commit only changes the README’s version, and this
+                            # release is the newest, so its side wins any conflict
+                            git merge --no-ff -X theirs -m "[release]: $VERSION" "$VERSION"
+                        fi
+                        if git push --atomic origin \
+                            "HEAD:refs/heads/$BRANCH" "refs/tags/$VERSION"; then
+                            exit 0
+                        fi
+                    done
+
+                    echo "::error::Couldn’t push $VERSION to $BRANCH" >&2
+                    exit 1
 
             -   name: ⚡ Create release ⚡
                 if: env.CREATE_RELEASE == 'true'
