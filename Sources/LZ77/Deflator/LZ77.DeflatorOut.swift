@@ -31,14 +31,17 @@ extension LZ77.DeflatorOut {
     mutating func exclude() {
         if !isKnownUniquelyReferenced(&self.storage) {
             #if WARN_COPY_ON_WRITE
-            print("""
+            print(
+                """
                 warning: managed buffer in type '\(String.init(reflecting: Self.self))' has \
                 multiple references; buffer is being copied to preserve value semantics
-                """)
+                """
+            )
             #endif
 
-            self.storage = self.storage.withUnsafeMutablePointerToElements {
-                (body: UnsafeMutablePointer<UInt16>) in
+            self.storage = self.storage.withUnsafeMutablePointerToElements { (
+                    body: UnsafeMutablePointer<UInt16>
+                ) in
 
                 .create(minimumCapacity: self.capacity) {
                     $0.withUnsafeMutablePointerToElements {
@@ -114,8 +117,9 @@ extension LZ77.DeflatorOut {
     }
 
     private func copy(bytes: Int) -> [UInt8] {
-        .init(unsafeUninitializedCapacity: bytes) {
-            (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        .init(
+            unsafeUninitializedCapacity: bytes
+        ) { (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             self.storage.withUnsafeMutablePointerToElements {
                 for a: Int in 0 ..< bytes >> 1 {

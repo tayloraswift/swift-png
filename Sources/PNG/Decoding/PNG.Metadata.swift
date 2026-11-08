@@ -144,10 +144,12 @@ extension PNG.Metadata {
             }
         // check that chunk is not a critical chunk
         case .CgBI, .IHDR, .PLTE, .IDAT, .IEND:
-            fatalError("""
+            fatalError(
+                """
                 Metadata.push(ancillary:pixel:palette:background:transparency:) \
                 cannot be used with critical chunk type '\(chunk.type)'
-                """)
+                """
+            )
         default:
             break
         }

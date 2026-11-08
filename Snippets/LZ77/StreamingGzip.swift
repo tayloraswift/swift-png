@@ -5,8 +5,9 @@ let path: String = "Sources/LZ77/docs.docc/GzipCompression/GzipCompression"
 
 guard
 let original: [UInt8] = (
-    System.File.Source.open(path: "\(path).gz") {
-        (source: inout System.File.Source) -> [UInt8]? in
+    System.File.Source.open(
+        path: "\(path).gz"
+    ) { (source: inout System.File.Source) -> [UInt8]? in
 
         guard let count: Int = source.count else {
             return nil

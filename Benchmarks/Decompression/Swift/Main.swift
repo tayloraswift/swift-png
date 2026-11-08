@@ -42,8 +42,7 @@ enum Benchmark {
 }
 extension Benchmark.Decode.Blob: PNG.BytestreamSource {
     static func load(path: String) -> Self? {
-        System.File.Source.open(path: path) {
-            (file: inout System.File.Source) -> Self? in
+        System.File.Source.open(path: path) { (file: inout System.File.Source) -> Self? in
             guard   let count: Int       = file.count,
             let buffer: [UInt8]  = file.read(count: count) else {
                 return nil

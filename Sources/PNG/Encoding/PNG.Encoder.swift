@@ -119,31 +119,35 @@ extension PNG.Encoder {
         let candidates: ([UInt8], [UInt8], [UInt8], [UInt8], [UInt8]) = (
             line,
             [1] +     current.prefix   (delay)
-                + zip(current.dropFirst(delay),     current).map {
-                (e: (x: UInt8,    a: UInt8) ) -> UInt8 in
+                + zip(current.dropFirst(delay),     current).map { (
+                    e: (x: UInt8,    a: UInt8)
+                ) -> UInt8 in
                 e.x &- e.a
             },
-            [2] + zip(current,                                   last).map {
-                (e: (x: UInt8,                b: UInt8) ) -> UInt8 in
+            [2] + zip(current,                                   last).map { (
+                    e: (x: UInt8,                b: UInt8)
+                ) -> UInt8 in
                 e.x &- e.b
             },
-            [3] + zip(current.prefix   (delay),                  last.prefix   (delay) ).map {
-                (e: (x: UInt8,                b: UInt8) ) -> UInt8 in
+            [3] + zip(current.prefix   (delay),                  last.prefix   (delay) ).map { (
+                    e: (x: UInt8,                b: UInt8)
+                ) -> UInt8 in
                 e.x &- e.b >> 1
             }
-                + zip(current.dropFirst(delay), zip(current,     last.dropFirst(delay))).map {
-                (e: (x: UInt8, y: (a: UInt8,    b: UInt8))) -> UInt8 in
+                + zip(current.dropFirst(delay), zip(current,     last.dropFirst(delay))).map { (
+                    e: (x: UInt8, y: (a: UInt8,    b: UInt8))
+                ) -> UInt8 in
                 e.x &- UInt8.init((UInt16.init(e.y.a) &+ UInt16.init(e.y.b)) >> 1)
             },
-            [4] + zip(current.prefix   (delay),                  last.prefix   (delay) ).map {
-                (e: (x: UInt8,                b: UInt8) ) -> UInt8 in
+            [4] + zip(current.prefix   (delay),                  last.prefix   (delay) ).map { (
+                    e: (x: UInt8,                b: UInt8)
+                ) -> UInt8 in
                 e.x &- PNG.paeth(0, e.b, 0)
             }
                 + zip(
                 current.dropFirst(delay),
                 zip(current, zip(last.dropFirst(delay), last))
-            ).map {
-                (e: (x: UInt8, y: (a: UInt8, z: (b: UInt8, c: UInt8)))) -> UInt8 in
+            ).map { (e: (x: UInt8, y: (a: UInt8, z: (b: UInt8, c: UInt8)))) -> UInt8 in
                 e.x &- PNG.paeth(e.y.a, e.y.z.b, e.y.z.c)
             }
         )

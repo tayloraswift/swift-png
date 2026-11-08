@@ -30,14 +30,17 @@ extension LZ77.InflatorOut {
     mutating func exclude() {
         if !isKnownUniquelyReferenced(&self.storage) {
             #if WARN_COPY_ON_WRITE
-            print("""
+            print(
+                """
                 warning: managed buffer in type '\(String.init(reflecting: Self.self))' has \
                 multiple references; buffer is being copied to preserve value semantics
-                """)
+                """
+            )
             #endif
 
-            self.storage = self.storage.withUnsafeMutablePointerToElements {
-                (body: UnsafeMutablePointer<UInt8>) in
+            self.storage = self.storage.withUnsafeMutablePointerToElements { (
+                    body: UnsafeMutablePointer<UInt8>
+                ) in
 
                 let new: ManagedBuffer<Void, UInt8> =
                 .create(minimumCapacity: self.capacity) {
@@ -128,8 +131,9 @@ extension LZ77.InflatorOut {
                 self.startIndex     = 0
             }
         } else {
-            self.storage = self.storage.withUnsafeMutablePointerToElements {
-                (body: UnsafeMutablePointer<UInt8>) in
+            self.storage = self.storage.withUnsafeMutablePointerToElements { (
+                    body: UnsafeMutablePointer<UInt8>
+                ) in
 
                 let new: ManagedBuffer<Void, UInt8> = .create(minimumCapacity: capacity) {
                     self.capacity = $0.capacity

@@ -39,8 +39,9 @@ extension Stream: PNG.BytestreamSource {
 extension Stream {
     init(path: String) {
         guard let data: [UInt8]  = (
-            System.File.Source.open(path: path) {
-                (source: inout System.File.Source) -> [UInt8]? in
+            System.File.Source.open(
+                path: path
+            ) { (source: inout System.File.Source) -> [UInt8]? in
 
                 guard let count: Int = source.count else {
                     return nil
@@ -182,8 +183,10 @@ func decodeOnline(
 
 //  snippet.SILENT_MAJORITY
 var counter: Int = 0
-let image: PNG.Image = try decodeOnline(stream: &stream, overdraw: false) {
-    (snapshot: PNG.Image) in
+let image: PNG.Image = try decodeOnline(
+    stream: &stream,
+    overdraw: false
+) { (snapshot: PNG.Image) in
 
     let _: [PNG.RGBA<UInt8>] = snapshot.unpack(as: PNG.RGBA<UInt8>.self)
 
@@ -200,8 +203,7 @@ try progressive.compress(path: "\(path)-progressive.png", hint: 1 << 12)
 //  snippet.PROGRESSIVE
 stream = .init(path: "\(path)-progressive.png")
 counter = 0
-let _: PNG.Image = try decodeOnline(stream: &stream, overdraw: false) {
-    (snapshot: PNG.Image) in
+let _: PNG.Image = try decodeOnline(stream: &stream, overdraw: false) { (snapshot: PNG.Image) in
 
     try snapshot.compress(path: "\(path)-progressive-\(counter).png")
     counter += 1
@@ -211,8 +213,7 @@ let _: PNG.Image = try decodeOnline(stream: &stream, overdraw: false) {
 stream.reset(position: 0)
 
 counter = 0
-let _: PNG.Image = try decodeOnline(stream: &stream, overdraw: true) {
-    (snapshot: PNG.Image) in
+let _: PNG.Image = try decodeOnline(stream: &stream, overdraw: true) { (snapshot: PNG.Image) in
 
     try snapshot.compress(path: "\(path)-progressive-overdrawn-\(counter).png")
     counter += 1

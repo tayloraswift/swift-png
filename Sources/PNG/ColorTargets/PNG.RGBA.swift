@@ -1,5 +1,4 @@
-extension PNG.RGBA: Sendable where T: Sendable {
-}
+extension PNG.RGBA: Sendable where T: Sendable {}
 extension PNG {
     /// An RGBA color target.
     ///
@@ -232,8 +231,7 @@ extension PNG.RGBA: PNG.Color {
             .indexed2(palette: let palette, fill: _),
             .indexed4(palette: let palette, fill: _),
             .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(interleaved, dereference: deindexer(palette)) {
-                (c) in
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) { (c) in
                 .init(c.0, c.1, c.2, c.3)
             }
 
@@ -241,86 +239,123 @@ extension PNG.RGBA: PNG.Color {
             .v2(fill: _, key: nil),
             .v4(fill: _, key: nil),
             .v8(fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: T, _) in
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) { (c: T, _) in
                 .init(c)
             }
         case    .v16(fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: T, _) in
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) { (c: T, _) in
                 .init(c)
             }
         case    .v1(fill: _, key: let key?),
             .v2(fill: _, key: let key?),
             .v4(fill: _, key: let key?),
             .v8(fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: T, k: UInt8 )     in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: T, k: UInt8 )     in
                 .init(c, k == key ? .min : .max)
             }
         case    .v16(fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: T, k: UInt16)     in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: T, k: UInt16)     in
                 .init(c, k == key ? .min : .max)
             }
 
         case    .va8(fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T))          in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T))          in
                 .init(c.0, c.1)
             }
         case    .va16(fill: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T))          in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T))          in
                 .init(c.0, c.1)
             }
 
         case    .bgr8(palette: _, fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T), _)    in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T), _)    in
                 .init(c.2, c.1, c.0)
             }
         case    .bgr8(palette: _, fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T), k: (UInt8,  UInt8,  UInt8 )) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T), k: (UInt8,  UInt8,  UInt8 )) in
                 .init(c.2, c.1, c.0, k == key ? .min : .max)
             }
 
         case    .rgb8(palette: _, fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T), _)    in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T), _)    in
                 .init(c.0, c.1, c.2)
             }
         case    .rgb16(palette: _, fill: _, key: nil):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T, T), _)    in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T, T), _)    in
                 .init(c.0, c.1, c.2)
             }
         case    .rgb8(palette: _, fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T), k: (UInt8,  UInt8,  UInt8 )) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T), k: (UInt8,  UInt8,  UInt8 )) in
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
         case    .rgb16(palette: _, fill: _, key: let key?):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T, T), k: (UInt16, UInt16, UInt16)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T, T), k: (UInt16, UInt16, UInt16)) in
                 .init(c.0, c.1, c.2, k == key ? .min : .max)
             }
 
         case    .bgra8(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T, T)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T, T)) in
                 .init(c.2, c.1, c.0, c.3)
             }
 
         case    .rgba8(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T, T)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T, T)) in
                 .init(c.0, c.1, c.2, c.3)
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T, T, T)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T, T, T)) in
                 .init(c.0, c.1, c.2, c.3)
             }
         }
@@ -378,8 +413,7 @@ extension PNG.RGBA: PNG.Color {
             .indexed2(palette: let palette, fill: _),
             .indexed4(palette: let palette, fill: _),
             .indexed8(palette: let palette, fill: _):
-            return PNG.deconvolve(pixels, reference: indexer(palette)) {
-                (c) in
+            return PNG.deconvolve(pixels, reference: indexer(palette)) { (c) in
                 (c.r, c.g, c.b, c.a)
             }
 
@@ -392,47 +426,39 @@ extension PNG.RGBA: PNG.Color {
             return PNG.deconvolve(pixels, as: UInt16.self, depth: depth, kernel: \.r)
 
         case    .va8(fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (c) in
                 (c.r, c.a)
             }
         case    .va16(fill: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (c) in
                 (c.r, c.a)
             }
 
         case    .bgr8(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (c) in
                 (c.b, c.g, c.r)
             }
 
         case    .rgb8(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (c) in
                 (c.r, c.g, c.b)
             }
         case    .rgb16(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (c) in
                 (c.r, c.g, c.b)
             }
 
         case    .bgra8(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (c) in
                 (c.b, c.g, c.r, c.a)
             }
 
         case    .rgba8(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (c) in
                 (c.r, c.g, c.b, c.a)
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (c) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (c) in
                 (c.r, c.g, c.b, c.a)
             }
         }

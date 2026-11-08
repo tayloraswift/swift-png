@@ -737,8 +737,9 @@ extension PNG {
     )
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
-        .init(unsafeUninitializedCapacity: pixels.count) {
-            (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        .init(
+            unsafeUninitializedCapacity: pixels.count
+        ) { (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = pixels.count
             if      T.bitWidth == A.bitWidth {
@@ -790,8 +791,9 @@ extension PNG {
     )
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
-        .init(unsafeUninitializedCapacity: pixels.count) {
-            (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        .init(
+            unsafeUninitializedCapacity: pixels.count
+        ) { (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = pixels.count
             if      T.bitWidth == A.bitWidth {
@@ -843,8 +845,9 @@ extension PNG {
     )
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
-        .init(unsafeUninitializedCapacity: pixels.count) {
-            (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        .init(
+            unsafeUninitializedCapacity: pixels.count
+        ) { (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = pixels.count
             if      T.bitWidth == A.bitWidth {
@@ -896,8 +899,9 @@ extension PNG {
     )
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
-        .init(unsafeUninitializedCapacity: pixels.count) {
-            (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        .init(
+            unsafeUninitializedCapacity: pixels.count
+        ) { (samples: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = pixels.count
             if      T.bitWidth == A.bitWidth {
@@ -951,8 +955,9 @@ extension PNG {
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
         let bytes: Int = pixels.count * MemoryLayout<A>.stride
-        return .init(unsafeUninitializedCapacity: bytes) {
-            (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        return .init(
+            unsafeUninitializedCapacity: bytes
+        ) { (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = bytes
             let raw: UnsafeMutableRawBufferPointer       = .init(buffer)
@@ -1005,8 +1010,9 @@ extension PNG {
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
         let bytes: Int = pixels.count * MemoryLayout<A>.stride * 2
-        return .init(unsafeUninitializedCapacity: bytes) {
-            (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        return .init(
+            unsafeUninitializedCapacity: bytes
+        ) { (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = bytes
             let raw: UnsafeMutableRawBufferPointer       = .init(buffer)
@@ -1059,8 +1065,9 @@ extension PNG {
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
         let bytes: Int = pixels.count * MemoryLayout<A>.stride * 3
-        return .init(unsafeUninitializedCapacity: bytes) {
-            (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        return .init(
+            unsafeUninitializedCapacity: bytes
+        ) { (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = bytes
             let raw: UnsafeMutableRawBufferPointer       = .init(buffer)
@@ -1113,8 +1120,9 @@ extension PNG {
     -> [UInt8]
         where A: FixedWidthInteger & UnsignedInteger, T: FixedWidthInteger & UnsignedInteger {
         let bytes: Int = pixels.count * MemoryLayout<A>.stride * 4
-        return .init(unsafeUninitializedCapacity: bytes) {
-            (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
+        return .init(
+            unsafeUninitializedCapacity: bytes
+        ) { (buffer: inout UnsafeMutableBufferPointer<UInt8>, count: inout Int) in
 
             count = bytes
             let raw: UnsafeMutableRawBufferPointer       = .init(buffer)

@@ -63,8 +63,9 @@ extension LZ77.InflatorIn {
             }
             // transfer leftover elements
             self.capacity   = capacity
-            self.storage    = self.storage.withUnsafeMutablePointerToElements {
-                (old: UnsafeMutablePointer<UInt16>) in
+            self.storage    = self.storage.withUnsafeMutablePointerToElements { (
+                    old: UnsafeMutablePointer<UInt16>
+                ) in
                 new.withUnsafeMutablePointerToElements {
                     $0.update(from: old + a, count: (rollover + 1) >> 1)
                 }
@@ -79,8 +80,7 @@ extension LZ77.InflatorIn {
 
         b         -= a << 4
         // write new data
-        data.withUnsafeBufferPointer {
-            (data: UnsafeBufferPointer<UInt8>) in
+        data.withUnsafeBufferPointer { (data: UnsafeBufferPointer<UInt8>) in
             self.storage.withUnsafeMutablePointerToElements {
                 // already checked !data.isEmpty
                 let count: Int

@@ -97,8 +97,12 @@ extension LZ77.DeflatorWindow {
         goal: Int
     ) -> (run: Int, distance: Int)? {
         var best: (run: Int, distance: Int) = (run: 5, distance: 1)
-        self.match(from: head, lookahead: lookahead, attempts: attempts, goal: goal) {
-            (run: Int, distance: Int) in
+        self.match(
+            from: head,
+            lookahead: lookahead,
+            attempts: attempts,
+            goal: goal
+        ) { (run: Int, distance: Int) in
             if best.run < run {
                 best = (run: run, distance: distance)
             }
@@ -113,11 +117,11 @@ extension LZ77.DeflatorWindow {
         goal: Int,
         delegate: (_ run: Int, _ distance: Int) -> ()
     ) {
-        lookahead.withUnsafePointer {
-            (v: UnsafePointer<UInt8>) in
+        lookahead.withUnsafePointer { (v: UnsafePointer<UInt8>) in
 
-            self.storage.withUnsafeMutablePointerToElements {
-                (w: UnsafeMutablePointer<Element>) in
+            self.storage.withUnsafeMutablePointerToElements { (
+                    w: UnsafeMutablePointer<Element>
+                ) in
 
                 guard let next: UInt16 = head.next else {
                     return

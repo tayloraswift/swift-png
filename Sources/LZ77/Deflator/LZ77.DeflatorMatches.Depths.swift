@@ -27,13 +27,11 @@ extension LZ77.DeflatorMatches.Depths {
         count: 256
     )
     // base run composite cost: 7.5 bps
-        + (3 ... 258).map {
-        (run: Int) -> UInt8 in
+        + (3 ... 258).map { (run: Int) -> UInt8 in
         30 + .init(LZ77.Composites[run: LZ77.Decades[run: run]].extra) << 2
     }
     // base distance composite cost: 4.75 bps
-        + (0 ... 29).map {
-        (decade: UInt8) -> UInt8 in
+        + (0 ... 29).map { (decade: UInt8) -> UInt8 in
         19 + .init(LZ77.Composites[distance: decade           ].extra) << 2
     }
 

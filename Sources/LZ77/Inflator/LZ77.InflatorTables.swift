@@ -63,8 +63,7 @@ extension LZ77.InflatorTables {
         let offset: Int  = start  + MemoryLayout<LZ77.RunLiteral>.stride * literals.size.z
         let size: Int    = offset + MemoryLayout<LZ77.Distance  >.stride * distances.size.z
         self.storage = .create(minimumCapacity: size){ _ in () }
-        self.storage.withUnsafeMutablePointerToElements {
-            (base: UnsafeMutablePointer<UInt8>) in
+        self.storage.withUnsafeMutablePointerToElements { (base: UnsafeMutablePointer<UInt8>) in
 
             // write byte reversal table
             (base         ).initialize(from: LZ77.Reversed.table, count: 256)

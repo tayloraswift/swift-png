@@ -38,8 +38,9 @@ extension LZ77.DeflatorIn {
             )
             #endif
 
-            self.storage = self.storage.withUnsafeMutablePointerToElements {
-                (body: UnsafeMutablePointer<UInt8>) in
+            self.storage = self.storage.withUnsafeMutablePointerToElements { (
+                    body: UnsafeMutablePointer<UInt8>
+                ) in
 
                 let new: ManagedBuffer<Void, UInt8> =
                 .create(minimumCapacity: self.capacity) {
@@ -146,8 +147,9 @@ extension LZ77.DeflatorIn {
                 self.startIndex = 4
             }
         } else {
-            self.storage = self.storage.withUnsafeMutablePointerToElements {
-                (body: UnsafeMutablePointer<UInt8>) in
+            self.storage = self.storage.withUnsafeMutablePointerToElements { (
+                    body: UnsafeMutablePointer<UInt8>
+                ) in
 
                 let new: ManagedBuffer<Void, UInt8> = .create(minimumCapacity: capacity) {
                     self.capacity = $0.capacity
