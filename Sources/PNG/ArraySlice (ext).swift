@@ -1,8 +1,7 @@
 extension ArraySlice where Element == UInt8 {
     func load<T, U>(bigEndian: T.Type, as type: U.Type) -> U
         where T: FixedWidthInteger, U: BinaryInteger {
-        return self.withUnsafeBufferPointer {
-            (buffer: UnsafeBufferPointer<UInt8>) in
+        return self.withUnsafeBufferPointer { (buffer: UnsafeBufferPointer<UInt8>) in
 
             assert(
                 buffer.count >= MemoryLayout<T>.size,

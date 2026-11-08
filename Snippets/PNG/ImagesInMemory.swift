@@ -45,8 +45,9 @@ extension System.Blob: PNG.BytestreamSource, PNG.BytestreamDestination {
 //  snippet.BLOB_BOOTSTRAP
 guard
 let data: [UInt8] = (
-    System.File.Source.open(path: "\(path).png") {
-        (source: inout System.File.Source) -> [UInt8]? in
+    System.File.Source.open(
+        path: "\(path).png"
+    ) { (source: inout System.File.Source) -> [UInt8]? in
 
         guard let count: Int = source.count else {
             return nil

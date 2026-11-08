@@ -30,15 +30,13 @@ func clock() -> Int {
 )
 #endif
 
-public enum __Entrypoint {
-}
+public enum __Entrypoint {}
 
 #if os(macOS) || os(Linux)
 // internal benchmarking functions, to measure module boundary overhead
 extension __Entrypoint {
     public enum Benchmark {
-        public enum Dictionary {
-        }
+        public enum Dictionary {}
         public enum Decode {
             struct Blob {
                 private let buffer: [UInt8]
@@ -54,8 +52,7 @@ extension __Entrypoint {
 }
 extension __Entrypoint.Benchmark.Decode.Blob: PNG.BytestreamSource {
     static func load(path: String) -> Self? {
-        System.File.Source.open(path: path) {
-            (file: inout System.File.Source) -> Self? in
+        System.File.Source.open(path: path) { (file: inout System.File.Source) -> Self? in
             guard   let count: Int       = file.count,
             let buffer: [UInt8]  = file.read(count: count) else {
                 return nil
@@ -142,8 +139,7 @@ extension __Entrypoint.Benchmark.Dictionary {
     public static func updateRemove(count: Int = 1 << 22) -> (baseline: Int, accelerated: Int) {
         let data: [UInt32] = (0 ..< count).map{ _ in .random(in: .min ... .max) }
 
-        let accelerated: Int = {
-            (data: [UInt32]) -> Int in
+        let accelerated: Int = { (data: [UInt32]) -> Int in
 
             let t: (Int, Int)
 
@@ -159,8 +155,7 @@ extension __Entrypoint.Benchmark.Dictionary {
             return t.1 - t.0
         }(data)
 
-        let baseline: Int = {
-            (data: [UInt32]) -> Int in
+        let baseline: Int = { (data: [UInt32]) -> Int in
 
             let t: (Int, Int)
 

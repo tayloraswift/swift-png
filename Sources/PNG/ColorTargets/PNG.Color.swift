@@ -157,10 +157,11 @@ extension PNG.Color<(UInt8, UInt8)> {
         _ interleaved: [UInt8],
         of format: PNG.Format
     ) -> [Self] {
-        self.unpack(interleaved, of: format) {
-            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
-            {
-                (i: Int) in
+        self.unpack(
+            interleaved,
+            of: format
+        ) { (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
+            { (i: Int) in
                 (palette[i].r, palette[i].a)
             }
         }
@@ -168,8 +169,7 @@ extension PNG.Color<(UInt8, UInt8)> {
     @inlinable public static func pack(_ pixels: [Self], as format: PNG.Format) -> [UInt8] {
         // behavior: create hash table for palette lookup. if a color is not in
         // the palette, return entry 0
-        Self.pack(pixels, as: format) {
-            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
+        Self.pack(pixels, as: format) { (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             // currently blocked by the issue discussed at
             // https://github.com/apple/swift/pull/28833
             // as a workaround, we box the UInt8s into an RGBA<UInt8> struct
@@ -179,8 +179,7 @@ extension PNG.Color<(UInt8, UInt8)> {
                     palette.indices
                 )
             )
-            return {
-                (c: (v: UInt8, a: UInt8)) in
+            return { (c: (v: UInt8, a: UInt8)) in
                 lookup[.init(c.v, c.v, c.v, c.a), default: 0]
             }
         }
@@ -191,10 +190,11 @@ extension PNG.Color<(UInt8, UInt8, UInt8, UInt8)> {
         _ interleaved: [UInt8],
         of format: PNG.Format
     ) -> [Self] {
-        self.unpack(interleaved, of: format) {
-            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
-            {
-                (i: Int) in
+        self.unpack(
+            interleaved,
+            of: format
+        ) { (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
+            { (i: Int) in
                 palette[i]
             }
         }
@@ -202,8 +202,7 @@ extension PNG.Color<(UInt8, UInt8, UInt8, UInt8)> {
     @inlinable public static func pack(_ pixels: [Self], as format: PNG.Format) -> [UInt8] {
         // behavior: create hash table for palette lookup. if a color is not in
         // the palette, return entry 0
-        Self.pack(pixels, as: format) {
-            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
+        Self.pack(pixels, as: format) { (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             // currently blocked by the issue discussed at
             // https://github.com/apple/swift/pull/28833
             // as a workaround, we box the UInt8s into an RGBA<UInt8> struct
@@ -213,8 +212,7 @@ extension PNG.Color<(UInt8, UInt8, UInt8, UInt8)> {
                     palette.indices
                 )
             )
-            return {
-                (c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) in
+            return { (c: (r: UInt8, g: UInt8, b: UInt8, a: UInt8)) in
                 lookup[.init(c.r, c.g, c.b, c.a), default: 0]
             }
         }

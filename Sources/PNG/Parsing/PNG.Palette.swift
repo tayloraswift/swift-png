@@ -55,8 +55,9 @@ extension PNG.Palette {
             throw PNG.ParsingError.invalidPaletteCount(count, max: max)
         }
 
-        self.entries = stride(from: data.startIndex, to: data.endIndex, by: 3).map {
-            (base: Int) in
+        self.entries = stride(from: data.startIndex, to: data.endIndex, by: 3).map { (
+                base: Int
+            ) in
             (r: data[base], g: data[base + 1], b: data[base + 2])
         }
     }

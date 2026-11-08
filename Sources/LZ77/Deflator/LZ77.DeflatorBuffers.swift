@@ -27,7 +27,8 @@ extension LZ77.DeflatorBuffers {
         }
 
         self.init(
-            format: format, stream: .init(
+            format: format,
+            stream: .init(
                 search: search,
                 matches: matches,
                 window: .init(exponent: exponent),

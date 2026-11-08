@@ -27,8 +27,9 @@ extension LZ77.BlockMetadata {
             )
             #endif
 
-            self.storage = self.storage.withUnsafeMutablePointerToElements {
-                (body: UnsafeMutablePointer<UInt8>) in
+            self.storage = self.storage.withUnsafeMutablePointerToElements { (
+                    body: UnsafeMutablePointer<UInt8>
+                ) in
 
                 let new: ManagedBuffer<Void, UInt8> =
                 .create(minimumCapacity: Self.size){ _ in () }

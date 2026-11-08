@@ -163,14 +163,11 @@ extension String {
             }
         }
 
-        let head: Self = (0 ..< size.x).map {
-            (dr: Int) in
+        let head: Self = (0 ..< size.x).map { (dr: Int) in
             "\(Self.bold)\(Self.pad("\(dr)", left: 4))\(Self.reset)"
         }.joined(separator: " ")
-        let body: Self = (0 ..< size.y).map {
-            (dd: Int) in
-            let row: Self = (0 ..< size.x).map {
-                (dr: Int) in
+        let body: Self = (0 ..< size.y).map { (dd: Int) in
+            let row: Self = (0 ..< size.x).map { (dr: Int) in
                 let x: Int = Swift.min(histogram[size.x * dd + dr], 9999)
                 return Self.highlight(Self.pad("\(x)", left: 4), bg: gradient(x), fg: (1, 1, 1))
             }.joined(separator: " ")

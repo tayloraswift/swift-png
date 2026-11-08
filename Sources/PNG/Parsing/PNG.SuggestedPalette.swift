@@ -57,8 +57,7 @@ extension PNG.SuggestedPalette {
             }
 
             self.entries = .rgba8(
-                stride(from: k + 2, to: data.endIndex, by: 6).map {
-                    (base: Int) -> (
+                stride(from: k + 2, to: data.endIndex, by: 6).map { (base: Int) -> (
                         color: (r: UInt8, g: UInt8, b: UInt8, a: UInt8),
                         frequency: UInt16
                     ) in
@@ -80,8 +79,7 @@ extension PNG.SuggestedPalette {
             }
 
             self.entries = .rgba16(
-                stride(from: k + 2, to: data.endIndex, by: 10).map {
-                    (base: Int) -> (
+                stride(from: k + 2, to: data.endIndex, by: 10).map { (base: Int) -> (
                         color: (r: UInt16, g: UInt16, b: UInt16, a: UInt16),
                         frequency: UInt16
                     ) in

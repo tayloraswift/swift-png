@@ -63,11 +63,13 @@ import Testing
 
         print()
         print(name)
-        print("""
+        print(
+            """
             baseline: \(baseline.size >> 10) KB, \
             output: \(output.size >> 10) KB, \
             ratio: \(Double.init(output.size) / Double.init(baseline.size))
-            """)
+            """
+        )
 
         for (i, pair): (Int, (PNG.RGBA<UInt16>, PNG.RGBA<UInt16>)) in
             zip(output.image.unpack(as: PNG.RGBA<UInt16>.self), pixels).enumerated() {

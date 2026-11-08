@@ -624,8 +624,7 @@ extension PNG.Image {
             .indexed2(palette: let palette, fill: _),
             .indexed4(palette: let palette, fill: _),
             .indexed8(palette: let palette, fill: _):
-            return PNG.convolve(interleaved, dereference: deindexer(palette)) {
-                (c) in
+            return PNG.convolve(interleaved, dereference: deindexer(palette)) { (c) in
                 c
             }
 
@@ -633,58 +632,80 @@ extension PNG.Image {
             .v2(fill: _, key: _),
             .v4(fill: _, key: _),
             .v8(fill: _, key: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: T, _) in
+            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) { (c: T, _) in
                 c
             }
         case    .v16(fill: _, key: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: T, _) in
+            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) { (c: T, _) in
                 c
             }
 
         case    .va8(fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T))       in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T))       in
                 c.0
             }
         case    .va16(fill: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T))       in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T))       in
                 c.0
             }
 
         case    .bgr8(palette: _, fill: _, key: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T), _) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T), _) in
                 c.2
             }
 
         case    .rgb8(palette: _, fill: _, key: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T), _) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T), _) in
                 c.0
             }
         case    .rgb16(palette: _, fill: _, key: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T, T), _) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T, T), _) in
                 c.0
             }
 
         case    .bgra8(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T, T)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T, T)) in
                 c.2
             }
 
         case    .rgba8(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt8.self, depth: depth) {
-                (c: (T, T, T, T)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt8.self,
+                depth: depth
+            ) { (c: (T, T, T, T)) in
                 c.0
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.convolve(interleaved, of: UInt16.self, depth: depth) {
-                (c: (T, T, T, T)) in
+            return PNG.convolve(
+                interleaved,
+                of: UInt16.self,
+                depth: depth
+            ) { (c: (T, T, T, T)) in
                 c.0
             }
         }
@@ -707,8 +728,7 @@ extension PNG.Image {
             .indexed2(palette: let palette, fill: _),
             .indexed4(palette: let palette, fill: _),
             .indexed8(palette: let palette, fill: _):
-            return PNG.deconvolve(pixels, reference: indexer(palette)) {
-                (v) in
+            return PNG.deconvolve(pixels, reference: indexer(palette)) { (v) in
                 v
             }
 
@@ -716,48 +736,40 @@ extension PNG.Image {
             .v2(fill: _, key: _),
             .v4(fill: _, key: _),
             .v8(fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (v) in
                 v
             }
         case    .v16(fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (v) in
                 v
             }
 
         case    .va8(fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (v) in
                 (v, .max)
             }
         case    .va16(fill: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (v) in
                 (v, .max)
             }
 
         case    .bgr8(palette: _, fill: _, key: _),
             .rgb8(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (v) in
                 (v, v, v)
             }
         case    .rgb16(palette: _, fill: _, key: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (v) in
                 (v, v, v)
             }
 
         case    .bgra8(palette: _, fill: _),
             .rgba8(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt8.self, depth: depth) { (v) in
                 (v, v, v, .max)
             }
         case    .rgba16(palette: _, fill: _):
-            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) {
-                (v) in
+            return PNG.deconvolve(pixels, as: UInt16.self, depth: depth) { (v) in
                 (v, v, v, .max)
             }
         }
@@ -1018,10 +1030,8 @@ extension PNG.Image {
     @inlinable public func unpack<T>(
         as _: T.Type
     ) -> [T] where T: FixedWidthInteger & UnsignedInteger {
-        self.unpack(as: T.self) {
-            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
-            {
-                (i: Int) in
+        self.unpack(as: T.self) { (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
+            { (i: Int) in
                 palette[i].r
             }
         }
@@ -1067,8 +1077,12 @@ extension PNG.Image {
         size: (x: Int, y: Int), layout: PNG.Layout, metadata: PNG.Metadata = .init()
     )
         where T: FixedWidthInteger & UnsignedInteger {
-        self.init(packing: pixels, size: size, layout: layout, metadata: metadata) {
-            (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
+        self.init(
+            packing: pixels,
+            size: size,
+            layout: layout,
+            metadata: metadata
+        ) { (palette: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)]) in
             // currently blocked by the issue discussed at
             // https://github.com/apple/swift/pull/28833
             // as a workaround, we box the UInt8s into an RGBA<UInt8> struct
@@ -1078,8 +1092,7 @@ extension PNG.Image {
                     palette.indices
                 )
             )
-            return {
-                (v: UInt8) in
+            return { (v: UInt8) in
                 lookup[.init(v, v, v, .max), default: 0]
             }
         }

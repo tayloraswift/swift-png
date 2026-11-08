@@ -324,8 +324,7 @@ extension LZ77.DeflatorBuffers.Stream {
                 self.window.match(
                     from: head, lookahead: self.input,
                     attempts: attempts, goal: goal
-                ) {
-                    (run: Int, distance: Int) in
+                ) { (run: Int, distance: Int) in
 
                     extent = max(extent, run)
                     self.matches.set(edge: (run: run, distance: distance), at: index)

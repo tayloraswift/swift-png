@@ -16,8 +16,7 @@ let rgba: [PNG.RGBA<UInt8>] = (
             fatalError("failed to read from file '\(path).rgba'")
         }
 
-        return (0 ..< size.x * size.y).map {
-            (i: Int) -> PNG.RGBA<UInt8> in
+        return (0 ..< size.x * size.y).map { (i: Int) -> PNG.RGBA<UInt8> in
             .init(data[4 * i], data[4 * i + 1], data[4 * i + 2], data[4 * i + 3])
         }
     }

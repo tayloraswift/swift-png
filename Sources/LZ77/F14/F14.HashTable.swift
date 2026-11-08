@@ -42,15 +42,13 @@ extension F14.HashTable {
         self.storage    = .create(minimumCapacity: districts << 7 + 0x80){ _ in () }
         self.mask       = (districts &- 1) << 7
         // initialize memory to zero
-        self.withUnsafeMutableAlignedBytes {
-            (buffer: UnsafeMutableRawPointer) -> () in
+        self.withUnsafeMutableAlignedBytes { (buffer: UnsafeMutableRawPointer) -> () in
             buffer.initializeMemory(as: UInt8.self, repeating: 0, count: districts << 7)
         }
     }
 
     func find(_ key: UInt32) -> UInt16? {
-        self.withUnsafeMutableAlignedBytes {
-            (buffer: UnsafeMutableRawPointer) -> UInt16? in
+        self.withUnsafeMutableAlignedBytes { (buffer: UnsafeMutableRawPointer) -> UInt16? in
 
             let hash: F14.Hash = .init(key)
 
@@ -95,8 +93,7 @@ extension F14.HashTable {
     }
 
     func remove(key: UInt32, value: UInt16) {
-        self.withUnsafeMutableAlignedBytes {
-            (buffer: UnsafeMutableRawPointer) in
+        self.withUnsafeMutableAlignedBytes { (buffer: UnsafeMutableRawPointer) in
 
             let hash: F14.Hash = .init(key)
 
@@ -144,8 +141,7 @@ extension F14.HashTable {
 
     @discardableResult
     func update(key: UInt32, value: UInt16) -> UInt16? {
-        self.withUnsafeMutableAlignedBytes {
-            (buffer: UnsafeMutableRawPointer) in
+        self.withUnsafeMutableAlignedBytes { (buffer: UnsafeMutableRawPointer) in
 
             let hash: F14.Hash = .init(key)
 
@@ -247,8 +243,9 @@ extension F14.HashTable {
     private func withUnsafeMutableAlignedBytes<R>(
         _ body: (UnsafeMutableRawPointer) throws -> R
     ) rethrows -> R {
-        try self.storage.withUnsafeMutablePointerToElements {
-            (allocation: UnsafeMutablePointer<UInt8>) -> R in
+        try self.storage.withUnsafeMutablePointerToElements { (
+                allocation: UnsafeMutablePointer<UInt8>
+            ) -> R in
 
             // can use ! here because a null pointer bitpattern is impossible here
             let aligned: Int = (.init(bitPattern: allocation) &+ 0x7f) & ~0x7f
