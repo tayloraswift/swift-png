@@ -42,8 +42,7 @@ extension LZ77.DeflatorIn {
                     body: UnsafeMutablePointer<UInt8>
                 ) in
 
-                let new: ManagedBuffer<Void, UInt8> =
-                .create(minimumCapacity: self.capacity) {
+                let new: ManagedBuffer<Void, UInt8> = .create(minimumCapacity: self.capacity) {
                     self.capacity = $0.capacity
                     return ()
                 }

@@ -48,8 +48,9 @@ extension PNG.Encoder {
                 }
 
                 let pitch: Int = (subimage.x * pixel.volume + 7) >> 3
-                var (start, last): (Int, [UInt8]) = self.row ??
-                (0, .init(repeating: 0, count: pitch + 1))
+                var (start, last): (Int, [UInt8]) =
+                    self.row ??
+                    (0, .init(repeating: 0, count: pitch + 1))
                 self.row = nil
                 for y: Int in start ..< subimage.y {
                     if  let data: [UInt8] = self.deflator.pop() {
@@ -58,11 +59,11 @@ extension PNG.Encoder {
                         return data
                     }
                     // filter byte is initialized to 0
-                    let scanline: [UInt8] =
-                    try .init(unsafeUninitializedCapacity: last.count) {
+                    let scanline: [UInt8] = try .init(unsafeUninitializedCapacity: last.count) {
                         $0.baseAddress?.initialize(to: 0)
-                        var tail: UnsafeMutableBufferPointer<UInt8> =
-                        .init(rebasing: $0.dropFirst())
+                        var tail: UnsafeMutableBufferPointer<UInt8> = .init(
+                            rebasing: $0.dropFirst()
+                        )
                         try delegate(&tail, (base.x, base.y + y * stride.y), stride.x)
                         $1 = last.count
                     }
@@ -78,8 +79,9 @@ extension PNG.Encoder {
         case .image?:
             let pitch: Int = (size.x * pixel.volume + 7) >> 3
 
-            var (start, last): (Int, [UInt8]) = self.row ??
-            (0, .init(repeating: 0, count: pitch + 1))
+            var (start, last): (Int, [UInt8]) =
+                self.row ??
+                (0, .init(repeating: 0, count: pitch + 1))
             self.row = nil
             for y: Int in start ..< size.y {
                 if  let data: [UInt8] = self.deflator.pop() {
@@ -87,11 +89,11 @@ extension PNG.Encoder {
                     return data
                 }
 
-                let scanline: [UInt8] =
-                try .init(unsafeUninitializedCapacity: last.count) {
+                let scanline: [UInt8] = try .init(unsafeUninitializedCapacity: last.count) {
                     $0.baseAddress?.initialize(to: 0)
-                    var tail: UnsafeMutableBufferPointer<UInt8> =
-                    .init(rebasing: $0.dropFirst())
+                    var tail: UnsafeMutableBufferPointer<UInt8> = .init(
+                        rebasing: $0.dropFirst()
+                    )
                     try delegate(&tail, (0, y), 1)
                     $1 = last.count
                 }

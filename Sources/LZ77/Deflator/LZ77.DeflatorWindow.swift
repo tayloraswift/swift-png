@@ -79,8 +79,7 @@ extension LZ77.DeflatorWindow {
             // it has not already been overwritten with a more recent position.
             self.head.remove(key: self.w, value: .init(a))
         }
-        let next: UInt16?    =
-        self.head.update(key: self.v, value: .init(a))
+        let next: UInt16?    = self.head.update(key: self.v, value: .init(a))
         self[a]             = .init(next: next, value: self.literal)
 
         self.endIndex += 1

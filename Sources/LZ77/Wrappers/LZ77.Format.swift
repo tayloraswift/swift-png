@@ -31,10 +31,11 @@ extension LZ77.Format {
             input[boundary + 16, count: 8, as: UInt32.self],
             input[boundary + 24, count: 8, as: UInt32.self]
         )
-        let checksum: UInt32   = bytes.0 << 24 |
-        bytes.1 << 16 |
-        bytes.2 <<  8 |
-        bytes.3
+        let checksum: UInt32   =
+            bytes.0 << 24 |
+            bytes.1 << 16 |
+            bytes.2 <<  8 |
+            bytes.3
 
         return .some(checksum)
     }

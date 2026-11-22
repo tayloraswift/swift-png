@@ -240,8 +240,8 @@ extension LZ77.DeflatorMatches {
             next.upstream       = self[offset: next.index << 5]
 
             self[offset: next.index << 5] =
-            current.upstream & 0xff_ff_ff_00 |
-            next.upstream    & 0x00_00_00_ff
+                current.upstream & 0xff_ff_ff_00 |
+                next.upstream    & 0x00_00_00_ff
 
             if length == 1 {
                 let symbol: Int          = .init(next.upstream & 0x00_00_00_ff)

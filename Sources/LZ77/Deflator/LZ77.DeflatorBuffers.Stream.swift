@@ -205,11 +205,11 @@ extension LZ77.DeflatorBuffers.Stream {
                     return ()
                 }
 
-                let head: (index: Int, next: UInt16?)  =
-                self.window.update(with: self.input.dequeue())
+                let head: (index: Int, next: UInt16?)  = self.window.update(
+                    with: self.input.dequeue()
+                )
 
-                if  let match: (run: Int, distance: Int)   =
-                    self.window.match(
+                if  let match: (run: Int, distance: Int)   = self.window.match(
                         from: head, lookahead: self.input,
                         attempts: attempts, goal: goal
                     ) {
@@ -252,22 +252,21 @@ extension LZ77.DeflatorBuffers.Stream {
                     return ()
                 }
 
-                let head: (index: Int, next: UInt16?)  =
-                self.window.update(with: self.input.dequeue())
-                let first: UInt8                     =
-                self.window.literal
+                let head: (index: Int, next: UInt16?)  = self.window.update(
+                    with: self.input.dequeue()
+                )
+                let first: UInt8                     = self.window.literal
 
-                if  let eager: (run: Int, distance: Int)   =
-                    self.window.match(
+                if  let eager: (run: Int, distance: Int)   = self.window.match(
                         from: head, lookahead: self.input,
                         attempts: attempts, goal: goal
                     ) {
                     // save the literal at `head`
-                    let head: (index: Int, next: UInt16?)      =
-                    self.window.update(with: self.input.dequeue())
+                    let head: (index: Int, next: UInt16?)      = self.window.update(
+                        with: self.input.dequeue()
+                    )
                     // look for a better match at offset a+1
-                    if  let lazy: (run: Int, distance: Int)    =
-                        self.window.match(
+                    if  let lazy: (run: Int, distance: Int)    = self.window.match(
                             from: head, lookahead: self.input,
                             attempts: attempts, goal: goal
                         ),
@@ -316,8 +315,9 @@ extension LZ77.DeflatorBuffers.Stream {
                 }
 
                 // must save base index because this call increments the endindex
-                let head: (index: Int, next: UInt16?)  =
-                self.window.update(with: self.input.dequeue())
+                let head: (index: Int, next: UInt16?)  = self.window.update(
+                    with: self.input.dequeue()
+                )
 
                 let index: Int   = self.matches.store(vertex: self.window.literal)
                 var extent: Int  = 1

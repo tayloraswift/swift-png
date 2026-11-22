@@ -61,8 +61,9 @@ extension PNG.Decoder {
                 }
 
                 let pitch: Int = (subimage.x * pixel.volume + 7) >> 3
-                var (start, last): (Int, [UInt8]) = self.row ??
-                (0, .init(repeating: 0, count: pitch + 1))
+                var (start, last): (Int, [UInt8]) =
+                    self.row ??
+                    (0, .init(repeating: 0, count: pitch + 1))
                 self.row = nil
                 for y: Int in start ..< subimage.y {
                     guard var scanline: [UInt8] = self.inflator.pull(last.count) else {
@@ -96,8 +97,9 @@ extension PNG.Decoder {
         } else {
             let pitch: Int = (size.x * pixel.volume + 7) >> 3
 
-            var (start, last): (Int, [UInt8]) = self.row ??
-            (0, .init(repeating: 0, count: pitch + 1))
+            var (start, last): (Int, [UInt8]) =
+                self.row ??
+                (0, .init(repeating: 0, count: pitch + 1))
             self.row = nil
             for y: Int in start ..< size.y {
                 guard var scanline: [UInt8] = self.inflator.pull(last.count) else {

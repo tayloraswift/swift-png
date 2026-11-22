@@ -31,8 +31,9 @@ extension LZ77.BlockMetadata {
                     body: UnsafeMutablePointer<UInt8>
                 ) in
 
-                let new: ManagedBuffer<Void, UInt8> =
-                .create(minimumCapacity: Self.size){ _ in () }
+                let new: ManagedBuffer<Void, UInt8> = .create(minimumCapacity: Self.size){ _ in
+                    ()
+                }
                 new.withUnsafeMutablePointerToElements {
                     $0.initialize(from: body, count: Self.size)
                 }
@@ -55,8 +56,9 @@ extension LZ77.BlockMetadata {
         self.storage.withUnsafeMutablePointerToElements {
             let raw: UnsafeRawPointer    = .init($0)
             let index: Int               = .init($0[.init(codeword)])
-            let offset: Int              = 256 &+
-            MemoryLayout<LZ77.Metaword>.stride &* index
+            let offset: Int              =
+                256 &+
+                MemoryLayout<LZ77.Metaword>.stride &* index
             return raw.load(fromByteOffset: offset, as: LZ77.Metaword.self)
         }
     }
