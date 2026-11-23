@@ -42,8 +42,7 @@ extension LZ77.InflatorOut {
                     body: UnsafeMutablePointer<UInt8>
                 ) in
 
-                let new: ManagedBuffer<Void, UInt8> =
-                .create(minimumCapacity: self.capacity) {
+                let new: ManagedBuffer<Void, UInt8> = .create(minimumCapacity: self.capacity) {
                     self.capacity = $0.capacity
                     return ()
                 }
@@ -62,8 +61,10 @@ extension LZ77.InflatorOut {
                 return nil
             }
 
-            let slice: UnsafeBufferPointer<UInt8> =
-            .init(start: $0 + self.currentIndex, count: count)
+            let slice: UnsafeBufferPointer<UInt8> = .init(
+                start: $0 + self.currentIndex,
+                count: count
+            )
             defer {
                 let limit: Int       = Swift.max(self.endIndex - self.window, self.startIndex)
                 self.currentIndex  += count

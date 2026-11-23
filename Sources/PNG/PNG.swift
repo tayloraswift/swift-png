@@ -92,8 +92,9 @@ extension PNG {
             return premultiplied
         }
 
-        let biased: (high: T, low: T.Magnitude)    =
-        T.max.multipliedFullWidth(by: premultiplied)
+        let biased: (high: T, low: T.Magnitude)    = T.max.multipliedFullWidth(
+            by: premultiplied
+        )
         let product: (high: T, low: T.Magnitude),
         carried: Bool
         (product.low, carried)  = biased.low.addingReportingOverflow(alpha.magnitude >> 1)

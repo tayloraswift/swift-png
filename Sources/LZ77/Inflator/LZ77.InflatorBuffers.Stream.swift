@@ -181,8 +181,9 @@ extension LZ77.InflatorBuffers.Stream {
             guard self.b + meta.length + extra <= self.input.count else {
                 return nil
             }
-            let repetitions: Int = base +
-            self.input[self.b + meta.length, count: extra, as: Int.self]
+            let repetitions: Int =
+                base +
+                self.input[self.b + meta.length, count: extra, as: Int.self]
 
             lengths.append(contentsOf: repeatElement(element, count: repetitions))
             self.b += meta.length + extra
@@ -270,9 +271,9 @@ extension LZ77.InflatorBuffers.Stream {
                 // we put it in the low bits so that we can do masking shifts instead
                 // of checked shifts
                 var slug: UInt64 =
-                .init(self.input[self.b + 32]) << 32 |
-                .init(self.input[self.b + 16]) << 16 |
-                .init(first)
+                    .init(self.input[self.b + 32]) << 32 |
+                    .init(self.input[self.b + 16]) << 16 |
+                    .init(first)
                 slug &>>= runliteral.length
 
                 let composite: (
@@ -281,22 +282,26 @@ extension LZ77.InflatorBuffers.Stream {
                 )
 
                 composite.count     = tables.composite(decade: runliteral)
-                let count: Int       = composite.count.base &+
-                .init(truncatingIfNeeded: slug & ~(.max &<< composite.count.extra))
+                let count: Int       =
+                    composite.count.base &+
+                    .init(truncatingIfNeeded: slug & ~(.max &<< composite.count.extra))
 
                 slug &>>= composite.count.extra
 
-                let distance: LZ77.Distance =
-                tables[.init(truncatingIfNeeded: slug), as: LZ77.Distance.self]
+                let distance: LZ77.Distance = tables[
+                    .init(truncatingIfNeeded: slug), as: LZ77.Distance.self
+                ]
                 slug &>>= distance.length
 
                 composite.offset    = tables.composite(decade: distance)
-                let offset: Int      = composite.offset.base &+
-                .init(truncatingIfNeeded: slug & ~(.max &<< composite.offset.extra))
+                let offset: Int      =
+                    composite.offset.base &+
+                    .init(truncatingIfNeeded: slug & ~(.max &<< composite.offset.extra))
 
-                let b: Int = self.b      +
-                runliteral.length   + composite.count.extra +
-                distance.length     + composite.offset.extra
+                let b: Int =
+                    self.b      +
+                    runliteral.length   + composite.count.extra +
+                    distance.length     + composite.offset.extra
                 guard b <= self.input.count else {
                     return nil
                 }
@@ -311,8 +316,8 @@ extension LZ77.InflatorBuffers.Stream {
                 #if DUMP_LZ77_BLOCKS || DUMP_LZ77_SYMBOL_HISTOGRAM
                 let n: Int = 29 * .init(distance.decade) + .init(runliteral.symbol - 257)
                 let m: Int =
-                runliteral.length + composite.count.extra +
-                distance.length   + composite.offset.extra
+                    runliteral.length + composite.count.extra +
+                    distance.length   + composite.offset.extra
                 self.statistics.symbols[n]          += 1
                 self.statistics.matches[m / count]  += 1
                 #endif
@@ -352,10 +357,11 @@ extension LZ77.InflatorBuffers.Stream {
             input[boundary + 16, count: 8, as: UInt32.self],
             input[boundary + 24, count: 8, as: UInt32.self]
         )
-        let checksum: UInt32   = bytes.0 << 24 |
-        bytes.1 << 16 |
-        bytes.2 <<  8 |
-        bytes.3
+        let checksum: UInt32   =
+            bytes.0 << 24 |
+            bytes.1 << 16 |
+            bytes.2 <<  8 |
+            bytes.3
 
         return checksum
     }
@@ -388,10 +394,11 @@ extension LZ77.InflatorBuffers.Stream {
 
     mutating func _dumpPerfStats() {
         #if DUMP_LZ77_BLOCKS
-        let efficiency: Double = self.statistics.literals.enumerated().reduce(0.0){
-            $0 + .init($1.0 * $1.1)
-        } /
-        .init(self.statistics.literals.reduce(0, +))
+        let efficiency: Double =
+            self.statistics.literals.enumerated().reduce(0.0){
+                $0 + .init($1.0 * $1.1)
+            } /
+            .init(self.statistics.literals.reduce(0, +))
         print("< average literal coding efficiency: \(efficiency)")
         print("< match coding efficiency histogram:")
         for (bin, frequency): (Int, Int) in self.statistics.matches.enumerated() {

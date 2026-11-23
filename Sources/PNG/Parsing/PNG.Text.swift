@@ -172,8 +172,12 @@ extension PNG.Text {
             throw error(nil)
         }
 
-        let scalars: LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> =
-        data[..<offset].lazy.map(Unicode.Scalar.init(_:))
+        let scalars: LazyMapSequence<
+            ArraySlice<UInt8>,
+            Unicode.Scalar
+        > = data[..<offset].lazy.map(
+            Unicode.Scalar.init(_:)
+        )
 
         let name: String = .init(scalars.map(Character.init(_:)))
         guard Self.validate(name: scalars) else {
@@ -219,10 +223,13 @@ extension PNG.Text {
         }
 
         // split on '-'
-        let language: [String] =
-        try data[..<offset].split(separator: 0x2d, omittingEmptySubsequences: false).map {
-            let scalars: LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> =
-            $0.lazy.map(Unicode.Scalar.init(_:))
+        let language: [String] = try data[..<offset].split(
+            separator: 0x2d,
+            omittingEmptySubsequences: false
+        ).map {
+            let scalars: LazyMapSequence<ArraySlice<UInt8>, Unicode.Scalar> = $0.lazy.map(
+                Unicode.Scalar.init(_:)
+            )
             let tag: String = .init(scalars.map(Character.init(_:)))
             guard Self.validate(language: scalars) else {
                 throw error(tag)
@@ -249,11 +256,12 @@ extension PNG.Text {
     /// from raw chunk data. It is the opinion of the library that the
     /// latin-1 chunk types ``Chunk/tEXt`` and ``Chunk/zTXt`` are deprecated.
     public var serialized: [UInt8] {
-        let size: Int = 5 +
-        self.keyword.english.count                      +
-        self.keyword.localized.count                    +
-        self.language.reduce(0){ $0 + $1.count + 1 }    +
-        self.content.utf8.count
+        let size: Int =
+            5 +
+            self.keyword.english.count                      +
+            self.keyword.localized.count                    +
+            self.language.reduce(0){ $0 + $1.count + 1 }    +
+            self.content.utf8.count
 
         var data: [UInt8] = []
         data.reserveCapacity(size)

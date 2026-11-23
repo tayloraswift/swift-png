@@ -61,8 +61,9 @@ func gradient<T>(_ x: T) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)
     )
 }
 //  snippet.TABULARIZE
-let gradient: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)] =
-(UInt8.min ... UInt8.max).map(gradient(_:))
+let gradient: [(r: UInt8, g: UInt8, b: UInt8, a: UInt8)] = (UInt8.min ... UInt8.max).map(
+    gradient(_:)
+)
 
 //  snippet.VISUALIZE
 let swatch: [PNG.RGBA<UInt8>] = (0 ..< 16).flatMap {

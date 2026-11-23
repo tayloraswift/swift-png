@@ -447,8 +447,9 @@ extension PNG.Format {
                     ).fatal
                 }
 
-                palette =      zip(solid.entries, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } +
-                solid.entries.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
+                palette =
+                    zip(solid.entries, alpha).map{ ($0.0.r, $0.0.g, $0.0.b, $0.1) } +
+                    solid.entries.dropFirst(alpha.count).map{ (  $0.r,   $0.g,   $0.b, .max) }
             default:
                 fatalError(
                     "expected transparency of case `palette` for pixel format `\(pixel)`"

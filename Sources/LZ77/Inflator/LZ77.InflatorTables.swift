@@ -110,16 +110,18 @@ extension LZ77.InflatorTables {
             let raw: UnsafeRawPointer = .init($0)
             // should get constant-folded
             let start: Int  = 256    + 64 * MemoryLayout<Composite>.stride
-            let offset: Int = start &+ MemoryLayout<LZ77.RunLiteral>.stride &*
-            self.index(codeword, fence: self.fence.runliteral)
+            let offset: Int =
+                start &+ MemoryLayout<LZ77.RunLiteral>.stride &*
+                self.index(codeword, fence: self.fence.runliteral)
             return raw.load(fromByteOffset: offset, as: LZ77.RunLiteral.self)
         }
     }
     subscript(codeword: UInt16, as _: LZ77.Distance.Type) -> LZ77.Distance {
         self.storage.withUnsafeMutablePointerToElements {
             let raw: UnsafeRawPointer = .init($0)
-            let offset: Int = self.offset &+ MemoryLayout<LZ77.Distance>.stride &*
-            self.index(codeword, fence: self.fence.distance)
+            let offset: Int =
+                self.offset &+ MemoryLayout<LZ77.Distance>.stride &*
+                self.index(codeword, fence: self.fence.distance)
             return raw.load(fromByteOffset: offset, as: LZ77.Distance.self)
         }
     }
@@ -127,8 +129,9 @@ extension LZ77.InflatorTables {
     func composite(decade runliteral: LZ77.RunLiteral) -> (extra: Int, base: Int) {
         self.storage.withUnsafeMutablePointerToElements {
             let raw: UnsafeRawPointer = .init($0)
-            let offset: Int          = 256 &+
-            MemoryLayout<Composite>.stride &* runliteral.decade
+            let offset: Int          =
+                256 &+
+                MemoryLayout<Composite>.stride &* runliteral.decade
             let composite: Composite = raw.load(fromByteOffset: offset, as: Composite.self)
             return (extra: .init(composite.extra), base: .init(composite.base))
         }
@@ -137,8 +140,9 @@ extension LZ77.InflatorTables {
         self.storage.withUnsafeMutablePointerToElements {
             let raw: UnsafeRawPointer = .init($0)
             // should get constant-folded
-            let offset: Int          = (256 + 32 * MemoryLayout<Composite>.stride) &+
-            MemoryLayout<Composite>.stride &* distance.decade
+            let offset: Int          =
+                (256 + 32 * MemoryLayout<Composite>.stride) &+
+                MemoryLayout<Composite>.stride &* distance.decade
             let composite: Composite = raw.load(fromByteOffset: offset, as: Composite.self)
             return (extra: .init(composite.extra), base: .init(composite.base))
         }

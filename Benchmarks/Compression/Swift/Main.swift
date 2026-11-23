@@ -95,11 +95,17 @@ func main() throws {
     }
 
     #if INTERNAL_BENCHMARKS
-    let (results, size): ([(time: Int, hash: Int)], Int) =
-    __Entrypoint.Benchmark.Encode.rgba8(level: level, path: path, trials: trials)
+    let (results, size): ([(time: Int, hash: Int)], Int) = __Entrypoint.Benchmark.Encode.rgba8(
+        level: level,
+        path: path,
+        trials: trials
+    )
     #else
-    let (results, size): ([(time: Int, hash: Int)], Int) =
-    Benchmark.Encode.rgba8(level: level, path: path, trials: trials)
+    let (results, size): ([(time: Int, hash: Int)], Int) = Benchmark.Encode.rgba8(
+        level: level,
+        path: path,
+        trials: trials
+    )
     #endif
 
     let string: String = results.map {

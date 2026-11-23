@@ -49,8 +49,11 @@ extension LZ77.DeflatorMatches.Depths {
                 if      symbol < 256 {
                     self.storage[.init(symbol)] = length << 2
                 } else if symbol > 256 {
-                    let decade: (extra: UInt16, base: UInt16) =
-                    LZ77.Composites[run: .init(truncatingIfNeeded: symbol)]
+                    let decade: (extra: UInt16, base: UInt16) = LZ77.Composites[
+                        run: .init(
+                            truncatingIfNeeded: symbol
+                        )
+                    ]
                     let length: UInt8    = length + .init(decade.extra)
                     let base: Int        = 253 +    .init(decade.base ),
                     count: Int       =   1 <<         decade.extra

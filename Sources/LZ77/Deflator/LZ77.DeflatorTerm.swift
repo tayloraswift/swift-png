@@ -37,11 +37,11 @@ extension LZ77.DeflatorTerm {
         )
 
         let symbols: UInt32 =
-        .init(decade.distance) << 27 | 0x0000_0100 |
-        .init(decade.run)
+            .init(decade.distance) << 27 | 0x0000_0100 |
+            .init(decade.run)
         let bits: UInt32    =
-        (.init(distance) - base.distance) << 14 |
-        (.init(run     ) - base.run     ) <<  9
+            (.init(distance) - base.distance) << 14 |
+            (.init(run     ) - base.run     ) <<  9
         self.storage = symbols | bits
     }
 }

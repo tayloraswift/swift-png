@@ -21,9 +21,10 @@ extension LZ77.HuffmanTree<UInt16> {
     static var runliteral: Self {
         .init(
             symbols: [256 ... 279, 0 ... 143, 280 ... 287, 144 ... 255].flatMap{ $0 },
-            levels: .init(repeating: 0 ..<   0, count: 6) + // L1 ... L6
-            [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
-            .init(repeating: 288 ..< 288, count: 6)
+            levels:
+                .init(repeating: 0 ..<   0, count: 6) + // L1 ... L6
+                [0 ..< 24, 24 ..< 176, 176 ..< 288]     + // L7, L8, L9
+                .init(repeating: 288 ..< 288, count: 6)
         )  // L10 ... L15
     }
 }
@@ -31,9 +32,10 @@ extension LZ77.HuffmanTree<UInt8> {
     static var distance: Self {
         .init(
             symbols: .init(0 ... 31),
-            levels: .init(repeating: 0 ..<  0, count: 4)  +
-            [0 ..< 32]                              +
-            .init(repeating: 32 ..< 32, count: 10)
+            levels:
+                .init(repeating: 0 ..<  0, count: 4)  +
+                [0 ..< 32]                              +
+                .init(repeating: 32 ..< 32, count: 10)
         )
     }
 }

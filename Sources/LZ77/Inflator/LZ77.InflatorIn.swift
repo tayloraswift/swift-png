@@ -97,8 +97,9 @@ extension LZ77.InflatorIn {
                 }
 
                 for j: Int in 0 ..< count >> 1 {
-                    $0[i &+          j]   = .init(start[j << 1 | 1]) << 8 |
-                    .init(start[j << 1    ])
+                    $0[i &+          j]   =
+                        .init(start[j << 1 | 1]) << 8 |
+                        .init(start[j << 1    ])
                 }
                 let k: Int = i + (count + 1) >> 1
                 if count & 1 != 0 {
