@@ -10,8 +10,14 @@ jobs:
     validate:
         name: Validate PR title
         # GitHub-hosted minutes are free for public repositories, but private ones share a
-        # monthly quota that bills every job as at least a minute, so they use our runners
-        runs-on: ${{ github.event.repository.private && 'self-hosted' || 'ubuntu-latest' }}
+        # monthly quota that bills every job as at least a minute, so our private repositories
+        # use our runners. other organizations keep GitHub’s, since they may have none
+        runs-on: >-
+            ${{
+                github.repository_owner == 'rarestype' &&
+                github.event.repository.private &&
+                'self-hosted' || 'ubuntu-latest'
+            }}
         steps:
             -   name: 🌟 Check format 🌟
                 env:
