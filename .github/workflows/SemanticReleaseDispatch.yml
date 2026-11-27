@@ -21,7 +21,9 @@ jobs:
                 startsWith(github.event.pull_request.title, '[minor]') ||
                 startsWith(github.event.pull_request.title, '[patch]')
             )
-        runs-on: ubuntu-latest
+        # GitHub-hosted minutes are free for public repositories, but private ones share a
+        # monthly quota that bills every job as at least a minute, so they use our runners
+        runs-on: ${{ github.event.repository.private && 'self-hosted' || 'ubuntu-latest' }}
         steps:
             -   name: ⚡ Parse bump type ⚡
                 env:

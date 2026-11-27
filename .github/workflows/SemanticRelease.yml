@@ -21,7 +21,9 @@ jobs:
         name: Release
         # ensures this only runs if the dispatch workflow completed successfully
         if: github.event.workflow_run.conclusion == 'success'
-        runs-on: ubuntu-latest
+        # GitHub-hosted minutes are free for public repositories, but private ones share a
+        # monthly quota that bills every job as at least a minute, so they use our runners
+        runs-on: ${{ github.event.repository.private && 'self-hosted' || 'ubuntu-latest' }}
         outputs:
             version: ${{ steps.increment.outputs.version }}
         steps:

@@ -11,7 +11,9 @@ on:
 jobs:
     emails:
         name: Check commit emails
-        runs-on: ubuntu-latest
+        # GitHub-hosted minutes are free for public repositories, but private ones share a
+        # monthly quota that bills every job as at least a minute, so they use our runners
+        runs-on: ${{ github.event.repository.private && 'self-hosted' || 'ubuntu-latest' }}
         steps:
             -   name: 🔐 Checkout repository 🔐
                 uses: actions/checkout@v6
