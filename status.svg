@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="146" height="20">
+    <title>visionOS - passing</title>
+    <defs>
+        <clipPath id="round-corners">
+            <rect x="0" y="0" width="146" height="20" rx="3" ry="3"></rect>
+        </clipPath>
+        <linearGradient id="workflow-fill" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop stop-color="#242424" offset="0%"></stop>
+            <stop stop-color="#2c2c2c" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient id="state-passing" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop stop-color="#ff85da" offset="0%"></stop>
+            <stop stop-color="#ff95b0" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient id="state-failing" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop stop-color="#ff833c" offset="0%"></stop>
+            <stop stop-color="#ffaa3c" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g clip-path="url(#round-corners)" fill="none" fill-rule="evenodd" font-weight="bold" font-family="&#39;Monaspace Neon&#39;, ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace" font-size="11">
+        <g>
+            <rect id="workflow-bg" width="86" height="20" fill="url(#workflow-fill)" fill-rule="nonzero"></rect>
+            <text fill="#FFFFFF">
+                <tspan x="24" y="14">visionOS</tspan>
+            </text>
+        </g>
+        <g transform="translate(86)">
+            <rect width="60" height="20" id="state-bg" fill="url(#state-passing)" fill-rule="nonzero"></rect>
+            <text fill="#000000">
+                <tspan x="6" y="14">passing</tspan>
+            </text>
+        </g>
+        <path fill="#cfcfcf" d="M 11.309496,14.079094 Q 10.417571,12.523108 7.7027344,10.947591 6.4397168,10.211916 6.4397168,9.0530649 q 0,-0.48828 0.1822912,-0.944008 Q 6.7977888,7.6663497 7.1558608,7.3147881 7.500912,6.9762473 7.9501296,6.7809352 8.3733056,6.598644 8.8746064,6.598644 q 0.5013009,0 0.9244769,0.1822912 0.4427067,0.1888017 0.7942687,0.5338529 0.345051,0.3385408 0.533853,0.7942688 0.182291,0.4361968 0.182291,0.944008 0,-0.5078112 0.182291,-0.944008 0.188802,-0.455728 0.533853,-0.7942688 0.351562,-0.3450512 0.794269,-0.5338529 0.423176,-0.1822912 0.924477,-0.1822912 0.501301,0 0.924477,0.1822912 0.449217,0.1953121 0.794268,0.5338529 0.358072,0.3515616 0.533853,0.7942688 0.182291,0.455728 0.182291,0.944008 0,1.1718721 -1.263017,1.8945261 -2.714837,1.575517 -3.606762,3.131503 z">
+        </path>
+    </g>
+</svg>
